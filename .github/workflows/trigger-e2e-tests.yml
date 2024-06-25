@@ -1,0 +1,18 @@
+name: Triggered End-to-end test workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      triggered_by:
+        description: 'Who triggered the tests?'
+        required: true
+
+jobs:
+  e2e-tests-job:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Display metadata
+      run: |
+        echo "TRIGGERED BY: ${{ github.event.inputs.triggered_by }}"
