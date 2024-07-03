@@ -1,0 +1,7 @@
+{
+    "services": [
+        { "type": "LDAP", "name": "LDAP 1", "mock": "NOT_CONFIGURED" },
+        { "type": "EXT_AUTHN", "name": "ACME1 External Authorization Service", "mock": "NOT_CONFIGURED" },
+        { "type": "EXT_AUTHZ", "name": "ACME2 External Authentication Service", "mock": "NOT_CONFIGURED" }
+    ]
+}

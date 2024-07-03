@@ -1,0 +1,19 @@
+{
+  "name": "automatic-tests",
+  "version": "1.0.0",
+  "description": "Automatic tests for ReadonlyREST security plugin for Elasticsearch and Kibana",
+  "main": "index.js",
+  "scripts": {
+    "open": "./node_modules/.bin/cypress open",
+    "run": "./node_modules/.bin/cypress run"
+  },
+  "license": "Beshu Limited, All rights reserved",
+  "dependencies": {
+    "@testing-library/cypress": "^10.0.1",
+    "cypress": "12.17.4",
+    "semver": "7.5.2"
+  },
+  "devDependencies": {
+    "typescript": "4.8.4"
+  }
+}
