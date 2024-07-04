@@ -14,7 +14,7 @@ export class RorMenu {
     cy.intercept('GET', '/pkp/api/settings').as('getSettings');
     cy.contains('Edit security settings').click({ force: true });
     cy.wait('@getSettings').then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
+      expect([200, 304]).to.include(response.statusCode)
     });
   }
 

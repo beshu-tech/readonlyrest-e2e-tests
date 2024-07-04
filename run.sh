@@ -6,5 +6,5 @@ cleanup() {
 
 trap cleanup EXIT
 
-./elk-ror/run.sh
-./e2e-tests/run.sh
+time ./elk-ror/run.sh
+time ./e2e-tests/run.sh
