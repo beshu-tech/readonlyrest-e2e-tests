@@ -47,6 +47,7 @@ services:
     environment:
       ELASTIC_USER_PASSWORD: elastic
       ES_API_URL: http://es-ror:9200
+    # todo: healthcheck
     networks:
       - es-ror-network
     ulimits:
