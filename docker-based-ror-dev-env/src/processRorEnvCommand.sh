@@ -8,8 +8,11 @@ export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 npm i -g yarn
 
 case "$1" in
-    integration-tests )
-      /app/run.sh
+    e2e-tests-7x )
+      /app/run-7x.sh
+      ;;
+    e2e-tests-8x )
+      /app/run-8x.sh
       ;;
     bash )
       bash

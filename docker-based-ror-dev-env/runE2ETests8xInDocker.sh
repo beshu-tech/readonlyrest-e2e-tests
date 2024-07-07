@@ -2,4 +2,4 @@
 
 cd "$(dirname "$0")"
 
-./runInDocker.sh bash
+./runInDocker.sh e2e-tests-8x

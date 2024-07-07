@@ -7,6 +7,11 @@ fi
 
 cd "$(dirname "$0")"
 
+if [[ -z "${ROR_ACTIVATION_KEY}" ]]; then
+  echo "ROR_ACTIVATION_KEY is not set or is empty"
+  exit 1
+fi
+
 COMMAND=$1
 DOCKER_BASED_ROR_DEV_ENV_HASH=$(./src/rorDevEnvVersion.sh)
 
@@ -24,6 +29,7 @@ else
 fi
 
 docker run --rm $DIND_OPTIONS $DOCKER_RUN_OPTIONS \
+  -e ROR_ACTIVATION_KEY=$ROR_ACTIVATION_KEY \
   -v ./../e2e-tests:/app/e2e-tests \
   -v ./../elk-ror:/app/elk-ror \
   -v ./../run.sh:/app/run.sh \

@@ -1,5 +1,12 @@
 #!/bin/bash -e
 
+if [ $# -ne 1 ]; then
+  echo "One parameter is required: 1) ELK version"
+  exit 1
+fi
+
+ELK_VERSION="$1"
+
 cleanup() {
   ./elk-ror/stop-and-clean.sh 
 }
@@ -18,8 +25,6 @@ echo -e "
 "
 
 echo -e "E2E TESTS\n"
-
-ELK_VERSION="8.14.1"
 
 time ./elk-ror/run.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION"
 time ./e2e-tests/run.sh "$ELK_VERSION"
