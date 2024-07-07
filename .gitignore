@@ -1,5 +1,5 @@
 .DS_Store
 elk-ror/elk-ror.log
 e2e-tests/node_modules
-e2e-tests/cypress/videos
-e2e-tests/cypress/screenshots
+plugins/*
+results/*

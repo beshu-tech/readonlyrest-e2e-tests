@@ -1,11 +1,9 @@
-name: Triggered End-to-end test workflow
+name: End-to-end test workflow
 
 on:
   workflow_dispatch:
-    inputs:
-      triggered_by:
-        description: 'Who triggered the tests?'
-        required: true
+  schedule:
+    - cron: '0 0 * * *'  
 
 jobs:
   e2e-tests-job:
@@ -13,6 +11,21 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Display metadata
+    - name: Run tests
       run: |
-        echo "TRIGGERED BY: ${{ github.event.inputs.triggered_by }}"
+        ./run.sh
+      env:
+        ROR_ACTIVATION_KEY: $(ROR_KBN_LICENSE)
+    - task: AmazonWebServices.aws-vsts-tools.S3Upload.S3Upload@1
+      displayName: 'S3 Upload Videos & logs'
+      inputs:
+        awsCredentials: 'S3 creds'
+        regionName: 'eu-west-1'
+        bucketName: 'readonlyrest-data'
+        sourceFolder: 'results/videos'
+        globExpressions: |
+          *.mp4
+          *.log
+        targetFolder: 'e2e-tests/build_$(Build.BuildID)/8x'
+      continueOnError: true
+      condition: failed()

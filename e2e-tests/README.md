@@ -29,7 +29,3 @@ That's why we need to define `kibanaVersion` as env variable, we can do it via
   For example `yarn open --env kibanaVersion=7.13.1`.
 
 CLI env value will override `cypress.json` value
-
-## Limitations
-- You can run the app against `local-testing` docker build
-- To clear all data, you need to close and reopen the docker container

@@ -2,11 +2,11 @@ services:
 
   es-ror:
     build:
-      context: .
-      dockerfile: images/es/Dockerfile
+      context: ../.
+      dockerfile: elk-ror/images/es/Dockerfile
       args:
-        ES_VERSION: 8.14.1
-        ROR_FILE: readonlyrest-1.58.0_es8.14.1.zip
+        ES_VERSION: $ES_VERSION
+        ES_ROR_FILE: $ES_ROR_FILE
     ports:
       - "19200:9200"
       - "19300:9300"
@@ -33,11 +33,11 @@ services:
 
   kbn-ror:
     build:
-      context: .
-      dockerfile: images/kbn/Dockerfile
+      context: ../.
+      dockerfile: elk-ror/images/kbn/Dockerfile
       args:
-        KBN_VERSION: 8.14.1
-        ROR_FILE: readonlyrest_kbn_universal-1.58.0_es8.14.1.zip
+        KBN_VERSION: $KBN_VERSION
+        KBN_ROR_FILE: $KBN_ROR_FILE
         ROR_ACTIVATION_KEY: $ROR_ACTIVATION_KEY
     depends_on:
       es-ror:

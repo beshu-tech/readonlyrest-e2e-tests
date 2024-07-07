@@ -2,31 +2,79 @@
 
 cd "$(dirname "$0")"
 
-if ! command -v docker-compose > /dev/null; then
-  echo "The script require docker-compose to be installed on your machine."
+if ! docker version &>/dev/null; then
+  echo "No Docker found. Docker is required to run this script."
   exit 1
 fi
 
-echo -e "
+if ! docker compose version &>/dev/null; then
+  echo "No docker compose found. Docker compose is required to run this script."
+  exit 2
+fi
 
-  _____                _  ____        _       _____  ______  _____ _______
- |  __ \              | |/ __ \      | |     |  __ \|  ____|/ ____|__   __|
- | |__) |___  __ _  __| | |  | |_ __ | |_   _| |__) | |__  | (___    | |
- |  _  // _ \/ _| |/ _| | |  | | '_ \| | | | |  _  /|  __|  \___ \   | |
- | | \ \  __/ (_| | (_| | |__| | | | | | |_| | | \ \| |____ ____) |  | |
- |_|  \_\___|\__,_|\__,_|\____/|_| |_|_|\__, |_|  \_\______|_____/   |_|
-                                         __/ |
-"
+if [[ -z "${ROR_ACTIVATION_KEY}" ]]; then
+  echo "ROR_ACTIVATION_KEY is not set or is empty"
+  exit 1
+fi
 
-echo "Starting Elasticsearch and Kibana with installed ROR plugins ..."
+show_help() {
+  echo "Usage: ./run.sh --es <elasticsearch_version> --kbn <kibana_version>"
+  exit 1
+}
 
-docker-compose up -d --build --remove-orphans --force-recreate --wait
-docker-compose logs -f > elk-ror.log 2>&1 &
+echo "Preparing enviroment the tests will be run at ..."
 
-echo -e "
-***********************************************************************
-***                                                                 ***
-***          TIME TO PLAY!!!                                        ***
-***                                                                 ***
-***********************************************************************
-"
+export ES_VERSION=""
+export KBN_VERSION=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --es)
+    if [[ -n $2 && $2 != --* ]]; then
+      ES_VERSION="$2"
+      shift 2
+    else
+      echo "Error: --es requires a version argument"
+      show_help
+    fi
+    ;;
+  --kbn)
+    if [[ -n $2 && $2 != --* ]]; then
+      KBN_VERSION="$2"
+      shift 2
+    else
+      echo "Error: --kbn requires a version argument"
+      show_help
+    fi
+    ;;
+  *)
+    echo "Unknown option: $1"
+    show_help
+    ;;
+  esac
+done
+
+if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
+  echo "Error: Both --es and --kbn arguments are required"
+  show_help
+fi
+
+echo "Downloading ROR ES plugin ..."
+export ES_ROR_FILE
+ES_ROR_FILE=$(./download-ror-es.sh "$ES_VERSION")
+
+echo "Downloading ROR KBN plugin ..."
+export KBN_ROR_FILE
+KBN_ROR_FILE=$(./download-ror-kbn.sh "$KBN_VERSION")
+
+echo "Bootstrapping the docker-based enviroment ..."
+
+if ! docker compose config > /dev/null; then
+  echo "Cannot validate docker compose configuration."
+  exit 3
+fi
+
+docker compose up -d --build --remove-orphans --force-recreate --wait
+docker compose logs -f > elk-ror.log 2>&1 &
+
+echo "The enviroment ready"
