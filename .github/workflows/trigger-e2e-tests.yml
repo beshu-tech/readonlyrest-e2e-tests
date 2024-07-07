@@ -15,17 +15,10 @@ jobs:
       run: |
         ./run.sh
       env:
-        ROR_ACTIVATION_KEY: $(ROR_KBN_LICENSE)
-    - task: AmazonWebServices.aws-vsts-tools.S3Upload.S3Upload@1
-      displayName: 'S3 Upload Videos & logs'
-      inputs:
-        awsCredentials: 'S3 creds'
-        regionName: 'eu-west-1'
-        bucketName: 'readonlyrest-data'
-        sourceFolder: 'results/videos'
-        globExpressions: |
-          *.mp4
-          *.log
-        targetFolder: 'e2e-tests/build_$(Build.BuildID)/8x'
-      continueOnError: true
-      condition: failed()
+        ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+    - name: S3 Upload Videos & logs
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+        aws s3 cp results/videos/* 's3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/8x' --recursive
