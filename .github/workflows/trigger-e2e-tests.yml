@@ -22,6 +22,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
         ls -la .
+        ls -la results/videos/
         aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/8x/ --recursive
   e2e-tests-7x-job:
     runs-on: ubuntu-latest
@@ -39,4 +40,5 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
         ls -la .
+        ls -la results/videos/
         aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/7x/ --recursive
