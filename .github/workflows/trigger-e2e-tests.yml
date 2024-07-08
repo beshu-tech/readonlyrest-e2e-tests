@@ -23,6 +23,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
           echo "Test file" > test_file.txt
+          aws configure set region eu-west-1
           aws s3 cp test_file.txt s3://readonlyrest-data/e2e-tests/test_file.txt
         # aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/8x/ --recursive
   # e2e-tests-7x-job:
