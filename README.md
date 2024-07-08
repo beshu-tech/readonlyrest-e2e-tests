@@ -73,4 +73,8 @@ If you prefer, you can use scripts from the `docker-based-ror-dev-env` folder to
 1. you don't want to install Yarn (or any other JS-related tools) on your host
 2. you want to test if maybe there is some problem with your tools installed on the host
 3. you want to check what has to be installed to run the stack with no issues
-4. it can be used in the pipeline if you want to use custom runners without special preparing them
+4. it can be used in the pipeline if you want to use custom runners without special preparation for them
+
+## Troubleshooting
+
+Remember that most of the tests assume that ROR KBN is run with the Enterprise license. You have to configure it on your host as a variable `ROR_ACTIVATION_KEY`. You can obtain a trial activation key in the [Customer Portal](https://readonlyrest.com/customer) or use the developer one. 
