@@ -1,7 +1,6 @@
 import { Loader } from './Loader';
 
 export class RorMenu {
-
   static openRorMenu() {
     cy.get('#rorMenuPopover').click();
   }
@@ -14,7 +13,7 @@ export class RorMenu {
     cy.intercept('GET', '/pkp/api/settings').as('getSettings');
     cy.contains('Edit security settings').click({ force: true });
     cy.wait('@getSettings').then(({ response }) => {
-      expect([200, 304]).to.include(response.statusCode)
+      expect([200, 304]).to.include(response.statusCode);
     });
   }
 

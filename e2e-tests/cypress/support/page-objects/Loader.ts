@@ -14,6 +14,6 @@ export class Loader {
     cy.log('loading finish');
     cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
     cy.url().should('include', `${Cypress.config().baseUrl}${spacePrefix}${finishUrl}`);
-    cy.get('[data-test-subj=globalLoadingIndicator-hidden]').should("be.visible")
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]').should('be.visible');
   }
 }
