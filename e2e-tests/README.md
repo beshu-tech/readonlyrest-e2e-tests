@@ -19,7 +19,7 @@ Note: a video recording of tests is enabled here
 
 
 ## Versioning
-You can run these tests only for a new platform (els stack >= `7.9.0`)
+You can run these tests only for a new platform (ELK stack >= `7.9.0`)
 
 ## Kibana version env variable
 We are running tests against different versions of kibana, that's why sometimes we need to write different tests depending on the version of kibana.
