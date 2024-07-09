@@ -22,7 +22,7 @@ show_help() {
   exit 1
 }
 
-echo "Preparing enviroment the tests will be run at ..."
+echo "Preparing environment the tests will be run at ..."
 
 export ES_VERSION=""
 export KBN_VERSION=""
@@ -67,7 +67,7 @@ echo "Downloading ROR KBN plugin ..."
 export KBN_ROR_FILE
 KBN_ROR_FILE=$(./download-ror-kbn.sh "$KBN_VERSION")
 
-echo "Bootstrapping the docker-based enviroment ..."
+echo "Bootstrapping the docker-based environment ..."
 
 if ! docker compose config > /dev/null; then
   echo "Cannot validate docker compose configuration."
@@ -77,4 +77,4 @@ fi
 docker compose up -d --build --remove-orphans --force-recreate --wait
 docker compose logs -f > elk-ror.log 2>&1 &
 
-echo "The enviroment ready"
+echo "The environment ready"

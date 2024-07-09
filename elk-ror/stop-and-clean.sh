@@ -2,7 +2,7 @@
 
 cd "$(dirname "$0")"
 
-echo "Stoppping and cleaning enviroment the tests were being run at ..."
+echo "Stopping and cleaning environment the tests were being run at ..."
 
 docker-compose rm --stop --force
 

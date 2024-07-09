@@ -77,4 +77,4 @@ If you prefer, you can use scripts from the `docker-based-ror-dev-env` folder to
 
 ## Troubleshooting
 
-Remember that most of the tests assume that ROR KBN is run with the Enterprise license. You have to configure it on your host as a variable `ROR_ACTIVATION_KEY`. You can obtain a trial activation key in the [Customer Portal](https://readonlyrest.com/customer) or use the developer one. 
+Remember that most of the tests assume that ROR KBN is run with the Enterprise license. You have to set it on your host as an [environment variable](https://www.baeldung.com/linux/bash-set-and-export#export-command-in-bash) `ROR_ACTIVATION_KEY`. You can obtain a trial activation key in the [Customer Portal](https://readonlyrest.com/customer) or use the developer one. 

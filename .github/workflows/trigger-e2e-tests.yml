@@ -6,14 +6,16 @@ on:
     - cron: '0 0 * * *'  
 
 jobs:
-  e2e-tests-8x-job:
+  e2e-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [8x, 7x]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Run tests
-      run: |
-        ./run-8x.sh
+      run: ./run-${{ matrix.version }}.sh
       env:
         ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
     - name: S3 Upload Videos & logs
@@ -22,23 +24,4 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
         aws configure set region eu-west-1
-        aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/8x/ --recursive
-  
-  e2e-tests-7x-job:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Run tests
-      run: |
-        ./run-7x.sh
-      env:
-        ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-    - name: S3 Upload Videos & logs
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        aws configure set region eu-west-1
-        aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/7x/ --recursive
-  
+        aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.version }}/ --recursive
