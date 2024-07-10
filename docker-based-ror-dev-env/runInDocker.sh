@@ -8,7 +8,7 @@ fi
 cd "$(dirname "$0")"
 
 if [[ -z "${ROR_ACTIVATION_KEY}" ]]; then
-  echo "ROR_ACTIVATION_KEY is not set or is empty"
+  echo "ROR_ACTIVATION_KEY is not set or is empty (see https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/RORDEV-1044/README.md#troubleshooting to figure out how to obtain the key and set it)"
   exit 1
 fi
 

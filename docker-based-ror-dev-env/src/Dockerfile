@@ -4,7 +4,7 @@ ARG UID
 ARG GID
 
 # Install right node version
-ENV NODE_VERSION v14.17.6
+ENV NODE_VERSION v20.15.1
 ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
