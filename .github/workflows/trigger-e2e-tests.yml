@@ -1,18 +1,27 @@
-name: Triggered End-to-end test workflow
+name: End-to-end test workflow
 
 on:
   workflow_dispatch:
-    inputs:
-      triggered_by:
-        description: 'Who triggered the tests?'
-        required: true
+  schedule:
+    - cron: '0 0 * * *'  
 
 jobs:
-  e2e-tests-job:
+  e2e-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [8x, 7x]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Display metadata
+    - name: Run tests
+      run: ./run-${{ matrix.version }}.sh
+      env:
+        ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+    - name: S3 Upload Videos & logs
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
-        echo "TRIGGERED BY: ${{ github.event.inputs.triggered_by }}"
+        aws configure set region eu-west-1
+        aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.version }}/ --recursive

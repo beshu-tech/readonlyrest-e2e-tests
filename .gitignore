@@ -1,1 +1,5 @@
 .DS_Store
+elk-ror/elk-ror.log
+e2e-tests/node_modules
+plugins/*
+results/*

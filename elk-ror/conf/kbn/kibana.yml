@@ -1,0 +1,91 @@
+server.name: kibana-ror
+server.host: 0.0.0.0
+server.port: 5601
+#server.basePath: '/kibana'
+#server.rewriteBasePath: true
+#logging.dest: /var/log/kibana/kibana.log
+#kibana.index: .kibana_custom
+# server.ssl.enabled: true
+# server.ssl.certificate: /etc/cert/localhost.cer
+# server.ssl.key: /etc/cert/localhost.key
+# elasticsearch.ssl.verificationMode: none
+elasticsearch.pingTimeout: 3000 # default: 30000
+elasticsearch.requestTimeout: 30000
+# csp needs to be disabled to let cypress e2e tests works
+csp.strict: false
+csp.warnLegacyBrowsers: false
+
+#elasticsearch.hosts: [ "http://localhost:9201", "http://localhost:9202" ] # USE FAKENODE CLUSTER SIMULATOR
+elasticsearch.hosts: [ "${ES_API_URL}" ]
+elasticsearch.username: kibana
+elasticsearch.password: kibana
+xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!"
+#xpack.reporting.index: '.reporting-test-index'
+telemetry.enabled: false
+
+readonlyrest_kbn:
+#    license:
+#        activationKeyRefreshInterval: '10s'
+#        activationKeyRetrievalMode: "file"
+#        activationKeyFilePath: /tmp/activation.key
+#    kibanaIndexTemplate: ".kibana_template"
+#    resetKibanaIndexToTemplate: true
+    cookiePass: '12312313123213123213123adadasdasdasd'
+    logLevel: 'trace'
+    whitelistedPaths: [.*/api/status$]
+    clearSessionOnEvents: [login, tenancyHop]
+    sessions_probe_interval_seconds: 60
+    store_sessions_in_index: true
+#    sessions_index_name: 'test_index'
+#    session_timeout_minutes: 1
+#    sessions_cleanup_interval: '3m'
+    login_title: Custom Title!
+    login_subtitle: "PRO/Enteprise: You should see a red border, a tiny unicorn logo, a two column page, and this text. You should see none of these customisation when testing ROR Free."
+    login_custom_logo: "https://i.imgur.com/MdRBUfV.gif"
+    login_html_head_inject: '<style> body { border: 3px solid red; }</style>'
+#    login_custom_css_inject_file: '/usr/share/kibana/custom_login.css'
+    login_custom_js_inject_file: '/usr/share/kibana/custom_login.js'
+#    kibana_custom_css_inject_file: '/usr/share/kibana/custom_kibana.css'
+#    kibana_custom_js_inject_file: '/usr/share/kibana/custom_kibana.js'
+#    custom_middleware_inject_file: '/usr/share/kibana/custom_middleware_file.js'
+#    custom_middleware_inject: 'function test(req, res, next) {logger.debug("custom middleware called"); next()}'
+#    multiTenancyEnabled: false
+#    cookies:
+#       secure: true
+#       sameSite: 'none'
+    tenantIndex:
+        number_of_shards: 1
+        number_of_replicas: 0
+    auth:
+        signature_key: "9yzBfnLaTYLfGPzyKW9es76RKYhUVgmuv6ZtehaScj5msGpBpa5FWpwk295uJYaaffTFnQC5tsknh2AguVDaTrqCLfM5zCTqdE4UGNL73h28Bg4dPrvTAFQyygQqv4xfgnevBED6VZYdfjXAQLc8J8ywaHQQSmprZqYCWGE6sM3vzNUEWWB3kmGrEKa4sGbXhmXZCvL6NDnEJhXPDJAzu9BMQxn8CzVLqrx6BxDgPYF8gZCxtyxMckXwCaYXrxAGbjkYH69F4wYhuAdHSWgRAQCuWwYmWCA6g39j4VPge5pv962XYvxwJpvn23Y5KvNZ5S5c6crdG4f4gTCXnU36x92fKMQzsQV9K4phcuNvMWkpqVB6xMA5aPzUeHcGytD93dG8D52P5BxsgaJJE6QqDrk3Y2vyLw9ZEbJhPRJxbuBKVCBtVx26Ldd46dq5eyyzmNEyQGLrjQ4qd978VtG8TNT5rkn4ETJQEju5HfCBbjm3urGLFVqxhGVawecT4YM9Rry4EqXWkRJGTFQWQRnweUFbKNbVTC9NxcXEp6K5rSPEy9trb5UYLYhhMJ9fWSBMuenGRjNSJxeurMRCaxPpNppBLFnp8qW5ezfHgCBpEjkSNNzP4uXMZFAXmdUfJ8XQdPTWuYfdHYc5TZWnzrdq9wcfFQRDpDB2zX5Myu96krDt9vA7wNKfYwkSczA6qUQV66jA8nV4Cs38cDAKVBXnxz22ddAVrPv8ajpu7hgBtULMURjvLt94Nc5FDKw79CTTQxffWEj9BJCDCpQnTufmT8xenywwVJvtj49yv2MP2mGECrVDRmcGUAYBKR8G6ZnFAYDVC9UhY46FGWDcyVX3HKwgtHeb45Ww7dsW8JdMnZYctaEU585GZmqTJp2LcAWRcQPH25JewnPX8pjzVpJNcy7avfA2bcU86bfASvQBDUCrhjgRmK2ECR6vzPwTsYKRgFrDqb62FeMdrKgJ9vKs435T5ACN7MNtdRXHQ4fj5pNpUMDW26Wd7tt9bkBTqEGf"
+
+        saml_kc:
+            buttonName: "KeyCloak SAML SSO"
+            enabled: true
+            type: "saml"
+            issuer: "ror"
+            entryPoint: "http://localhost:8080/realms/ror/protocol/saml"
+            kibanaExternalHost: 'localhost:5601'
+            protocol: "https"
+            usernameParameter: "nameID"
+            groupsParameter: "Role"
+            logoutUrl: "http://localhost:8080/realms/ror/protocol/saml"
+            YOU_SHOULD_READ_ME_IN_STRATEGY_CONFIGURATION_LOG: "unknown conf params should be passed unmodified to the underlying passport-saml library"
+            cert: "PLACEHOLDER_TO_CHANGE_INTO_REAL_KEYCLOAK_CERTIFICATE"
+        oidc_kc:
+            buttonName: "KeyCloak OpenID"
+            type: "oidc"
+            protocol: "https"
+            issuer: 'http://kc.localhost:8080/realms/ror'
+            authorizationURL: 'http://kc.localhost:8080/realms/ror/protocol/openid-connect/auth'
+            tokenURL: 'http://kc.localhost:8080/realms/ror/protocol/openid-connect/token'
+            userInfoURL: 'http://kc.localhost:8080/realms/ror/protocol/openid-connect/userinfo'
+            clientID: 'ror_oidc'
+            clientSecret: '**********'
+            scope: 'openid profile roles email'
+            usernameParameter: 'preferred_username'
+            groupsParameter: 'groups'
+            kibanaExternalHost: 'localhost:5601'
+            logoutUrl: 'http://kc.localhost:8080/realms/ror/protocol/openid-connect/logout'
+            jwksURL: 'http://kc.localhost:8080/realms/ror/protocol/openid-connect/certs'
+#            proxyURL: 'https://localhost:6200'
