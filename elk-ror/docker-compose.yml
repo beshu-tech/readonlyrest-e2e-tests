@@ -42,18 +42,37 @@ services:
     depends_on:
       es-ror:
         condition: service_healthy
-    ports:
-      - "5601:5601"
+    deploy:
+      mode: replicated
+      replicas: 3
     environment:
       ELASTIC_USER_PASSWORD: elastic
       ES_API_URL: http://es-ror:9200
-    # todo: healthcheck
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://localhost:5601/api/status" ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
     networks:
       - es-ror-network
     ulimits:
       memlock:
         soft: -1
         hard: -1
+
+  kbn-proxy:
+    build:
+      context: ../.
+      dockerfile: elk-ror/images/kbn/Proxy-Dockerfile
+    depends_on:
+      kbn-ror:
+        condition: service_healthy
+    ports:
+      - "5601:80"
+    # todo: healthcheck
+    networks:
+      - es-ror-network
 
 networks:
   es-ror-network:
