@@ -1,4 +1,4 @@
-server.name: kibana-ror
+server.name: "kibana-ror-${HOSTNAME}"
 server.host: 0.0.0.0
 server.port: 5601
 #server.basePath: '/kibana'
