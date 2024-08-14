@@ -11,7 +11,7 @@ Cypress.Commands.add('kbnPost', ({ endpoint, credentials, payload, currentGroupH
   })
 });
 
-Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) => 
+Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
   cy.esRequest({
     method: "POST",
     endpoint: endpoint,
@@ -20,7 +20,7 @@ Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
   })
 );
 
-Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) => 
+Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) =>
   cy.kbnRequest({
     method: "PUT",
     endpoint: endpoint,
@@ -29,7 +29,7 @@ Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) =>
   })
 );
 
-Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) => 
+Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
   cy.esRequest({
     method: "PUT",
     endpoint: endpoint,
@@ -51,7 +51,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   'kbnGet',
-  ({ endpoint, credentials, currentGroupHeader }, ...args) => 
+  ({ endpoint, credentials, currentGroupHeader }, ...args) =>
     cy.kbnRequest({
       method: "GET",
       endpoint: endpoint,
@@ -62,7 +62,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   'esGet',
-  ({ endpoint, credentials }, ...args) => 
+  ({ endpoint, credentials }, ...args) =>
     cy.esRequest({
       method: "GET",
       endpoint: endpoint,

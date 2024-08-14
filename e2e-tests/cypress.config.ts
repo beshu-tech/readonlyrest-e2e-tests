@@ -32,6 +32,7 @@ export default defineConfig({
     },
     baseUrl: 'http://localhost:5601',
     videosFolder: '../results/videos',
-    screenshotsFolder: '../results/screenshots'
+    screenshotsFolder: '../results/screenshots',
+    downloadsFolder: './cypress/downloads/',
   }
 });
