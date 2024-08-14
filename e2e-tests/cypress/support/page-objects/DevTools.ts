@@ -7,9 +7,9 @@ export class DevTools {
     cy.log('Open Dev tools');
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Dev Tools').click();
-    cy.findByRole('button', { name: /Dismiss/ });
+    cy.findByRole('button', {name: /Dismiss/});
     cy.findByRole('dialog')
-      .findByRole('button', { name: /Dismiss/ })
+      .findByRole('button', {name: /Dismiss/})
       .click();
   }
 
@@ -18,15 +18,15 @@ export class DevTools {
     if (semver.lte(getKibanaVersion(), '7.9.0')) {
       // Select editor, delete, write
       cy.get('#ConAppEditor').click();
-      cy.get('#ConAppInputTextarea').clear({ force: true });
+      cy.get('#ConAppInputTextarea').clear({force: true});
       cy.get('#ConAppInputTextarea').type(text);
 
       // Click play
-      cy.get('.ace_scroller:nth-child(4) > .ace_content').click({ force: true });
-      cy.get('.conApp__editorActionButton path').click({ force: true });
+      cy.get('.ace_scroller:nth-child(4) > .ace_content').click({force: true});
+      cy.get('.conApp__editorActionButton path').click({force: true});
     } else {
-      cy.get('[data-test-subj=console-textarea]').clear({ force: true });
-      cy.get('[data-test-subj=console-textarea]').type(text, { force: true });
+      cy.get('[data-test-subj=console-textarea]').clear({force: true});
+      cy.get('[data-test-subj=console-textarea]').type(text, {force: true, parseSpecialCharSequences: false});
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
   }

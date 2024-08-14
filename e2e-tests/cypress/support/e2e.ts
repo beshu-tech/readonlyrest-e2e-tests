@@ -28,6 +28,7 @@ declare global {
       import({ url, user, filename }: { url: string; user?: string; filename: string }): Chainable<Subject>;
       getRequest({ url, user, header }: { url: string; user?: string; header?: string }): Chainable<Subject>;
       deleteRequest({ url, user, header }: { url: string; user?: string; header?: string }): Chainable<Subject>;
+      verifyDownload({ fileName, options }: { fileName: string; options:? Cypress.ChainableMethods }): Chainable<Subject>;
     }
   }
 }

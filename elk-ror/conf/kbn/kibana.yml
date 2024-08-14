@@ -15,8 +15,8 @@ elasticsearch.requestTimeout: 30000
 csp.strict: false
 csp.warnLegacyBrowsers: false
 
-elasticsearch.hosts: [ "http://localhost:9200", "http://localhost:9201", "http://localhost:9202", "${ES_API_URL}" ] # USE FAKENODE CLUSTER SIMULATOR
-#elasticsearch.hosts: [ "${ES_API_URL}" ]
+#elasticsearch.hosts: [ "http://localhost:9201", "http://localhost:9202" ] # USE FAKENODE CLUSTER SIMULATOR
+elasticsearch.hosts: [ "${ES_API_URL}" ]
 elasticsearch.username: kibana
 elasticsearch.password: kibana
 elasticsearch.requestHeadersWhitelist: [ authorization, kbn-xsrf, x-custom-header ]

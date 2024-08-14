@@ -28,17 +28,23 @@ export class Login {
     cy.log('has license changed message');
     cy.contains(/The licensing edition has been changed./i);
   }
+
   static signOut() {
-    cy.get('[data-test-subj="userMenuButton"]', { timeout: 500 }) // Element wskazujący na zalogowanie
-        .then($userMenu => {
-          // Sprawdź, czy element istnieje (czyli czy użytkownik jest zalogowany)
-          if ($userMenu.length > 0) {
-            // Kliknij przycisk wylogowania
-            cy.contains('button', 'Log out').click({ force: true });
-            cy.log("User Sign out");
-          } else {
-            cy.log("User wasn't sign in");
-          }
-        });
+    cy.get('#rorMenuPopover', {timeout: 1000}).click()
+      // cy.get('[data-test-subj="userMenuButton"]', {timeout: 1000}).click()
+      .then($userMenu => {
+        if ($userMenu.length > 0) {
+          cy.contains('button', 'Log out').click({force: true});
+          cy.log("User Sign out");
+        } else {
+          cy.log("User wasn't sign in");
+        }
+      });
+  }
+
+  static setLogin(user: string) {
+    let loginData = user.split(":");
+    Cypress.env("login", loginData[0]);
+    Cypress.env("password", loginData[1]);
   }
 }

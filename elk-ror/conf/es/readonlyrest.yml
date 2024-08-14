@@ -29,18 +29,6 @@ readonlyrest:
     auth_key: kibana:kibana
     verbosity: error
 
-  - name: Allow DELETE on Invoices
-    indices: ["invoices"]
-    actions: ["indices:data/write/delete"]
-    groups: [ admins_group ]
-    verbosity: error
-
-  - name: Allow bulk requests
-    methods: ["POST"]
-    uri: "/invoices/_bulk"
-    groups: [ admins_group ]
-    verbosity: info
-
   - name: PERSONAL_GRP
     groups: [ Personal ]
     <<: *common-rules
@@ -82,9 +70,13 @@ readonlyrest:
     auth_key: user1:dev
     <<: *all-groups
 
-  - username: kibana
-    auth_key: kibana:kibana
-    groups: [ admins_group ]
+  - username: user2
+    auth_key: user2:dev
+    <<: *all-groups
+
+  - username: user3
+    auth_key: user3:dev
+    <<: *all-groups
 
   ror_kbn:
   - name: kbn1
@@ -107,8 +99,3 @@ readonlyrest:
       authentication_endpoint: "http://localhost:1000/auth"
       success_status_code: 200
       cache_ttl: 60s
-
-http.cors.enabled: true
-http.cors.allow-origin: "*"
-http.cors.allow-methods: "OPTIONS, HEAD, GET, POST, PUT, DELETE"
-http.cors.allow-headers: "kbn-version, Origin, X-Requested-With, Content-Type, Accept, Authorization"
