@@ -26,5 +26,5 @@ echo -e "
 
 echo -e "E2E TESTS\n"
 
-time ./elk-ror/run.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION"
+time ./elk-ror/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION"
 time ./e2e-tests/run.sh "$ELK_VERSION"

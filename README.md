@@ -26,7 +26,7 @@ You can bootstrap the test env and run tests separately (to not build the ES+KBN
 
 To run the env:
 ```bash
-$ ./elk-ror/run.sh --es "8.10.0" --kbn "8.10.0"
+$ ./elk-ror/start.sh --es "8.10.0" --kbn "8.10.0"
 ```
 
 To run tests on the env:
