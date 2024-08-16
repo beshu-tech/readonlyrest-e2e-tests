@@ -19,7 +19,6 @@ csp.warnLegacyBrowsers: false
 elasticsearch.hosts: [ "${ES_API_URL}" ]
 elasticsearch.username: kibana
 elasticsearch.password: kibana
-elasticsearch.requestHeadersWhitelist: [ authorization, kbn-xsrf, x-custom-header ]
 xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!"
 xpack.reporting.encryptionKey: "321421321211231241232132132132132"
 #xpack.reporting.index: '.reporting-test-index'
