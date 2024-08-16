@@ -31,7 +31,6 @@ export class Login {
 
   static signOut() {
     cy.get('#rorMenuPopover', {timeout: 1000}).click()
-      // cy.get('[data-test-subj="userMenuButton"]', {timeout: 1000}).click()
       .then($userMenu => {
         if ($userMenu.length > 0) {
           cy.contains('button', 'Log out').click({force: true});

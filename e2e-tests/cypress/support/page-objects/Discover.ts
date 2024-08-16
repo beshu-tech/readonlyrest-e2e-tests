@@ -15,18 +15,18 @@ export class Discover {
     cy.contains(indexPatternName).should('be.visible');
   }
 
-  static saveReport(reportName: string) {
+  static saveSearch(searchName: string) {
     cy.log('saveReport');
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Discover').click();
     cy.get('[data-test-subj=discoverSaveButton]').click();
-    cy.get('[data-test-subj=savedObjectTitle]').type(reportName);
+    cy.get('[data-test-subj=savedObjectTitle]').type(searchName);
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
     cy.contains('was saved', { timeout: 10000 }).should('exist');
 
     cy.findByRole('navigation', {
       name: /breadcrumb/i
-    }).findByText(reportName);
+    }).findByText(searchName);
   }
 
   static exportToCsv() {

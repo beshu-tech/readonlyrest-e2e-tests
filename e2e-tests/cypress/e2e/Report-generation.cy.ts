@@ -1,44 +1,57 @@
-// report-generation.spec.ts
 import { Login } from "../support/page-objects/Login";
 import { DataViews } from "../support/page-objects/management/DataViews";
 import { Discover } from "../support/page-objects/Discover";
 import { Reports } from "../support/page-objects/management/Reports";
-import { DevTools } from "../support/page-objects/DevTools";
 
 describe('Report Generation', () => {
-  const indexPatternName: string = 'invoices';
-  const searchName: string = `${ indexPatternName } search`;
+  const indexName: string = 'invoices';
+  const searchName: string = `${ indexName } search`;
 
 
   before(() => {
-    // Log in as "kibana:kibana" (adjust credentials if needed)
-    Login.setLogin('kibana:kibana');
-    Login.initialization();
-
-    DevTools.openDevTools();
-
     // Attempt to bulk index sample data
-    DevTools.sendRequest(
-      'PUT invoices/_bulk\n' +
-      '{"create":{ }}\n' +
-      '{"id": 1,"number": "INV001","date": "2024-08-01","amount": 123.45,"currency": "USD"}\n' +
-      '{"create":{ }}\n' +
-      '{"id": 2,"number": "INV002","date": "2024-08-02","amount": 67.89,"currency": "EUR"}'
-    )
-    DevTools.verifyIf200Status();
-
-    // Check if the "invoices" index exists after the bulk operation
-    DevTools.sendRequest(`GET ${ indexPatternName }`);
-    DevTools.verifyIf200Status();
-    Login.signOut();
+    cy.put({
+      url: `${ Cypress.env().elasticsearchUrl }/${ indexName }/_bulk`,
+      payload: [
+        {create: {}},
+        {id: 1, number: "INV001", date: "2024-08-01", amount: "123.45", currency: "USD"},
+        {create: {}},
+        {id: 2, number: "INV002", date: "2024-08-02", amount: "67.89", currency: "EUR"},
+        {create: {}},
+        {id: 3, number: "INV003", date: "2024-08-03", amount: "456.78", currency: "GBP"},
+        {create: {}},
+        {id: 4, number: "INV004", date: "2024-08-04", amount: "90.12", currency: "JPY"},
+        {create: {}},
+        {id: 5, number: "INV005", date: "2024-08-05", amount: "345.67", currency: "CAD"},
+        {create: {}},
+        {id: 6, number: "INV006", date: "2024-08-06", amount: "89.01", currency: "AUD"},
+        {create: {}},
+        {id: 7, number: "INV007", date: "2024-08-07", amount: "234.56", currency: "CHF"},
+        {create: {}},
+        {id: 8, number: "INV008", date: "2024-08-08", amount: "78.90", currency: "SEK"},
+        {create: {}},
+        {id: 9, number: "INV009", date: "2024-08-09", amount: "135.79", currency: "NZD"},
+        {create: {}},
+        {id: 10, number: "INV010", date: "2024-08-10", amount: "246.80", currency: "DKK"},
+        {create: {}},
+        {id: 11, number: "INV011", date: "2024-08-11", amount: "357.91", currency: "NOK"},
+        {create: {}},
+        {id: 12, number: "INV012", date: "2024-08-12", amount: "468.02", currency: "ZAR"},
+        {create: {}},
+        {id: 13, number: "INV013", date: "2024-08-13", amount: "579.13", currency: "BRL"},
+        {create: {}},
+        {id: 14, number: "INV014", date: "2024-08-14", amount: "680.24", currency: "INR"},
+        {create: {}},
+        {id: 15, number: "INV015", date: "2024-08-15", amount: "791.35", currency: "RUB"}
+      ]
+    });
   });
 
   beforeEach(() => {
-    // Log in as "user2:dev"
     Login.setLogin('user2:dev');
     Login.initialization();
 
-    DataViews.deleteSavedObjectsIfExist([indexPatternName, searchName]);
+    DataViews.deleteSavedObjectsIfExist([indexName, searchName]);
     Reports.deleteAllReports(searchName)
 
 
@@ -46,35 +59,28 @@ describe('Report Generation', () => {
   })
 
   it('should generate and verify reports for user2, and user3 should not see them', () => {
-    // Log in as "user2:dev"
     Login.setLogin('user2:dev');
     Login.initialization();
 
-    // Create invoices data view
-    DataViews.createDataView(indexPatternName);
+    DataViews.createDataView(indexName);
 
-    // Go to Discover and generate 10 CSV reports
     Discover.navigateTo();
 
-    Discover.selectDataView(indexPatternName);
-    Discover.saveReport(searchName);
-    // Discover.selectDataView(indexPatternName);
+    Discover.selectDataView(indexName);
+    Discover.saveSearch(searchName);
     for (let i = 0; i < 10; i++) {
-      Discover.generateCsvReport();
+      Discover.generateCsvReport(50000);
     }
 
-    // Go to Reports and wait for all reports to be 'Done'
+    // Go to Reports and check if all reports are not empty
     Reports.navigateTo();
-    Reports.waitForAllReportsToBeDone(searchName);
+    Reports.checkAllReports(searchName);
 
-    // Log out
     Login.signOut();
 
-    // Log in as "user3:dev"
     Login.setLogin('user3:dev');
     Login.initialization();
 
-    // Go to Reports and verify there are no reports
     Reports.navigateTo();
     Reports.verifyNoReports();
 
@@ -82,11 +88,10 @@ describe('Report Generation', () => {
   });
 
   afterEach(() => {
-    // Log in as "user2:dev"
     Login.setLogin('user2:dev');
     Login.initialization();
 
-    DataViews.deleteSavedObjectsIfExist([indexPatternName, searchName]);
+    DataViews.deleteSavedObjectsIfExist([indexName, searchName]);
     Reports.deleteAllReports(searchName)
 
 
@@ -94,16 +99,8 @@ describe('Report Generation', () => {
   })
 
   after(() => {
-    // Log in as "kibana:kibana"
-    Login.setLogin('kibana:kibana');
-    Login.initialization();
-
-    // Delete the "invoices" index
-    DevTools.openDevTools();
-
-    DevTools.sendRequest(`DELETE ${ indexPatternName }`);
-    DevTools.verifyIf200Status();
-
-    Login.signOut();
+    cy.delete({
+      url: `${ Cypress.env().elasticsearchUrl }/${ indexName }/_bulk`,
+    })
   });
 });
