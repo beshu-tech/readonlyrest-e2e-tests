@@ -1,22 +1,35 @@
 import '@testing-library/cypress/add-commands';
 import { isJsonString } from './helpers';
 
-Cypress.Commands.add('post', ({
-                                url,
-                                user = `${ Cypress.env().login }:${ Cypress.env().password }`,
-                                payload
-                              }, ...args) => {
-  const escapedAndStringifyPayload = JSON.stringify(JSON.stringify(payload));
+Cypress.Commands.add(
+  'post',
+  ({url, user = `${ Cypress.env().login }:${ Cypress.env().password }`, payload}, ...args) => {
+    const escapedAndStringifyPayload = JSON.stringify(JSON.stringify(payload));
 
-  return cy
-    .exec(
-      `curl -v -k -H "Content-Type: application/json" -H "kbn-xsrf: true" -d ${ escapedAndStringifyPayload }  -X POST ${ url }  --user ${ user }`
-    )
-    .then(result => {
-      console.log(url, result);
-      return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
-    });
-});
+    return cy
+      .exec(
+        `curl -v -k -H "Content-Type: application/json" -H "kbn-xsrf: true" -d ${ escapedAndStringifyPayload }  -X POST ${ url }  --user ${ user }`
+      )
+      .then(result => {
+        console.log(url, result);
+        return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
+      });
+  });
+
+Cypress.Commands.add(
+  'put',
+  ({url, user = `${ Cypress.env().login }:${ Cypress.env().password }`, payload}, ...args) => {
+    const escapedAndStringifyPayload = JSON.stringify(payload);
+
+    return cy
+      .exec(
+        `curl -H "Content-Type: application/json" -d '${ escapedAndStringifyPayload }' -XPUT "${ url }" -u ${ user }`
+      )
+      .then(result => {
+        console.log(url, result);
+        return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
+      });
+  });
 
 Cypress.Commands.add(
   'import',
@@ -47,18 +60,31 @@ Cypress.Commands.add(
       })
 );
 
-Cypress.Commands.add('verifyDownload', (fileName: string, options) => {
-  const downloadsFolder = Cypress.config().downloadsFolder;
-  const downloadTimeout = options.timeout || 60000; // Default timeout of 60 seconds
+Cypress.Commands.add(
+  'delete',
+  ({url, user = `${ Cypress.env().login }:${ Cypress.env().password }`}, ...args) =>
+    cy
+      .exec(`curl -H "Content-Type: application/json" -X DELETE "${ url }" -u ${ user }`)
+      .then(result => {
+        console.log(url, result);
+        return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
+      })
+);
 
-  // Poll for the downloaded file
-  cy.log(`Waiting for download: ${ fileName }`);
-  return cy.readFile(`${ downloadsFolder }/${ fileName }`, {timeout: downloadTimeout})
-    .then(fileContent => {
-      cy.log(`Downloaded file: ${ fileName }`);
-      return Cypress.Promise.resolve(`${ downloadsFolder }/${ fileName }`);
-    });
-});
+Cypress.Commands.add(
+  'verifyDownload',
+  (fileName, options = {}) => {  // Provide a default empty object for options
+    const downloadsFolder = Cypress.config('downloadsFolder');
+    const downloadTimeout = options.timeout || Cypress.env().readFileTimeout;
+
+    // Poll for the downloaded file
+    cy.log(`Waiting for download: ${ fileName }`);
+    return cy.readFile(`${ downloadsFolder }/${ fileName }`, {timeout: downloadTimeout})
+      .then(fileContent => {
+        cy.log(`Downloaded file: ${ fileName }`);
+        return Cypress.Promise.resolve(`${ downloadsFolder }/${ fileName }`);
+      });
+  });
 
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**

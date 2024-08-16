@@ -76,7 +76,7 @@ describe('sanity check', () => {
     Discover.createIndexPattern('r');
 
     cy.log('Create a CSV report');
-    Discover.saveReport('admin_search');
+    Discover.saveSearch('admin_search');
     Discover.exportToCsv();
     Reporting.verifySavedReport('admin_search', 'kibanaNavigation', 1);
 
@@ -98,7 +98,7 @@ describe('sanity check', () => {
       Discover.createIndexPattern('re');
 
       cy.log('Create CSV report for the second tenancy');
-      Discover.saveReport('infosec_search');
+      Discover.saveSearch('infosec_search');
       Discover.exportToCsv();
       Reporting.verifySavedReport('infosec_search', 'rorMenu', 1);
     }

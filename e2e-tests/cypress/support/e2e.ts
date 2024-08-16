@@ -25,10 +25,12 @@ declare global {
   namespace Cypress {
     export interface Chainable<Subject> {
       post({ url, user, payload }: { url: string; user?: string; payload: unknown }): Chainable<Subject>;
+      put({ url, user, payload }: { url: string; user?: string; payload: unknown }): Chainable<Subject>;
       import({ url, user, filename }: { url: string; user?: string; filename: string }): Chainable<Subject>;
       getRequest({ url, user, header }: { url: string; user?: string; header?: string }): Chainable<Subject>;
       deleteRequest({ url, user, header }: { url: string; user?: string; header?: string }): Chainable<Subject>;
-      verifyDownload({ fileName, options }: { fileName: string; options:? Cypress.ChainableMethods }): Chainable<Subject>;
+      delete({ url, user}: { url: string; user?: string}): Chainable<Subject>;
+      verifyDownload( fileName: string, options?: any): Chainable<Subject>;
     }
   }
 }

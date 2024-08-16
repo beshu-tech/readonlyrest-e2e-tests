@@ -19,7 +19,7 @@ export class Reports {
     });
   }
 
-  static waitForAllReportsToBeDone(reportTitle: string = 'Untitled discover search') {
+  static checkAllReports(reportTitle: string = 'Untitled discover search') {
     cy.log('waitForAllReportsToBeDone');
 
     cy.get('tr[data-test-subj="reportJobRow"]')

@@ -75,9 +75,6 @@ export class DataViews {
       ).then(els => {
         [...els].forEach(el => cy.wrap(el).type(`${ dataViewName }{del}`));
       });
-      // cy.get('[data-test-subj="comboBoxSearchInput"]').click();
-      // cy.wait(50000);
-      // cy.get('[data-test-subj="comboBoxSearchInput"]').type(`--- I don't want to use the time filter ---{enter}`);
 
       // Save the data view
       cy.get('[data-test-subj=saveIndexPatternButton]').click({force: true});

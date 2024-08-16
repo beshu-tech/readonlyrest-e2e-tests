@@ -15,10 +15,10 @@ export class Discover {
     cy.contains(indexPatternName).should('be.visible');
   }
 
-  static saveReport(reportName: string) {
+  static saveSearch(searchName: string) {
     cy.log('saveReport');
     cy.get('[data-test-subj=discoverSaveButton]').click();
-    cy.get('[data-test-subj=savedObjectTitle]').type(reportName);
+    cy.get('[data-test-subj=savedObjectTitle]').type(searchName);
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({force: true});
 
     cy.contains('saved', {timeout: 10000, matchCase: false}).should('exist');
@@ -29,7 +29,7 @@ export class Discover {
 
     cy.findByRole('navigation', {
       name: /breadcrumb/i
-    }).findByText(reportName);
+    }).findByText(searchName);
   }
 
   static exportToCsv() {
@@ -116,7 +116,7 @@ export class Discover {
     }
   }
 
-  static generateCsvReport() {
+  static generateCsvReport(timeout: number = 50000) {
     cy.log('generateCsvReport');
 
     // Click the share button to open the sharing options
@@ -129,13 +129,13 @@ export class Discover {
     cy.get('[data-test-subj=generateReportButton]').click();
 
     // Wait for the "Queued report for search" message to appear
-    cy.contains('Queued report for search', {timeout: 50000}).should('exist');
+    cy.contains('Queued report for search', {timeout: timeout}).should('exist');
 
     // Close the "Queued report for search" toast
     cy.get('[data-test-subj="toastCloseButton"]').click();
 
     // Wait for the "Queued report for search" message to disappear
-    cy.contains('Queued report for search', {timeout: 50000}).should('not.exist');
+    cy.contains('Queued report for search', {timeout: timeout}).should('not.exist');
     var triger: string;
     if (semver.lte(getKibanaVersion(), '8.8.0')) {
       triger = 'Created report for';
@@ -143,14 +143,14 @@ export class Discover {
       triger = 'CSV created for';
     }
     // Attempt to find the "Created report for" message within the timeout
-    cy.contains(triger, {timeout: 50000})
+    cy.contains(triger, {timeout: timeout})
       .then($message => {
         if ($message.length !== 0) {
           // Close the "Created report for" toast
           cy.get('[data-test-subj="toastCloseButton"]').click();
 
           // Wait for the "Created report for" message to disappear
-          cy.contains(triger, {timeout: 50000}).should('not.exist');
+          cy.contains(triger, {timeout: timeout}).should('not.exist');
         } else { // If the message is not found
           throw new Error(`Report generation failed: "${ triger }" message not found within timeout.`);
         }
