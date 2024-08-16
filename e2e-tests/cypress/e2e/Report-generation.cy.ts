@@ -5,7 +5,7 @@ import { Discover } from "../support/page-objects/Discover";
 import { Reports } from "../support/page-objects/management/Reports";
 import { DevTools } from "../support/page-objects/DevTools";
 
-describe('Report Generation (ROR_INTR_001)', () => {
+describe('Report Generation', () => {
   const indexPatternName: string = 'invoices';
   const searchName: string = `${ indexPatternName } search`;
 
