@@ -4,24 +4,39 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'  
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
+  check-internal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Is PR creator an organization member?
+        id: org_member_check
+        uses: dawidd6/action-is-organization-member@v2
+        with:
+          org: beshu-tech
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   e2e-tests:
+    needs: check-internal
+    if: steps.org_member_check.outputs.member == 'true' || github.event.label.name == 'run-tests'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         version: [8x, 7x]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Run tests
-      run: ./run-${{ matrix.version }}.sh
-      env:
-        ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-    - name: S3 Upload Videos & logs
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        aws configure set region eu-west-1
-        aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.version }}/ --recursive
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run tests
+        run: ./run-${{ matrix.version }}.sh
+        env:
+         ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+      - name: S3 Upload Videos & logs
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws configure set region eu-west-1
+          aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.version }}/ --recursive
