@@ -18,7 +18,7 @@ jobs:
         uses: JamesSingleton/is-organization-member@1.0.0
         with:
           organization: beshu-tech
-          username: ${{ GITHUB_ACTOR }}
+          username: ${{ github.actor }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
   e2e-tests:
