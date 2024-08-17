@@ -17,7 +17,7 @@ jobs:
         id: org_member_check
         uses: JamesSingleton/is-organization-member@1.0.0
         with:
-          org: beshu-tech
+          organization: beshu-tech
           username: ${{ github.event.pull_request.user.login }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
