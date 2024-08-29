@@ -11,6 +11,7 @@ describe('Report Generation', () => {
   before(() => {
     // Attempt to bulk index sample data
     cy.put({
+      user: 'kibana:kibana',
       url: `${ Cypress.env().elasticsearchUrl }/${ indexName }/_bulk`,
       payload: [
         {create: {}},
@@ -100,7 +101,8 @@ describe('Report Generation', () => {
 
   after(() => {
     cy.delete({
-      url: `${ Cypress.env().elasticsearchUrl }/${ indexName }/_bulk`,
+      user: 'kibana:kibana',
+      url: `${ Cypress.env().elasticsearchUrl }/${ indexName }`,
     })
   });
 });

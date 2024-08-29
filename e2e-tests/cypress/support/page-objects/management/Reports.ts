@@ -78,7 +78,7 @@ export class Reports {
     Reports.navigateTo();
 
     // 2. Check if there are any reports and if "Select All" is enabled
-    cy.wait(500);
+    cy.wait(1000);
     cy.get('body').then($body => {
       const hasReports = $body.find('tr[data-test-subj="reportJobRow"]').length > 0;
       const selectAllEnabled = $body.find('[data-test-subj="checkboxSelectAll"]').prop('checked') !== undefined; // Check if the checkbox exists and is enabled
@@ -96,19 +96,6 @@ export class Reports {
 
           // Confirm the deletion in the modal
           cy.get('[data-test-subj="confirmModalConfirmButton"]').click({force: true});
-
-        } else {
-          // If "Select All" is not enabled, delete reports page by page as before
-          cy.log('Deleting reports page by page');
-
-          let totalPages = 1;
-          cy.get('.euiPagination__list li:not(.euiPaginationButton-isPlaceholder)').then($pageButtons => {
-            totalPages = $pageButtons.length;
-          });
-
-          for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
-            // ... (rest of the page-by-page deletion logic remains the same) ...
-          }
         }
       } else {
         cy.log('No reports found - nothing to delete');

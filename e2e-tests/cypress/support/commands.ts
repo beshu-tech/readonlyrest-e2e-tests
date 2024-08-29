@@ -19,11 +19,13 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   'put',
   ({url, user = `${ Cypress.env().login }:${ Cypress.env().password }`, payload}, ...args) => {
-    const escapedAndStringifyPayload = JSON.stringify(payload);
+    const formattedPayload = payload.map(item => JSON.stringify(item)).join('\n') + '\n';
+
+    console.log(`curl -H "Content-Type: application/json" -d '${ formattedPayload }' -XPUT "${ url }" -u ${ user }`);
 
     return cy
       .exec(
-        `curl -H "Content-Type: application/json" -d '${ escapedAndStringifyPayload }' -XPUT "${ url }" -u ${ user }`
+        `curl -H "Content-Type: application/json" -d '${ formattedPayload }' -XPUT "${ url }" -u ${ user }`
       )
       .then(result => {
         console.log(url, result);
