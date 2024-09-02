@@ -9,9 +9,15 @@ spec:
   elasticsearchRef:
     name: quickstart
   config:
-    readonlyrest_kbn.store_sessions_in_index: true
-    readonlyrest_kbn.cookiePass: "12345678901234567890123456789012345678901234567890"
-    readonlyrest_kbn.logLevel: "info"
+    # csp needs to be disabled to let cypress e2e tests works
+    csp.strict: false
+    csp.warnLegacyBrowsers: false
+    # KBN ROR settings
+    readonlyrest_kbn:
+      cookiePass: '12312313123213123213123adadasdasdasd'
+      logLevel: info
+      store_sessions_in_index: true
+              
   podTemplate:
     spec:
       securityContext:
