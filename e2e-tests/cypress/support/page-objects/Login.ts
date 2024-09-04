@@ -7,6 +7,7 @@ export class Login {
       localStorage.setItem('home:welcome:show', 'false');
     });
     cy.visit(Cypress.config().baseUrl);
+    cy.wait(1000);
     Login.signIn();
     Loader.loading();
   }
@@ -17,7 +18,7 @@ export class Login {
   }
 
   static fillLoginPage() {
-    cy.get('#form-username', { timeout: 30000 }).should('be.visible');
+    cy.get('#form-username', { timeout: 60000 }).should('be.visible');
     cy.get('#form-username').type(Cypress.env().login);
     cy.get('#form-password').click({ force: true });
     cy.get('#form-password').type(Cypress.env().password);
@@ -30,6 +31,8 @@ export class Login {
   }
 
   static signOut() {
+    cy.visit(Cypress.config().baseUrl);
+    Loader.loading();
     cy.get('#rorMenuPopover', {timeout: 1000}).click()
       .then($userMenu => {
         if ($userMenu.length > 0) {

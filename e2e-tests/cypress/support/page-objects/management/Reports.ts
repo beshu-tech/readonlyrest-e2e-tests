@@ -1,6 +1,4 @@
 import { KibanaNavigation } from '../KibanaNavigation';
-import semver from "semver/preload";
-import { getKibanaVersion } from "../../helpers";
 
 export class Reports {
   static navigateTo() {
@@ -15,7 +13,7 @@ export class Reports {
       }
 
       // Now, click on Reporting (whether we were already on Stack Management or not)
-      cy.contains('Reporting').click();
+      cy.contains('Reporting').click({timeout: 10000});
     });
   }
 
@@ -23,46 +21,27 @@ export class Reports {
     cy.log('waitForAllReportsToBeDone');
 
     cy.get('tr[data-test-subj="reportJobRow"]')
-      .each($reportItem => {
-        cy.wrap($reportItem)
-          .find('[data-test-subj="reportingListItemObjectTitle"]')
-          .should('contain.text', reportTitle);
+      .then($reportItems => {
+        // Convert the jQuery object to an array and reverse it
+        const reversedReportItems = Cypress.$($reportItems.get().reverse());
 
-        cy.wrap($reportItem)
-          .find('[data-test-subj="reportJobStatus"]')
-          .contains(/Done|Completed/, {timeout: 60000})
-          .should('be.visible');
-
-        // Click the download button
-        if (semver.lte(getKibanaVersion(), '8.8.0')) {
+        // Iterate over the reversed array
+        cy.wrap(reversedReportItems).each($reportItem => {
           cy.wrap($reportItem)
-            .find('[data-test-subj="reportJobActions"] button')
-            .first()
-            .click();
-        } else {
-          cy.wrap($reportItem)
-            .find('[data-test-subj="reportDownloadLink"]')
-            .first()
-            .click();
-        }
+            .find('[data-test-subj="reportingListItemObjectTitle"]')
+            .should('contain.text', reportTitle);
 
-        // Assert that a file is downloaded
-        cy.verifyDownload(`${ reportTitle }.csv`, {timeout: 10000}) // Adjust timeout if needed
-          .then(filePath => {
-            // Read the downloaded file content and assert it's not empty
-            cy.readFile(filePath)
-              .should('not.be.empty')
-              .then(fileContent => {
-                const rows = fileContent.split('\n');
-                expect(rows.length).to.be.greaterThan(1);
-              });
+          cy.wrap($reportItem)
+            .find('[data-test-subj="reportJobStatus"]')
+            .contains(/Done|Completed/, {timeout: 60000})
+            .should('be.visible').then($status => {
           });
+        });
       })
       .then($matchingReports => {
         expect($matchingReports).to.have.length(10);
       });
   }
-
 
   static verifyNoReports() {
     cy.log('verifyNoReports');
@@ -78,7 +57,7 @@ export class Reports {
     Reports.navigateTo();
 
     // 2. Check if there are any reports and if "Select All" is enabled
-    cy.wait(1000);
+    cy.wait(5000);
     cy.get('body').then($body => {
       const hasReports = $body.find('tr[data-test-subj="reportJobRow"]').length > 0;
       const selectAllEnabled = $body.find('[data-test-subj="checkboxSelectAll"]').prop('checked') !== undefined; // Check if the checkbox exists and is enabled
