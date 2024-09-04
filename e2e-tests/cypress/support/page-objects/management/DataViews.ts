@@ -15,6 +15,7 @@ export class DataViews {
 
       // Delete "invoices" index pattern if it exists
       cy.get('[data-test-subj="savedObjectSearchBar"]').type(objectName + "{enter}");
+      cy.wait(1000);
       cy.get('body').then($body => {
         // Find the table row containing *exactly* "invoices" in the title
         const $invoicesIndexPatternRow = $body.find(`[data-test-subj="savedObjectsTableRowTitle"] a`)

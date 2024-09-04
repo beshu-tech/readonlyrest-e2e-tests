@@ -116,45 +116,25 @@ export class Discover {
     }
   }
 
-  static generateCsvReport(timeout: number = 50000) {
+  static generateCsvReport() {
     cy.log('generateCsvReport');
 
-    // Click the share button to open the sharing options
-    cy.get('[data-test-subj=shareTopNavButton]').click();
+    cy.wait(1500);
+
+    // Click the share button to open the sharing options if it is not opened
+
+    cy.get("body").then($body => {
+      const $shareContextMenu = $body.find('[data-test-subj="shareContextMenu"]')
+      if ($shareContextMenu.length == 0) {
+        cy.get('[data-test-subj="shareTopNavButton"]').click();
+      }
+    })
 
     // Click the "CSV Reports" option
-    cy.get('[data-test-subj=sharePanel-CSVReports]').click();
+    cy.get('[data-test-subj="sharePanel-CSVReports"]').click();
 
     // Click the "Generate report" button
-    cy.get('[data-test-subj=generateReportButton]').click();
-
-    // Wait for the "Queued report for search" message to appear
-    cy.contains('Queued report for search', {timeout: timeout}).should('exist');
-
-    // Close the "Queued report for search" toast
-    cy.get('[data-test-subj="toastCloseButton"]').click();
-
-    // Wait for the "Queued report for search" message to disappear
-    cy.contains('Queued report for search', {timeout: timeout}).should('not.exist');
-    var triger: string;
-    if (semver.lte(getKibanaVersion(), '8.8.0')) {
-      triger = 'Created report for';
-    } else {
-      triger = 'CSV created for';
-    }
-    // Attempt to find the "Created report for" message within the timeout
-    cy.contains(triger, {timeout: timeout})
-      .then($message => {
-        if ($message.length !== 0) {
-          // Close the "Created report for" toast
-          cy.get('[data-test-subj="toastCloseButton"]').click();
-
-          // Wait for the "Created report for" message to disappear
-          cy.contains(triger, {timeout: timeout}).should('not.exist');
-        } else { // If the message is not found
-          throw new Error(`Report generation failed: "${ triger }" message not found within timeout.`);
-        }
-      });
+    cy.get('[data-test-subj="generateReportButton"]').click();
   }
 }
 

@@ -30,6 +30,11 @@ services:
       memlock:
         soft: -1
         hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
 
   kbn-ror:
     build:
@@ -45,6 +50,10 @@ services:
     deploy:
       mode: replicated
       replicas: 3
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
     environment:
       ELASTIC_USER_PASSWORD: elastic
       ES_API_URL: http://es-ror:9200
@@ -70,7 +79,6 @@ services:
         condition: service_healthy
     ports:
       - "5601:80"
-    # todo: healthcheck
     networks:
       - es-ror-network
 

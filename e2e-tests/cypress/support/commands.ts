@@ -19,19 +19,20 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   'put',
   ({url, user = `${ Cypress.env().login }:${ Cypress.env().password }`, payload}, ...args) => {
-    const formattedPayload = payload.map(item => JSON.stringify(item)).join('\n') + '\n';
+    let curlCommand = `curl -H "Content-Type: application/json" -XPUT "${ url }" -u ${ user }`;
 
-    console.log(`curl -H "Content-Type: application/json" -d '${ formattedPayload }' -XPUT "${ url }" -u ${ user }`);
+    if (Array.isArray(payload) && payload.length > 0) {
+      const formattedPayload = payload.map(item => JSON.stringify(item)).join('\n') + '\n';
+      curlCommand += ` -d '${ formattedPayload }'`;
+    }
 
-    return cy
-      .exec(
-        `curl -H "Content-Type: application/json" -d '${ formattedPayload }' -XPUT "${ url }" -u ${ user }`
-      )
-      .then(result => {
-        console.log(url, result);
-        return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
-      });
-  });
+    // no log for the cy.exec command, it's too long
+    return cy.exec(curlCommand, {log: false}).then(result => {
+      console.log(url, result);
+      return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
+    });
+  }
+);
 
 Cypress.Commands.add(
   'import',
