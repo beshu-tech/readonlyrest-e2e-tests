@@ -34,11 +34,6 @@ spec:
                     secretKeyRef:
                       name: quickstart-kibana-user
                       key: token
-                - name: ADMIN_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: admin-password-secret
-                      key: ADMIN_PASSWORD
               volumeMounts:
                 - name: config-ror
                   mountPath: /usr/share/elasticsearch/config/readonlyrest.yml

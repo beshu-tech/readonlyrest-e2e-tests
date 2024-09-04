@@ -28,6 +28,6 @@ spec:
         - name: kibana
           env:
             - name: ROR_ACTIVATION_KEY
-              value: "<YOUR_ACTIVATION_KEY/>"
+              value: "${ROR_ACTIVATION_KEY}"
             - name: I_UNDERSTAND_IMPLICATION_OF_KBN_PATCHING
               value: "yes"

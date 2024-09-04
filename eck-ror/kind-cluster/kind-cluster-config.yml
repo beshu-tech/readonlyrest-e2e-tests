@@ -4,9 +4,9 @@ nodes:
 - role: control-plane
   extraPortMappings:
   - containerPort: 30010
-    hostPort: 19200
+    hostPort: 9200
   - containerPort: 30011
-    hostPort: 15601
+    hostPort: 5601
   - containerPort: 30012
     hostPort: 8888
 - role: worker

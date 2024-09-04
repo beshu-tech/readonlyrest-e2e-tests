@@ -5,7 +5,7 @@ export default defineConfig({
     login: 'admin',
     password: 'dev',
     kibanaVersion: 'NOT_SET_YET',
-    elasticsearchUrl: 'http://localhost:19200',
+    elasticsearchUrl: 'https://localhost:9200',
     enterpriseActivationKey: 'PROVIDE_YOUR_ACTIVATION_KEY'
   },
   video: true,
@@ -29,7 +29,7 @@ export default defineConfig({
       // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
       return require('./cypress/plugins/index.js')(on, config);
     },
-    baseUrl: 'http://localhost:5601',
+    baseUrl: 'https://localhost:5601',
     videosFolder: '../results/videos',
     screenshotsFolder: '../results/screenshots'
   }

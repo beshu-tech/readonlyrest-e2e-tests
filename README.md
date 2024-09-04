@@ -37,7 +37,7 @@ $ ./e2e-tests/run.sh "8.10.0"
 #### Cypress tests in interactive GUI
 
 ```bash
-$ cd e2e-tests; yarn cypress open
+$ cd e2e-tests; yarn cypress open --env kibanaVersion=[KBN_VERSION]
 ```
 
 ### In docker isolated environment 
