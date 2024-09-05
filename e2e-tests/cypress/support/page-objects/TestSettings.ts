@@ -9,7 +9,7 @@ export class TestSettings {
     cy.intercept('GET', '/pkp/api/test').as('getTestSettings');
     TestSettings.clickTestSettingsTab();
     cy.wait('@getTestSettings').then(({ response }) => {
-      expect([200, 304]).to.include(response.statusCode);
+      expect(response.statusCode).to.eq(200);
     });
   }
 
@@ -34,7 +34,7 @@ export class TestSettings {
     cy.intercept('GET', '/pkp/api/settings').as('loadCurrentSettings');
     TestSettings.pressLoadCurrentSettingsButton();
     cy.wait('@loadCurrentSettings').then(({ response }) => {
-      expect([200, 304]).to.include(response.statusCode);
+      expect(response.statusCode).to.eq(200);
     });
   }
 
@@ -49,7 +49,7 @@ export class TestSettings {
       expect(response.statusCode).to.eq(200);
     });
     cy.wait('@getTestSettings').then(({ response }) => {
-      expect([200, 304]).to.include(response.statusCode);
+      expect(response.statusCode).to.eq(200);
     });
 
     SecuritySettings.getIframeBody()
@@ -87,7 +87,7 @@ export class TestSettings {
       expect(response.statusCode).to.eq(200);
     });
     cy.wait('@getTestSettings').then(({ response }) => {
-      expect([200, 304]).to.include(response.statusCode);
+      expect(response.statusCode).to.eq(200);
     });
   }
 
@@ -115,7 +115,7 @@ export class TestSettings {
       expect(response.statusCode).to.eq(200);
     });
     cy.wait('@getTestSettings').then(({ response }) => {
-      expect([200, 304]).to.include(response.statusCode);
+      expect(response.statusCode).to.eq(200);
     });
   }
 
@@ -147,7 +147,7 @@ export class TestSettings {
       expect(response.statusCode).to.eq(200);
     });
     cy.wait('@getTestSettings').then(({ response }) => {
-      expect([200, 304]).to.include(response.statusCode);
+      expect(response.statusCode).to.eq(200);
     });
   }
 

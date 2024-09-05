@@ -12,4 +12,32 @@ export class StackManagement {
     KibanaNavigation.openPage('Stack Management');
     cy.contains('Saved Objects').click();
   }
+
+  static openAlertsPage() {
+    cy.log('open alerts page');
+    KibanaNavigation.openKibanaNavigation();
+    KibanaNavigation.openPage('Stack Management');
+    KibanaNavigation.openSubPage('Alerts');
+  }
+
+  static openRulesPage() {
+    cy.log('open rules page');
+    KibanaNavigation.openKibanaNavigation();
+    KibanaNavigation.openPage('Stack Management');
+    KibanaNavigation.openSubPage('Rules');
+  }
+
+  static openConnectorsPage() {
+    cy.log('open connectors page');
+    KibanaNavigation.openKibanaNavigation();
+    KibanaNavigation.openPage('Stack Management');
+    KibanaNavigation.openSubPage('Connectors');
+  }
+
+  static openRulesAndConnectorsPage() {
+    cy.log('open rules and connectors page');
+    KibanaNavigation.openKibanaNavigation();
+    KibanaNavigation.openPage('Stack Management');
+    KibanaNavigation.openSubPage('Rules and Connectors');
+  }
 }
