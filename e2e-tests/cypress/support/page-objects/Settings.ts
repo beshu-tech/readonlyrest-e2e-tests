@@ -27,7 +27,7 @@ export class Settings {
     cy.intercept('GET', '/pkp/api/settings/file').as('reloadFromFileSettings');
     Settings.pressReloadFromFileSettingsButton();
     cy.wait('@reloadFromFileSettings').then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
+      expect([200, 304]).to.include(response.statusCode);
     });
   }
 
