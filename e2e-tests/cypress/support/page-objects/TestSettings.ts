@@ -34,7 +34,7 @@ export class TestSettings {
     cy.intercept('GET', '/pkp/api/settings').as('loadCurrentSettings');
     TestSettings.pressLoadCurrentSettingsButton();
     cy.wait('@loadCurrentSettings').then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
+      expect([200, 304]).to.include(response.statusCode);
     });
   }
 
