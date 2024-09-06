@@ -6,10 +6,10 @@ export class Editor {
     const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
     SecuritySettings.getIframeBody()
       .findByRole('code')
-      .find('textarea:first')
-      .click({ force: true })
-      .type(`${selectAllKeys}{backspace}`)
-      .type(config);
+      .find('textarea').eq(0)
+      .focus()
+      .type(`${selectAllKeys}{backspace}`, { force: true })
+      .type(config, { force: true });
   }
 
   static replaceValues(findValue, newValue) {
@@ -21,12 +21,10 @@ export class Editor {
 
     cy.get('@iframeBody')
       .findByRole('code')
-      .find('textarea:first')
-      .click({ force: true })
+      .find('textarea').eq(0)
+      .focus()
       .type(closeSearchBoxIfExist, { force: true })
-      .type(findKeys, { force: true });
-
-    SecuritySettings.getIframeBody().find('.editor-widget');
+      .type(findKeys, { force: true })
 
     SecuritySettings.getIframeBody()
       .findByRole('button', { name: /toggle replace/i })
