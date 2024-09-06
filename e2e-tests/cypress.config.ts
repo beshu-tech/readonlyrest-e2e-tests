@@ -4,7 +4,7 @@ export default defineConfig({
   env: {
     login: 'admin',
     password: 'dev',
-    kibanaVersion: 'NOT_SET_YET',
+    kibanaVersion: 'KIBANA_VERSION_NOT_SET_YET',
     elasticsearchUrl: 'http://localhost:19200',
     enterpriseActivationKey: 'PROVIDE_YOUR_ACTIVATION_KEY'
   },
