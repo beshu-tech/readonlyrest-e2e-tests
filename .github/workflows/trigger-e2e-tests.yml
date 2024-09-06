@@ -20,10 +20,17 @@ jobs:
         run: ./run-${{ matrix.version }}.sh
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-      - name: S3 Upload Videos & logs
+      - name: S3 Upload Videos & show logs
+        if: failure() 
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
+          echo "LOGS FROM DOCKER COMPOSE"
+          echo "------------------------------------------------"     
+          cd elk-ror/
+          docker compose logs 
+          echo "------------------------------------------------"
+
           aws configure set region eu-west-1
           aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.version }}/ --recursive
