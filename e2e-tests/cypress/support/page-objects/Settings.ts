@@ -18,7 +18,7 @@ export class Settings {
     cy.intercept('GET', '/pkp/api/settings').as('getSettings');
     SecuritySettings.getIframeBody().contains('Discard changes').click();
     cy.wait('@getSettings').then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
+      expect([200, 304]).to.include(response.statusCode);
     });
   }
 
