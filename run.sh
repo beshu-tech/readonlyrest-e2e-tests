@@ -7,10 +7,15 @@ fi
 
 ELK_VERSION="$1"
 
+handle_error() {
+  ./elk-ror/print-logs.sh
+}
+
 cleanup() {
   ./elk-ror/stop-and-clean.sh 
 }
 
+trap handle_error ERR
 trap cleanup EXIT
 
 echo -e "
