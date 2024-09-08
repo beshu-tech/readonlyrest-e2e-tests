@@ -13,8 +13,19 @@ RUN /usr/share/kibana/bin/kibana-plugin install file:///tmp/ror.zip
 
 USER root
 
-RUN /usr/share/kibana/node/bin/node plugins/readonlyrestkbn/ror-tools.js patch && \
-    chown -R kibana:kibana /usr/share/kibana/config
+RUN \
+  NODE_PATH="" && \
+  if [ -x "/usr/share/kibana/node/bin/node" ]; then \
+    NODE_PATH="/usr/share/kibana/node/bin/node"; \
+  elif [ -x "/usr/share/kibana/node/glibc-217/bin/node" ]; then \
+    NODE_PATH="/usr/share/kibana/node/glibc-217/bin/node"; \
+  else \
+    echo "Cannot find the Node binary! Please report the problem!"; \
+    exit 1; \
+  fi && \
+  INVOKE_ROR_TOOLS="$NODE_PATH /usr/share/kibana/plugins/readonlyrestkbn/ror-tools.js" && \
+  $INVOKE_ROR_TOOLS patch && \
+  chown -R kibana:kibana /usr/share/kibana/config
 
 USER kibana
 
