@@ -4,7 +4,7 @@ import { StackManagement } from '../support/page-objects/StackManagement';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 
-describe.skip('Kibana-content-overwrite', () => {
+describe('Kibana-content-overwrite', () => {
   beforeEach(() => {
     Login.initialization();
   });
