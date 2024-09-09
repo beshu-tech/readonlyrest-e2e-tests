@@ -53,7 +53,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
     err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
     err.message.includes("Cannot read properties of undefined (reading 'includes')") || // kibana 8.7.0 throws this error
-    err.message.includes('Markdown content is required in [readOnly] mode') // kibana 8.13.0 throws this error on sample data canvas open
+    err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
+    err.message.includes('e.toSorted is not a function') // kibana 8.15.0 throws this error on report generation
   ) {
     return false;
   }
