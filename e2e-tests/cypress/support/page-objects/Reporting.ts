@@ -14,14 +14,22 @@ export class Reporting {
     cy.log('verifySavedReport');
     this.openReportingPage(openBy);
     cy.contains(reportName).should('be.visible');
-    cy.get('[data-test-subj=reportJobListing]').get('.euiTableRow').should('have.length', reportsCount);
+    cy.get('[data-test-subj=reportJobListing]')
+      .get('.euiTableRow')
+      .should('have.length', reportsCount);
   }
 
   static verifyIfReportingPageAfterRefresh() {
     cy.log('Verify if reporting page open after refresh');
-    cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`);
+    cy.url().should(
+      'include',
+      `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`
+    );
     cy.reload();
-    cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`);
+    cy.url().should(
+      'include',
+      `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`
+    );
   }
   private static openReportingPage(openBy: OpenBy) {
     if (openBy === 'rorMenu') {
