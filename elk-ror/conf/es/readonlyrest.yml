@@ -1,5 +1,6 @@
 helpers:
     cr: &common-rules
+        verbosity: error
         kibana_access: rw
         kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
         kibana_index: ".kibana_@{acl:current_group}"
