@@ -2,7 +2,7 @@ import { Login } from '../support/page-objects/Login';
 import { Settings } from '../support/page-objects/Settings';
 import { Editor } from '../support/page-objects/Editor';
 
-describe.skip('settings', () => {
+describe('settings', () => {
   beforeEach(() => {
     Login.initialization();
     Settings.open();

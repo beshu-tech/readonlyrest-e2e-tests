@@ -4,7 +4,7 @@ import { StackManagement } from '../support/page-objects/StackManagement';
 import { DirectKibanaRequest, GetObject } from '../support/page-objects/DirectKibanaRequest';
 import { getKibanaVersion } from '../support/helpers';
 
-describe.skip('Saved objects', () => {
+describe('Saved objects', () => {
   beforeEach(() => {
     Login.initialization();
     StackManagement.openSavedObjectsPage();
