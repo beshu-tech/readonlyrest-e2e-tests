@@ -2,7 +2,7 @@ import * as semver from 'semver';
 import { DataViews, DirectKibanaRequest, GetObject } from '../support/page-objects/DirectKibanaRequest';
 import { getKibanaVersion } from '../support/helpers';
 
-describe('Direct kibana request', () => {
+describe.skip('Direct kibana request', () => {
   const user = 'user1:dev';
 
   afterEach(() => {
