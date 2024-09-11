@@ -9,8 +9,8 @@ server.port: 5601
 # server.ssl.certificate: /etc/cert/localhost.cer
 # server.ssl.key: /etc/cert/localhost.key
 # elasticsearch.ssl.verificationMode: none
-elasticsearch.pingTimeout: 3000 # default: 30000
-elasticsearch.requestTimeout: 30000
+# elasticsearch.pingTimeout: 30000 # default: 30000
+# elasticsearch.requestTimeout: 30000
 # csp needs to be disabled to let cypress e2e tests works
 csp.strict: false
 csp.warnLegacyBrowsers: false
