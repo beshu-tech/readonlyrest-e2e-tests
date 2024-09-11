@@ -39,13 +39,6 @@ readonlyrest:
     <<: *common-rules
     kibana_access: admin
 
-#  - name: infosec4search
-#    groups: [ infosec_group ]
-#    indices: ["readonlyrest_audit*"]
-#    #filter: '{"bool": { "must_not": { "match": { "type": "xxxx" }}}}'
-#    kibana_index: .kibana_infosec
-#    verbosity: error
-
   - name: infosec
     groups: [ infosec_group ]
     <<: *common-rules

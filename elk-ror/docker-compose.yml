@@ -44,7 +44,7 @@ services:
         condition: service_healthy
     deploy:
       mode: replicated
-      replicas: 3
+      replicas: 1
     environment:
       ELASTIC_USER_PASSWORD: elastic
       ES_API_URL: http://es-ror:9200
