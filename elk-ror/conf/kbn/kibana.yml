@@ -35,7 +35,7 @@ readonlyrest_kbn:
     logLevel: 'trace'
     whitelistedPaths: [.*/api/status$]
     clearSessionOnEvents: [login, tenancyHop]
-    sessions_probe_interval_seconds: 60
+    sessions_probe_interval_seconds: 600
     store_sessions_in_index: true
 #    sessions_index_name: 'test_index'
 #    session_timeout_minutes: 1
