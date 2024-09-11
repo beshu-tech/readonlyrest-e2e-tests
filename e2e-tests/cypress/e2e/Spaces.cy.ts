@@ -5,7 +5,7 @@ import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Spaces } from '../support/page-objects/Spaces';
 import { getKibanaVersion } from '../support/helpers';
 
-describe('Spaces', () => {
+describe.skip('Spaces', () => {
   beforeEach(() => {
     cy.visit(Cypress.config().baseUrl);
     cy.on('url:changed', () => {

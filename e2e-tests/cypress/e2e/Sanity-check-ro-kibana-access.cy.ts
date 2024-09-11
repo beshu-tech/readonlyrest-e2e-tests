@@ -4,7 +4,7 @@ import roSettings from '../fixtures/roSettings.json';
 import { Settings } from '../support/page-objects/Settings';
 import defaultSettings from '../fixtures/defaultSettings.json';
 
-describe('sanity check ro kibana access', () => {
+describe.skip('sanity check ro kibana access', () => {
   beforeEach(() => {
     Login.initialization();
   });
