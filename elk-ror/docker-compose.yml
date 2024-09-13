@@ -16,7 +16,7 @@ services:
       - node.name=es-ror-single
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5000"
+      - "ES_JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5000"
       - ES_VERSION=$ES_VERSION
     healthcheck:
       test: [ "CMD", "curl", "-fk", "-u", "kibana:kibana", "http://localhost:9200/_cluster/health" ]
@@ -30,6 +30,10 @@ services:
       memlock:
         soft: -1
         hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G    
 
   kbn-ror:
     build:
@@ -62,6 +66,10 @@ services:
       memlock:
         soft: -1
         hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 1G    
 
   # kbn-proxy:
   #   build:
