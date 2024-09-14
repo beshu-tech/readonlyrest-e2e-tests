@@ -15,6 +15,11 @@ describe('sanity check ro_strict kibana access', () => {
       url: `${Cypress.config().baseUrl}/api/sample_data/ecommerce`,
       header: 'x-ror-current-group: template_group'
     });
+
+    cy.deleteRequest({
+      url: `${Cypress.config().baseUrl}/readonlyrest-audit--2024-09-14`,
+      user: 'kibana:kibana'
+    });
   });
 
   it('should verify that everything works', () => {
