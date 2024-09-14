@@ -46,6 +46,10 @@ data:
           verbosity: error
           auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
       
+        - name: KIBANA_SERVER
+          verbosity: error
+          auth_key: kibana:kibana
+          
         - name: PERSONAL_GRP
           groups: [ Personal ]
           <<: *common-rules
