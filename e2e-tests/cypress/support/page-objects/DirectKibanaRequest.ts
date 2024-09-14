@@ -39,6 +39,12 @@ export class DirectKibanaRequest {
   public static deleteReportUrl = (reportingIndex: string, id: string) =>
     `${Cypress.env().elasticsearchUrl}/${reportingIndex}/_doc/${id}?refresh=wait_for`;
 
+  public static deleteAllReportsUrl = (reportingIndex: string) =>
+    `${Cypress.env().elasticsearchUrl}/${reportingIndex}/_delete_by_query`;
+
+  public static refreshReportingIndexUrl = (reportingIndex: string) =>
+    `${Cypress.env().elasticsearchUrl}/${reportingIndex}/_refresh`;
+
   public static deleteDataView = id => `${Cypress.config().baseUrl}/api/data_views/data_view/${id}`;
 
   static deleteSavedObjects = (user: string) => {

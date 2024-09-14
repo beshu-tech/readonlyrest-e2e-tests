@@ -35,14 +35,17 @@ describe('sanity check', () => {
       cy.getRequest({ url: DirectKibanaRequest.getIndices, user: 'kibana:kibana' }).then((result: GetIndices[]) => {
         const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
 
-        cy.getRequest({ url: DirectKibanaRequest.getReportUrl(reportingIndex.index) }).then((result: GetReport) => {
-          result.hits.hits.map(report =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-              user: 'kibana:kibana'
-            })
-          );
-        });
+        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(reportingIndex.index)}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `)
+        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(reportingIndex.index)}" --user admin:dev`)
+        
+        // cy.getRequest({ url: DirectKibanaRequest.getReportUrl(reportingIndex.index) }).then((result: GetReport) => {
+        //   result.hits.hits.map(report =>
+        //     cy.deleteRequest({
+        //       url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
+        //       user: 'kibana:kibana'
+        //     })
+        //   );
+        // });
       });
 
       cy.getRequest({
@@ -52,18 +55,21 @@ describe('sanity check', () => {
       }).then((result: GetIndices[]) => {
         const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
 
-        cy.getRequest({
-          url: DirectKibanaRequest.getReportUrl(reportingIndex.index),
-          header: 'x-ror-current-group: infosec_group'
-        }).then((result: GetReport) => {
-          result.hits.hits.map(report =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-              header: 'x-ror-current-group: infosec_group',
-              user: 'kibana:kibana'
-            })
-          );
-        });
+        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(reportingIndex.index)}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `)
+        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(reportingIndex.index)}" --user admin:dev`)
+
+        // cy.getRequest({
+        //   url: DirectKibanaRequest.getReportUrl(reportingIndex.index),
+        //   header: 'x-ror-current-group: infosec_group'
+        // }).then((result: GetReport) => {
+        //   result.hits.hits.map(report =>
+        //     cy.deleteRequest({
+        //       url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
+        //       header: 'x-ror-current-group: infosec_group',
+        //       user: 'kibana:kibana'
+        //     })
+        //   );
+        // });
       });
     };
 
