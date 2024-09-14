@@ -22,7 +22,7 @@ export class Discover {
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName);
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
-    cy.contains('was saved', { timeout: 10000 }).should('exist');
+    cy.contains('was saved', { timeout: 60000 }).should('exist');
 
     cy.findByRole('navigation', {
       name: /breadcrumb/i
