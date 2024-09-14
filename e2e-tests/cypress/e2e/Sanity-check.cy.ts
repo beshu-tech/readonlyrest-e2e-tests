@@ -13,63 +13,6 @@ describe('sanity check', () => {
     Login.initialization();
   });
 
-  afterEach(() => {
-    const clearSanityCheckState = () => {
-      cy.getRequest({ url: DirectKibanaRequest.getObjectsUrl() }).then((result: GetObject) => {
-        result.saved_objects.map(savedObject =>
-          cy.deleteRequest({ url: DirectKibanaRequest.deleteObjectUrl(savedObject.type, savedObject.id) })
-        );
-      });
-
-      cy.getRequest({ url: DirectKibanaRequest.getObjectsUrl(), header: 'x-ror-current-group: infosec_group' }).then(
-        (result: GetObject) => {
-          result.saved_objects.map(savedObject =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteObjectUrl(savedObject.type, savedObject.id),
-              header: 'x-ror-current-group: infosec_group'
-            })
-          );
-        }
-      );
-
-      cy.getRequest({ url: DirectKibanaRequest.getIndices, user: 'kibana:kibana' }).then((result: GetIndices[]) => {
-        const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
-
-        cy.getRequest({ url: DirectKibanaRequest.getReportUrl(reportingIndex.index) }).then((result: GetReport) => {
-          result.hits.hits.map(report =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-              user: 'kibana:kibana'
-            })
-          );
-        });
-      });
-
-      cy.getRequest({
-        url: DirectKibanaRequest.getIndices,
-        user: 'kibana:kibana',
-        header: 'x-ror-current-group: infosec_group'
-      }).then((result: GetIndices[]) => {
-        const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
-
-        cy.getRequest({
-          url: DirectKibanaRequest.getReportUrl(reportingIndex.index),
-          header: 'x-ror-current-group: infosec_group'
-        }).then((result: GetReport) => {
-          result.hits.hits.map(report =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-              header: 'x-ror-current-group: infosec_group',
-              user: 'kibana:kibana'
-            })
-          );
-        });
-      });
-    };
-
-    clearSanityCheckState();
-  });
-
   it('should verify that everything works', () => {
     cy.log('Initialize Administrator tenancy');
     Discover.openDataViewPage();
