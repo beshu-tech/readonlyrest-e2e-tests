@@ -35,9 +35,13 @@ describe('sanity check', () => {
       cy.getRequest({ url: DirectKibanaRequest.getIndices, user: 'kibana:kibana' }).then((result: GetIndices[]) => {
         const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
 
-        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(reportingIndex.index)}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `)
-        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(reportingIndex.index)}" --user admin:dev`)
-        
+        if (reportingIndex) {
+          cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(reportingIndex.index)}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `)
+          cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(reportingIndex.index)}" --user admin:dev`)
+        } else {
+          cy.log('No reporting index found. Skipping delete and refresh steps.');
+        }
+
         // cy.getRequest({ url: DirectKibanaRequest.getReportUrl(reportingIndex.index) }).then((result: GetReport) => {
         //   result.hits.hits.map(report =>
         //     cy.deleteRequest({
@@ -55,9 +59,13 @@ describe('sanity check', () => {
       }).then((result: GetIndices[]) => {
         const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
 
-        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(reportingIndex.index)}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `)
-        cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(reportingIndex.index)}" --user admin:dev`)
-
+        if (reportingIndex) {
+          cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(reportingIndex.index)}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `)
+          cy.exec(`curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(reportingIndex.index)}" --user admin:dev`)
+        } else {
+          cy.log('No reporting index found. Skipping delete and refresh steps.');
+        }
+        
         // cy.getRequest({
         //   url: DirectKibanaRequest.getReportUrl(reportingIndex.index),
         //   header: 'x-ror-current-group: infosec_group'
