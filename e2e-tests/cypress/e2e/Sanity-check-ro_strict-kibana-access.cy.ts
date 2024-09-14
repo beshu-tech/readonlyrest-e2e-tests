@@ -15,6 +15,7 @@ describe('sanity check ro_strict kibana access', () => {
       url: `${Cypress.config().baseUrl}/api/sample_data/ecommerce`,
       header: 'x-ror-current-group: template_group'
     });
+  });
   it('should verify that everything works', () => {
     RoAndRoStrictKibanaAccessAssertions.runAssertions(roStrictSettings);
   });
