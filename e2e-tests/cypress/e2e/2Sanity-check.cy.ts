@@ -72,6 +72,7 @@ describe('sanity check', () => {
 
   it('should verify that everything works', () => {
     cy.log('Initialize Administrator tenancy');
+
     Discover.openDataViewPage();
     Discover.createIndexPattern('r');
 
