@@ -17,7 +17,7 @@ readonlyrest:
   response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
   prompt_for_basic_auth: false
   audit:
-    enabled: false
+    enabled: true
     outputs:
     - type: index
       serializer: tech.beshu.ror.requestcontext.QueryAuditLogSerializer

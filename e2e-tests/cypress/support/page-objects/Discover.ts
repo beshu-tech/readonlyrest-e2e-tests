@@ -31,6 +31,7 @@ export class Discover {
 
   static exportToCsv() {
     cy.log('exportToCsv');
+    cy.get('[data-test-subj="queryInput"]').type('_id 123').type('{enter}');
     cy.get('[data-test-subj=shareTopNavButton]').click();
     cy.get('[data-test-subj=sharePanel-CSVReports]').click();
     cy.get('[data-test-subj=generateReportButton]').click();
