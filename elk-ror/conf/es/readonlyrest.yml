@@ -21,8 +21,9 @@ readonlyrest:
     enabled: true
     outputs:
     - type: index
-      serializer: tech.beshu.ror.requestcontext.QueryAuditLogSerializer
+      #serializer: tech.beshu.ror.requestcontext.QueryAuditLogSerializer
       index_template: "'readonlyrest_audit_'yyyy-MM-dd"
+    - type: log
 
   access_control_rules:
   - name: KIBANA_SERVER
