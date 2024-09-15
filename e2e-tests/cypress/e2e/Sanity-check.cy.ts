@@ -88,7 +88,7 @@ describe('sanity check', () => {
   it('should verify that everything works', () => {
     cy.log('Initialize Administrator tenancy');
     Discover.openDataViewPage();
-    Discover.createIndexPattern('r');
+    Discover.createIndexPattern('s');
 
     cy.log('Create a CSV report');
     Discover.saveReport('admin_search');
@@ -101,16 +101,16 @@ describe('sanity check', () => {
     if (semver.gte(getKibanaVersion(), '8.8.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
       RorMenu.openDataViewsPage();
-      Discover.createIndexPattern('re');
+      Discover.createIndexPattern('sa');
     } else if (semver.gte(getKibanaVersion(), '8.1.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
       RorMenu.openDataViewsPage();
       Discover.openDataViewPage();
-      Discover.createIndexPattern('re');
+      Discover.createIndexPattern('sa');
     } else {
       Reporting.noReportsCreatedCheck('rorMenu');
       Discover.openDataViewPage();
-      Discover.createIndexPattern('re');
+      Discover.createIndexPattern('sa');
 
       cy.log('Create CSV report for the second tenancy');
       Discover.saveReport('infosec_search');
