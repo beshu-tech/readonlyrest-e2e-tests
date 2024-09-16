@@ -52,68 +52,29 @@ describe('sanity check', () => {
       );
 
       cy.getRequest({ url: DirectKibanaRequest.getIndices, user: 'kibana:kibana' }).then((result: GetIndices[]) => {
-        const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
-
-        if (reportingIndex) {
-          cy.exec(
-            `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(
-              reportingIndex.index
-            )}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `
-          );
-          cy.exec(
-            `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(
-              reportingIndex.index
-            )}" --user admin:dev`
-          );
+        const reportingIndices = result.filter(index => index.index.startsWith('.reporting'));
+      
+        if (reportingIndices.length > 0) {
+          reportingIndices.forEach(reportingIndex => {
+            // Delete all reports for the reporting index
+            cy.exec(
+              `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(
+                reportingIndex.index
+              )}" --user kibana:kibana -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `
+            );
+      
+            // Refresh the reporting index
+            cy.exec(
+              `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(
+                reportingIndex.index
+              )}" --user kibana:kibana`
+            );
+          });
         } else {
-          cy.log('No reporting index found. Skipping delete and refresh steps.');
+          cy.log('No reporting indices found. Skipping delete and refresh steps.');
         }
-
-        // cy.getRequest({ url: DirectKibanaRequest.getReportUrl(reportingIndex.index) }).then((result: GetReport) => {
-        //   result.hits.hits.map(report =>
-        //     cy.deleteRequest({
-        //       url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-        //       user: 'kibana:kibana'
-        //     })
-        //   );
-        // });
       });
 
-      cy.getRequest({
-        url: DirectKibanaRequest.getIndices,
-        user: 'kibana:kibana',
-        header: 'x-ror-current-group: infosec_group'
-      }).then((result: GetIndices[]) => {
-        const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
-
-        if (reportingIndex) {
-          cy.exec(
-            `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(
-              reportingIndex.index
-            )}" --user admin:dev -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `
-          );
-          cy.exec(
-            `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(
-              reportingIndex.index
-            )}" --user admin:dev`
-          );
-        } else {
-          cy.log('No reporting index found. Skipping delete and refresh steps.');
-        }
-
-        // cy.getRequest({
-        //   url: DirectKibanaRequest.getReportUrl(reportingIndex.index),
-        //   header: 'x-ror-current-group: infosec_group'
-        // }).then((result: GetReport) => {
-        //   result.hits.hits.map(report =>
-        //     cy.deleteRequest({
-        //       url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-        //       header: 'x-ror-current-group: infosec_group',
-        //       user: 'kibana:kibana'
-        //     })
-        //   );
-        // });
-      });
     };
 
     clearSanityCheckState();
