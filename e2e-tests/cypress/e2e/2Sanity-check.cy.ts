@@ -6,78 +6,21 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
-import { DirectKibanaRequest, GetIndices, GetObject, GetReport } from '../support/page-objects/DirectKibanaRequest';
+import { SmartEsClient } from '../support/helpers/SmartEsClient';
+import { SmartKbnClient } from '../support/helpers/SmartKbnClient';
+import { SampleData } from '../support/helpers/SampleData';
 
 describe('sanity check', () => {
   beforeEach(() => {
-    const provideSampleIndex = () => {
-      cy.post({
-        url: `${Cypress.env().elasticsearchUrl}/sample_index/_doc/2`,
-        payload: {
-          name: 'Jane Smith',
-          age: 25,
-          occupation: 'Designer',
-          '@timestamp': new Date().toISOString()
-        },
-        user: 'kibana:kibana'
-      });
-    };
-
-    provideSampleIndex();
+    SampleData.createSampleData("sample_index", 10)
     Login.initialization();
   });
 
   afterEach(() => {
-    const clearSanityCheckState = () => {
-      cy.deleteRequest({
-        url: `${Cypress.env().elasticsearchUrl}/sample_index/_doc/2`,
-        user: 'kibana:kibana'
-      });
-
-      cy.getRequest({ url: DirectKibanaRequest.getObjectsUrl() }).then((result: GetObject) => {
-        result.saved_objects.map(savedObject =>
-          cy.deleteRequest({ url: DirectKibanaRequest.deleteObjectUrl(savedObject.type, savedObject.id) })
-        );
-      });
-
-      cy.getRequest({ url: DirectKibanaRequest.getObjectsUrl(), header: 'x-ror-current-group: infosec_group' }).then(
-        (result: GetObject) => {
-          result.saved_objects.map(savedObject =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteObjectUrl(savedObject.type, savedObject.id),
-              header: 'x-ror-current-group: infosec_group'
-            })
-          );
-        }
-      );
-
-      cy.getRequest({ url: DirectKibanaRequest.getIndices, user: 'kibana:kibana' }).then((result: GetIndices[]) => {
-        const reportingIndices = result.filter(index => index.index.startsWith('.reporting'));
-      
-        if (reportingIndices.length > 0) {
-          reportingIndices.forEach(reportingIndex => {
-            // Delete all reports for the reporting index
-            cy.exec(
-              `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.deleteAllReportsUrl(
-                reportingIndex.index
-              )}" --user kibana:kibana -H "Content-Type: application/json" -d '{"query": {"match_all": {}}}' `
-            );
-      
-            // Refresh the reporting index
-            cy.exec(
-              `curl -H "kbn-xsrf: true" -v -k -X POST "${DirectKibanaRequest.refreshReportingIndexUrl(
-                reportingIndex.index
-              )}" --user kibana:kibana`
-            );
-          });
-        } else {
-          cy.log('No reporting indices found. Skipping delete and refresh steps.');
-        }
-      });
-
-    };
-
-    clearSanityCheckState();
+    SmartEsClient.deleteIndex("sample_index");
+    SmartKbnClient.deleteSavedObjects("admin:dev");
+    SmartKbnClient.deleteSavedObjects("admin:dev", "infosec_group")
+    SmartEsClient.pruneAllReportingIndices();
   });
 
   it('should verify that everything works', () => {

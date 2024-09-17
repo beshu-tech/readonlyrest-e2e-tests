@@ -1,15 +1,16 @@
 import * as semver from 'semver';
-import { DataViews, DirectKibanaRequest, GetObject } from '../support/page-objects/DirectKibanaRequest';
+import { DataViews, GetObject } from '../support/helpers/SmartKbnClient';
 import { getKibanaVersion } from '../support/helpers';
+import { SmartKbnClient } from '../support/helpers/SmartKbnClient';
 
 describe.skip('Direct kibana request', () => {
   const user = 'user1:dev';
 
   afterEach(() => {
     const clearDirectKibanaRequestState = () => {
-      DirectKibanaRequest.deleteSavedObjects(user);
+      SmartKbnClient.deleteSavedObjects(user);
       if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        DirectKibanaRequest.deleteDataViews(user);
+        SmartKbnClient.deleteDataViews(user);
       }
     };
 
@@ -18,7 +19,7 @@ describe.skip('Direct kibana request', () => {
 
   it('should check direct kibana request', () => {
     const verifySavedObjects = () => {
-      DirectKibanaRequest.deleteSavedObjects(user);
+      SmartKbnClient.deleteSavedObjects(user);
 
       cy.log('Import saved objects for user1');
       cy.import({
@@ -29,7 +30,7 @@ describe.skip('Direct kibana request', () => {
 
       cy.log('Get imported saved objects for user1 Administrators group');
       cy.getRequest({
-        url: DirectKibanaRequest.getObjectsUrl(),
+        url: SmartKbnClient.getObjectsUrl(),
         user
       }).then((result: GetObject) => {
         expect(result.saved_objects[0].id).equal('my-pattern');
@@ -38,7 +39,7 @@ describe.skip('Direct kibana request', () => {
 
       cy.log('Get imported saved objects for admin Administrators group');
       cy.getRequest({
-        url: DirectKibanaRequest.getObjectsUrl()
+        url: SmartKbnClient.getObjectsUrl()
       }).then((result: GetObject) => {
         expect(result.saved_objects[0].id).equal('my-pattern');
         expect(result.saved_objects[1].id).equal('my-dashboard');
@@ -47,7 +48,7 @@ describe.skip('Direct kibana request', () => {
 
       cy.log('Get imported saved objects for user1 infosec group');
       cy.getRequest({
-        url: DirectKibanaRequest.getObjectsUrl(),
+        url: SmartKbnClient.getObjectsUrl(),
         user,
         header: 'x-ror-current-group: infosec_group'
       }).then((result: GetObject) => {
@@ -60,7 +61,7 @@ describe.skip('Direct kibana request', () => {
     };
 
     const verifyDataViews = () => {
-      DirectKibanaRequest.deleteDataViews(user);
+      SmartKbnClient.deleteDataViews(user);
       cy.log('Create data_views for user1 Administrators group');
       cy.post({
         url: `${Cypress.config().baseUrl}/api/data_views/data_view`,
