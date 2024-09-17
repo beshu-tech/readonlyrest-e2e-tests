@@ -2,7 +2,7 @@ import { Login } from '../support/page-objects/Login';
 import { InteractiveApi } from '../support/page-objects/InteractiveApi';
 import { SecuritySettings } from '../support/page-objects/SecuritySettings';
 
-describe.skip('Interactive API', () => {
+describe('Interactive API', () => {
   beforeEach(() => {
     Login.initialization();
     InteractiveApi.open();

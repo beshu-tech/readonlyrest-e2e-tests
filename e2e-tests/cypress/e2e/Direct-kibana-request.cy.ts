@@ -3,7 +3,7 @@ import { DataViews, GetObject } from '../support/helpers/SmartKbnClient';
 import { getKibanaVersion } from '../support/helpers';
 import { SmartKbnClient } from '../support/helpers/SmartKbnClient';
 
-describe.skip('Direct kibana request', () => {
+describe('Direct kibana request', () => {
   const user = 'user1:dev';
 
   afterEach(() => {

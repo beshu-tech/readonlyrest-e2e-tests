@@ -5,7 +5,7 @@ import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { TestSettings } from '../support/page-objects/TestSettings';
 import { Settings } from '../support/page-objects/Settings';
 
-describe.skip('impersonate', () => {
+describe('impersonate', () => {
   beforeEach(() => {
     Login.initialization();
   });

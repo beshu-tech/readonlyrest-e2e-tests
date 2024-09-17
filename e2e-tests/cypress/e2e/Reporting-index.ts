@@ -6,7 +6,7 @@ import defaultSettingsData from '../fixtures/defaultSettings.json';
 import reportingSettingsData from '../fixtures/reportingSettings.json';
 import { Settings } from '../support/page-objects/Settings';
 
-describe.skip('Reporting index', () => {
+describe('Reporting index', () => {
   beforeEach(() => {
     Settings.setSettingsData(reportingSettingsData);
     cy.visit(Cypress.config().baseUrl);
