@@ -1,6 +1,5 @@
 helpers:
     cr: &common-rules
-        # verbosity: error
         kibana_access: rw
         kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
         kibana_index: ".kibana_@{acl:current_group}"
@@ -21,9 +20,7 @@ readonlyrest:
     enabled: true
     outputs:
     - type: index
-      #serializer: tech.beshu.ror.requestcontext.QueryAuditLogSerializer
       index_template: "'readonlyrest_audit_'yyyy-MM-dd"
-    - type: log
 
   access_control_rules:
   - name: KIBANA_SERVER
