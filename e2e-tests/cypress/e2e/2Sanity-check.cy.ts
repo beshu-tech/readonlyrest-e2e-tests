@@ -12,7 +12,7 @@ import { SampleData } from '../support/helpers/SampleData';
 
 describe('sanity check', () => {
   beforeEach(() => {
-    SampleData.createSampleData("sample_index", 10)
+    SampleData.createSampleData("sample_index", 1)
     Login.initialization();
   });
 
