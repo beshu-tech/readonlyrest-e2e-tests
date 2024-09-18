@@ -1,10 +1,10 @@
-import { EsApiClient } from "./EsApiClient"
+import { esApiClient } from "./EsApiClient"
 
 export class SampleData {
 
   static createSampleData = (index: string, docsCount: number) => {
     for (let i = 1; i <= docsCount; i++) {
-      EsApiClient.instance.addDocument(
+      esApiClient.addDocument(
         index, 
         i.toString(), 
         {

@@ -1,16 +1,15 @@
 import * as semver from 'semver';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
-import { KbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
-import { use } from 'chai';
+import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 
 describe('Direct kibana request', () => {
   const user = 'user1:dev';
 
   afterEach(() => {
     const clearDirectKibanaRequestState = () => {
-      KbnApiAdvancedClient.instance.deleteSavedObjects(user);
+      kbnApiAdvancedClient.deleteSavedObjects(user);
       if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        KbnApiAdvancedClient.instance.deleteDataViews(user);
+        kbnApiAdvancedClient.deleteDataViews(user);
       }
     };
 
@@ -19,7 +18,7 @@ describe('Direct kibana request', () => {
 
   it('should check direct kibana request', () => {
     const verifySavedObjects = () => {
-      KbnApiAdvancedClient.instance.deleteSavedObjects(user);
+      kbnApiAdvancedClient.deleteSavedObjects(user);
 
       cy.log('Import saved objects for user1');
       cy.kbnImport({
@@ -29,13 +28,13 @@ describe('Direct kibana request', () => {
       });
 
       cy.log('Get imported saved objects for user1 Administrators group');
-      KbnApiAdvancedClient.instance.getSavedObjects(user).then(result => {
+      kbnApiAdvancedClient.getSavedObjects(user).then(result => {
         expect(result.saved_objects[0].id).equal('my-pattern');
         expect(result.saved_objects[1].id).equal('my-dashboard');
       })
 
       cy.log('Get imported saved objects for admin Administrators group');
-      KbnApiAdvancedClient.instance
+      kbnApiAdvancedClient
         .getSavedObjects(userCredentials)
         .then(result => {
           expect(result.saved_objects[0].id).equal('my-pattern');
@@ -44,7 +43,7 @@ describe('Direct kibana request', () => {
         });
 
       cy.log('Get imported saved objects for user1 infosec group');
-      KbnApiAdvancedClient.instance.getSavedObjects(user, "infosec_group")
+      kbnApiAdvancedClient.getSavedObjects(user, "infosec_group")
         .then(result => {
           const actual = result.saved_objects.some(
             saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
@@ -55,9 +54,9 @@ describe('Direct kibana request', () => {
     };
 
     const verifyDataViews = () => {
-      KbnApiAdvancedClient.instance.deleteDataViews(user);
+      kbnApiAdvancedClient.deleteDataViews(user);
       cy.log('Create data_views for user1 Administrators group');
-      KbnApiAdvancedClient.instance.createDataView(
+      kbnApiAdvancedClient.createDataView(
         {
           data_view: {
             id: 'logstash',
@@ -69,7 +68,7 @@ describe('Direct kibana request', () => {
       );
 
       cy.log('get all data_views for user1 infosec group');
-      KbnApiAdvancedClient.instance
+      kbnApiAdvancedClient
         .getDataViews(userCredentials, "infosec_group")
         .then(result => {
           const actual = result.data_view.some(saved_object => saved_object.id === 'logstash');

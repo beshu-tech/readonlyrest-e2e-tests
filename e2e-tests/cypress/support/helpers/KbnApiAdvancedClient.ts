@@ -2,8 +2,6 @@ import { KbnApiClient } from './KbnApiClient';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
 
-  public static instance: KbnApiAdvancedClient = new KbnApiAdvancedClient();
-
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
     this.getSavedObjects(credentials, group).then(result => {
@@ -25,3 +23,5 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   };
 
 }
+
+export const kbnApiAdvancedClient = new KbnApiAdvancedClient();

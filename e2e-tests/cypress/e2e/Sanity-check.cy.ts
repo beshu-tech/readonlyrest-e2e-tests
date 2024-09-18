@@ -6,8 +6,8 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
-import { EsApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
-import { KbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
+import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
 
 describe('sanity check', () => {
@@ -17,10 +17,10 @@ describe('sanity check', () => {
   });
 
   afterEach(() => {
-    EsApiAdvancedClient.instance.deleteIndex("sample_index");
-    KbnApiAdvancedClient.instance.deleteSavedObjects("admin:dev");
-    KbnApiAdvancedClient.instance.deleteSavedObjects("admin:dev", "infosec_group")
-    EsApiAdvancedClient.instance.pruneAllReportingIndices();
+    esApiAdvancedClient.deleteIndex("sample_index");
+    kbnApiAdvancedClient.deleteSavedObjects("admin:dev");
+    kbnApiAdvancedClient.deleteSavedObjects("admin:dev", "infosec_group")
+    esApiAdvancedClient.pruneAllReportingIndices();
   });
 
   it('should verify that everything works', () => {

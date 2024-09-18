@@ -1,7 +1,5 @@
 export class EsApiClient {
 
-  public static instance: EsApiClient = new EsApiClient();
-
   public deleteIndexDocsByQuery(index: string): void {
     cy.esPost({
       endpoint: `${index}/_delete_by_query`,
@@ -44,6 +42,8 @@ export class EsApiClient {
       })
   }
 }
+
+export const esApiClient = new EsApiClient();
 
 export interface GetIndices {
   index: string;

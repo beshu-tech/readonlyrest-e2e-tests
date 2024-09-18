@@ -1,7 +1,5 @@
 export class KbnApiClient {
 
-  public static instance: KbnApiClient = new KbnApiClient();
-
   public getDataViews(credentials: string, group?: string): Cypress.Chainable<DataViews> {
     return cy.kbnGet({
       endpoint: "api/data_views",
@@ -51,6 +49,8 @@ export class KbnApiClient {
     });
   }
 }
+
+export const kbnApiClient = new KbnApiClient();
 
 interface DataView {
   id: string;

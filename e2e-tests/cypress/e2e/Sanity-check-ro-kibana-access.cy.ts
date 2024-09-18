@@ -3,7 +3,7 @@ import { RoAndRoStrictKibanaAccessAssertions } from '../support/page-objects/RoA
 import roSettings from '../fixtures/roSettings.json';
 import { Settings } from '../support/page-objects/Settings';
 import defaultSettings from '../fixtures/defaultSettings.json';
-import { KbnApiClient } from '../support/helpers/KbnApiClient';
+import { kbnApiClient, KbnApiClient } from '../support/helpers/KbnApiClient';
 import { userCredentials } from '../support/helpers';
 
 describe('sanity check ro kibana access', () => {
@@ -13,7 +13,7 @@ describe('sanity check ro kibana access', () => {
 
   afterEach(() => {
     Settings.setSettingsData(defaultSettings);
-    KbnApiClient.instance.deleteSampleData("ecommerce", userCredentials, "template_group");
+    kbnApiClient.deleteSampleData("ecommerce", userCredentials, "template_group");
   });
 
   it('should verify that everything works', () => {
