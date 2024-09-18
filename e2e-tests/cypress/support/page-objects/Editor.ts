@@ -6,8 +6,7 @@ export class Editor {
     const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
     SecuritySettings.getIframeBody()
       .findByRole('code')
-      .find('textarea')
-      .eq(0)
+      .find('textarea').eq(0)
       .focus()
       .type(`${selectAllKeys}{backspace}`, { force: true })
       .type(config, { force: true });
@@ -22,11 +21,10 @@ export class Editor {
 
     cy.get('@iframeBody')
       .findByRole('code')
-      .find('textarea')
-      .eq(0)
+      .find('textarea').eq(0)
       .focus()
       .type(closeSearchBoxIfExist, { force: true })
-      .type(findKeys, { force: true });
+      .type(findKeys, { force: true })
 
     SecuritySettings.getIframeBody()
       .findByRole('button', { name: /toggle replace/i })

@@ -3,6 +3,7 @@ import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
 import testSettings from '../../fixtures/testSettings.json';
 import authMocks from '../../fixtures/authMocks.json';
+import { userCredentials } from '../helpers';
 
 export class Impersonate {
   static open() {
@@ -180,7 +181,15 @@ export class Impersonate {
 
   static setTestSettingsData() {
     cy.log('Initialize Test ACL data');
-    cy.post({ url: `${Cypress.env().elasticsearchUrl}/_readonlyrest/admin/config/test`, payload: testSettings });
-    cy.post({ url: `${Cypress.env().elasticsearchUrl}/_readonlyrest/admin/config/test/authmock`, payload: authMocks });
+    cy.esPost({
+      endpoint: "_readonlyrest/admin/config/test",
+      credentials: userCredentials,
+      payload: testSettings
+    });
+    cy.esPost({
+      endpoint: "_readonlyrest/admin/config/test/authmock",
+      credentials: userCredentials,
+      payload: authMocks
+    });
   }
 }

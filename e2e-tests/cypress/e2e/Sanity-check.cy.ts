@@ -6,74 +6,28 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
-import { DirectKibanaRequest, GetIndices, GetObject, GetReport } from '../support/page-objects/DirectKibanaRequest';
+import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
+import { SampleData } from '../support/helpers/SampleData';
 
 describe('sanity check', () => {
   beforeEach(() => {
+    SampleData.createSampleData("sample_index", 1)
     Login.initialization();
   });
 
   afterEach(() => {
-    const clearSanityCheckState = () => {
-      cy.getRequest({ url: DirectKibanaRequest.getObjectsUrl() }).then((result: GetObject) => {
-        result.saved_objects.map(savedObject =>
-          cy.deleteRequest({ url: DirectKibanaRequest.deleteObjectUrl(savedObject.type, savedObject.id) })
-        );
-      });
-
-      cy.getRequest({ url: DirectKibanaRequest.getObjectsUrl(), header: 'x-ror-current-group: infosec_group' }).then(
-        (result: GetObject) => {
-          result.saved_objects.map(savedObject =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteObjectUrl(savedObject.type, savedObject.id),
-              header: 'x-ror-current-group: infosec_group'
-            })
-          );
-        }
-      );
-
-      cy.getRequest({ url: DirectKibanaRequest.getIndices, user: 'kibana:kibana' }).then((result: GetIndices[]) => {
-        const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
-
-        cy.getRequest({ url: DirectKibanaRequest.getReportUrl(reportingIndex.index) }).then((result: GetReport) => {
-          result.hits.hits.map(report =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-              user: 'kibana:kibana'
-            })
-          );
-        });
-      });
-
-      cy.getRequest({
-        url: DirectKibanaRequest.getIndices,
-        user: 'kibana:kibana',
-        header: 'x-ror-current-group: infosec_group'
-      }).then((result: GetIndices[]) => {
-        const reportingIndex = result.find(index => index.index.startsWith('.reporting'));
-
-        cy.getRequest({
-          url: DirectKibanaRequest.getReportUrl(reportingIndex.index),
-          header: 'x-ror-current-group: infosec_group'
-        }).then((result: GetReport) => {
-          result.hits.hits.map(report =>
-            cy.deleteRequest({
-              url: DirectKibanaRequest.deleteReportUrl(reportingIndex.index, report._id),
-              header: 'x-ror-current-group: infosec_group',
-              user: 'kibana:kibana'
-            })
-          );
-        });
-      });
-    };
-
-    clearSanityCheckState();
+    esApiAdvancedClient.deleteIndex("sample_index");
+    kbnApiAdvancedClient.deleteSavedObjects("admin:dev");
+    kbnApiAdvancedClient.deleteSavedObjects("admin:dev", "infosec_group")
+    esApiAdvancedClient.pruneAllReportingIndices();
   });
 
   it('should verify that everything works', () => {
     cy.log('Initialize Administrator tenancy');
+
     Discover.openDataViewPage();
-    Discover.createIndexPattern('r');
+    Discover.createIndexPattern('s');
 
     cy.log('Create a CSV report');
     Discover.saveReport('admin_search');
@@ -86,16 +40,16 @@ describe('sanity check', () => {
     if (semver.gte(getKibanaVersion(), '8.8.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
       RorMenu.openDataViewsPage();
-      Discover.createIndexPattern('re');
+      Discover.createIndexPattern('sa');
     } else if (semver.gte(getKibanaVersion(), '8.1.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
       RorMenu.openDataViewsPage();
       Discover.openDataViewPage();
-      Discover.createIndexPattern('re');
+      Discover.createIndexPattern('sa');
     } else {
       Reporting.noReportsCreatedCheck('rorMenu');
       Discover.openDataViewPage();
-      Discover.createIndexPattern('re');
+      Discover.createIndexPattern('sa');
 
       cy.log('Create CSV report for the second tenancy');
       Discover.saveReport('infosec_search');

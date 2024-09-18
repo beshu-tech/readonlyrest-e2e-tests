@@ -16,3 +16,5 @@ export function isJsonString(str) {
   }
   return true;
 }
+
+export const userCredentials = `${Cypress.env().login}:${Cypress.env().password}`
