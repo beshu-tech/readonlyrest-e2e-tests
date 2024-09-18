@@ -1,8 +1,8 @@
 import { EsApiClient } from './EsApiClient';
 
-export class SmartEsApiClient extends EsApiClient {
+export class EsApiAdvancedClient extends EsApiClient {
 
-  public static instance: SmartEsApiClient = new SmartEsApiClient();
+  public static instance: EsApiAdvancedClient = new EsApiAdvancedClient();
 
   public pruneAllReportingIndices(): void {
     cy.log('Pruning all reporting indices...');

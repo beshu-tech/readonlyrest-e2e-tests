@@ -1,8 +1,8 @@
 import { KbnApiClient } from './KbnApiClient';
 
-export class SmartKbnApiClient extends KbnApiClient {
+export class KbnApiAdvancedClient extends KbnApiClient {
 
-  public static instance: SmartKbnApiClient = new SmartKbnApiClient();
+  public static instance: KbnApiAdvancedClient = new KbnApiAdvancedClient();
 
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);

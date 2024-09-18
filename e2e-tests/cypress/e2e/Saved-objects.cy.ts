@@ -2,7 +2,7 @@ import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { StackManagement } from '../support/page-objects/StackManagement';
 import { getKibanaVersion } from '../support/helpers';
-import { SmartKbnApiClient } from '../support/helpers/SmartKbnApiClient';
+import { KbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 
 describe('Saved objects', () => {
   beforeEach(() => {
@@ -11,7 +11,7 @@ describe('Saved objects', () => {
   });
 
   afterEach(() => {
-    SmartKbnApiClient.instance.deleteSavedObjects("admin:dev");
+    KbnApiAdvancedClient.instance.deleteSavedObjects("admin:dev");
   });
 
   it('should display saved objects list', () => {
