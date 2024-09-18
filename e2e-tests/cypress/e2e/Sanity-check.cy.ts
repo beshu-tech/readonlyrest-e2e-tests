@@ -6,8 +6,8 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
-import { SmartEsClient } from '../support/helpers/SmartEsClient';
-import { SmartKbnClient } from '../support/helpers/SmartKbnClient';
+import { SmartEsApiClient } from '../support/helpers/SmartEsApiClient';
+import { SmartKbnApiClient } from '../support/helpers/SmartKbnApiClient';
 import { SampleData } from '../support/helpers/SampleData';
 
 describe('sanity check', () => {
@@ -17,10 +17,10 @@ describe('sanity check', () => {
   });
 
   afterEach(() => {
-    SmartEsClient.deleteIndex("sample_index");
-    SmartKbnClient.deleteSavedObjects("admin:dev");
-    SmartKbnClient.deleteSavedObjects("admin:dev", "infosec_group")
-    SmartEsClient.pruneAllReportingIndices();
+    SmartEsApiClient.instance.deleteIndex("sample_index");
+    SmartKbnApiClient.instance.deleteSavedObjects("admin:dev");
+    SmartKbnApiClient.instance.deleteSavedObjects("admin:dev", "infosec_group")
+    SmartEsApiClient.instance.pruneAllReportingIndices();
   });
 
   it('should verify that everything works', () => {

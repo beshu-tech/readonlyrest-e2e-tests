@@ -1,10 +1,10 @@
-import { SmartEsClient } from "./SmartEsClient"
+import { EsApiClient } from "./EsApiClient"
 
 export class SampleData {
 
   static createSampleData = (index: string, docsCount: number) => {
     for (let i = 1; i <= docsCount; i++) {
-      SmartEsClient.addDocument(
+      EsApiClient.instance.addDocument(
         index, 
         i.toString(), 
         {
