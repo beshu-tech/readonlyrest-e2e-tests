@@ -3,6 +3,7 @@ import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
 import testSettings from '../../fixtures/testSettings.json';
 import authMocks from '../../fixtures/authMocks.json';
+import { userCredentials } from '../helpers';
 
 export class Impersonate {
   static open() {
@@ -182,12 +183,12 @@ export class Impersonate {
     cy.log('Initialize Test ACL data');
     cy.esPost({
       endpoint: "_readonlyrest/admin/config/test",
-      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      credentials: userCredentials,
       payload: testSettings
     });
     cy.esPost({
       endpoint: "_readonlyrest/admin/config/test/authmock",
-      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      credentials: userCredentials,
       payload: authMocks
     });
   }

@@ -1,3 +1,4 @@
+import { userCredentials } from '../helpers';
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 
@@ -88,7 +89,7 @@ export class Settings {
     cy.log('Set settings data');
     cy.esPost({
       endpoint: "_readonlyrest/admin/config",
-      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      credentials: userCredentials,
       payload: settings
     });
   }

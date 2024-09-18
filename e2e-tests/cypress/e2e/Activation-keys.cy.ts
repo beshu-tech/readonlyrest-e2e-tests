@@ -1,5 +1,6 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
+import { userCredentials } from '../support/helpers';
 
 // TODO:
 describe.skip('Activation key', () => {
@@ -11,7 +12,7 @@ describe.skip('Activation key', () => {
   afterEach(() => {
     cy.kbnPost({
       endpoint: "api/ror/license?overwrite=true",
-      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      credentials: userCredentials,
       payload: { license: `${Cypress.env().enterpriseActivationKey}` }
     });
   });

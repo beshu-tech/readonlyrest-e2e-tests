@@ -1,5 +1,5 @@
 import * as semver from 'semver';
-import { getKibanaVersion } from '../support/helpers';
+import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { KbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { use } from 'chai';
 
@@ -36,7 +36,7 @@ describe('Direct kibana request', () => {
 
       cy.log('Get imported saved objects for admin Administrators group');
       KbnApiAdvancedClient.instance
-        .getSavedObjects(`${Cypress.env().login}:${Cypress.env().password}`)
+        .getSavedObjects(userCredentials)
         .then(result => {
           expect(result.saved_objects[0].id).equal('my-pattern');
           expect(result.saved_objects[1].id).equal('my-dashboard');
@@ -70,7 +70,7 @@ describe('Direct kibana request', () => {
 
       cy.log('get all data_views for user1 infosec group');
       KbnApiAdvancedClient.instance
-        .getDataViews(`${Cypress.env().login}:${Cypress.env().password}`, "infosec_group")
+        .getDataViews(userCredentials, "infosec_group")
         .then(result => {
           const actual = result.data_view.some(saved_object => saved_object.id === 'logstash');
           // eslint-disable-next-line no-unused-expressions
