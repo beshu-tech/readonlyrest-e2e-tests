@@ -180,7 +180,15 @@ export class Impersonate {
 
   static setTestSettingsData() {
     cy.log('Initialize Test ACL data');
-    cy.post({ url: `${Cypress.env().elasticsearchUrl}/_readonlyrest/admin/config/test`, payload: testSettings });
-    cy.post({ url: `${Cypress.env().elasticsearchUrl}/_readonlyrest/admin/config/test/authmock`, payload: authMocks });
+    cy.esPost({
+      endpoint: "_readonlyrest/admin/config/test",
+      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      payload: testSettings
+    });
+    cy.esPost({
+      endpoint: "_readonlyrest/admin/config/test/authmock",
+      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      payload: authMocks
+    });
   }
 }

@@ -86,6 +86,10 @@ export class Settings {
 
   static setSettingsData(settings: Record<string, unknown>) {
     cy.log('Set settings data');
-    cy.post({ url: `${Cypress.env().elasticsearchUrl}/_readonlyrest/admin/config`, payload: settings });
+    cy.esPost({
+      endpoint: "_readonlyrest/admin/config",
+      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      payload: settings
+    });
   }
 }

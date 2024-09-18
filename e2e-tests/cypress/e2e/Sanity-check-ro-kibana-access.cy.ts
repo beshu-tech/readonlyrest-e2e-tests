@@ -11,9 +11,10 @@ describe('sanity check ro kibana access', () => {
 
   afterEach(() => {
     Settings.setSettingsData(defaultSettings);
-    cy.deleteRequest({
-      url: `${Cypress.config().baseUrl}/api/sample_data/ecommerce`,
-      header: 'x-ror-current-group: template_group'
+    cy.kbnDelete({
+      endpoint: "api/sample_data/ecommerce",
+      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
+      currentGroupHeader: "template_group"
     });
   });
 

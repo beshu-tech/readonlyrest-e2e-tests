@@ -2,7 +2,7 @@ export class SmartEsClient {
 
   static pruneAllReportingIndices() {
     cy.log('Pruning all reporting indices...');
-    cy.getRequest({ url: `${Cypress.env().elasticsearchUrl}/_cat/indices?format=json`, user: 'kibana:kibana' })
+    cy.esGet({ endpoint: "_cat/indices?format=json", credentials: Cypress.env().kibanaUserCredentials })
       .then((result: GetIndices[]) => {
         result
           .filter(index => index.index.startsWith('.reporting'))
@@ -15,29 +15,38 @@ export class SmartEsClient {
   }
 
   static deleteIndexDocsByQuery = (index: string) => {
-    SmartEsClient.callEsEndpointUsingKibanaUser(
-      "POST", `${index}/_delete_by_query`, `-H "Content-Type: application/json" -d '{"query": {"match_all": {}}}'`
-    )
+    cy.esPost({
+      endpoint: `${index}/_delete_by_query`,
+      credentials: Cypress.env().kibanaUserCredentials,
+      payload: {
+        query: {
+          match_all: {}
+        }
+      }
+    })
   }
 
   static refreshIndex = (index: string) => {
-    SmartEsClient.callEsEndpointUsingKibanaUser("POST", `${index}/_refresh`)
+    cy.esPost({
+      endpoint: `${index}/_refresh`,
+      credentials: Cypress.env().kibanaUserCredentials,
+    })
   }
 
   static deleteIndex = (index: string) => {
-    SmartEsClient.callEsEndpointUsingKibanaUser("DELETE", index)
+    cy.esDelete({
+      endpoint: index,
+      credentials: Cypress.env().kibanaUserCredentials
+    })
   }
 
-  static addDocument = (index: string, id: string, doc: Record<string, any>) => {
-    SmartEsClient.callEsEndpointUsingKibanaUser("POST", `${index}/_doc/${id}`, `-H "Content-Type: application/json" -d '${JSON.stringify(doc)}'`)
+  static addDocument = (index: string, id: string, doc: unknown) => {
+    cy.esPost({
+      endpoint: `${index}/_doc/${id}`,
+      credentials: Cypress.env().kibanaUserCredentials,
+      payload: doc
+    })
   }
-
-  static callEsEndpointUsingKibanaUser = (method: String, endpoint: String, curlParams: String = "") => {
-    cy.exec(
-      `curl -v -k -u kibana:kibana -H "kbn-xsrf: true" -X ${method} "${Cypress.env().elasticsearchUrl}/${endpoint}" ${curlParams}`
-    )
-  }
-  
 }
 
 export interface GetIndices {

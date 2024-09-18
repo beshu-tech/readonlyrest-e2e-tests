@@ -9,8 +9,9 @@ describe.skip('Activation key', () => {
   });
 
   afterEach(() => {
-    cy.post({
-      url: `"${Cypress.config().baseUrl}/api/ror/license?overwrite=true"`,
+    cy.kbnPost({
+      endpoint: "api/ror/license?overwrite=true",
+      credentials: `${Cypress.env().login}:${Cypress.env().password}`,
       payload: { license: `${Cypress.env().enterpriseActivationKey}` }
     });
   });

@@ -1,46 +1,40 @@
 export class SmartKbnClient {
 
   static deleteSavedObjects = (userPass: string, group?: string) => {
-    const requestOptions = group
-      ? { url: SmartKbnClient.getObjectsUrl(), user: userPass, header: `x-ror-current-group: ${group}` }
-      : { url: SmartKbnClient.getObjectsUrl(), user: userPass };
-
     cy.log(`Get all saved objects for the ${userPass}`);
-    cy.getRequest(requestOptions)
+    cy.kbnGet({ endpoint: SmartKbnClient.getObjectEndpoint(), credentials: userPass, currentGroupHeader: group })
       .then((result: GetObject) => {
         result.saved_objects.map(savedObject => {
           cy.log(`Remove ${savedObject.id} saved object for ${userPass}`);
-          cy.deleteRequest({
-            url: SmartKbnClient.deleteObjectUrl(savedObject.type, savedObject.id),
-            user: userPass,
-            ...(group && { header: `x-ror-current-group: ${group}` })
-          })
+          cy.kbnDelete({
+            endpoint: SmartKbnClient.deleteObjectEndpoint(savedObject.type, savedObject.id),
+            credentials: userPass,
+            currentGroupHeader: group
+          });
         });
-      }
-      );
+      });
   };
-
-
-  public static deleteDataView = id => `${Cypress.config().baseUrl}/api/data_views/data_view/${id}`;
 
   static deleteDataViews = (userPass: string) => {
     cy.log(`get all data_views for the ${userPass}`);
-    cy.getRequest({ url: `${Cypress.config().baseUrl}/api/data_views` }).then((result: DataViews) => {
+    cy.kbnGet({ endpoint: "api/data_views", credentials: userPass }).then((result: DataViews) => {
       result.data_view.map(dataView => {
         cy.log(`Remove ${dataView.id} saved object for ${userPass}`);
-        return cy.deleteRequest({
-          url: SmartKbnClient.deleteDataView(dataView.id),
-          user: userPass
+        return cy.kbnDelete({
+          endpoint: SmartKbnClient.deleteDataViewEndpoint(dataView.id),
+          credentials: userPass
         });
       });
     });
   };
 
-  public static getObjectsUrl = (type = '&type=visualization&type=dashboard&type=config') =>
-    `${Cypress.config().baseUrl}/api/saved_objects/_find?type=index-pattern&type=search&${type}`;
+  public static deleteDataViewEndpoint = id => `api/data_views/data_view/${id}`;
 
-  public static deleteObjectUrl = (type, id) =>
-    `${Cypress.config().baseUrl}/api/saved_objects/${type}/${id}`;
+  public static getObjectEndpoint = (type = '&type=visualization&type=dashboard&type=config') =>
+    `api/saved_objects/_find?type=index-pattern&type=search&${type}`;
+
+  public static deleteObjectEndpoint = (type, id) =>
+    `api/saved_objects/${type}/${id}`;
 
 }
 
