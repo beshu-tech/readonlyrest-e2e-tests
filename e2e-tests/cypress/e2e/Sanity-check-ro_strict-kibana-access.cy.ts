@@ -3,6 +3,8 @@ import { RoAndRoStrictKibanaAccessAssertions } from '../support/page-objects/RoA
 import roStrictSettings from '../fixtures/roStrictSettings.json';
 import { Settings } from '../support/page-objects/Settings';
 import defaultSettings from '../fixtures/defaultSettings.json';
+import { kbnApiClient, KbnApiClient } from '../support/helpers/KbnApiClient';
+import { userCredentials } from '../support/helpers';
 
 describe('sanity check ro_strict kibana access', () => {
   beforeEach(() => {
@@ -11,10 +13,7 @@ describe('sanity check ro_strict kibana access', () => {
 
   afterEach(() => {
     Settings.setSettingsData(defaultSettings);
-    cy.deleteRequest({
-      url: `${Cypress.config().baseUrl}/api/sample_data/ecommerce`,
-      header: 'x-ror-current-group: template_group'
-    });
+    kbnApiClient.deleteSampleData("ecommerce", userCredentials, "template_group");
   });
 
   it('should verify that everything works', () => {

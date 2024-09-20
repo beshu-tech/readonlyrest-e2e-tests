@@ -6,7 +6,8 @@ export default defineConfig({
     password: 'dev',
     kibanaVersion: 'KIBANA_VERSION_NOT_SET_YET',
     elasticsearchUrl: 'https://localhost:9200',
-    enterpriseActivationKey: 'PROVIDE_YOUR_ACTIVATION_KEY'
+    enterpriseActivationKey: 'PROVIDE_YOUR_ACTIVATION_KEY',
+    kibanaUserCredentials: "kibana:kibana"
   },
   video: true,
   screenshotOnRunFailure: true,

@@ -1,8 +1,8 @@
 import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { StackManagement } from '../support/page-objects/StackManagement';
-import { DirectKibanaRequest, GetObject } from '../support/page-objects/DirectKibanaRequest';
 import { getKibanaVersion } from '../support/helpers';
+import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 
 describe('Saved objects', () => {
   beforeEach(() => {
@@ -11,15 +11,7 @@ describe('Saved objects', () => {
   });
 
   afterEach(() => {
-    const clearSavedObjects = () => {
-      cy.getRequest({ url: DirectKibanaRequest.getObjectsUrl() }).then((result: GetObject) => {
-        result.saved_objects.map(savedObject =>
-          cy.deleteRequest({ url: DirectKibanaRequest.deleteObjectUrl(savedObject.type, savedObject.id) })
-        );
-      });
-    };
-
-    clearSavedObjects();
+    kbnApiAdvancedClient.deleteSavedObjects("admin:dev");
   });
 
   it('should display saved objects list', () => {

@@ -32,7 +32,11 @@ export class Discover {
   static exportToCsv() {
     cy.log('exportToCsv');
     cy.get('[data-test-subj=shareTopNavButton]').click();
-    cy.get('[data-test-subj=sharePanel-CSVReports]').click();
+    if (semver.gte(getKibanaVersion(), '8.15.0')) {
+      cy.get('[data-test-subj=export]').click();
+    } else {
+      cy.get('[data-test-subj=sharePanel-CSVReports]').click();
+    }
     cy.get('[data-test-subj=generateReportButton]').click();
     cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
     cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');
@@ -91,8 +95,8 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName);
     cy.contains('Next step').click();
     cy.get('[data-test-subj=createIndexPatternTimeFieldSelect]').select('@timestamp');
-    cy.get('[data-test-subj=createIndexPatternButton]').click({ force: true });
     cy.intercept('/s/default/api/saved_objects/index-pattern').as('indexPattern');
+    cy.get('[data-test-subj=createIndexPatternButton]').click({ force: true });
     cy.wait('@indexPattern');
   };
 
@@ -102,8 +106,8 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.contains('Select a timestamp field for use with the global time filter.');
     cy.get('[data-test-subj=timestampField]').click();
     cy.contains('@timestamp').click({ force: true });
-    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
     cy.intercept('/s/default/api/saved_objects/index-pattern').as('indexPattern');
+    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
     cy.wait('@indexPattern');
   };
 
@@ -127,13 +131,14 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.contains('Select a timestamp field for use with the global time filter.');
     cy.get('[data-test-subj=timestampField]').click();
     cy.contains('@timestamp').click({ force: true });
-    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
 
     if (semver.gte(getKibanaVersion(), '8.9.0')) {
       cy.intercept('/s/default/api/kibana/management/saved_objects/**').as('indexPattern');
     } else {
       cy.intercept('/s/default/api/saved_objects/**').as('indexPattern');
     }
+
+    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
 
     cy.wait('@indexPattern');
   };

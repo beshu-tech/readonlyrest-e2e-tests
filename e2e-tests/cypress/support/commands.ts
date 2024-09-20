@@ -1,46 +1,120 @@
 import '@testing-library/cypress/add-commands';
 import { isJsonString } from './helpers';
 
-Cypress.Commands.add('post', ({ url, user = `${Cypress.env().login}:${Cypress.env().password}`, payload }, ...args) => {
-  const escapedAndStringifyPayload = JSON.stringify(JSON.stringify(payload));
-
-  return cy
-    .exec(
-      `curl -v -k -H "Content-Type: application/json" -H "kbn-xsrf: true" -d ${escapedAndStringifyPayload}  -X POST ${url}  --user ${user}`
-    )
-    .then(result => {
-      console.log(url, result);
-      return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
-    });
+Cypress.Commands.add('kbnPost', ({ endpoint, credentials, payload, currentGroupHeader }, ...args) => {
+  const payloadCurlPart = `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+  cy.kbnRequest({
+    method: "POST",
+    endpoint: endpoint,
+    credentials: credentials,
+    options: currentGroupHeader ? `${payloadCurlPart} -H "x-ror-current-group: ${currentGroupHeader}"` : payloadCurlPart
+  })
 });
 
+Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) => 
+  cy.esRequest({
+    method: "POST",
+    endpoint: endpoint,
+    credentials: credentials,
+    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+  })
+);
+
+Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) => 
+  cy.kbnRequest({
+    method: "PUT",
+    endpoint: endpoint,
+    credentials: credentials,
+    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+  })
+);
+
+Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) => 
+  cy.esRequest({
+    method: "PUT",
+    endpoint: endpoint,
+    credentials: credentials,
+    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+  })
+);
+
 Cypress.Commands.add(
-  'import',
-  ({ url, filename, user = `${Cypress.env().login}:${Cypress.env().password}` }, ...args) =>
-    cy.exec(`curl -v -k -H "kbn-xsrf: true" --form file=@${filename}  -X POST "${url}" --user ${user}`).then(result => {
-      console.log(url, result);
-      return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
+  'kbnImport',
+  ({ endpoint, credentials, filename }, ...args) =>
+    cy.kbnRequest({
+      method: "POST",
+      endpoint: endpoint,
+      credentials: credentials,
+      options: `--form file=@${filename}`
     })
 );
 
 Cypress.Commands.add(
-  'getRequest',
-  ({ url, user = `${Cypress.env().login}:${Cypress.env().password}`, header }, ...args) =>
-    cy.exec(`curl -v -k "${url}"  --user ${user}  ${header ? `-H "${header}"` : ''}`).then(result => {
-      console.log(url, result);
-      return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
+  'kbnGet',
+  ({ endpoint, credentials, currentGroupHeader }, ...args) => 
+    cy.kbnRequest({
+      method: "GET",
+      endpoint: endpoint,
+      credentials: credentials,
+      options: currentGroupHeader ? `-H "x-ror-current-group: ${currentGroupHeader}"` : undefined
+    })
+)
+
+Cypress.Commands.add(
+  'esGet',
+  ({ endpoint, credentials }, ...args) => 
+    cy.esRequest({
+      method: "GET",
+      endpoint: endpoint,
+      credentials: credentials
     })
 );
 
 Cypress.Commands.add(
-  'deleteRequest',
-  ({ url, header, user = `${Cypress.env().login}:${Cypress.env().password}` }, ...args) =>
+  'kbnDelete',
+  ({ endpoint, credentials, currentGroupHeader }, ...args) =>
+    cy.kbnRequest({
+      method: "DELETE",
+      endpoint: endpoint,
+      credentials: credentials,
+      options: currentGroupHeader ? `-H "x-ror-current-group: ${currentGroupHeader}"` : undefined
+    })
+);
+
+Cypress.Commands.add(
+  'esDelete',
+  ({ endpoint, credentials }, ...args) =>
+    cy.esRequest({
+      method: "DELETE",
+      endpoint: endpoint,
+      credentials: credentials
+    })
+);
+
+Cypress.Commands.add(
+  'kbnRequest',
+  ({ method, endpoint, credentials, options}) => {
+    const url = `${Cypress.config().baseUrl}/${endpoint}`
     cy
-      .exec(`curl  -H "kbn-xsrf: true" -v -k -X DELETE "${url}"  --user ${user} ${header ? `-H "${header}"` : ''}`)
+      .exec(`curl  -H "kbn-xsrf: true" -v -k -X ${method} "${url}" --user ${credentials} ${options || ""}`)
       .then(result => {
         console.log(url, result);
         return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
       })
+  }
+);
+
+Cypress.Commands.add(
+  'esRequest',
+  ({ method, endpoint, credentials, options }) => {
+    const url = `${Cypress.env().elasticsearchUrl}/${endpoint}`
+    cy
+      .exec(`curl  -H "kbn-xsrf: true" -v -k -X ${method} "${url}" --user ${credentials} ${options || ""}`)
+      .then(result => {
+        console.log(url, result);
+        return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
+      })
+  }
 );
 
 Cypress.on('uncaught:exception', (err, runnable) => {
@@ -53,7 +127,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
     err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
     err.message.includes("Cannot read properties of undefined (reading 'includes')") || // kibana 8.7.0 throws this error
-    err.message.includes('Markdown content is required in [readOnly] mode') // kibana 8.13.0 throws this error on sample data canvas open
+    err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
+    err.message.includes('e.toSorted is not a function') // kibana 8.15.0 throws this error on report generation
   ) {
     return false;
   }
