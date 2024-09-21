@@ -12,7 +12,7 @@
   "license": "Beshu Limited, All rights reserved",
   "dependencies": {
     "@testing-library/cypress": "^10.0.1",
-    "cypress": "13.14.2",
+    "cypress": "12.17.4",
     "semver": "7.5.2"
   },
   "devDependencies": {
