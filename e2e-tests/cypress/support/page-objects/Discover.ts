@@ -119,7 +119,6 @@ export class Discover {
   static generateCsvReport() {
     cy.log('generateCsvReport');
 
-    cy.wait(1500);
 
     // Click the share button to open the sharing options if it is not opened
 
@@ -135,6 +134,11 @@ export class Discover {
 
     // Click the "Generate report" button
     cy.get('[data-test-subj="generateReportButton"]').click();
+
+    cy.contains('Queued report for search', {timeout: 60000}).should('be.visible');
+
+    // close the toast with the message
+    cy.get('[data-test-subj="toastCloseButton"]').first().click();
   }
 }
 

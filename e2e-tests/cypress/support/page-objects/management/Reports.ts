@@ -13,72 +13,49 @@ export class Reports {
       }
 
       // Now, click on Reporting (whether we were already on Stack Management or not)
-      cy.contains('Reporting').click({timeout: 10000});
+      cy.contains('Reporting').click();
     });
   }
 
   static checkAllReports(reportTitle: string = 'Untitled discover search') {
     cy.log('waitForAllReportsToBeDone');
 
-    cy.get('tr[data-test-subj="reportJobRow"]')
-      .then($reportItems => {
-        // Convert the jQuery object to an array and reverse it
-        const reversedReportItems = Cypress.$($reportItems.get().reverse());
-
-        // Iterate over the reversed array
-        cy.wrap(reversedReportItems).each($reportItem => {
-          cy.wrap($reportItem)
-            .find('[data-test-subj="reportingListItemObjectTitle"]')
-            .should('contain.text', reportTitle);
-
-          cy.wrap($reportItem)
-            .find('[data-test-subj="reportJobStatus"]')
-            .contains(/Done|Completed/, {timeout: 60000})
-            .should('be.visible').then($status => {
-          });
-        });
+    cy.get('tr[data-test-subj="reportJobRow"]', {timeout: 10000})
+      .each($reportItem => {
+        Reports.checkReportItem($reportItem, reportTitle);
       })
       .then($matchingReports => {
         expect($matchingReports).to.have.length(10);
       });
   }
 
+  static checkReportItem($reportItem: JQuery<HTMLElement>, reportTitle: string) {
+    cy.wrap($reportItem)
+      .find('[data-test-subj="reportingListItemObjectTitle"]', {timeout: 10000})
+      .should('contain.text', reportTitle);
+
+    cy.wrap($reportItem)
+      .find('[data-test-subj="reportJobStatus"]')
+      .contains(/Done|Completed/, {timeout: 240000})
+      .should('be.visible');
+  }
+
+
   static verifyNoReports() {
     cy.log('verifyNoReports');
 
     // Assert that there are no report rows present
-    cy.get('tr[data-test-subj="reportJobRow"]').should('not.exist');
+    cy.get('[data-test-subj="reportingListItemObjectTitle"]', {timeout: 10000}).should('not.exist');
   }
 
   static deleteAllReports(reportTitle: string = 'Untitled discover search') {
     cy.log('deleteAllReports');
 
-    // 1. Navigate to the Reporting page
-    Reports.navigateTo();
-
-    // 2. Check if there are any reports and if "Select All" is enabled
-    cy.wait(5000);
-    cy.get('body').then($body => {
-      const hasReports = $body.find('tr[data-test-subj="reportJobRow"]').length > 0;
-      const selectAllEnabled = $body.find('[data-test-subj="checkboxSelectAll"]').prop('checked') !== undefined; // Check if the checkbox exists and is enabled
-
-      if (hasReports) {
-        if (selectAllEnabled) {
-          // If "Select All" is enabled, delete all reports directly
-          cy.log('Deleting all reports using "Select All"');
-
-          // Select all reports
-          cy.get('[data-test-subj="checkboxSelectAll"]').check({force: true});
-
-          // Click the "Delete" button
-          cy.get('[data-test-subj="deleteReportButton"]').click({force: true});
-
-          // Confirm the deletion in the modal
-          cy.get('[data-test-subj="confirmModalConfirmButton"]').click({force: true});
-        }
-      } else {
-        cy.log('No reports found - nothing to delete');
-      }
-    });
+    // Use curl command to remove the reporting index
+    const elasticsearchUrl = Cypress.env('elasticsearchUrl');
+    cy.exec(`curl -X DELETE "${ elasticsearchUrl }/reporting" -u kibana:kibana`)
+      .then(response => {
+        cy.log('All reports deleted');
+      });
   }
 }
