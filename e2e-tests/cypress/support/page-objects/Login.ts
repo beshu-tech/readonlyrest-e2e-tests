@@ -6,14 +6,13 @@ export class Login {
       sessionStorage.setItem('ror:ignoreKeyExpirationInfo', 'true');
       localStorage.setItem('home:welcome:show', 'false');
     });
-    cy.visit(Cypress.config().baseUrl);
-    cy.wait(1000);
+    cy.visit(Cypress.config().baseUrl, { timeout: 60000 });
     Login.signIn();
     Loader.loading();
   }
 
   static signIn() {
-    cy.visit(Cypress.config().baseUrl);
+    cy.visit(Cypress.config().baseUrl, { timeout: 60000 });
     Login.fillLoginPage();
   }
 
@@ -31,17 +30,18 @@ export class Login {
   }
 
   static signOut() {
-    cy.visit(Cypress.config().baseUrl);
-    Loader.loading();
-    cy.get('#rorMenuPopover', {timeout: 1000}).click()
-      .then($userMenu => {
-        if ($userMenu.length > 0) {
-          cy.contains('button', 'Log out').click({force: true});
-          cy.log("User Sign out");
-        } else {
-          cy.log("User wasn't sign in");
-        }
-      });
+  cy.visit(`${Cypress.config().baseUrl}/logout`, { timeout: 60000 });
+  //   cy.get('[data-test-subj="logo"]').click( {force: true, timeout: 20000} );
+  //   cy.wait(10000);
+  //   cy.get('#rorMenuPopover', {timeout: 1000}).click()
+  //     .then($userMenu => {
+  //       if ($userMenu.length > 0) {
+  //         cy.contains('button', 'Log out').click({force: true});
+  //         cy.log("User Sign out");
+  //       } else {
+  //         cy.log("User wasn't sign in");
+  //       }
+  //     });
   }
 
   static setLogin(user: string) {

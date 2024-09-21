@@ -56,9 +56,9 @@ function handleBulkResponse(response: string | undefined): void {
     items.forEach((item: any) => {
       const createResult = item.create;
       if (createResult.status === 201) {
-        console.log(`Invoice ${ createResult._id } created successfully.`);
+        console.log(`Invoice ${createResult._id} created successfully.`);
       } else {
-        console.error(`Failed to create invoice ${ createResult._id }: ${ createResult.error.reason }`);
+        console.error(`Failed to create invoice ${createResult._id}: ${createResult.error.reason}`);
       }
     });
   } catch (error) {
@@ -140,17 +140,16 @@ export async function dataPut(count: number, indexName: string, chunkSize: numbe
       await Promise.all(batch.map((chunk, index) => processChunk(chunk, i + index)));
     }
   };
-
-  const indexExists = await checkIndexExists(indexName);
+  const [indexExists] = await Promise.all([checkIndexExists(indexName)]);
   cy.log(`Index ${indexName} exists: ${indexExists}`);
   if (!indexExists) {
     await createIndex(indexName);
   }
 
   const startTime = Date.now();
-  await processChunksInBatches(chunks, 100);
+  await processChunksInBatches(chunks, 500);
   const endTime = Date.now();
-  const duration = endTime - startTime;
+  const duration = (endTime - startTime) / 1000; // Convert to seconds
   cy.log(`All requests completed in ${duration} seconds.`);
 }
 

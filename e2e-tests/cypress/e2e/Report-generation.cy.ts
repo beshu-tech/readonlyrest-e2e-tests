@@ -8,8 +8,10 @@ describe('Report Generation', () => {
   const indexName: string = 'invoices';
   const searchName: string = `${ indexName } search`;
 
+
   before(() => {
-    dataPut(100000, indexName);
+    dataPut(500000, indexName);
+
   });
 
   beforeEach(() => {
@@ -32,6 +34,7 @@ describe('Report Generation', () => {
 
     Discover.selectDataView(indexName);
     Discover.saveSearch(searchName);
+
     for (let i = 0; i < 10; i++) {
       Discover.generateCsvReport();
     }
@@ -39,6 +42,16 @@ describe('Report Generation', () => {
     // Go to Reports and check if all reports are not empty
     Reports.navigateTo();
     Reports.checkAllReports(searchName);
+
+    for (let i = 0; i < 10; i++) {
+      cy.log('Checking for toast');
+      cy.get('body').then($body => {
+        if ($body.find('[data-test-subj="toastCloseButton"]').length > 0) {
+          cy.get('[aria-label="Dismiss toast"]').last().click({force: true});
+        }
+      });
+      cy.wait(100);
+    }
 
     Login.signOut();
 
