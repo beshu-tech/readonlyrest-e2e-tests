@@ -1,4 +1,5 @@
 import { userCredentials } from '../helpers';
+import { rorApiClient } from '../helpers/RorApiClient';
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 
@@ -85,6 +86,11 @@ export class Settings {
     return SecuritySettings.getIframeBody().contains('Malformed settings');
   }
 
+  static setSettingsData2(fixtureYamlSettingsFileName: string) {
+    cy.log('Set settings data from file ' + fixtureYamlSettingsFileName);
+    rorApiClient.configureRorIndexSettings(fixtureYamlSettingsFileName)
+  }
+  
   static setSettingsData(settings: Record<string, unknown>) {
     cy.log('Set settings data');
     cy.esPost({

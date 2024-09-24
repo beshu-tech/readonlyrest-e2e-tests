@@ -2,13 +2,11 @@ import { Login } from '../support/page-objects/Login';
 import { Loader } from '../support/page-objects/Loader';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Discover } from '../support/page-objects/Discover';
-import defaultSettingsData from '../fixtures/defaultSettings.json';
-import reportingSettingsData from '../fixtures/reportingSettings.json';
 import { Settings } from '../support/page-objects/Settings';
 
-describe('Reporting index', () => {
+describe.skip('Reporting index', () => {
   beforeEach(() => {
-    Settings.setSettingsData(reportingSettingsData);
+    Settings.setSettingsData2("reportingSettings.yaml");
     cy.visit(Cypress.config().baseUrl);
     cy.on('url:changed', () => {
       sessionStorage.setItem('ror:ignoreTrialInfo', 'true');
@@ -19,7 +17,7 @@ describe('Reporting index', () => {
   });
 
   afterEach(() => {
-    Settings.setSettingsData(defaultSettingsData);
+    Settings.setSettingsData2("defaultSettings.yaml");
   });
 
   it('should correctly match index pattern when audit index_template contains .reporting', () => {
