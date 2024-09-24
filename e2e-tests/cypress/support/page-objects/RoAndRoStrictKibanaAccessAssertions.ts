@@ -11,10 +11,10 @@ import { IndexPattern } from './IndexPattern';
 import { getKibanaVersion } from '../helpers';
 
 export class RoAndRoStrictKibanaAccessAssertions {
-  static runAssertions(settings: { settings: string }) {
+  static runAssertions(fixtureYamlFileName: string) {
     RorMenu.changeTenancy('template', '/app/home#/');
     Home.loadSampleData();
-    Settings.setSettingsData(settings);
+    Settings.setSettingsData(fixtureYamlFileName);
     RorMenu.changeTenancy('administrators', '/app/home#/');
     RorMenu.changeTenancy('template', '/app/home#/');
     Home.loadSampleDataButtonHidden();

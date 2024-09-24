@@ -1,9 +1,10 @@
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
-import testSettings from '../../fixtures/testSettings.json';
 import authMocks from '../../fixtures/authMocks.json';
 import { userCredentials } from '../helpers';
+import { rorApiClient } from '../helpers/RorApiClient';
+import { debug } from 'console';
 
 export class Impersonate {
   static open() {
@@ -179,17 +180,9 @@ export class Impersonate {
     cy.get('[data-testid=automatically-deactivate]').should('not.exist');
   }
 
-  static setTestSettingsData() {
+  static setTestSettingsData(): Cypress.Chainable<void> {
     cy.log('Initialize Test ACL data');
-    cy.esPost({
-      endpoint: "_readonlyrest/admin/config/test",
-      credentials: userCredentials,
-      payload: testSettings
-    });
-    cy.esPost({
-      endpoint: "_readonlyrest/admin/config/test/authmock",
-      credentials: userCredentials,
-      payload: authMocks
-    });
+    rorApiClient.configureRorIndexTestSettings("testSettings.yaml", 30 * 60)
+    return rorApiClient.configureRorAuthMockSettings("authMocks.json")
   }
 }

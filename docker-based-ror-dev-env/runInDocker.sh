@@ -31,9 +31,7 @@ fi
 docker run --rm $DIND_OPTIONS $DOCKER_RUN_OPTIONS \
   -e ROR_ACTIVATION_KEY="$ROR_ACTIVATION_KEY" \
   -v ./../e2e-tests:/app/e2e-tests \
-  -v ./../elk-ror:/app/elk-ror \
+  -v ./../enviroments/elk-ror:/app/enviroments/elk-ror \
   -v ./../results:/app/results \
-  -v ./../run.sh:/app/run.sh \
-  -v ./../run-7x.sh:/app/run-7x.sh \
-  -v ./../run-8x.sh:/app/run-8x.sh \
+  -v ./../run-env-and-tests.sh:/app/run-env-and-tests.sh \
   e2e-tests-dev-env:"$DOCKER_BASED_ROR_DEV_ENV_HASH" "$COMMAND"

@@ -1,4 +1,5 @@
 import { userCredentials } from '../helpers';
+import { rorApiClient } from '../helpers/RorApiClient';
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 
@@ -85,12 +86,9 @@ export class Settings {
     return SecuritySettings.getIframeBody().contains('Malformed settings');
   }
 
-  static setSettingsData(settings: Record<string, unknown>) {
-    cy.log('Set settings data');
-    cy.esPost({
-      endpoint: "_readonlyrest/admin/config",
-      credentials: userCredentials,
-      payload: settings
-    });
+  static setSettingsData(fixtureYamlSettingsFileName: string) {
+    cy.log('Set settings data from file ' + fixtureYamlSettingsFileName);
+    rorApiClient.configureRorIndexMainSettings(fixtureYamlSettingsFileName)
   }
+
 }

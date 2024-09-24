@@ -1,0 +1,50 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: ${ES_VERSION}
+  image: beshultd/elasticsearch-readonlyrest:${ES_VERSION}-ror-latest
+  nodeSets:
+    - name: default
+      count: 1
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              securityContext:
+                runAsNonRoot: false
+                runAsUser: 0
+                runAsGroup: 0
+              env:
+                - name: I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING
+                  value: "yes"
+                - name: INTERNAL_USR_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: quickstart-es-internal-users
+                      key: elastic-internal
+                - name: INTERNAL_PROBE_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: quickstart-es-internal-users
+                      key: elastic-internal-probe
+                - name: KIBANA_SERVICE_ACCOUNT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: quickstart-kibana-user
+                      key: ${QUICK_KIBANA_USER_SECRET_KEY}   
+              volumeMounts:
+                - name: config-ror
+                  mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
+                  subPath: readonlyrest.yml
+                - name: config-log4j2
+                  mountPath: /usr/share/elasticsearch/config/log4j2.properties
+                  subPath: log4j2.properties
+          volumes:
+            - name: config-ror
+              configMap:
+                name: config-readonlyrest.yml
+            - name: config-log4j2
+              configMap:
+                name: config-log4j2.properties.yml

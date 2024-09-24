@@ -9,10 +9,10 @@ npm i -g yarn
 
 case "$1" in
     e2e-tests-7x )
-      /app/run-7x.sh
+      /app/run-env-and-tests.sh "7.17.24" "docker"
       ;;
     e2e-tests-8x )
-      /app/run-8x.sh
+      /app/run-env-and-tests.sh "8.15.2" "docker"
       ;;
     bash )
       bash

@@ -26,7 +26,7 @@ export class EsApiClient {
     })
   }
 
-  public addDocument(index: string, id: string, doc: unknown): void {
+  public addDocument(index: string, id: string, doc: object): void {
     cy.esPost({
       endpoint: `${index}/_doc/${id}`,
       credentials: Cypress.env().kibanaUserCredentials,
