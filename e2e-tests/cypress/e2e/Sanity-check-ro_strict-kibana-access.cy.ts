@@ -3,7 +3,7 @@ import { RoAndRoStrictKibanaAccessAssertions } from '../support/page-objects/RoA
 import roStrictSettings from '../fixtures/roStrictSettings.json';
 import { Settings } from '../support/page-objects/Settings';
 import defaultSettings from '../fixtures/defaultSettings.json';
-import { kbnApiClient, KbnApiClient } from '../support/helpers/KbnApiClient';
+import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { userCredentials } from '../support/helpers';
 
 describe('sanity check ro_strict kibana access', () => {

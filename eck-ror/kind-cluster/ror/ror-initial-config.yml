@@ -4,7 +4,6 @@ data:
 
       helpers:
         cr: &common-rules
-          verbosity: error
           kibana_access: rw
           kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
           kibana_index: ".kibana_@{acl:current_group}"
@@ -27,8 +26,7 @@ data:
           enabled: true
           outputs:
           - type: index
-            serializer: tech.beshu.ror.requestcontext.QueryAuditLogSerializer
-            index_template: "'readonlyrest_audit-'-yyyy-MM-dd"
+            index_template: "'readonlyrest_audit_'yyyy-MM-dd"
       
         access_control_rules:
       
@@ -83,7 +81,6 @@ data:
             access: rw
           indices: [ "invoices" ]
       
-        # USERS TO GROUPS ############
         users:
         - username: admin
           auth_key: admin:dev
