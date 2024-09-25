@@ -8,7 +8,7 @@ export class KbnApiClient {
     });
   }
 
-  public createDataView(dataView: unknown, credentials: string, group?: string): void {
+  public createDataView(dataView: object, credentials: string, group?: string): void {
     cy.kbnPost({
       endpoint: "api/data_views/data_view",
       credentials: credentials,

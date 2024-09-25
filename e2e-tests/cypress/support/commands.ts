@@ -2,67 +2,66 @@ import '@testing-library/cypress/add-commands';
 import { isJsonString } from './helpers';
 
 Cypress.Commands.add('kbnPost', ({ endpoint, credentials, payload, currentGroupHeader }, ...args) => {
-  const payloadCurlPart = `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
   cy.kbnRequest({
     method: "POST",
     endpoint: endpoint,
     credentials: credentials,
-    options: currentGroupHeader ? `${payloadCurlPart} -H "x-ror-current-group: ${currentGroupHeader}"` : payloadCurlPart
+    payload: payload,
+    currentGroupHeader: currentGroupHeader
   })
 });
 
-Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) => 
+Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
   cy.esRequest({
     method: "POST",
     endpoint: endpoint,
     credentials: credentials,
-    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+    payload: payload
   })
 );
 
-Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) => 
+Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) =>
   cy.kbnRequest({
     method: "PUT",
     endpoint: endpoint,
     credentials: credentials,
-    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+    payload: payload
   })
 );
 
-Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) => 
+Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
   cy.esRequest({
     method: "PUT",
     endpoint: endpoint,
     credentials: credentials,
-    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+    payload: payload
   })
 );
 
 Cypress.Commands.add(
   'kbnImport',
-  ({ endpoint, credentials, filename }, ...args) =>
-    cy.kbnRequest({
-      method: "POST",
-      endpoint: endpoint,
-      credentials: credentials,
-      options: `--form file=@${filename}`
-    })
+  ({ endpoint, credentials, fixtureFilename }, ...args) =>
+    uploadFile(
+      `${Cypress.config().baseUrl}/${endpoint}`,
+      credentials,
+      fixtureFilename
+    )
 );
 
 Cypress.Commands.add(
   'kbnGet',
-  ({ endpoint, credentials, currentGroupHeader }, ...args) => 
+  ({ endpoint, credentials, currentGroupHeader }, ...args) =>
     cy.kbnRequest({
       method: "GET",
       endpoint: endpoint,
       credentials: credentials,
-      options: currentGroupHeader ? `-H "x-ror-current-group: ${currentGroupHeader}"` : undefined
+      currentGroupHeader: currentGroupHeader
     })
 )
 
 Cypress.Commands.add(
   'esGet',
-  ({ endpoint, credentials }, ...args) => 
+  ({ endpoint, credentials }, ...args) =>
     cy.esRequest({
       method: "GET",
       endpoint: endpoint,
@@ -77,7 +76,7 @@ Cypress.Commands.add(
       method: "DELETE",
       endpoint: endpoint,
       credentials: credentials,
-      options: currentGroupHeader ? `-H "x-ror-current-group: ${currentGroupHeader}"` : undefined
+      currentGroupHeader: currentGroupHeader
     })
 );
 
@@ -93,29 +92,57 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   'kbnRequest',
-  ({ method, endpoint, credentials, options}) => {
-    const url = `${Cypress.config().baseUrl}/${endpoint}`
-    cy
-      .exec(`curl  -H "kbn-xsrf: true" -v -k -X ${method} "${url}" --user ${credentials} ${options || ""}`)
-      .then(result => {
-        console.log(url, result);
-        return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
-      })
+  ({ method, endpoint, credentials, payload, currentGroupHeader }) => {
+    const customHeaders: { [key: string]: string } = { "kbn-xsrf": "true" };
+    if (currentGroupHeader) {
+      customHeaders['x-ror-current-group'] = currentGroupHeader;
+    }
+    call(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders)
   }
 );
 
 Cypress.Commands.add(
   'esRequest',
-  ({ method, endpoint, credentials, options }) => {
-    const url = `${Cypress.env().elasticsearchUrl}/${endpoint}`
-    cy
-      .exec(`curl  -H "kbn-xsrf: true" -v -k -X ${method} "${url}" --user ${credentials} ${options || ""}`)
-      .then(result => {
-        console.log(url, result);
-        return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
-      })
+  ({ method, endpoint, credentials, payload }) => {
+    call(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload)
   }
 );
+
+function call(method: string, url: string, credentials: string, payload?: Cypress.RequestBody, headers?: { [key: string]: string }) {
+  cy.request({
+    method: method,
+    url: url,
+    headers: {
+      authorization: `Basic ${btoa(credentials)}`,
+      ...headers 
+    },
+    body: payload || null
+  }).then((response) => {
+    expect(response.status).to.be.within(200, 299);
+
+    return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
+  })
+}
+
+function uploadFile(url: string, credentials: string, fixtureFilename: string, headers?: { [key: string]: string }) {
+  cy.fixture(fixtureFilename, 'base64').then((fileContent) => {
+    const formData = new FormData();
+    formData.append('file', Cypress.Blob.base64StringToBlob(fileContent, 'application/octet-stream'), fixtureFilename);
+
+    cy.request({
+      method: "POST",
+      url: url,
+      headers: {
+        authorization: `Basic ${btoa(credentials)}`,
+        headers
+      },
+      body: formData,
+    }).then((response) => {
+      expect(response.status).to.be.within(200, 299);
+      return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
+    });
+  });
+}
 
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**

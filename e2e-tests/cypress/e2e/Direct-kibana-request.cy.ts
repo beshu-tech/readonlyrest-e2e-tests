@@ -24,7 +24,7 @@ describe('Direct kibana request', () => {
       cy.kbnImport({
         endpoint: "api/saved_objects/_import?overwrite=true",
         credentials: user,
-        filename: 'cypress/fixtures/file.ndjson'
+        fixtureFilename: 'file.ndjson'
       });
 
       cy.log('Get imported saved objects for user1 Administrators group');

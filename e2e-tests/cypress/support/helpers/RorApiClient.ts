@@ -6,7 +6,7 @@ export class RorApiClient {
         endpoint: "_readonlyrest/admin/config",
         credentials: Cypress.env().kibanaUserCredentials,
         payload: {
-          settings: `${JSON.stringify(JSON.stringify(yamlContent))}`
+          settings: `${yamlContent}`
         }
       });
     });

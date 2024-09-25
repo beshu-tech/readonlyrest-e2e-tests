@@ -10,7 +10,7 @@ describe('sanity check ro kibana access', () => {
   });
 
   afterEach(() => {
-    Settings.setSettingsData2("defaultSettings.yaml");
+    Settings.setSettingsData("defaultSettings.yaml");
     kbnApiClient.deleteSampleData("ecommerce", userCredentials, "template_group");
   });
 

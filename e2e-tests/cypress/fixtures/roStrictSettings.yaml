@@ -20,7 +20,7 @@ readonlyrest:
     enabled: true
     outputs:
       - type: index
-        index_template: "'readonlyrest_audit'-yyyy-MM-dd"
+        index_template: "'readonlyrest_audit_'yyyy-MM-dd"
 
   access_control_rules:
     

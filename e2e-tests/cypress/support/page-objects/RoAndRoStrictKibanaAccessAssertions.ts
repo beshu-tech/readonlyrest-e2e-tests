@@ -14,7 +14,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
   static runAssertions(fixtureYamlFileName: string) {
     RorMenu.changeTenancy('template', '/app/home#/');
     Home.loadSampleData();
-    Settings.setSettingsData2(fixtureYamlFileName);
+    Settings.setSettingsData(fixtureYamlFileName);
     RorMenu.changeTenancy('administrators', '/app/home#/');
     RorMenu.changeTenancy('template', '/app/home#/');
     Home.loadSampleDataButtonHidden();
