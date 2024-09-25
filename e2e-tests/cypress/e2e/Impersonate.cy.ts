@@ -1,9 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { Impersonate } from '../support/page-objects/Impersonate';
 import { SecuritySettings } from '../support/page-objects/SecuritySettings';
-import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { TestSettings } from '../support/page-objects/TestSettings';
-import { Settings } from '../support/page-objects/Settings';
 
 describe('impersonate', () => {
   beforeEach(() => {

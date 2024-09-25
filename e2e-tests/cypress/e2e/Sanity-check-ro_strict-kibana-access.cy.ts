@@ -11,7 +11,7 @@ describe('sanity check ro_strict kibana access', () => {
 
   afterEach(() => {
     Settings.setSettingsData("defaultSettings.yaml");
-    kbnApiClient.deleteSampleData("ecommerce", userCredentials);
+    kbnApiClient.deleteSampleData("ecommerce", userCredentials, "template_group");
   });
 
   it('should verify that everything works', () => {

@@ -44,7 +44,8 @@ Cypress.Commands.add(
     uploadFile(
       `${Cypress.config().baseUrl}/${endpoint}`,
       credentials,
-      fixtureFilename
+      fixtureFilename,
+      { "kbn-xsrf": "true" }
     )
 );
 
@@ -114,7 +115,7 @@ function call(method: string, url: string, credentials: string, payload?: Cypres
     url: url,
     headers: {
       authorization: `Basic ${btoa(credentials)}`,
-      ...headers 
+      ...headers
     },
     body: payload || null
   }).then((response) => {
@@ -129,14 +130,20 @@ function uploadFile(url: string, credentials: string, fixtureFilename: string, h
     const formData = new FormData();
     formData.append('file', Cypress.Blob.base64StringToBlob(fileContent, 'application/octet-stream'), fixtureFilename);
 
+    // Prepare headers
+    const requestHeaders = {
+      authorization: `Basic ${btoa(credentials)}`,
+      ...(headers || {}) // Spread additional headers directly into requestHeaders
+    };
+
     cy.request({
       method: "POST",
       url: url,
-      headers: {
-        authorization: `Basic ${btoa(credentials)}`,
-        headers
-      },
+      headers: requestHeaders,
       body: formData,
+      // You might want to comment this out unless you're sure it should be sent
+      // contentType: false, // This tells Cypress not to set the content-type, allowing FormData to set it
+      // failOnStatusCode: false // Uncomment if you want to ignore 4xx/5xx responses temporarily
     }).then((response) => {
       expect(response.status).to.be.within(200, 299);
       return isJsonString(response.body) ? JSON.parse(response.body) : response.body;

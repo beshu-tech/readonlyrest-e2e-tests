@@ -1,9 +1,9 @@
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
-import testSettings from '../../fixtures/testSettings.json';
 import authMocks from '../../fixtures/authMocks.json';
 import { userCredentials } from '../helpers';
+import { rorApiClient } from '../helpers/RorApiClient';
 
 export class Impersonate {
   static open() {
@@ -181,15 +181,7 @@ export class Impersonate {
 
   static setTestSettingsData() {
     cy.log('Initialize Test ACL data');
-    cy.esPost({
-      endpoint: "_readonlyrest/admin/config/test",
-      credentials: userCredentials,
-      payload: testSettings
-    });
-    cy.esPost({
-      endpoint: "_readonlyrest/admin/config/test/authmock",
-      credentials: userCredentials,
-      payload: authMocks
-    });
+    rorApiClient.configureRorIndexTestSettings("testSettings.yaml")
+    rorApiClient.configureRorAuthMockSettings("authMocks.json")
   }
 }
