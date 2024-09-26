@@ -30,9 +30,3 @@ RUN \
 USER kibana
 
 COPY elk-ror/conf/kbn/kibana.yml /usr/share/kibana/config/kibana.yml
-COPY elk-ror/conf/kbn/custom_kibana.css /usr/share/kibana
-COPY elk-ror/conf/kbn/custom_kibana.js /usr/share/kibana
-COPY elk-ror/conf/kbn/custom_login.css /usr/share/kibana
-COPY elk-ror/conf/kbn/custom_login.js /usr/share/kibana
-COPY elk-ror/conf/kbn/custom_middleware_default_tenant_file.js /usr/share/kibana
-COPY elk-ror/conf/kbn/custom_middleware_file.js /usr/share/kibana

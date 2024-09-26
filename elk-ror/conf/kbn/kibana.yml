@@ -9,6 +9,7 @@ csp.warnLegacyBrowsers: false
 elasticsearch.hosts: [ "${ES_API_URL}" ]
 elasticsearch.username: kibana
 elasticsearch.password: kibana
+elasticsearch.ssl.verificationMode: none
 elasticsearch.pingTimeout: 3000 # default: 30000
 elasticsearch.requestTimeout: 30000
 

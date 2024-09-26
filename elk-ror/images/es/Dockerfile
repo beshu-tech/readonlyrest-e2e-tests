@@ -16,3 +16,4 @@ USER elasticsearch
 COPY elk-ror/conf/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY elk-ror/conf/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
 COPY elk-ror/conf/es/log4j2.properties /usr/share/elasticsearch/config/log4j2.properties
+COPY elk-ror/conf/es/ror-keystore.jks /usr/share/elasticsearch/config/ror-keystore.jks
