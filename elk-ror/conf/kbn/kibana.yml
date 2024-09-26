@@ -13,6 +13,13 @@ elasticsearch.ssl.verificationMode: none
 elasticsearch.pingTimeout: 3000 # default: 30000
 elasticsearch.requestTimeout: 30000
 
+# generated with:
+# $ openssl req -x509 -batch -nodes -days 3650 -newkey rsa:2048 -keyout kibana.key -out kibana.crt
+server.ssl.enabled: true
+server.ssl.certificate: /usr/share/kibana/config/kibana.crt
+server.ssl.key: /usr/share/kibana/config/kibana.key
+server.ssl.redirectHttpFromPort: 80
+
 xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!"
 xpack.reporting.encryptionKey: "321421321211231241232132132132132"
 

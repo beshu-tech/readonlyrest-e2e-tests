@@ -30,3 +30,5 @@ RUN \
 USER kibana
 
 COPY elk-ror/conf/kbn/kibana.yml /usr/share/kibana/config/kibana.yml
+COPY elk-ror/conf/kbn/kibana.key /usr/share/kibana/config/kibana.key
+COPY elk-ror/conf/kbn/kibana.crt /usr/share/kibana/config/kibana.crt
