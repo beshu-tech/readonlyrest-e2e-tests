@@ -1,6 +1,7 @@
 server.name: "kibana-ror-${HOSTNAME}"
 server.host: 0.0.0.0
 server.port: 5601
+server.publicBaseUrl: "http://localhost:5601"
 
 # csp needs to be disabled to let cypress e2e tests works
 csp.strict: false
@@ -27,6 +28,5 @@ telemetry.enabled: false
 
 readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
-  logLevel: info
-
+  logLevel: trace
   store_sessions_in_index: true

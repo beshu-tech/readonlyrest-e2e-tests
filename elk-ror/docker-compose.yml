@@ -50,10 +50,12 @@ services:
         condition: service_healthy
     deploy:
       mode: replicated
-      replicas: 3
+      replicas: 1
       resources:
         limits:
           memory: 756G 
+    ports:
+      - "15601:5601"
     environment:
       ELASTIC_USER_PASSWORD: elastic
       ES_API_URL: https://es-ror:9200

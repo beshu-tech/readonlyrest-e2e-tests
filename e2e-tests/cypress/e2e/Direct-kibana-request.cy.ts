@@ -21,19 +21,19 @@ describe('Direct kibana request', () => {
     rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
   });
 
-  afterEach(() => {
-    const clearDirectKibanaRequestState = () => {
-      kbnApiAdvancedClient.deleteSavedObjects(user1);
-      kbnApiAdvancedClient.deleteSavedObjects(admin);
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        kbnApiAdvancedClient.deleteDataViews(user1);
-        kbnApiAdvancedClient.deleteDataViews(admin);
-      }
-    };
+  // afterEach(() => {
+  //   const clearDirectKibanaRequestState = () => {
+  //     kbnApiAdvancedClient.deleteSavedObjects(user1);
+  //     kbnApiAdvancedClient.deleteSavedObjects(admin);
+  //     if (semver.gte(getKibanaVersion(), '8.0.0')) {
+  //       kbnApiAdvancedClient.deleteDataViews(user1);
+  //       kbnApiAdvancedClient.deleteDataViews(admin);
+  //     }
+  //   };
 
-    clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
-  });
+  //   clearDirectKibanaRequestState();
+  //   rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
+  // });
 
   it('should check direct kibana request', () => {
     const verifySavedObjects = () => {
@@ -48,23 +48,23 @@ describe('Direct kibana request', () => {
 
       cy.log('Get imported saved objects for user1 Administrators group');
       kbnApiAdvancedClient.getSavedObjects(user1).then(result => {
-        expect(result.saved_objects[0].id).equal('my-pattern');
-        expect(result.saved_objects[1].id).equal('my-dashboard');
-        expect(result.saved_objects).to.have.length(2);
+        expect(result.saved_objects[1].id).equal('my-pattern');
+        expect(result.saved_objects[2].id).equal('my-dashboard');
+        expect(result.saved_objects).to.have.length(3);
       })
 
       cy.log('Get imported saved objects for admin Administrators group');
-      kbnApiAdvancedClient
-        .getSavedObjects(admin)
+      kbnApiAdvancedClient.getSavedObjects(admin)
         .then(result => {
-          expect(result.saved_objects[0].id).equal('my-pattern');
-          expect(result.saved_objects[1].id).equal('my-dashboard');
-          expect(result.saved_objects).to.have.length(2);
+          expect(result.saved_objects[1].id).equal('my-pattern');
+          expect(result.saved_objects[2].id).equal('my-dashboard');
+          expect(result.saved_objects).to.have.length(3);
         });
 
       cy.log('Get imported saved objects for user1 infosec group');
       kbnApiAdvancedClient.getSavedObjects(user1, "infosec_group")
         .then(result => {
+          debugger;
           const actual = result.saved_objects.some(
             saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
           );

@@ -24,7 +24,7 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     export interface Chainable<Subject> {
-      kbnRequest({ method, endpoint, payload, currentGroupHeader }: { method: string, endpoint: string, credentials: string, payload?: RequestBody, currentGroupHeader?: string }): Chainable<Subject>;
+      kbnRequest({ method, endpoint, credentials, payload, currentGroupHeader }: { method: string, endpoint: string, credentials: string, payload?: RequestBody, currentGroupHeader?: string }): Chainable<Subject>;
       kbnGet({ endpoint, credentials, currentGroupHeader }: { endpoint: string, credentials: string, currentGroupHeader?: string }): Chainable<Subject>;
       kbnPost({ endpoint, credentials, payload, currentGroupHeader }: { endpoint: string, credentials: string, payload?: RequestBody, currentGroupHeader?: string }): Chainable<Subject>;
       kbnPut({ endpoint, credentials, payload }: { endpoint: string, credentials: string, payload?: RequestBody }): Chainable<Subject>;
