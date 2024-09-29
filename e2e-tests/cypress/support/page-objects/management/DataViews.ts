@@ -42,6 +42,8 @@ export class DataViews {
     Discover.openDataViewPage();
 
     const createDataViewForKibanaBefore8_0_0 = () => {
+      cy.get('button[data-test-subj="closeFlyoutButton"]').click();
+      cy.get('button[data-test-subj="createIndexPatternButton"]').click();
       cy.get('[data-test-subj="createIndexPatternButtonFlyout"]').click();
       cy.get('[data-test-subj="createIndexPatternNameInput"]').type(`${ dataViewName }{del}`);
       cy.get('[data-test-subj="timestampField"]') // Find the timestamp field combobox

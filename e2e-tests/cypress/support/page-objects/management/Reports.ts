@@ -1,5 +1,5 @@
 import { KibanaNavigation } from '../KibanaNavigation';
-
+import { Discover } from '../Discover';
 export class Reports {
   static navigateTo() {
     cy.log('navigateTo');
@@ -23,6 +23,7 @@ export class Reports {
     cy.get('tr[data-test-subj="reportJobRow"]', {timeout: 10000})
       .each($reportItem => {
         Reports.checkReportItem($reportItem, reportTitle);
+        Discover.closeAllToasts();
       })
       .then($matchingReports => {
         expect($matchingReports).to.have.length(10);

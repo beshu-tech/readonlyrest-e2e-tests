@@ -11,6 +11,7 @@ services:
       - "19200:9200"
       - "19300:9300"
       - "5000:5000"
+      - "21853:21853"
     deploy:
       resources:
         limits:
@@ -54,7 +55,7 @@ services:
       replicas: 3
       resources:
         limits:
-          memory: 756G 
+          memory: 756M
     environment:
       ELASTIC_USER_PASSWORD: elastic
       ES_API_URL: http://es-ror:9200

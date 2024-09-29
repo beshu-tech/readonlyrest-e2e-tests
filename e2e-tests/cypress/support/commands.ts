@@ -1,117 +1,161 @@
 import '@testing-library/cypress/add-commands';
 import { isJsonString } from './helpers';
 
-Cypress.Commands.add('kbnPost', ({ endpoint, credentials, payload, currentGroupHeader }, ...args) => {
-  const payloadCurlPart = `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+Cypress.Commands.add('kbnPost', ({endpoint, credentials, payload, currentGroupHeader, printLogs = true}, ...args) => {
+  const payloadCurlPart = `-H "Content-Type: application/json" -d ${ JSON.stringify(JSON.stringify(payload || {})) }`
   cy.kbnRequest({
     method: "POST",
     endpoint: endpoint,
     credentials: credentials,
-    options: currentGroupHeader ? `${payloadCurlPart} -H "x-ror-current-group: ${currentGroupHeader}"` : payloadCurlPart
+    options: currentGroupHeader ? `${ payloadCurlPart } -H "x-ror-current-group: ${ currentGroupHeader }"` : payloadCurlPart,
+    printLogs: printLogs
+  }).then(response => {
+    return response;
   })
 });
 
-Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
-  cy.esRequest({
-    method: "POST",
-    endpoint: endpoint,
-    credentials: credentials,
-    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
-  })
+Cypress.Commands.add('esPost', ({endpoint, credentials, payload = [], printLogs = true}, ...args) => {
+    const bulkPayload = payload.map(item => [
+      {create: {}},
+      item
+    ]).flat().map(item => JSON.stringify(item)).join('\n') + '\n';
+
+    cy.esRequest({
+      method: "POST",
+      endpoint: endpoint,
+      credentials: credentials,
+      options: `-H "Content-Type: application/json" -d'\n${ bulkPayload }'`,
+      printLogs: printLogs
+    }).then(response => {
+      return response;
+    })
+  }
 );
 
-Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) =>
+Cypress.Commands.add('kbnPut', ({endpoint, credentials, payload, printLogs = true}, ...args) =>
   cy.kbnRequest({
     method: "PUT",
     endpoint: endpoint,
     credentials: credentials,
-    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+    options: `-H "Content-Type: application/json" -d ${ JSON.stringify(JSON.stringify(payload || {})) }`,
+    printLogs: printLogs
+  }).then(response => {
+    return response;
   })
 );
 
-Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
+Cypress.Commands.add('esPut', ({endpoint, credentials, payload = [], printLogs = true}, ...args) => {
+  const bulkPayload = payload.map(item => JSON.stringify(JSON.stringify(item))).join('\n') + '\n'; // Join with newline
+
   cy.esRequest({
     method: "PUT",
     endpoint: endpoint,
     credentials: credentials,
-    options: `-H "Content-Type: application/json" -d ${JSON.stringify(JSON.stringify(payload || {}))}`
+    options: `-H "Content-Type: application/json" -d '\n${ bulkPayload }'`,
+    printLogs: printLogs
+  }).then(response => {
+    return response;
   })
-);
+});
 
 Cypress.Commands.add(
   'kbnImport',
-  ({ endpoint, credentials, filename }, ...args) =>
+  ({endpoint, credentials, filename, printLogs = true}, ...args) =>
     cy.kbnRequest({
       method: "POST",
       endpoint: endpoint,
       credentials: credentials,
-      options: `--form file=@${filename}`
+      options: `--form file=@${ filename }`,
+      printLogs: printLogs
+    }).then(response => {
+      return response;
     })
 );
 
 Cypress.Commands.add(
   'kbnGet',
-  ({ endpoint, credentials, currentGroupHeader }, ...args) =>
+  ({endpoint, credentials, currentGroupHeader, printLogs = true}, ...args) =>
     cy.kbnRequest({
       method: "GET",
       endpoint: endpoint,
       credentials: credentials,
-      options: currentGroupHeader ? `-H "x-ror-current-group: ${currentGroupHeader}"` : undefined
+      options: currentGroupHeader ? `-H "x-ror-current-group: ${ currentGroupHeader }"` : undefined,
+      printLogs: printLogs
+    }).then(response => {
+      return response;
     })
 )
 
 Cypress.Commands.add(
   'esGet',
-  ({ endpoint, credentials }, ...args) =>
+  ({endpoint, credentials, printLogs = true}, ...args) =>
     cy.esRequest({
       method: "GET",
       endpoint: endpoint,
-      credentials: credentials
+      credentials: credentials,
+      printLogs: printLogs
+    }).then(response => {
+      return response;
     })
 );
 
 Cypress.Commands.add(
   'kbnDelete',
-  ({ endpoint, credentials, currentGroupHeader }, ...args) =>
+  ({endpoint, credentials, currentGroupHeader, printLogs = true}, ...args) =>
     cy.kbnRequest({
       method: "DELETE",
       endpoint: endpoint,
       credentials: credentials,
-      options: currentGroupHeader ? `-H "x-ror-current-group: ${currentGroupHeader}"` : undefined
+      options: currentGroupHeader ? `-H "x-ror-current-group: ${ currentGroupHeader }"` : undefined,
+      printLogs: printLogs
+    }).then(response => {
+      return response;
     })
 );
 
 Cypress.Commands.add(
   'esDelete',
-  ({ endpoint, credentials }, ...args) =>
+  ({endpoint, credentials, printLogs = true}, ...args) =>
     cy.esRequest({
       method: "DELETE",
       endpoint: endpoint,
-      credentials: credentials
+      credentials: credentials,
+      printLogs: printLogs
+    }).then(response => {
+      return response;
     })
 );
 
 Cypress.Commands.add(
   'kbnRequest',
-  ({ method, endpoint, credentials, options}) => {
-    const url = `${Cypress.config().baseUrl}/${endpoint}`
-    cy
-      .exec(`curl  -H "kbn-xsrf: true" -v -k -X ${method} "${url}" --user ${credentials} ${options || ""}`)
+  ({method, endpoint, credentials, options, printLogs = true}) => {
+    const url = `${ Cypress.config().baseUrl }/${ endpoint }`
+
+    return cy
+      .exec(`curl -H "kbn-xsrf: true" -v -k -X${ method } "${ url }" --user ${ credentials } ${ options || "" }`, {log: printLogs})
       .then(result => {
-        console.log(url, result);
+        if (printLogs) {
+          console.log(url, result);
+        }
         return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
       })
   }
 );
 
+
 Cypress.Commands.add(
   'esRequest',
-  ({ method, endpoint, credentials, options }) => {
-    const url = `${Cypress.env().elasticsearchUrl}/${endpoint}`
-    cy
-      .exec(`curl  -H "kbn-xsrf: true" -v -k -X ${method} "${url}" --user ${credentials} ${options || ""}`)
+  ({method, endpoint, credentials, options, printLogs = true}) => {
+    const url = `${ Cypress.env().elasticsearchUrl }/${ endpoint }`
+
+    const command = `curl -H "kbn-xsrf: true" -v -k -X${ method } "${ url }" --user ${ credentials } ${ options || "" }`
+
+    return cy
+      .exec(command, {log: printLogs})
       .then(result => {
-        console.log(url, result);
+
+        console.log(url, command, result);
+
         return isJsonString(result.stdout) ? JSON.parse(result.stdout) : result.stdout;
       })
   }

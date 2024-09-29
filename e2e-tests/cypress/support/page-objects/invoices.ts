@@ -15,7 +15,7 @@ function generateInvoice(id: number): object {
     amount: (Math.random() * 1000).toFixed(2),
     currency: ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'SEK', 'NZD', 'DKK', 'NOK', 'ZAR', 'BRL', 'INR', 'RUB', 'CNY', 'MXN', 'KRW', 'TRY', 'IDR', 'ARS', 'THB', 'PLN', 'PHP', 'CZK', 'HUF', 'MYR', 'ILS', 'SAR', 'AED', 'COP', 'CLP', 'EGP', 'VND', 'UAH', 'KES', 'NGN', 'PKR'][Math.floor(Math.random() * 37)],
     customerName: `Customer ${ id }`,
-    customerEmail: `customer${ id }example.com`,
+    customerEmail: `customer${ id }@example.com`,
     status: ['Paid', 'Unpaid', 'Pending'][Math.floor(Math.random() * 3)],
     description: `Invoice for service ${ id }`,
     address: `${ id } Main St, City, Country`,
@@ -27,7 +27,7 @@ function generateInvoice(id: number): object {
 }
 
 function generateInvoices(count: number): object[] {
-  const invoices = [];
+  const invoices: object[] = [];
   for (let i = 1; i <= count; i++) {
     invoices.push({create: {}});
     invoices.push(generateInvoice(i));
@@ -50,8 +50,7 @@ function handleBulkResponse(response: string | undefined): void {
   }
 
   try {
-    const parsedResponse = JSON.parse(response);
-    const items = parsedResponse.items;
+    const items = response.items;
 
     items.forEach((item: any) => {
       const createResult = item.create;
@@ -85,29 +84,35 @@ function checkBulkSizeLimit(invoices: object[], chunkSize: number): void {
 }
 
 function checkIndexExists(indexName: string): Cypress.Chainable<boolean> {
-  const elasticsearchUrl = Cypress.env('elasticsearchUrl');
-  return cy.getRequest({
-    url: `${ elasticsearchUrl }/${ indexName }`,
-    user: 'kibana:kibana'
-  }).then(response => {
+  return cy.esGet({
+    endpoint: indexName,
+    credentials: 'kibana:kibana'
+
+  }).then((response: any) => {
     return response.status !== 404;
   });
 }
 
 function createIndex(indexName: string): Cypress.Chainable<void> {
-  const elasticsearchUrl = Cypress.env('elasticsearchUrl');
-  return cy.put({
-    url: `${ elasticsearchUrl }/${ indexName }`,
-    user: 'kibana:kibana',
-    payload: {}
+  return cy.esPut({
+    endpoint: indexName,
+    credentials: 'kibana:kibana',
+    printLogs: true
   }).then((response: any) => {
-    handleIndexCreationResponse(response);
+    console.log('Response:', response);
+    if (response) {
+      if (response.error && response.error.type === 'resource_already_exists_exception') {
+        cy.log(`Index ${indexName} already exists.`);
+      } else {
+        handleIndexCreationResponse(response);
+      }
+    }
   });
 }
 
-export async function dataPut(count: number, indexName: string, chunkSize: number = 300): Promise<void> {
-  chunkSize = chunkSize * 2;
-  if (typeof cy.put !== 'function') {
+export async function dataPut(count: number, indexName: string, chunkSize: number, threads: number): Promise<void> {
+  count = count / 2;
+  if (typeof cy.kbnPut !== 'function') {
     throw new Error('cy.put is not defined');
   }
 
@@ -121,12 +126,14 @@ export async function dataPut(count: number, indexName: string, chunkSize: numbe
   const chunks = chunkArray(invoices, chunkSize);
 
   const processChunk = async (chunk: any[], index: number) => {
-    return cy.put({
-      user: 'kibana:kibana',
-      url: `${elasticsearchUrl}/${indexName}/_bulk`,
-      payload: chunk // Pass the chunk array directly
+    cy.esPost({
+      endpoint: `${indexName}/_bulk`,
+      credentials: 'kibana:kibana',
+      payload: chunk,
+      printLogs: false
     }).then((response: any) => {
-      handleBulkResponse(response.stdout);
+      console.log('Response:', response);
+      handleBulkResponse(response);
       if ((index + 1) % 100 === 0) {
         cy.log(`Chunk ${index + 1} processed successfully.`);
       }
@@ -134,7 +141,6 @@ export async function dataPut(count: number, indexName: string, chunkSize: numbe
   };
 
   const processChunksInBatches = async (chunks: any[][], batchSize: number) => {
-    const threads = 50;
     for (let i = 0; i < chunks.length; i += batchSize * threads) {
       const batch = chunks.slice(i, i + batchSize * threads);
       await Promise.all(batch.map((chunk, index) => processChunk(chunk, i + index)));
@@ -154,14 +160,13 @@ export async function dataPut(count: number, indexName: string, chunkSize: numbe
 }
 
 function handleIndexCreationResponse(response: any): void {
-  if (!response || !response.stdout) {
+  if (!response) {
     console.error('Response or response.stdout is undefined');
     return;
   }
 
   try {
-    const parsedResponse = JSON.parse(response.stdout);
-    if (parsedResponse.acknowledged) {
+    if (response.acknowledged) {
       console.log('Index creation acknowledged.');
     } else {
       console.error('Index creation not acknowledged.');

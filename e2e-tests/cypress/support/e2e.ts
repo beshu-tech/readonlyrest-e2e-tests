@@ -24,18 +24,18 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     export interface Chainable<Subject> {
-      kbnRequest({ method, endpoint, credentials, options }: { method: string, endpoint: string, credentials: string, options?: string }): Chainable<Subject>;
-      kbnGet({ endpoint, credentials, currentGroupHeader }: { endpoint: string, credentials: string, currentGroupHeader?: string }): Chainable<Subject>;
-      kbnPost({ endpoint, credentials, payload, currentGroupHeader }: { endpoint: string, credentials: string, payload?: unknown, currentGroupHeader?: string }): Chainable<Subject>;
-      kbnPut({ endpoint, credentials, payload }: { endpoint: string, credentials: string, payload?: unknown }): Chainable<Subject>;
-      kbnImport({endpoint, credentials, filename}: {endpoint: string, credentials: string, filename: string}): Chainable<Subject>;
-      kbnDelete({ endpoint, credentials, currentGroupHeader }: { endpoint: string, credentials: string, currentGroupHeader?: string }): Chainable<Subject>;
+      kbnRequest({ method, endpoint, credentials, options, printLogs }: { method: string, endpoint: string, credentials: string, options?: string, printLogs?: boolean }): Chainable<Subject>;
+      kbnGet({ endpoint, credentials, currentGroupHeader, printLogs }: { endpoint: string, credentials: string, currentGroupHeader?: string, printLogs?: boolean }): Chainable<Subject>;
+      kbnPost({ endpoint, credentials, payload, currentGroupHeader, printLogs }: { endpoint: string, credentials: string, payload?: unknown, currentGroupHeader?: string, printLogs?: boolean }): Chainable<Subject>;
+      kbnPut({ endpoint, credentials, payload, printLogs }: { endpoint: string, credentials: string, payload?: unknown, printLogs?: boolean }): Chainable<Subject>;
+      kbnImport({endpoint, credentials, filename, printLogs }: {endpoint: string, credentials: string, filename: string, printLogs?: boolean }): Chainable<Subject>;
+      kbnDelete({ endpoint, credentials, currentGroupHeader, printLogs }: { endpoint: string, credentials: string, currentGroupHeader?: string, printLogs?: boolean }): Chainable<Subject>;
 
-      esRequest({ method, endpoint, credentials, options }: { method: string, endpoint: string, credentials: string, options?: string }): Chainable<Subject>;
-      esGet({ endpoint, credentials }: { endpoint: string, credentials: string }): Chainable<Subject>;
-      esPost({ endpoint, credentials, payload }: { endpoint: string, credentials: string, payload?: unknown }): Chainable<Subject>;
-      esPut({ endpoint, credentials, payload }: { endpoint: string, credentials: string, payload?: unknown }): Chainable<Subject>;
-      esDelete({ endpoint, credentials }: { endpoint: string, credentials: string }): Chainable<Subject>;
+      esRequest({ method, endpoint, credentials, options, printLogs }: { method: string, endpoint: string, credentials: string, options?: string, printLogs?: boolean }): Chainable<Subject>;
+      esGet({ endpoint, credentials, printLogs }: { endpoint: string, credentials: string, printLogs?: boolean }): Chainable<Subject>;
+      esPost({ endpoint, credentials, payload, printLogs }: { endpoint: string, credentials: string, payload?: object[], printLogs?: boolean }): Chainable<Subject>;
+      esPut({ endpoint, credentials, payload, printLogs }: { endpoint: string, credentials: string, payload?: object[], printLogs?: boolean }): Chainable<Subject>;
+      esDelete({ endpoint, credentials, printLogs }: { endpoint: string, credentials: string, printLogs?: boolean }): Chainable<Subject>;
     }
   }
 }

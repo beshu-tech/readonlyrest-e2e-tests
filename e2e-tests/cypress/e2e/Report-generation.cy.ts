@@ -10,8 +10,7 @@ describe('Report Generation', () => {
 
 
   before(() => {
-    dataPut(500000, indexName);
-
+    dataPut(1000000, indexName, 600, 200);
   });
 
   beforeEach(() => {
@@ -43,16 +42,6 @@ describe('Report Generation', () => {
     Reports.navigateTo();
     Reports.checkAllReports(searchName);
 
-    for (let i = 0; i < 10; i++) {
-      cy.log('Checking for toast');
-      cy.get('body').then($body => {
-        if ($body.find('[data-test-subj="toastCloseButton"]').length > 0) {
-          cy.get('[aria-label="Dismiss toast"]').last().click({force: true});
-        }
-      });
-      cy.wait(100);
-    }
-
     Login.signOut();
 
     Login.setLogin('user3:dev');
@@ -75,9 +64,9 @@ describe('Report Generation', () => {
   })
 
   after(() => {
-    cy.delete({
-      user: 'kibana:kibana',
-      url: `${ Cypress.env().elasticsearchUrl }/${ indexName }`,
+    cy.esDelete({
+      endpoint: indexName,
+      credentials: 'kibana:kibana',
     })
   });
 });
