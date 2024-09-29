@@ -64,7 +64,6 @@ describe('Direct kibana request', () => {
       cy.log('Get imported saved objects for user1 infosec group');
       kbnApiAdvancedClient.getSavedObjects(user1, "infosec_group")
         .then(result => {
-          debugger;
           const actual = result.saved_objects.some(
             saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
           );

@@ -109,43 +109,59 @@ Cypress.Commands.add(
   }
 );
 
-function call(method: string, url: string, credentials: string, payload?: Cypress.RequestBody, headers?: { [key: string]: string }) {
-  cy.request({
-    method: method,
-    url: url,
-    headers: {
-      authorization: `Basic ${btoa(credentials)}`,
-      ...headers
-    },
-    body: payload || null,
-  }).then((response) => {
-    console.log(`RR: ${method} ${url} ${credentials} ${JSON.stringify(headers)} = ${JSON.stringify(response)}`)
-    // expect(response.status).to.be.within(200, 299);
+function call(method: string, url: string, credentials: string, payload?: Cypress.RequestBody, headers?: { [key: string]: string }): Cypress.Chainable<any> {
+  return withIgnoredCookies(() =>
+    cy.request({
+      method: method,
+      url: url,
+      headers: {
+        authorization: `Basic ${btoa(credentials)}`,
+        ...headers
+      },
+      body: payload || null,
+    })
+  ).then((response) => {
+    expect(response.status).to.be.within(200, 299);
     return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
   })
 }
 
-function uploadFile(url: string, credentials: string, fixtureFilename: string, headers?: { [key: string]: string }) {
-  cy.fixture(fixtureFilename, 'base64').then((fileContent) => {
-    const formData = new FormData();
-    formData.append('file', Cypress.Blob.base64StringToBlob(fileContent, 'application/octet-stream'), fixtureFilename);
+function uploadFile(url: string, credentials: string, fixtureFilename: string, headers?: { [key: string]: string }): Cypress.Chainable<any> {
+  return withIgnoredCookies(() => {
+    return cy.fixture(fixtureFilename, 'base64').then((fileContent) => {
+      const formData = new FormData();
+      formData.append('file', Cypress.Blob.base64StringToBlob(fileContent, 'application/octet-stream'), fixtureFilename);
 
-    const requestHeaders = {
-      authorization: `Basic ${btoa(credentials)}`,
-      ...(headers || {}) 
-    };
+      const requestHeaders = {
+        authorization: `Basic ${btoa(credentials)}`,
+        ...(headers || {})
+      };
 
-    cy.request({
-      method: "POST",
-      url: url,
-      headers: requestHeaders,
-      body: formData,
-      // You might want to comment this out unless you're sure it should be sent
-      // contentType: false, // This tells Cypress not to set the content-type, allowing FormData to set it
-      // failOnStatusCode: false // Uncomment if you want to ignore 4xx/5xx responses temporarily
-    }).then((response) => {
-      expect(response.status).to.be.within(200, 299);
-      return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
+      cy.request({
+        method: "POST",
+        url: url,
+        headers: requestHeaders,
+        body: formData,
+      }).then((response) => {
+        expect(response.status).to.be.within(200, 299);
+        return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
+      });
+    });
+  });
+}
+
+// it's a workaround for this: https://github.com/cypress-io/cypress/issues/8909
+function withIgnoredCookies(callback: () => Cypress.Chainable<Cypress.Response<any>>): Cypress.Chainable<Cypress.Response<any>> {
+  return cy.getCookies().then((cookies) => {
+    return cy.clearAllCookies().then(() => {
+      return callback().then((result) => {
+        const setCookiePromises = cookies.map(({ name, value, ...rest }) => {
+          return cy.setCookie(name, value, rest);
+        });
+        return Cypress.Promise.all(setCookiePromises).then(() => {
+          return result;
+        });
+      })
     });
   });
 }
