@@ -1,5 +1,6 @@
 import '@testing-library/cypress/add-commands';
 import { isJsonString } from './helpers';
+import { debug, log } from 'console';
 
 Cypress.Commands.add('kbnPost', ({ endpoint, credentials, payload, currentGroupHeader }, ...args) => {
   cy.kbnRequest({
@@ -109,7 +110,7 @@ Cypress.Commands.add(
   }
 );
 
-function call(method: string, url: string, credentials: string, payload?: Cypress.RequestBody, headers?: { [key: string]: string }): Cypress.Chainable<any> {
+function call2(method: string, url: string, credentials: string, payload?: Cypress.RequestBody, headers?: { [key: string]: string }): Cypress.Chainable<any> {
   return withIgnoredCookies(() =>
     cy.request({
       method: method,
@@ -125,6 +126,43 @@ function call(method: string, url: string, credentials: string, payload?: Cypres
     return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
   })
 }
+
+function call(method: string, url: string, credentials: string, payload?: string | object, headers?: { [key: string]: string }): Cypress.Chainable<any> {
+  return cy.wrap(
+    new Cypress.Promise((resolve, reject) => {
+      httpClient(method, url, credentials, payload, headers)
+        .then(result => {
+          console.log(result)
+          resolve(result);
+        })
+        // .catch(error => {
+        //   reject(error);
+        // });
+    })
+  );
+}
+
+const httpClient = (method: string, url: string, credentials: string, payload?: string | object, headers?: { [key: string]: string }): Promise<any> => {
+  return fetch(url, {
+    method: method,
+    headers: {
+      authorization: `Basic ${btoa(credentials)}`,
+      ...headers,
+    },
+    body: payload ? JSON.stringify(payload) : null,
+    credentials: 'same-origin',
+    mode: 'no-cors'
+  }).then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    return contentType && contentType.includes("application/json")
+      ? response.json()
+      : response.text();
+  });
+};
 
 function uploadFile(url: string, credentials: string, fixtureFilename: string, headers?: { [key: string]: string }): Cypress.Chainable<any> {
   return withIgnoredCookies(() => {

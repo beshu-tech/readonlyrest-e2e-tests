@@ -4,6 +4,7 @@ import { Loader } from './Loader';
 import authMocks from '../../fixtures/authMocks.json';
 import { userCredentials } from '../helpers';
 import { rorApiClient } from '../helpers/RorApiClient';
+import { debug } from 'console';
 
 export class Impersonate {
   static open() {
@@ -179,9 +180,9 @@ export class Impersonate {
     cy.get('[data-testid=automatically-deactivate]').should('not.exist');
   }
 
-  static setTestSettingsData() {
+  static setTestSettingsData(): Cypress.Chainable<void> {
     cy.log('Initialize Test ACL data');
-    rorApiClient.configureRorIndexTestSettings("testSettings.yaml")
-    rorApiClient.configureRorAuthMockSettings("authMocks.json")
+    return rorApiClient.configureRorIndexTestSettings("testSettings.yaml", 30 * 60)
+    // return rorApiClient.configureRorAuthMockSettings("authMocks.json")
   }
 }

@@ -8,32 +8,14 @@ describe('Direct kibana request', () => {
   const admin = 'admin:dev';
 
   beforeEach(() => {
-    const clearDirectKibanaRequestState = () => {
-      kbnApiAdvancedClient.deleteSavedObjects(user1);
-      kbnApiAdvancedClient.deleteSavedObjects(admin);
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        kbnApiAdvancedClient.deleteDataViews(user1);
-        kbnApiAdvancedClient.deleteDataViews(admin);
-      }
-    };
-
     clearDirectKibanaRequestState();
     rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
   });
 
-  // afterEach(() => {
-  //   const clearDirectKibanaRequestState = () => {
-  //     kbnApiAdvancedClient.deleteSavedObjects(user1);
-  //     kbnApiAdvancedClient.deleteSavedObjects(admin);
-  //     if (semver.gte(getKibanaVersion(), '8.0.0')) {
-  //       kbnApiAdvancedClient.deleteDataViews(user1);
-  //       kbnApiAdvancedClient.deleteDataViews(admin);
-  //     }
-  //   };
-
-  //   clearDirectKibanaRequestState();
-  //   rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
-  // });
+  afterEach(() => {
+    clearDirectKibanaRequestState();
+    rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
+  });
 
   it('should check direct kibana request', () => {
     const verifySavedObjects = () => {
@@ -101,4 +83,13 @@ describe('Direct kibana request', () => {
       verifyDataViews();
     }
   });
+
+  const clearDirectKibanaRequestState = () => {
+    kbnApiAdvancedClient.deleteSavedObjects(user1);
+    kbnApiAdvancedClient.deleteSavedObjects(admin);
+    // if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    //   kbnApiAdvancedClient.deleteDataViews(user1);
+    //   kbnApiAdvancedClient.deleteDataViews(admin);
+    // }
+  };
 });

@@ -25,6 +25,7 @@ xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i3120930
 xpack.reporting.encryptionKey: "321421321211231241232132132132132"
 
 telemetry.enabled: false
+# logging.root.level: debug
 
 readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
