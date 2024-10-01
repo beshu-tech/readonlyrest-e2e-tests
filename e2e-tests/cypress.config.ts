@@ -29,7 +29,7 @@ export default defineConfig({
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
-      return require('./cypress/plugins/index.js')(on, config);
+      return require('./cypress/plugins/index.ts')(on, config);
     },
     baseUrl: 'https://localhost:5601',
     videosFolder: '../results/videos',

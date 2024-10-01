@@ -1,5 +1,4 @@
 import '@testing-library/cypress/add-commands';
-import { isJsonString } from './helpers';
 
 Cypress.Commands.add('kbnPost', ({ endpoint, credentials, payload, currentGroupHeader }, ...args) => {
   cy.kbnRequest({
@@ -81,67 +80,33 @@ Cypress.Commands.add('kbnRequest', ({ method, endpoint, credentials, payload, cu
   if (currentGroupHeader) {
     customHeaders['x-ror-current-group'] = currentGroupHeader;
   }
-  call(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders);
+  httpCall(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders);
 });
 
 Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload }) => {
-  call(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload);
+  httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload);
 });
 
-function call2(
-  method: string,
-  url: string,
-  credentials: string,
-  payload?: Cypress.RequestBody,
-  headers?: { [key: string]: string }
-): Cypress.Chainable<any> {
-  return withIgnoredCookies(() =>
-    cy.request({
-      method: method,
-      url: url,
-      headers: {
-        authorization: `Basic ${btoa(credentials)}`,
-        ...headers
-      },
-      body: payload || null
-    })
-  ).then(response => {
-    expect(response.status).to.be.within(200, 299);
-    return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
-  });
-}
-
-function call(
+function httpCall(
   method: string,
   url: string,
   credentials: string,
   payload?: string | object,
   headers?: { [key: string]: string }
 ): Cypress.Chainable<any> {
-  return httpClient(method, url, credentials, payload, headers).then(result => {
-    console.log('result', result);
-    return result;
-  });
-}
-
-const httpClient = (
-  method: string,
-  url: string,
-  credentials: string,
-  payload?: string | object,
-  headers?: { [key: string]: string }
-): Promise<any> => {
-  return cy.task('fetchData', {
+  const options = {
+    method,
     url,
-    method: method,
     headers: {
       'Content-Type': 'application/json',
       authorization: `Basic ${btoa(credentials)}`,
-      ...headers
+      ...headers,
     },
     body: payload ? JSON.stringify(payload) : null
-  });
-};
+  };
+
+  return cy.task('httpCall', options);
+}
 
 function uploadFile(
   url: string,
@@ -149,48 +114,20 @@ function uploadFile(
   fixtureFilename: string,
   headers?: { [key: string]: string }
 ): Cypress.Chainable<any> {
-  return withIgnoredCookies(() => {
-    return cy.fixture(fixtureFilename, 'base64').then(fileContent => {
-      const formData = new FormData();
-      formData.append(
-        'file',
-        Cypress.Blob.base64StringToBlob(fileContent, 'application/octet-stream'),
-        fixtureFilename
-      );
-
-      const requestHeaders = {
+  return cy.fixture(fixtureFilename, 'binary').then(fileContent => {
+    const options = {
+      url,
+      headers: {
         authorization: `Basic ${btoa(credentials)}`,
-        ...(headers || {})
-      };
+        ...headers,
+      },
+      file: {
+        fileName: fixtureFilename,
+        fileBinaryContent: fileContent
+      }
+    };
 
-      cy.request({
-        method: 'POST',
-        url: url,
-        headers: requestHeaders,
-        body: formData
-      }).then(response => {
-        expect(response.status).to.be.within(200, 299);
-        return isJsonString(response.body) ? JSON.parse(response.body) : response.body;
-      });
-    });
-  });
-}
-
-// it's a workaround for this: https://github.com/cypress-io/cypress/issues/8909
-function withIgnoredCookies(
-  callback: () => Cypress.Chainable<Cypress.Response<any>>
-): Cypress.Chainable<Cypress.Response<any>> {
-  return cy.getCookies().then(cookies => {
-    return cy.clearAllCookies().then(() => {
-      return callback().then(result => {
-        const setCookiePromises = cookies.map(({ name, value, ...rest }) => {
-          return cy.setCookie(name, value, rest);
-        });
-        return Cypress.Promise.all(setCookiePromises).then(() => {
-          return result;
-        });
-      });
-    });
+    return cy.task('uploadFile', options);
   });
 }
 
