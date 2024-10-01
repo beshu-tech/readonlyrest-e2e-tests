@@ -120,7 +120,7 @@ function call(
 ): Cypress.Chainable<any> {
   return httpClient(method, url, credentials, payload, headers).then(result => {
     console.log('result', result);
-    return result
+    return result;
   });
 }
 
@@ -132,9 +132,10 @@ const httpClient = (
   headers?: { [key: string]: string }
 ): Promise<any> => {
   return cy.task('fetchData', {
-      url,
+    url,
     method: method,
     headers: {
+      'Content-Type': 'application/json',
       authorization: `Basic ${btoa(credentials)}`,
       ...headers
     },

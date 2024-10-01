@@ -30,17 +30,17 @@ describe('Direct kibana request', () => {
 
       cy.log('Get imported saved objects for user1 Administrators group');
       kbnApiAdvancedClient.getSavedObjects(user1).then(result => {
-        expect(result.saved_objects[1].id).equal('my-pattern');
-        expect(result.saved_objects[2].id).equal('my-dashboard');
-        expect(result.saved_objects).to.have.length(3);
+        expect(result.saved_objects[0].id).equal('my-pattern');
+        expect(result.saved_objects[1].id).equal('my-dashboard');
+        expect(result.saved_objects).to.have.length(2);
       })
 
       cy.log('Get imported saved objects for admin Administrators group');
       kbnApiAdvancedClient.getSavedObjects(admin)
         .then(result => {
-          expect(result.saved_objects[1].id).equal('my-pattern');
-          expect(result.saved_objects[2].id).equal('my-dashboard');
-          expect(result.saved_objects).to.have.length(3);
+          expect(result.saved_objects[0].id).equal('my-pattern');
+          expect(result.saved_objects[1].id).equal('my-dashboard');
+          expect(result.saved_objects).to.have.length(2);
         });
 
       cy.log('Get imported saved objects for user1 infosec group');
@@ -73,6 +73,7 @@ describe('Direct kibana request', () => {
         .getDataViews(userCredentials, "infosec_group")
         .then(result => {
           const actual = result.data_view.some(saved_object => saved_object.id === 'logstash');
+
           // eslint-disable-next-line no-unused-expressions
           expect(actual).to.be.false;
         });

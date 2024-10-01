@@ -22,14 +22,21 @@ module.exports = (on, config) => {
   on('task', {
     fetchData(options) {
       console.log('options', options);
+      const https = require('https');
 
+      const agent = new https.Agent({
+        rejectUnauthorized: false,
+        secureProtocol: 'TLSv1_2_method'
+      });
       const { url, ...rest } = options;
-      return fetch(url, rest)
+      return fetch(url, { ...rest, agent })
         .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          return response.json(); // parse JSON from the response
+          const contentType = response.headers.get('content-type');
+
+          return contentType && contentType.includes('application/json') ? response.json() : response.text();
         })
         .then(data => {
           return Promise.resolve(data); // return the JSON data
