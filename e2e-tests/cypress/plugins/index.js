@@ -16,7 +16,28 @@
  * @type {Cypress.PluginConfig}
  */
 // eslint-disable-next-line no-unused-vars
+const fetch = require('node-fetch');
+
 module.exports = (on, config) => {
-  // `on` is used to hook into various events Cypress emits
-  // `config` is the resolved Cypress config
-}
+  on('task', {
+    fetchData(options) {
+      console.log('options', options);
+
+      const { url, ...rest } = options;
+      return fetch(url, rest)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json(); // parse JSON from the response
+        })
+        .then(data => {
+          return Promise.resolve(data); // return the JSON data
+        })
+        .catch(err => {
+          console.log('request error', err);
+          return Promise.reject(err); // if there's an error, reject the Promise
+        });
+    }
+  });
+};
