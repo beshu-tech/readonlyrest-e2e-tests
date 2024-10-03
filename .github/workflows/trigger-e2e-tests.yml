@@ -33,6 +33,3 @@ jobs:
         run: |
           aws configure set region eu-west-1
           aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
-
-
-v20.15.1
