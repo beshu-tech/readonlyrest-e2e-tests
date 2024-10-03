@@ -21,7 +21,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         } as RequestInit);
 
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status} | URL: ${url} | Body: ${await response.text()}`);
+          throw new Error(`HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${await response.text()}`) 
         }
 
         const contentType = response.headers.get('content-type') || '';
@@ -29,7 +29,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
           ? await response.json()
           : await response.text();
 
-        console.log('HTTP Request successful. Response data:', data); // todo: do we need that?
+        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`)  // todo: do we need that?
         return data;
       } catch (error) {
         console.error('HTTP Request failed:', {
