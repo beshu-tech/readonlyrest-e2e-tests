@@ -101,8 +101,6 @@ echo "------------------------------------------"
 echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then open your browser and try to access https://localhost:5601/ (credentials admin:admin)"
 echo ""
 
-docker ps -a
-
 check_pods_running() {
   pod_status=$(docker exec ror-eck-control-plane kubectl get pods | grep quickstart)
 
@@ -135,3 +133,6 @@ while ! check_pods_running; do
   fi
 done
 echo "All pods are in Running and Ready (1/1) state."
+
+curl -vk https://localhost:9200
+curl -vk https://localhost:5601
