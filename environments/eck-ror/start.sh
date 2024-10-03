@@ -133,6 +133,3 @@ while ! check_pods_running; do
   fi
 done
 echo "All pods are in Running and Ready (1/1) state."
-
-curl -vk https://localhost:9200
-curl -vk https://localhost:5601
