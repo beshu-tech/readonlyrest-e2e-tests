@@ -113,7 +113,6 @@ check_pods_running() {
       all_ready=false
     fi
   done <<< "$pod_status"
-  clear
   echo -e "$pod_status"
 
   $all_ready && return 0 || return 1
