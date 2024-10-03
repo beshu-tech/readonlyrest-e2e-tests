@@ -8,7 +8,7 @@
 1. Running the ECK+ROR PoC: `$ ./start.sh --es <ES_VESION> --kbn <KBN_VERSION>` 
    (you can pick ECK version by adding optional --eck <ECK_VERSION> param)
 
-2. Log into Kibana `https://localhost:15601` using given credentials:
+2. Log into Kibana `https://localhost:5601` using given credentials:
     * `admin:admin` (admin user)
 
 3. Clean after playing with the PoC: `$ ./stop-and-clean.sh`
