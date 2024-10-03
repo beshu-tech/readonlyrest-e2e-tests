@@ -88,9 +88,9 @@ describe('Direct kibana request', () => {
   const clearDirectKibanaRequestState = () => {
     kbnApiAdvancedClient.deleteSavedObjects(user1);
     kbnApiAdvancedClient.deleteSavedObjects(admin);
-    // if (semver.gte(getKibanaVersion(), '8.0.0')) {
-    //   kbnApiAdvancedClient.deleteDataViews(user1);
-    //   kbnApiAdvancedClient.deleteDataViews(admin);
-    // }
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      kbnApiAdvancedClient.deleteDataViews(user1);
+      kbnApiAdvancedClient.deleteDataViews(admin);
+    }
   };
 });
