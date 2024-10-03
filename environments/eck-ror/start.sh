@@ -102,7 +102,7 @@ echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then op
 echo ""
 
 check_pods_running() {
-  pod_status=$(docker exec -ti ror-eck-control-plane kubectl get pods | grep quickstart)
+  pod_status=$(docker exec ror-eck-control-plane kubectl get pods | grep quickstart)
 
   all_ready=true
   while read -r line; do

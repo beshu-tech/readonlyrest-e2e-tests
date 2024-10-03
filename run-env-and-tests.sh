@@ -45,4 +45,4 @@ echo -e "
 echo -e "E2E TESTS\n"
 
 time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION"
-time ./e2e-tests/start-tests.sh "$ELK_VERSION"
+time ./e2e-tests/run-tests.sh "$ELK_VERSION"
