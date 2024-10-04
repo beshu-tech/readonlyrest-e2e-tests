@@ -5,7 +5,7 @@ metadata:
 spec:
   version: ${KBN_VERSION}
   image: beshultd/kibana-readonlyrest:${KBN_VERSION}-ror-latest
-  count: a
+  count: 1
   elasticsearchRef:
     name: quickstart
   config:
