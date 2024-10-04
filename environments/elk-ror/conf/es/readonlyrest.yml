@@ -30,9 +30,10 @@ readonlyrest:
         index_template: "'readonlyrest_audit_'yyyy-MM-dd"
 
   access_control_rules:
-    - name: KIBANA_SERVER
-      auth_key: kibana:kibana
+
+    - name: "Kibana service account - user/pass"
       verbosity: error
+      auth_key: kibana:kibana
 
     - name: PERSONAL_GRP
       groups: [Personal]

@@ -17,6 +17,8 @@ spec:
       cookiePass: '12312313123213123213123adadasdasdasd'
       logLevel: trace
       store_sessions_in_index: true
+    ${ELATICSEARCH_USER}    
+    ${ELATICSEARCH_PASSWORD}
               
   podTemplate:
     spec:

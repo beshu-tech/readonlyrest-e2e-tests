@@ -14,7 +14,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 show_help() {
-  echo "Usage: ./eck-ror-bootstrap.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version>"
+  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version>"
   exit 1
 }
 
@@ -84,16 +84,32 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p "$SUBSTITUTED_DIR"
 
-for file in kind-cluster/ror/*.yml; do
-  filename=$(basename "$file")
-  if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" ]]; then
-    envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
-  else
-    cp "$file" "$SUBSTITUTED_DIR"
-  fi
-done
+subsitute_env_in_yaml_templates() {
+  MAJOR_VERSION=$(echo "$ES_VERSION" | cut -d '.' -f1)
+  MINOR_VERSION=$(echo "$ES_VERSION" | cut -d '.' -f2)
 
-docker cp "$SUBSTITUTED_DIR" ror-eck-control-plane:/ror/
+  if [[ "$MAJOR_VERSION" -eq 7 && "$MINOR_VERSION" -le 16 ]]; then
+    export ELATICSEARCH_USER="elasticsearch.username: kibana"
+    export ELATICSEARCH_PASSWORD="elasticsearch.password: kibana"
+    export QUICK_KIBANA_USER_SECRET_KEY="default-quickstart-kibana-user"
+  else
+    export QUICK_KIBANA_USER_SECRET_KEY="token"
+  fi
+  
+  for file in kind-cluster/ror/*.yml; do
+    filename=$(basename "$file")
+    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" ]]; then
+      envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
+    else
+      cp "$file" "$SUBSTITUTED_DIR"
+    fi
+  done
+
+  docker cp "$SUBSTITUTED_DIR" ror-eck-control-plane:/ror/
+}
+
+subsitute_env_in_yaml_templates
+
 docker exec ror-eck-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl apply -f'
 
 echo ""
