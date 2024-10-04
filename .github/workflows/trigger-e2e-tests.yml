@@ -36,12 +36,20 @@ jobs:
           aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
   
   determine-final-result-of-e2e-tests:
-    needs: e2e-tests  
+    needs: e2e-tests 
     runs-on: ubuntu-latest
     steps:
-      - name: Check if any job failed
+      - name: Check if any matrix job failed
         run: |
-          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+          FAILED=false
+          for job in  ${{ toJson(needs.e2e-tests.outputs.matrix) }}; do
+            if [ "$job.result" != "success" ]; then
+              FAILED=true
+              echo "Job ${job} failed."
+            fi
+          done
+          
+          if [ "$FAILED" = true ]; then
             echo "One or more tests failed."
             exit 1
           else
