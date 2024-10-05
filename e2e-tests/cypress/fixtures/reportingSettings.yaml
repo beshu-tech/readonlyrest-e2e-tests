@@ -24,24 +24,10 @@ readonlyrest:
 
   access_control_rules:
     
-    - name: "Kibana service account - token"
-      verbosity: error
-      token_authentication:
-        token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
-        username: service_account
-
     - name: "Kibana service account - user/pass"
       verbosity: error
       auth_key: kibana:kibana
 
-    - name: "PROBE"
-      verbosity: error
-      auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
-  
-    - name: "ELASTIC-INTERNAL"
-      verbosity: error
-      auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
-    
     - name: PERSONAL_GRP
       groups: [personal_group]
       <<: *common-rules

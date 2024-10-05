@@ -29,7 +29,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         const contentType = response.headers.get('content-type') || '';
         const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
-        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`); // todo: do we need that?
+        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
         return data;
       } catch (error) {
         console.error('HTTP Request failed:', {
@@ -61,9 +61,11 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         ...form.getHeaders()
       };
 
+      const method = 'POST'
+
       try {
         const response: Response = await fetch(url, {
-          method: 'POST',
+          method,
           headers: combinedHeaders,
           body: form,
           agent
@@ -76,7 +78,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         const contentType = response.headers.get('content-type') || '';
         const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
-        console.log('HTTP Request successful. Response data:', data); // todo: do we need that?
+        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
         return data;
       } catch (error) {
         console.error('HTTP Request failed:', {

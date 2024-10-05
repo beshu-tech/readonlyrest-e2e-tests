@@ -12,7 +12,7 @@ case "$2" in
     ENV_NAME="elk-ror"
     ;;
   *)
-    echo 'Only "docker" and 'eck' are available environments'
+    echo 'Only "docker" is available environment'
     exit 2;
     ;;
 esac
