@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 if [ $# -ne 2 ]; then
-  echo "Two parameters are required: 1) ELK version 2) enviroment name (available options: docker, eck)"
+  echo "Two parameters are required: 1) ELK version 2) enviroment name (available options: docker)"
   exit 1
 fi
 
@@ -10,9 +10,6 @@ ENV_NAME=""
 case "$2" in
   "docker")
     ENV_NAME="elk-ror"
-    ;;
-  "eck")
-    ENV_NAME="eck-ror"
     ;;
   *)
     echo 'Only "docker" and 'eck' are available environments'
