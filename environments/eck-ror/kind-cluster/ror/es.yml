@@ -7,7 +7,7 @@ spec:
   image: beshultd/elasticsearch-readonlyrest:${ES_VERSION}-ror-latest
   nodeSets:
     - name: default
-      count: 2
+      count: 1
       podTemplate:
         spec:
           containers:
