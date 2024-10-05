@@ -9,7 +9,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
-        secureProtocol: 'TLSv1_2_method',
+        secureProtocol: 'TLSv1_2_method'
       });
 
       try {
@@ -17,19 +17,19 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
           method,
           headers: headers,
           body: body,
-          agent,
+          agent
         } as RequestInit);
 
         if (!response.ok) {
-          throw new Error(`HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${await response.text()}`) 
+          throw new Error(
+            `HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${await response.text()}`
+          );
         }
 
         const contentType = response.headers.get('content-type') || '';
-        const data = contentType.includes('application/json')
-          ? await response.json()
-          : await response.text();
+        const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
-        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`)  // todo: do we need that?
+        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`); // todo: do we need that?
         return data;
       } catch (error) {
         console.error('HTTP Request failed:', {
@@ -37,7 +37,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
           url,
           method,
           headers,
-          body,
+          body
         });
         throw error;
       }
@@ -47,7 +47,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
-        secureProtocol: 'TLSv1_2_method',
+        secureProtocol: 'TLSv1_2_method'
       });
 
       const form = new FormData();
@@ -58,7 +58,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
 
       const combinedHeaders: { [key: string]: string } = {
         ...headers,
-        ...form.getHeaders(),
+        ...form.getHeaders()
       };
 
       try {
@@ -74,9 +74,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         }
 
         const contentType = response.headers.get('content-type') || '';
-        const data = contentType.includes('application/json')
-          ? await response.json()
-          : await response.text();
+        const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
         console.log('HTTP Request successful. Response data:', data); // todo: do we need that?
         return data;
@@ -89,7 +87,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         });
         throw error;
       }
-    },
+    }
   });
 };
 

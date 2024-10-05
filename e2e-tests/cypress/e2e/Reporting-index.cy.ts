@@ -6,7 +6,7 @@ import { Settings } from '../support/page-objects/Settings';
 
 describe.skip('Reporting index', () => {
   beforeEach(() => {
-    Settings.setSettingsData("reportingSettings.yaml");
+    Settings.setSettingsData('reportingSettings.yaml');
     cy.visit(Cypress.config().baseUrl);
     cy.on('url:changed', () => {
       sessionStorage.setItem('ror:ignoreTrialInfo', 'true');
@@ -17,7 +17,7 @@ describe.skip('Reporting index', () => {
   });
 
   afterEach(() => {
-    Settings.setSettingsData("defaultSettings.yaml");
+    Settings.setSettingsData('defaultSettings.yaml');
   });
 
   it('should correctly match index pattern when audit index_template contains .reporting', () => {

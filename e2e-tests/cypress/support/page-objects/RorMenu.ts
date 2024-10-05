@@ -1,7 +1,6 @@
 import { Loader } from './Loader';
 
 export class RorMenu {
-
   static openRorMenu() {
     cy.get('#rorMenuPopover').click();
   }

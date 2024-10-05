@@ -9,12 +9,12 @@ describe('Direct kibana request', () => {
 
   beforeEach(() => {
     clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
+    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
   });
 
   afterEach(() => {
     clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
+    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
   });
 
   it('should check direct kibana request', () => {
@@ -23,7 +23,7 @@ describe('Direct kibana request', () => {
 
       cy.log('Import saved objects for user1');
       cy.kbnImport({
-        endpoint: "api/saved_objects/_import?overwrite=true",
+        endpoint: 'api/saved_objects/_import?overwrite=true',
         credentials: user1,
         fixtureFilename: 'file.ndjson'
       });
@@ -33,25 +33,23 @@ describe('Direct kibana request', () => {
         expect(result.saved_objects[0].id).equal('my-pattern');
         expect(result.saved_objects[1].id).equal('my-dashboard');
         expect(result.saved_objects).to.have.length(2);
-      })
+      });
 
       cy.log('Get imported saved objects for admin Administrators group');
-      kbnApiAdvancedClient.getSavedObjects(admin)
-        .then(result => {
-          expect(result.saved_objects[0].id).equal('my-pattern');
-          expect(result.saved_objects[1].id).equal('my-dashboard');
-          expect(result.saved_objects).to.have.length(2);
-        });
+      kbnApiAdvancedClient.getSavedObjects(admin).then(result => {
+        expect(result.saved_objects[0].id).equal('my-pattern');
+        expect(result.saved_objects[1].id).equal('my-dashboard');
+        expect(result.saved_objects).to.have.length(2);
+      });
 
       cy.log('Get imported saved objects for user1 infosec group');
-      kbnApiAdvancedClient.getSavedObjects(user1, "infosec_group")
-        .then(result => {
-          const actual = result.saved_objects.some(
-            saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
-          );
-          // eslint-disable-next-line no-unused-expressions
-          expect(actual).to.be.false;
-        });
+      kbnApiAdvancedClient.getSavedObjects(user1, 'infosec_group').then(result => {
+        const actual = result.saved_objects.some(
+          saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
+        );
+        // eslint-disable-next-line no-unused-expressions
+        expect(actual).to.be.false;
+      });
     };
 
     const verifyDataViews = () => {
@@ -69,14 +67,12 @@ describe('Direct kibana request', () => {
       );
 
       cy.log('get all data_views for user1 infosec group');
-      kbnApiAdvancedClient
-        .getDataViews(userCredentials, "infosec_group")
-        .then(result => {
-          const actual = result.data_view.some(saved_object => saved_object.id === 'logstash');
+      kbnApiAdvancedClient.getDataViews(userCredentials, 'infosec_group').then(result => {
+        const actual = result.data_view.some(saved_object => saved_object.id === 'logstash');
 
-          // eslint-disable-next-line no-unused-expressions
-          expect(actual).to.be.false;
-        });
+        // eslint-disable-next-line no-unused-expressions
+        expect(actual).to.be.false;
+      });
     };
 
     verifySavedObjects();

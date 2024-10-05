@@ -100,7 +100,7 @@ function httpCall(
     headers: {
       'Content-Type': 'application/json',
       authorization: `Basic ${btoa(credentials)}`,
-      ...headers,
+      ...headers
     },
     body: payload ? JSON.stringify(payload) : null
   };
@@ -119,7 +119,7 @@ function uploadFile(
       url,
       headers: {
         authorization: `Basic ${btoa(credentials)}`,
-        ...headers,
+        ...headers
       },
       file: {
         fileName: fixtureFilename,

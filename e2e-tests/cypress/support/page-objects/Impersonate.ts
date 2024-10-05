@@ -182,7 +182,7 @@ export class Impersonate {
 
   static setTestSettingsData(): Cypress.Chainable<void> {
     cy.log('Initialize Test ACL data');
-    rorApiClient.configureRorIndexTestSettings("testSettings.yaml", 30 * 60)
-    return rorApiClient.configureRorAuthMockSettings("authMocks.json")
+    rorApiClient.configureRorIndexTestSettings('testSettings.yaml', 30 * 60);
+    return rorApiClient.configureRorAuthMockSettings('authMocks.json');
   }
 }

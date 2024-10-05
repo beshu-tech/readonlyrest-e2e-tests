@@ -3,4 +3,3 @@ elk-ror/elk-ror.log
 e2e-tests/node_modules
 plugins/*
 results/*
-**/subst-ror
