@@ -2,8 +2,8 @@ services:
 
   es-ror:
     build:
-      context: ../.
-      dockerfile: elk-ror/images/es/Dockerfile
+      context: .
+      dockerfile: images/es/Dockerfile
       args:
         ES_VERSION: $ES_VERSION
         ES_ROR_FILE: $ES_ROR_FILE
@@ -34,13 +34,11 @@ services:
       memlock:
         soft: -1
         hard: -1
-    volumes:
-      - /tmp/visualvm:/tmp/visualvm 
-
+  
   kbn-ror:
     build:
-      context: ../.
-      dockerfile: elk-ror/images/kbn/Dockerfile
+      context: .
+      dockerfile: images/kbn/Dockerfile
       args:
         KBN_VERSION: $KBN_VERSION
         KBN_ROR_FILE: $KBN_ROR_FILE
@@ -71,8 +69,8 @@ services:
 
   kbn-proxy:
     build:
-      context: ../.
-      dockerfile: elk-ror/images/kbn/Proxy-Dockerfile
+      context: .
+      dockerfile: images/kbn/Proxy-Dockerfile
     depends_on:
       kbn-ror:
         condition: service_healthy

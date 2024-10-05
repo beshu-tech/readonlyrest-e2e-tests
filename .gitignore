@@ -1,5 +1,7 @@
-.DS_Store
-elk-ror/elk-ror.log
+**/.DS_Store
+.idea
+environments/**/*.log
+environments/**/*.zip
+environments/**/plugins
 e2e-tests/node_modules
-plugins/*
 results/*

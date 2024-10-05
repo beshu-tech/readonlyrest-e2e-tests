@@ -7,7 +7,7 @@ ARG ROR_ACTIVATION_KEY
 
 ENV ROR_ACTIVATION_KEY=$ROR_ACTIVATION_KEY
 
-COPY plugins/$KBN_ROR_FILE /tmp/ror.zip
+COPY images/plugins/$KBN_ROR_FILE /tmp/ror.zip
 
 RUN /usr/share/kibana/bin/kibana-plugin install file:///tmp/ror.zip
 
@@ -29,6 +29,6 @@ RUN \
 
 USER kibana
 
-COPY elk-ror/conf/kbn/kibana.yml /usr/share/kibana/config/kibana.yml
-COPY elk-ror/conf/kbn/kibana.key /usr/share/kibana/config/kibana.key
-COPY elk-ror/conf/kbn/kibana.crt /usr/share/kibana/config/kibana.crt
+COPY conf/kbn/kibana.yml /usr/share/kibana/config/kibana.yml
+COPY conf/kbn/kibana.key /usr/share/kibana/config/kibana.key
+COPY conf/kbn/kibana.crt /usr/share/kibana/config/kibana.crt
