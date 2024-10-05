@@ -11,10 +11,10 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         version: ["8.15.2", "7.17.24"]
         env: [docker, eck] 
-    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -35,23 +35,3 @@ jobs:
           aws configure set region eu-west-1
           aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
   
-  determine-final-result-of-e2e-tests:
-    needs: e2e-tests 
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if any matrix job failed
-        run: |
-          FAILED=false
-          for job in  ${{ toJson(needs.e2e-tests.outputs.matrix) }}; do
-            if [ "$job.result" != "success" ]; then
-              FAILED=true
-              echo "Job ${job} failed."
-            fi
-          done
-          
-          if [ "$FAILED" = true ]; then
-            echo "One or more tests failed."
-            exit 1
-          else
-            echo "All tests passed."
-          fi
