@@ -88,7 +88,6 @@ export class Settings {
 
   static setSettingsData(fixtureYamlSettingsFileName: string) {
     cy.log('Set settings data from file ' + fixtureYamlSettingsFileName);
-    rorApiClient.configureRorIndexMainSettings(fixtureYamlSettingsFileName)
+    rorApiClient.configureRorIndexMainSettings(fixtureYamlSettingsFileName);
   }
-
 }

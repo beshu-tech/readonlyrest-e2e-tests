@@ -10,11 +10,11 @@ describe('sanity check ro kibana access', () => {
   });
 
   afterEach(() => {
-    Settings.setSettingsData("defaultSettings.yaml");
-    kbnApiClient.deleteSampleData("ecommerce", userCredentials, "template_group");
+    Settings.setSettingsData('defaultSettings.yaml');
+    kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
   });
 
   it('should verify that everything works', () => {
-    RoAndRoStrictKibanaAccessAssertions.runAssertions("roSettings.yaml");
+    RoAndRoStrictKibanaAccessAssertions.runAssertions('roSettings.yaml');
   });
 });

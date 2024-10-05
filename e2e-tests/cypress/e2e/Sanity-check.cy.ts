@@ -12,14 +12,14 @@ import { SampleData } from '../support/helpers/SampleData';
 
 describe('sanity check', () => {
   beforeEach(() => {
-    SampleData.createSampleData("sample_index", 1)
+    SampleData.createSampleData('sample_index', 1);
     Login.initialization();
   });
 
   afterEach(() => {
-    esApiAdvancedClient.deleteIndex("sample_index");
-    kbnApiAdvancedClient.deleteSavedObjects("admin:dev");
-    kbnApiAdvancedClient.deleteSavedObjects("admin:dev", "infosec_group")
+    esApiAdvancedClient.deleteIndex('sample_index');
+    kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+    kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
   });
 

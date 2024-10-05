@@ -1,7 +1,6 @@
 import { KbnApiClient } from './KbnApiClient';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
-
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
     this.getSavedObjects(credentials, group).then(result => {
@@ -10,7 +9,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
         this.deleteSavedObject(savedObject, credentials, group);
       });
     });
-  };
+  }
 
   public deleteDataViews(credentials: string) {
     cy.log(`get all data_views for the ${credentials}`);
@@ -20,8 +19,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
         this.deleteDataView(dataView.id, credentials);
       });
     });
-  };
-
+  }
 }
 
 export const kbnApiAdvancedClient = new KbnApiAdvancedClient();
