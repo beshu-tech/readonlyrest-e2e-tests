@@ -69,7 +69,7 @@ $ ./docker-based-ror-dev-env/runE2ETests7xInDocker.sh
 
 ### Test environment 
 
-The test environment is created with the Docker Compose. All code is located in the `elk-ror` folder. Currently, the latest version of ROR is downloaded for the sake of tests. In the future, we are going to improve it and build plugins from sources too.
+The test environment is created with the Docker Compose. All code is located in the `environments/elk-ror` folder. Currently, the latest version of ROR is downloaded for the sake of tests. In the future, we are going to improve it and build plugins from sources too.
 
 ### Cypress tests
 
