@@ -25,7 +25,7 @@ handle_error() {
 }
 
 cleanup() {
-  ./environments/"$ENV_NAME"/stop-and-clean.sh 
+  ./environments/"$ENV_NAME"/stop-and-clean.sh
 }
 
 trap handle_error ERR

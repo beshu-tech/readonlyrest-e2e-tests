@@ -14,14 +14,14 @@ jobs:
       fail-fast: false
       matrix:
         version: ["8.15.2", "7.17.24"]
-        env: [docker, eck] 
+        env: [docker, eck]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'  
+          node-version: '20'
       - name: Run tests
         run: ./run-env-and-tests.sh ${{ matrix.version }} ${{ matrix.env }}
         env:
@@ -34,4 +34,3 @@ jobs:
         run: |
           aws configure set region eu-west-1
           aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
-  

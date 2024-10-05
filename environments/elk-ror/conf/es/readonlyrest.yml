@@ -69,7 +69,6 @@ readonlyrest:
         access: rw
       indices: ["invoices"]
 
-  # USERS TO GROUPS ############
   users:
     - username: admin
       auth_key: admin:dev
