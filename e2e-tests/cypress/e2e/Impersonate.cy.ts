@@ -6,7 +6,6 @@ import { rorApiClient } from '../support/helpers/RorApiClient';
 
 describe('impersonate', () => {
   beforeEach(() => {
-    // rorApiClient.configureRorIndexMainSettings("defaultSettings.yaml")
     Login.initialization();
   });
 
