@@ -24,12 +24,12 @@ export class RorApiClient {
     });
   }
 
-  public configureRorAuthMockSettings(fixtureYamlFileName: string): Cypress.Chainable<void> {
-    return cy.fixture(fixtureYamlFileName).then(yamlContent => {
+  public configureRorAuthMockSettings(fixtureJsonFileName: string): Cypress.Chainable<void> {
+    return cy.fixture(fixtureJsonFileName).then(content => {
       cy.esPost({
         endpoint: '_readonlyrest/admin/config/test/authmock',
         credentials: Cypress.env().kibanaUserCredentials,
-        payload: yamlContent
+        payload: content
       });
     });
   }

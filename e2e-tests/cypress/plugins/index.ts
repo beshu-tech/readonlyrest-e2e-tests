@@ -1,5 +1,5 @@
 import { Agent } from 'https';
-import fetch, { RequestInit, Response } from 'node-fetch';
+import fetch, { Response } from 'node-fetch';
 import FormData from 'form-data';
 
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
@@ -13,12 +13,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       });
 
       try {
-        const response: Response = await fetch(url, {
-          method,
-          headers: headers,
-          body: body,
-          agent
-        } as RequestInit);
+        const response: Response = await fetch(url, { method, headers, body, agent });
 
         if (!response.ok) {
           throw new Error(
@@ -97,7 +92,7 @@ interface HttpCallOptions {
   method: string;
   url: string;
   headers?: { [key: string]: string };
-  body: string | object | null;
+  body: string | null;
 }
 
 interface FileToUpload {
