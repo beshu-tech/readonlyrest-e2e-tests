@@ -5,12 +5,13 @@
 ### On your host
 
 Prerequisites:
-* Docker (`26.x.x` or newer)
-* Yarn (`1.22.x` or newer)
+* Yarn (`1.22.x` or newer) - for running E2E tests
+* Docker (`26.x.x` or newer) - for running ELK environment
+* [Kind](https://kind.sigs.k8s.io/) (`0.24.x` or newer) - for running ECK environment
 
 #### E2E with one command 
 
-To bootstrap a Docker-based test or ECK (you have to have [kind](https://kind.sigs.k8s.io/) installed) environment (ES with latest ROR + KBN with latest ROR) and run Cypress E2E tests run:
+To bootstrap a Docker-based or ECK environment (ES with latest ROR + KBN with latest ROR) and execute Cypress E2E tests run:
 
 ```bash
 ./run-env-and-tests.sh 8.15.2 docker
