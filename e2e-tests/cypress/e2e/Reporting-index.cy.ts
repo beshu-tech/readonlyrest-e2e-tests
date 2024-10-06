@@ -4,6 +4,7 @@ import { RorMenu } from '../support/page-objects/RorMenu';
 import { Discover } from '../support/page-objects/Discover';
 import { Settings } from '../support/page-objects/Settings';
 
+// todo: the test fails. Please fix me
 describe.skip('Reporting index', () => {
   beforeEach(() => {
     Settings.setSettingsData('reportingSettings.yaml');

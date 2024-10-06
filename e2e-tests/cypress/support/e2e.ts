@@ -38,6 +38,6 @@ declare global {
       esDelete({ endpoint, credentials }: { endpoint: string, credentials: string }): Chainable<Subject>;
     }
 
-    export type Payload = string | object
+    type Payload = string | object
   }
 }

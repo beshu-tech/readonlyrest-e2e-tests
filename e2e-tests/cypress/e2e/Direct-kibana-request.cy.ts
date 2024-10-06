@@ -47,7 +47,6 @@ describe('Direct kibana request', () => {
         const actual = result.saved_objects.some(
           saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
         );
-        // eslint-disable-next-line no-unused-expressions
         expect(actual).to.be.false;
       });
     };
@@ -69,8 +68,6 @@ describe('Direct kibana request', () => {
       cy.log('get all data_views for user1 infosec group');
       kbnApiAdvancedClient.getDataViews(userCredentials, 'infosec_group').then(result => {
         const actual = result.data_view.some(saved_object => saved_object.id === 'logstash');
-
-        // eslint-disable-next-line no-unused-expressions
         expect(actual).to.be.false;
       });
     };
