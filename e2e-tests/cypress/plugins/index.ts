@@ -56,7 +56,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         ...form.getHeaders()
       };
 
-      const method = 'POST'
+      const method = 'POST';
 
       try {
         const response: Response = await fetch(url, {
