@@ -5,3 +5,4 @@ environments/**/*.zip
 environments/**/plugins
 e2e-tests/node_modules
 results/*
+**/subst-ror

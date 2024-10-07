@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 if [ $# -ne 2 ]; then
-  echo "Two parameters are required: 1) ELK version 2) enviroment name (available options: docker)"
+  echo "Two parameters are required: 1) ELK version 2) enviroment name (available options: docker, eck)"
   exit 1
 fi
 
@@ -11,8 +11,11 @@ case "$2" in
   "docker")
     ENV_NAME="elk-ror"
     ;;
+  "eck")
+    ENV_NAME="eck-ror"
+    ;;
   *)
-    echo 'Only "docker" is available environment'
+    echo 'Only "docker" and 'eck' are available environments'
     exit 2;
     ;;
 esac
@@ -22,7 +25,7 @@ handle_error() {
 }
 
 cleanup() {
-  ./environments/"$ENV_NAME"/stop-and-clean.sh 
+  ./environments/"$ENV_NAME"/stop-and-clean.sh
 }
 
 trap handle_error ERR

@@ -5,19 +5,22 @@
 ### On your host
 
 Prerequisites:
-* Docker (`26.x.x` or newer)
-* Yarn (`1.22.x` or newer)
+* Yarn (`1.22.x` or newer) - for running E2E tests
+* Docker (`26.x.x` or newer) - for running ELK environment
+* [Kind](https://kind.sigs.k8s.io/) (`0.24.x` or newer) - for running ECK environment
 
 #### E2E with one command 
 
-To bootstrap a Docker-based test environment (ES with latest ROR + KBN with latest ROR) and run Cypress E2E tests run:
+To bootstrap a Docker-based or ECK environment (ES with latest ROR + KBN with latest ROR) and execute Cypress E2E tests run:
 
 ```bash
 ./run-env-and-tests.sh 8.15.2 docker
 ```
 
+or 
+
 ```bash
-./run-env-and-tests.sh 7.17.24 docker
+./run-env-and-tests.sh 7.17.24 eck
 ```
 
 #### Tested environment & E2E tests separately
@@ -29,15 +32,21 @@ To run the env:
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
+or
+
+```bash
+./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2"
+```
+
 To run tests on the env:
 ```bash
-$ ./e2e-tests/run-tests.sh "8.15.2"
+./e2e-tests/run-tests.sh "8.15.2"
 ```
 
 #### Cypress tests in interactive GUI
 
 ```bash
-$ cd e2e-tests; yarn cypress open --env kibanaVersion=[KBN_VERSION]
+cd e2e-tests; yarn cypress open --env kibanaVersion=[KBN_VERSION]
 ```
 
 ### In docker isolated environment 
@@ -47,7 +56,7 @@ Prerequisites:
 
 #### E2E with one command 
 
-Bootstrapping test environment and running tests inside a docker container (you don't need to have Yarn installed on your host):
+Bootstrapping test environment and running tests inside a docker container (you don't need to have Yarn installed on your host - it's a docker-compose based environment):
 
 ```bash
 $ ./docker-based-ror-dev-env/runE2ETests8xInDocker.sh

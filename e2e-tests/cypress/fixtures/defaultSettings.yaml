@@ -29,6 +29,22 @@ readonlyrest:
       verbosity: error
       auth_key: kibana:kibana
 
+    # <-- related to ECK environment -->
+    - name: "Kibana service account - token"
+      verbosity: error
+      token_authentication:
+        token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
+        username: service_account
+
+    - name: "PROBE"
+      verbosity: error
+      auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
+
+    - name: "ELASTIC-INTERNAL"
+      verbosity: error
+      auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
+    # <!-- related to ECK environment -->
+
     - name: PERSONAL_GRP
       groups: [Personal]
       <<: *common-rules

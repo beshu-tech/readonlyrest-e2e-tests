@@ -115,7 +115,7 @@ readonlyrest:
     - impersonator: admin
       users: ["*"]
       auth_key: admin:dev
-  
+
   ldaps:
     - name: LDAP 1
       host: "ldap1.example.com"
@@ -138,27 +138,27 @@ readonlyrest:
       circuit_breaker:
         max_retries: 2
         reset_duration: 5s
-  
+
   external_authentication_service_configs:
     - name: "ACME1 External Authorization Service"
       authentication_endpoint: "http://external-website1:8080/auth1"
       success_status_code: 200
       cache_ttl_in_sec: 60
-      validate: false 
+      validate: false
 
   proxy_auth_configs:
     - name: "proxy1"
-      user_id_header: "X-Auth-Token"              
+      user_id_header: "X-Auth-Token"
 
   user_groups_providers:
     - name: ACME2 External Authentication Service
       groups_endpoint: "http://localhost:8080/groups"
       auth_token_name: "token"
-      auth_token_passed_as: QUERY_PARAM           
-      response_groups_json_path: "$..groups[?(@.id)].id" 
+      auth_token_passed_as: QUERY_PARAM
+      response_groups_json_path: "$..groups[?(@.id)].id"
       cache_ttl_in_sec: 60
       http_connection_settings:
-        connection_timeout_in_sec: 5                     
-        socket_timeout_in_sec: 3                         
-        connection_request_timeout_in_sec: 3             
-        connection_pool_size: 10                         
+        connection_timeout_in_sec: 5
+        socket_timeout_in_sec: 3
+        connection_request_timeout_in_sec: 3
+        connection_pool_size: 10
