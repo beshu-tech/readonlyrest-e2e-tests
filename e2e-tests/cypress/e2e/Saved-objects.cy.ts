@@ -11,7 +11,7 @@ describe('Saved objects', () => {
   });
 
   afterEach(() => {
-    kbnApiAdvancedClient.deleteSavedObjects("admin:dev");
+    kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
   });
 
   it('should display saved objects list', () => {

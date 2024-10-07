@@ -5,9 +5,9 @@ export default defineConfig({
     login: 'admin',
     password: 'dev',
     kibanaVersion: 'KIBANA_VERSION_NOT_SET_YET',
-    elasticsearchUrl: 'http://localhost:19200',
+    elasticsearchUrl: 'https://localhost:9200',
     enterpriseActivationKey: 'PROVIDE_YOUR_ACTIVATION_KEY',
-    kibanaUserCredentials: "kibana:kibana"
+    kibanaUserCredentials: 'kibana:kibana'
   },
   video: true,
   screenshotOnRunFailure: true,
@@ -28,9 +28,9 @@ export default defineConfig({
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
-      return require('./cypress/plugins/index.js')(on, config);
+      return require('./cypress/plugins/index.ts')(on, config);
     },
-    baseUrl: 'http://localhost:5601',
+    baseUrl: 'https://localhost:5601',
     videosFolder: '../results/videos',
     screenshotsFolder: '../results/screenshots'
   }

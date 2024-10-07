@@ -1,16 +1,15 @@
 export class KbnApiClient {
-
   public getDataViews(credentials: string, group?: string): Cypress.Chainable<DataViews> {
     return cy.kbnGet({
-      endpoint: "api/data_views",
+      endpoint: 'api/data_views',
       credentials: credentials,
       currentGroupHeader: group
     });
   }
 
-  public createDataView(dataView: unknown, credentials: string, group?: string): void {
+  public createDataView(dataView: object, credentials: string, group?: string): void {
     cy.kbnPost({
-      endpoint: "api/data_views/data_view",
+      endpoint: 'api/data_views/data_view',
       credentials: credentials,
       currentGroupHeader: group,
       payload: dataView
@@ -27,7 +26,7 @@ export class KbnApiClient {
 
   public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
     return cy.kbnGet({
-      endpoint: "api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=config",
+      endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=config',
       credentials: credentials,
       currentGroupHeader: group
     });

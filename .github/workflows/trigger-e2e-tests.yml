@@ -11,13 +11,19 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        version: [8x, 7x]
+        version: ["8.15.2", "7.17.24"]
+        env: [docker] 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'  
       - name: Run tests
-        run: ./run-${{ matrix.version }}.sh
+        run: ./run-env-and-tests.sh ${{ matrix.version }} ${{ matrix.env }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
       - name: S3 Upload Videos & show logs
@@ -27,4 +33,5 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           aws configure set region eu-west-1
-          aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.version }}/ --recursive
+          aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
+  

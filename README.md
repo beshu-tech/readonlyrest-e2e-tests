@@ -13,11 +13,11 @@ Prerequisites:
 To bootstrap a Docker-based test environment (ES with latest ROR + KBN with latest ROR) and run Cypress E2E tests run:
 
 ```bash
-$ ./run-8x.sh
+./run-env-and-tests.sh 8.15.2 docker
 ```
 
 ```bash
-$ ./run-7x.sh
+./run-env-and-tests.sh 7.17.24 docker
 ```
 
 #### Tested environment & E2E tests separately
@@ -26,18 +26,18 @@ You can bootstrap the test env and run tests separately (to not build the ES+KBN
 
 To run the env:
 ```bash
-$ ./elk-ror/run.sh --es "8.10.0" --kbn "8.10.0"
+./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
 To run tests on the env:
 ```bash
-$ ./e2e-tests/run.sh "8.10.0"
+$ ./e2e-tests/run-tests.sh "8.15.2"
 ```
 
 #### Cypress tests in interactive GUI
 
 ```bash
-$ cd e2e-tests; yarn cypress open
+$ cd e2e-tests; yarn cypress open --env kibanaVersion=[KBN_VERSION]
 ```
 
 ### In docker isolated environment 
@@ -61,7 +61,7 @@ $ ./docker-based-ror-dev-env/runE2ETests7xInDocker.sh
 
 ### Test environment 
 
-The test environment is created with the Docker Compose. All code is located in the `elk-ror` folder. Currently, the latest version of ROR is downloaded for the sake of tests. In the future, we are going to improve it and build plugins from sources too.
+The test environment is created with the Docker Compose. All code is located in the `environments/elk-ror` folder. Currently, the latest version of ROR is downloaded for the sake of tests. In the future, we are going to improve it and build plugins from sources too.
 
 ### Cypress tests
 

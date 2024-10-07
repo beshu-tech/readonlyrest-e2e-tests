@@ -1,7 +1,6 @@
 import { EsApiClient } from './EsApiClient';
 
 export class EsApiAdvancedClient extends EsApiClient {
-
   public pruneAllReportingIndices(): void {
     cy.log('Pruning all reporting indices...');
     this.indices().then(result => {
@@ -14,7 +13,6 @@ export class EsApiAdvancedClient extends EsApiClient {
     });
     cy.log('Pruning all reporting indices - DONE!');
   }
-
 }
 
 export const esApiAdvancedClient = new EsApiAdvancedClient();
