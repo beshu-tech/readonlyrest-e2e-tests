@@ -2,7 +2,6 @@ import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { Loader } from '../support/page-objects/Loader';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { Spaces } from '../support/page-objects/Spaces';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 
@@ -86,7 +85,5 @@ describe('Spaces', () => {
     KibanaNavigation.openHomepage();
     KibanaNavigation.openKibanaNavigation();
     KibanaNavigation.checkIfNotExists('Analytics');
-
-    Spaces.removeSpace('Test');
   });
 });
