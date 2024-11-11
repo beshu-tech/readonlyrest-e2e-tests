@@ -47,6 +47,22 @@ export class KbnApiClient {
       currentGroupHeader: group
     });
   }
+
+  public deleteSpace(spaceName: string, credentials: string, group?: string): void {
+    cy.kbnDelete({
+      endpoint: `api/spaces/space/${spaceName}`,
+      credentials,
+      currentGroupHeader: group
+    });
+  }
+
+  public getAllSpaces(credentials: string, group?: string): Cypress.Chainable<Space[]> {
+    return cy.kbnGet({
+      endpoint: `api/spaces/space`,
+      credentials,
+      currentGroupHeader: group
+    });
+  }
 }
 
 export const kbnApiClient = new KbnApiClient();
@@ -66,4 +82,13 @@ interface SavedObject {
 
 export interface GetObject {
   saved_objects: SavedObject[];
+}
+
+interface Space {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+  disabledFeatures: string[];
+  imageUrl: string;
 }
