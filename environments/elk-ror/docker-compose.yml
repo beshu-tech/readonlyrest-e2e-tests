@@ -47,7 +47,6 @@ services:
         KBN_VERSION: $KBN_VERSION
         KBN_ROR_FILE: $KBN_ROR_FILE
         ROR_ACTIVATION_KEY: $ROR_ACTIVATION_KEY
-        I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING: yes
     depends_on:
       es-ror:
         condition: service_healthy
