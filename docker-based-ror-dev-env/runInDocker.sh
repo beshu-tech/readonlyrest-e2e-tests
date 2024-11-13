@@ -30,6 +30,7 @@ fi
 
 docker run --rm $DIND_OPTIONS $DOCKER_RUN_OPTIONS \
   -e ROR_ACTIVATION_KEY="$ROR_ACTIVATION_KEY" \
+  -e I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING=yes \
   -v ./../e2e-tests:/app/e2e-tests \
   -v ./../enviroments/elk-ror:/app/enviroments/elk-ror \
   -v ./../results:/app/results \
