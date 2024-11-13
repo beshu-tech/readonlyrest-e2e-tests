@@ -47,6 +47,7 @@ services:
         KBN_VERSION: $KBN_VERSION
         KBN_ROR_FILE: $KBN_ROR_FILE
         ROR_ACTIVATION_KEY: $ROR_ACTIVATION_KEY
+        I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING: yes
     depends_on:
       es-ror:
         condition: service_healthy
@@ -58,7 +59,6 @@ services:
           memory: 756G 
     environment:
       ES_API_URL: https://es-ror:9200
-      I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING: yes
     healthcheck:
       test: [ "CMD", "curl", "-k", "--fail", "https://localhost:5601/api/status" ]
       interval: 10s
