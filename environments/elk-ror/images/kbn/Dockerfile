@@ -24,7 +24,7 @@ RUN \
     exit 1; \
   fi && \
   INVOKE_ROR_TOOLS="$NODE_PATH /usr/share/kibana/plugins/readonlyrestkbn/ror-tools.js" && \
-  $INVOKE_ROR_TOOLS patch && \
+  $INVOKE_ROR_TOOLS patch --I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING=yes && \
   chown -R kibana:kibana /usr/share/kibana/config
 
 USER kibana
