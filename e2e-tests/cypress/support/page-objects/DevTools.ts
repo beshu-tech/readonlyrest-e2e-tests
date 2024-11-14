@@ -7,10 +7,7 @@ export class DevTools {
     cy.log('Open Dev tools');
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Dev Tools').click();
-    cy.findByRole('button', { name: /Dismiss/ });
-    cy.findByRole('dialog')
-      .findByRole('button', { name: /Dismiss/ })
-      .click();
+    cy.get('[data-test-subj="help-close-button"]').click();
   }
 
   static sendRequest(text: string) {
