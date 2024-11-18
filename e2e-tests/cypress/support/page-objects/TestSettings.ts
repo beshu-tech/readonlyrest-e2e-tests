@@ -30,7 +30,7 @@ export class TestSettings {
   }
 
   static loadCurrentSettings() {
-    cy.log('Load current settings settings');
+    cy.log('Load current settings');
     cy.intercept('GET', '/pkp/api/settings').as('loadCurrentSettings');
     TestSettings.pressLoadCurrentSettingsButton();
     cy.wait('@loadCurrentSettings').then(({ response }) => {
@@ -160,8 +160,7 @@ export class TestSettings {
     cy.log('Set default data');
     TestSettings.open();
     TestSettings.changeTtlValue('50', 'Seconds');
-    // TODO: Uncomment it when es plugin fix issue with settings
-    // TestSettings.loadCurrentSettings();
+    TestSettings.loadCurrentSettings();
     TestSettings.pressSaveTestSettingsButton();
   }
 }

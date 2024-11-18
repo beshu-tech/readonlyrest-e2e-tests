@@ -7,12 +7,21 @@ export class DevTools {
     cy.log('Open Dev tools');
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Dev Tools').click();
-    cy.get('[data-test-subj="help-close-button"]').click();
+
+    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+      cy.get("[data-test-subj='consoleSkipTourButton']").click();
+    } else {
+      cy.get('[data-test-subj="help-close-button"]').click();
+    }
   }
 
   static sendRequest(text: string) {
     cy.log('Send request');
-    if (semver.lte(getKibanaVersion(), '7.9.0')) {
+    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+      cy.get('[data-test-subj="clearConsoleInput"]').click();
+      cy.get('[data-test-subj="consoleMonacoEditor"]').click().type(text);
+      cy.get('[data-test-subj="sendRequestButton"]').click();
+    } else if (semver.lte(getKibanaVersion(), '7.9.0')) {
       // Select editor, delete, write
       cy.get('#ConAppEditor').click();
       cy.get('#ConAppInputTextarea').clear({ force: true });
@@ -26,6 +35,7 @@ export class DevTools {
       cy.get('[data-test-subj=console-textarea]').type(text, { force: true });
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
+    cy.contains('Request in progress');
   }
 
   static verifyIf200Status() {

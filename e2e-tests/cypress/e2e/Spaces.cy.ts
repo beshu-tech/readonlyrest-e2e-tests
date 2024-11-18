@@ -4,6 +4,9 @@ import { Loader } from '../support/page-objects/Loader';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
+import { Spaces } from '../support/page-objects/Spaces';
+
+const SPACE_NAME = 'Test space';
 
 describe('Spaces', () => {
   beforeEach(() => {
@@ -27,7 +30,10 @@ describe('Spaces', () => {
     cy.contains('Default').click();
 
     cy.log('Set feature visibility to hidden');
-    if (semver.gte(getKibanaVersion(), '8.4.0')) {
+    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+      cy.get('[data-test-subj="manageSpaces"]').click();
+      cy.get('[data-test-subj="default-hyperlink"]').click();
+    } else if (semver.gte(getKibanaVersion(), '8.4.0')) {
       cy.get('[data-test-subj=Default-editSpace]').click();
     }
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
@@ -49,7 +55,10 @@ describe('Spaces', () => {
       cy.contains('Default').click();
 
       cy.log('Clear all changes');
-      if (semver.gte(getKibanaVersion(), '8.4.0')) {
+      if (semver.gte(getKibanaVersion(), '8.16.0')) {
+        cy.get('[data-test-subj="manageSpaces"]').click();
+        cy.get('[data-test-subj="default-hyperlink"]').click();
+      } else if (semver.gte(getKibanaVersion(), '8.4.0')) {
         cy.get('[data-test-subj=Default-editSpace]').click();
       }
       cy.get('#featureCategoryCheckbox_kibana').check();
@@ -65,10 +74,10 @@ describe('Spaces', () => {
     cy.get('[data-test-subj=spacesNavSelector]').click();
     cy.get('[data-test-subj=manageSpaces]').click({ force: true });
     cy.get('[data-test-subj=createSpace]').click();
-    cy.get('[data-test-subj=addSpaceName]').type('Test space');
+    cy.get('[data-test-subj=addSpaceName]').type(SPACE_NAME);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
     cy.get('[data-test-subj=save-space-button]').click();
-    cy.contains("Space 'Test space' was saved.");
+    cy.contains(`Space '${SPACE_NAME}' was saved.`);
 
     cy.log('Switch to newly created space');
     cy.get('[data-test-subj=spacesNavSelector]').click();
@@ -85,5 +94,7 @@ describe('Spaces', () => {
     KibanaNavigation.openHomepage();
     KibanaNavigation.openKibanaNavigation();
     KibanaNavigation.checkIfNotExists('Analytics');
+
+    Spaces.removeSpace(SPACE_NAME);
   });
 });

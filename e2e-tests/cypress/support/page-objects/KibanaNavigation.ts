@@ -26,12 +26,16 @@ export class KibanaNavigation {
 
   static checkIfNotVisible(page: string) {
     cy.log('checkIfNotVisible');
-    cy.get('[data-test-subj=collapsibleNav]').contains(page).should('not.be.visible');
+    cy.get('[data-test-subj=collapsibleNav]')
+      .contains(new RegExp(`^${page}$`))
+      .should('not.be.visible');
   }
 
   static checkIfNotExists(page: string) {
     cy.log('checkIfNotExists');
-    cy.get('[data-test-subj=collapsibleNav]').contains(page).should('not.exist');
+    cy.get('[data-test-subj=collapsibleNav]')
+      .contains(new RegExp(`^${page}$`))
+      .should('not.exist');
   }
 
   static checkIfRouteNotReachable(pathname: string, spacePrefix = '/s/default') {

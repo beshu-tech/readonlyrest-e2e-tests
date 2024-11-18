@@ -2,7 +2,7 @@ export class KbnApiClient {
   public getDataViews(credentials: string, group?: string): Cypress.Chainable<DataViews> {
     return cy.kbnGet({
       endpoint: 'api/data_views',
-      credentials: credentials,
+      credentials,
       currentGroupHeader: group
     });
   }
@@ -10,7 +10,7 @@ export class KbnApiClient {
   public createDataView(dataView: object, credentials: string, group?: string): void {
     cy.kbnPost({
       endpoint: 'api/data_views/data_view',
-      credentials: credentials,
+      credentials,
       currentGroupHeader: group,
       payload: dataView
     });
@@ -19,7 +19,7 @@ export class KbnApiClient {
   public deleteDataView(dataViewId: string, credentials: string, group?: string): void {
     cy.kbnDelete({
       endpoint: `api/data_views/data_view/${dataViewId}`,
-      credentials: credentials,
+      credentials,
       currentGroupHeader: group
     });
   }
@@ -27,7 +27,7 @@ export class KbnApiClient {
   public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
     return cy.kbnGet({
       endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=config',
-      credentials: credentials,
+      credentials,
       currentGroupHeader: group
     });
   }
@@ -35,7 +35,7 @@ export class KbnApiClient {
   public deleteSavedObject(savedObject: SavedObject, credentials: string, group?: string): void {
     cy.kbnDelete({
       endpoint: `api/saved_objects/${savedObject.type}/${savedObject.id}`,
-      credentials: credentials,
+      credentials,
       currentGroupHeader: group
     });
   }
@@ -43,7 +43,7 @@ export class KbnApiClient {
   public deleteSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
     cy.kbnDelete({
       endpoint: `api/sample_data/${sampleDatasetName}`,
-      credentials: credentials,
+      credentials,
       currentGroupHeader: group
     });
   }
