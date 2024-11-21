@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["8.15.4", "7.17.25"]
+        version: ["8.16.0", "7.17.25"]
         env: [docker, eck]
     steps:
       - name: Checkout code
