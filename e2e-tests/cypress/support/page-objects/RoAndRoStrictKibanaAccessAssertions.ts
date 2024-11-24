@@ -37,7 +37,9 @@ export class RoAndRoStrictKibanaAccessAssertions {
 
     cy.log('Verify Canvas features');
 
-    if (semver.gte(getKibanaVersion(), '8.9.0')) {
+    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+      cy.intercept('/s/default/internal/canvas/fns').as('canvasResolve');
+    } else if (semver.gte(getKibanaVersion(), '8.9.0')) {
       cy.intercept('/s/default/internal/canvas/fns?compress=true').as('canvasResolve');
     } else if (semver.gte(getKibanaVersion(), '7.17.15')) {
       cy.intercept('/s/default/api/canvas/fns?compress=true').as('canvasResolve');

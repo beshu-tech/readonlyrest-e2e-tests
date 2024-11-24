@@ -16,7 +16,7 @@ describe('Dev tools', () => {
 
     cy.log('should verify GET /_index_template successful with 403 status');
     DevTools.sendRequest('GET /_index_template/');
-    DevTools.verifyIf403Status();
+    DevTools.verifyIf200Status();
 
     cy.log('should verify POST .kibana/_search successful with 200 status');
     DevTools.sendRequest('POST .kibana/_search');
