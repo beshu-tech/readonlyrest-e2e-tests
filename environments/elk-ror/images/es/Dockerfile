@@ -16,4 +16,7 @@ USER elasticsearch
 COPY conf/es/readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY conf/es/elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
 COPY conf/es/log4j2.properties /usr/share/elasticsearch/config/log4j2.properties
-COPY conf/es/ror-keystore.jks /usr/share/elasticsearch/config/ror-keystore.jks
+COPY conf/es/certs/ca.crt /usr/share/elasticsearch/config/ca.crt
+COPY conf/es/certs/elasticsearch.crt /usr/share/elasticsearch/config/elasticsearch.crt
+COPY conf/es/certs/elasticsearch.csr /usr/share/elasticsearch/config/elasticsearch.csr
+COPY conf/es/certs/elasticsearch.key /usr/share/elasticsearch/config/elasticsearch.key
