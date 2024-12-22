@@ -9,7 +9,7 @@ services:
         ES_ROR_FILE: $ES_ROR_FILE
     ports:
       - "9200:9200"
-      - "5000:5000"
+      - "15000:5000"
     deploy:
       resources:
         limits:
@@ -89,6 +89,34 @@ services:
     networks:
       - es-ror-network
 
+  apm-server:
+    build:
+      context: .
+      dockerfile: images/apm/Dockerfile
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./certs:/usr/share/apm-server/config/certs:z
+    depends_on:
+      - es-ror
+      - kbn-ror
+    networks:
+      - es-ror-network
+  app1:
+    build:
+      context: .
+      dockerfile: images/ubuntu/Dockerfile
+    command: node /example-app/app.js
+    depends_on:
+      - apm-server
+    expose:
+      - 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./certs:/example-app/certs:z
+    networks:
+      - es-ror-network
 networks:
   es-ror-network:
     driver: bridge
