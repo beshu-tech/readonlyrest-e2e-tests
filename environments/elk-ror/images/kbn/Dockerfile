@@ -7,7 +7,7 @@ ARG ROR_ACTIVATION_KEY
 
 ENV ROR_ACTIVATION_KEY=$ROR_ACTIVATION_KEY
 
-COPY images/plugins/readonlyrest_kbn_universal-1.62.0-pre2_es8.14.3.zip /tmp/ror.zip
+COPY images/plugins/$KBN_ROR_FILE /tmp/ror.zip
 
 RUN /usr/share/kibana/bin/kibana-plugin install file:///tmp/ror.zip
 

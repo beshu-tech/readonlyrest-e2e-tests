@@ -93,6 +93,8 @@ services:
     build:
       context: .
       dockerfile: images/apm/Dockerfile
+      args:
+        ES_VERSION: $ES_VERSION
     ports:
       - "8200:8200"
     volumes:

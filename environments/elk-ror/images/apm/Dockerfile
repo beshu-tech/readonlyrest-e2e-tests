@@ -1,6 +1,6 @@
-FROM docker.elastic.co/apm/apm-server:8.14.3
+ARG ES_VERSION
 
-ARG ES_API_URL
+FROM docker.elastic.co/apm/apm-server:${ES_VERSION}
 
 COPY ./certs /usr/share/apm-server/config/certs
 
