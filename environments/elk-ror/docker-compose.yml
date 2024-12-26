@@ -104,6 +104,10 @@ services:
       - kbn-ror
     networks:
       - es-ror-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
   app1:
     build:
       context: .
@@ -119,6 +123,10 @@ services:
       - ./certs:/example-app/certs:z
     networks:
       - es-ror-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 networks:
   es-ror-network:
     driver: bridge
