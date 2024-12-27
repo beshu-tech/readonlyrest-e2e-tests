@@ -34,3 +34,5 @@ jobs:
         run: |
           aws configure set region eu-west-1
           aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
+          echo "Fetching logs for elk-ror-kbn-ror-1 container..."
+          docker logs elk-ror-kbn-ror-1 || echo "Failed to fetch logs for elk-ror-kbn-ror-1"
