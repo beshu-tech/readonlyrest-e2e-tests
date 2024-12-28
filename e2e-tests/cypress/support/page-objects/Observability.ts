@@ -33,7 +33,7 @@ export class Observability {
     });
   }
 
-  static waitForApmData(timeout = 20000, interval = 1000) {
+  static waitForApmData(timeout = 30000, interval = 1000) {
     const startTime = Date.now();
 
     function retry() {
