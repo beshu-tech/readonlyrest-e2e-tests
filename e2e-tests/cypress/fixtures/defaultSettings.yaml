@@ -29,11 +29,15 @@ readonlyrest:
       verbosity: error
       auth_key: kibana:kibana
 
+    - name: "APM"
+      type: allow
+      auth_key: apm:test
+
     # <-- related to ECK environment -->
     - name: "Kibana service account - token"
       verbosity: error
       token_authentication:
-        token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
+        token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"
         username: service_account
 
     - name: "PROBE"
