@@ -1,3 +1,6 @@
+import * as semver from 'semver';
+import { getKibanaVersion } from '../helpers';
+
 export class Observability {
   static APM_DATA_INDEXES_WILDCARD = '.ds-*-apm*';
 
@@ -38,7 +41,9 @@ export class Observability {
 
     function retry() {
       const elapsedTime = Date.now() - startTime;
-      const clickSelector = cy.get('[data-test-subj="querySubmitButton"]');
+      const clickSelector = semver.gte(getKibanaVersion(), '8.0.0')
+        ? cy.get('[data-test-subj="querySubmitButton"]')
+        : cy.get('[data-test-subj="superDatePickerApplyTimeButton"]');
       const targetSelector = cy.get('[data-test-subj="headerFilterTransactionType"]');
 
       if (elapsedTime > timeout) {
