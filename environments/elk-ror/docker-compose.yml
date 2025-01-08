@@ -59,7 +59,7 @@ services:
     environment:
       ES_API_URL: https://es-ror:9200
     healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:5601/api/status" ]
+      test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:5601/api/status" ]
       interval: 10s
       timeout: 10s
       retries: 30
@@ -81,7 +81,7 @@ services:
     ports:
       - "5601:443"
     healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:443/api/status" ]
+      test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:443/api/status" ]
       interval: 10s
       timeout: 10s
       retries: 30
