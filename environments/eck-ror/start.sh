@@ -63,11 +63,37 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
+DOCKERFILE_DIR="./images/ubuntu"
+IMAGE_NAME="your-docker-image-name"
+TAG="latest"
+
+docker build -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR"
+
+if [ $? -eq 0 ]; then
+    echo "Docker image built successfully: $IMAGE_NAME:$TAG"
+else
+    echo "Docker image build failed."
+    exit 1
+fi
+
+
 echo "CONFIGURING K8S CLUSTER ..."
 kind create cluster --name ror-eck --config kind-cluster/kind-cluster-config.yml
 docker exec ror-eck-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec ror-eck-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec ror-eck-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
+
+ # Load the Docker image into the Kind cluster
+    CLUSTER_NAME="ror-eck"
+
+    kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME"
+
+    if [ $? -eq 0 ]; then
+        echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
+    else
+        echo "Failed to load Docker image into Kind cluster."
+        exit 1
+    fi
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
 docker cp kind-cluster/bootstrap-eck.sh ror-eck-control-plane:/
@@ -98,7 +124,7 @@ subsitute_env_in_yaml_templates() {
   
   for file in kind-cluster/ror/*.yml; do
     filename=$(basename "$file")
-    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" ]]; then
+    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" || "$filename" == "apm.yml" || "$filename" == "app.yml" ]]; then
       envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
     else
       cp "$file" "$SUBSTITUTED_DIR"

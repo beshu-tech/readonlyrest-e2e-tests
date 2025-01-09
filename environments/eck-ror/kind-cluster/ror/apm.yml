@@ -1,0 +1,22 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm-server-quickstart
+  namespace: default
+spec:
+  version: ${ES_VERSION}
+  count: 1
+  config:
+    output:
+      elasticsearch:
+        hosts: [ "http://localhost:9200" ]
+        username: "apm"
+        password: "test"
+        ssl:
+          enabled: false
+    logging:
+      level: "debug"
+  elasticsearchRef:
+    name: quickstart
+  kibanaRef:
+    name: quickstart
