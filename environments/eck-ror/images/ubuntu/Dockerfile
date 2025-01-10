@@ -12,3 +12,10 @@ RUN cd /example-app && \
     npm install express
     
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/lib64:/usr/x86_64-linux-gnu/lib"
+# Set the working directory
+WORKDIR /example-app
+
+EXPOSE 3000
+
+# Define the entrypoint to execute the application
+ENTRYPOINT ["node", "app.js"]

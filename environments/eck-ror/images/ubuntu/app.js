@@ -1,16 +1,17 @@
-// Import and start the Elastic APM agent at the very top of your application
-var apm = require('elastic-apm-node').start({
-    serverUrl: 'https://apm-server:8200',
-    serviceName: 'app1',
-    environment: 'development',
-    serverCaCertFile: '/example-app/certs/ca.crt'
-  });
+
   
   const express = require('express');
   const app = express();
   
   // Sample route that triggers some APM instrumentation
   app.get('/', (req, res) => {
+    // Import and start the Elastic APM agent at the very top of your application
+    var apm = require('elastic-apm-node').start({
+      serverUrl: 'https://apm-server:8200',
+      serviceName: 'app1',
+      environment: 'development',
+      serverCaCertFile: '/example-app/certs/ca.crt'
+    });
     // Start a custom transaction
     const transaction = apm.startTransaction('MyCustomTransaction', 'custom');
   
@@ -25,6 +26,13 @@ var apm = require('elastic-apm-node').start({
   
   // Another route to simulate an error
   app.get('/error', (req, res) => {
+    // Import and start the Elastic APM agent at the very top of your application
+    var apm = require('elastic-apm-node').start({
+      serverUrl: 'https://apm-server:8200',
+      serviceName: 'app1',
+      environment: 'development',
+      serverCaCertFile: '/example-app/certs/ca.crt'
+    });
     // Capture an error
     apm.captureError(new Error('Something went wrong!'));
   
