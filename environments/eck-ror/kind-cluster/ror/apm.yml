@@ -9,11 +9,11 @@ spec:
   config:
     output:
       elasticsearch:
-        hosts: [ "http://localhost:9200" ]
+        hosts: [ "https://quickstart-es-http.default.svc:9200" ]
         username: "apm"
         password: "test"
         ssl:
-          enabled: false
+          enabled: true
     logging:
       level: "debug"
   elasticsearchRef:
