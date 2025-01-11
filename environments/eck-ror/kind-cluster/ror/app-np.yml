@@ -5,9 +5,9 @@ metadata:
   namespace: default
 spec:
   selector:
-    apm.k8s.elastic.co/name: my-app
+    app: my-app
   ports:
-    - name: http
+    - protocol: TCP
       port: 3000
       targetPort: 3000
   type: NodePort

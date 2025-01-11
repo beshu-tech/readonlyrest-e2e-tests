@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   selector:
-    apm.k8s.elastic.co/name: apm-server-quickstart
+    apm.k8s.elastic.co/name: quickstart
   ports:
     - name: http
       port: 8200

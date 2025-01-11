@@ -26,4 +26,4 @@ spec:
       volumes:
         - name: apm-cert-volume
           secret:
-            secretName: apm-server-quickstart-apm-kibana-ca
+            secretName: quickstart-apm-kibana-ca
