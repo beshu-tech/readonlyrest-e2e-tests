@@ -15,7 +15,15 @@ spec:
     spec:
       containers:
         - name: my-app-container
-          image: your-docker-image-name:latest  # Use the image name and tag
+          image: node-apm-app:latest  # Use the image name and tag
           imagePullPolicy: Never
           ports:
             - containerPort: 3000
+          volumeMounts:
+            - name: apm-cert-volume
+              mountPath: /example-app/certs
+              readOnly: true
+      volumes:
+        - name: apm-cert-volume
+          secret:
+            secretName: apm-server-quickstart-apm-kibana-ca

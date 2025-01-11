@@ -64,7 +64,7 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
 fi
 
 DOCKERFILE_DIR="./images/ubuntu"
-IMAGE_NAME="your-docker-image-name"
+IMAGE_NAME="node-apm-app"
 TAG="latest"
 
 docker build -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR"
