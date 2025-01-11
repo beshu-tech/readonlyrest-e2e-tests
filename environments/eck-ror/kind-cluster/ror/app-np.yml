@@ -7,7 +7,7 @@ spec:
   selector:
     app: my-app
   ports:
-    - protocol: TCP
+    - name: http
       port: 3000
-      targetPort: 3000
+      targetPort: 30014
   type: NodePort

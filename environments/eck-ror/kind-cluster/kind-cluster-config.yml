@@ -9,5 +9,9 @@ nodes:
     hostPort: 5601
   - containerPort: 30012
     hostPort: 8888
+  - containerPort: 30013
+    hostPort: 8200
+  - containerPort: 30014
+    hostPort: 3000
 - role: worker
 - role: worker

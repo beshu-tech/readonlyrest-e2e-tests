@@ -9,5 +9,5 @@ spec:
   ports:
     - name: http
       port: 8200
-      targetPort: 8200
+      targetPort: 30013
   type: NodePort
