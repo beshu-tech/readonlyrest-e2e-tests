@@ -23,6 +23,12 @@ spec:
             - name: apm-cert-volume
               mountPath: /example-app/certs
               readOnly: true
+          env:
+            - name: APM_SECRET_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: quickstart-apm-token
+                  key: secret-token
       volumes:
         - name: apm-cert-volume
           secret:

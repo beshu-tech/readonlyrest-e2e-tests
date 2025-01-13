@@ -9,7 +9,8 @@
     serviceName: 'app1',
     environment: 'development',
     serverCaCertFile: '/example-app/certs/ca.crt',
-    verifyServerCert: false
+    verifyServerCert: false,
+    secretToken: process.env.APM_SECRET_TOKEN
   });
 
   if (!apm.isStarted()) {
