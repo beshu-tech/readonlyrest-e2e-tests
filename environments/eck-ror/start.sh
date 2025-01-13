@@ -124,7 +124,7 @@ subsitute_env_in_yaml_templates() {
   
   for file in kind-cluster/ror/*.yml; do
     filename=$(basename "$file")
-    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" || "$filename" == "apm.yml" || "$filename" == "app.yml" ]]; then
+    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" || "$filename" == "apm.yml" || "$filename" == "node-apm-app.yml" ]]; then
       envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
     else
       cp "$file" "$SUBSTITUTED_DIR"

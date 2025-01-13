@@ -5,17 +5,22 @@
 
   // Import and start the Elastic APM agent at the very top of your application
   var apm = require('elastic-apm-node').start({
-    serverUrl: 'https://quickstart-apm-server-http.default.svc:8200',
+    serverUrl: 'https://quickstart-apm-http.default.svc:8200',
     serviceName: 'app1',
     environment: 'development',
-    serverCaCertFile: '/example-app/certs/ca.crt'
+    serverCaCertFile: '/example-app/certs/ca.crt',
+    verifyServerCert: false
   });
+
+  if (!apm.isStarted()) {
+    console.log('Elastic APM agent failed to start. Check your configuration.');
+  }
 
   // Sample route that triggers some APM instrumentation
   app.get('/', (req, res) => {
     // Start a custom transaction
     const transaction = apm.startTransaction('MyCustomTransaction', 'custom');
-  
+
     // Simulate some processing
     setTimeout(() => {
       // End the transaction
