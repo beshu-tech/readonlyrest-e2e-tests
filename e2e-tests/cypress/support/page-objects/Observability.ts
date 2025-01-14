@@ -53,7 +53,7 @@ export class Observability {
       clickSelector.click();
       cy.get('body').then(() => {
         targetSelector.then($el => {
-          if ($el.val() !== 'request') {
+          if ($el.val() !== 'request' || $el.val() !== 'custom') {
             // Retry after interval if the element is not visible
             cy.wait(interval).then(retry);
           }
