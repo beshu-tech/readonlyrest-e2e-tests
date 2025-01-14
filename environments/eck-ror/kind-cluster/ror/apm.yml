@@ -7,8 +7,11 @@ spec:
   version: ${ES_VERSION}
   count: 1
   config:
-    rum:
-      enabled: true
+    apm-server:
+      rum:
+        enabled: true
+      kibana:
+        enabled: false
     output:
       elasticsearch:
         hosts: [ "https://quickstart-es-http.default.svc:9200" ]
