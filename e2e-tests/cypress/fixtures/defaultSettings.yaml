@@ -29,9 +29,9 @@ readonlyrest:
       verbosity: error
       auth_key: kibana:kibana
 
-    - name: "APM"
-      type: allow
-      auth_key: apm:test
+#    - name: "APM"
+#      type: allow
+#      auth_key: apm:test
 
     # <-- related to ECK environment -->
     - name: "Kibana service account - token"
