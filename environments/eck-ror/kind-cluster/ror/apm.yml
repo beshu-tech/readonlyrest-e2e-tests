@@ -10,6 +10,7 @@ spec:
     apm-server:
       rum:
         enabled: true
+        allow_origins: ['*']
       kibana:
         enabled: false
     output:
