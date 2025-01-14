@@ -7,6 +7,8 @@ spec:
   version: ${ES_VERSION}
   count: 1
   config:
+    rum:
+      enabled: true
     output:
       elasticsearch:
         hosts: [ "https://quickstart-es-http.default.svc:9200" ]
