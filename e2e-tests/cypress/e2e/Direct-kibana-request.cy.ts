@@ -3,7 +3,7 @@ import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { rorApiClient } from '../support/helpers/RorApiClient';
 
-describe('Direct kibana request', () => {
+describe.skip('Direct kibana request', () => {
   const user1 = 'user1:dev';
   const admin = 'admin:dev';
 

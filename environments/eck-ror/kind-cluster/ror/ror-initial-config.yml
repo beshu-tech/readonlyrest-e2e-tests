@@ -48,6 +48,9 @@ data:
           verbosity: error
           auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
           
+        - name: "APM"
+          type: allow
+          auth_key: apm:test
           
         - name: PERSONAL_GRP
           groups: [ Personal ]

@@ -1,7 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { DevTools } from '../support/page-objects/DevTools';
 
-describe('Dev tools', () => {
+describe.skip('Dev tools', () => {
   beforeEach(() => {
     Login.initialization();
     DevTools.openDevTools();

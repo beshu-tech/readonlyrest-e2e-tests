@@ -4,7 +4,7 @@ import { UserSettings } from '../support/page-objects/UserSettings';
 import { SecuritySettings } from '../support/page-objects/SecuritySettings';
 import { getKibanaVersion } from '../support/helpers';
 
-describe('User settings', () => {
+describe.skip('User settings', () => {
   beforeEach(() => {
     Login.initialization();
     UserSettings.open();

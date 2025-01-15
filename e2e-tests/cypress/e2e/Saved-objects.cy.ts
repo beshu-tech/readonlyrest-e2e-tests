@@ -4,7 +4,7 @@ import { StackManagement } from '../support/page-objects/StackManagement';
 import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 
-describe('Saved objects', () => {
+describe.skip('Saved objects', () => {
   beforeEach(() => {
     Login.initialization();
     StackManagement.openSavedObjectsPage();

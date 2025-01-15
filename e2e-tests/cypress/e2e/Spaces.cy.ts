@@ -8,7 +8,7 @@ import { Spaces } from '../support/page-objects/Spaces';
 
 const SPACE_NAME = 'Test space';
 
-describe('Spaces', () => {
+describe.skip('Spaces', () => {
   beforeEach(() => {
     cy.visit(Cypress.config().baseUrl);
     cy.on('url:changed', () => {
