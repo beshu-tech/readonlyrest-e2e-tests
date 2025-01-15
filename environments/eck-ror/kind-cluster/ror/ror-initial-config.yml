@@ -5,7 +5,7 @@ data:
       helpers:
         cr: &common-rules
           kibana_access: rw
-          kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+          kibana_hide_apps: [ "Enterprise Search|Overview" ]
           kibana_index: ".kibana_@{acl:current_group}"
       
         ag: &all-groups
