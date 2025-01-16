@@ -31,7 +31,6 @@ export ROR_KBN_VERSION="latest"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
 export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
 
-
 while [[ $# -gt 0 ]]; do
   case $1 in
   --es)
