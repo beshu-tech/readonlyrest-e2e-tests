@@ -4,7 +4,7 @@ metadata:
   name: quickstart
 spec:
   version: ${KBN_VERSION}
-  image: ${ROR_KBN_REPO}:${KBN_VERSION}-ror-{ROR_KBN_VERSION}
+  image: ${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}
   count: 1
   elasticsearchRef:
     name: quickstart

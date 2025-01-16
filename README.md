@@ -6,8 +6,8 @@
 
 Prerequisites:
 * Yarn (`1.22.x` or newer) - for running E2E tests
-* Docker (`26.x.x` or newer) - for running ELK environment
-* [Kind](https://kind.sigs.k8s.io/) (`0.24.x` or newer) - for running ECK environment
+* Docker (`27.x.x` or newer) - for running ELK environment
+* [Kind](https://kind.sigs.k8s.io/) (`0.26.x` or newer) - for running ECK environment
 
 #### E2E with one command 
 
@@ -28,14 +28,27 @@ or
 You can bootstrap the test env and run tests separately (to not build the ES+KBN+ROR stack every test run). 
 
 To run the env:
+
+(running the latest version of ROR from Docker Hub production repo)
 ```bash
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
+(running the given version of ROR from Docker Hub dev repo)
+```bash
+./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --dev
+```
+
 or
 
+(running the latest version of ROR from Docker Hub production repo)
 ```bash
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2"
+```
+
+(running the given version of ROR from Docker Hub dev repo)
+```bash
+./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --dev
 ```
 
 To run tests on the env:

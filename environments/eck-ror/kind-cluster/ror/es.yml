@@ -4,7 +4,7 @@ metadata:
   name: quickstart
 spec:
   version: ${ES_VERSION}
-  image: ${ROR_ES_REPO}:${ES_VERSION}-ror-{ROR_ES_VERSION}
+  image: ${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}
   nodeSets:
     - name: default
       count: 1
