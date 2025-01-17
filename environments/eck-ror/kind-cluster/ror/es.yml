@@ -4,7 +4,7 @@ metadata:
   name: quickstart
 spec:
   version: ${ES_VERSION}
-  image: beshultd/elasticsearch-readonlyrest:${ES_VERSION}-ror-latest
+  image: beshultd/elasticsearch-readonlyrest-dev:${ES_VERSION}-ror-1.62.0-pre5
   nodeSets:
     - name: default
       count: 1

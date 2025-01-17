@@ -10,12 +10,11 @@
     environment: 'development',
     serverCaCertFile: '/example-app/certs/ca.crt',
     verifyServerCert: false,
-    secretToken: process.env.APM_SECRET_TOKEN
+    secretToken: process.env.APM_SECRET_TOKEN,
+    logLevel: 'trace'
   });
 
-  if (!apm.isStarted()) {
-    console.log('Elastic APM agent failed to start. Check your configuration.');
-  }
+  app.use(apm.middleware.connect());
 
   // Sample route that triggers some APM instrumentation
   app.get('/', (req, res) => {

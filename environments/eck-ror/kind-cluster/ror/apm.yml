@@ -12,6 +12,10 @@ spec:
         enabled: true
       kibana:
         enabled: false
+      ssl:
+        enabled: true
+        client_authentication: "none"
+
     output:
       elasticsearch:
         hosts: [ "https://quickstart-es-http.default.svc:9200" ]
@@ -19,6 +23,7 @@ spec:
         password: "test"
         ssl:
           enabled: true
+          verification_mode: "full"
     logging:
       level: "debug"
   elasticsearchRef:
