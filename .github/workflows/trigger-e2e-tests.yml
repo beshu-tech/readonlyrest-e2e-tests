@@ -8,14 +8,13 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  e2e-tests:
+  master-e2e-tests:
+    if: github.ref == 'refs/heads/master' || github.base_ref == 'master'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        branch: [master, develop]
         version: ["8.17.0", "7.17.27"]
-        ror-version: ["1.62.0-pre5"] # Used only for develop
         env: [docker, eck]
     steps:
       - name: Checkout code
@@ -28,11 +27,40 @@ jobs:
 
       - name: Run tests
         run: |
-          if [[ ${{ matrix.target-branch }} == "master" || ${{ github.event.pull_request.base.ref == 'master' }} ]]; then
-            ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
-          elif [[ ${{ matrix.target-branch }} == "develop" || ${{ github.event.pull_request.base.ref == 'develop' }} ]]; then
-            ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ matrix.ror-version }} --ror-kbn ${{ matrix.ror-version }} --dev
-          fi
+          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+
+      - name: S3 Upload Videos & show logs
+        if: failure()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws configure set region eu-west-1
+          aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
+  
+  develop-e2e-tests:
+    if: github.ref == 'refs/heads/develop' || github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["8.17.0", "7.17.27"]
+        env: [docker, eck]
+        ror-version: ["1.62.0-pre5"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Run tests
+        run: |
+          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ matrix.ror-version }} --ror-kbn ${{ matrix.ror-version }} --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
