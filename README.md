@@ -34,7 +34,7 @@ To run the env:
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
-(running the given version of ROR from Docker Hub dev repo)
+(running the given version of ROR from Docker Hub development repo)
 ```bash
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --dev
 ```
@@ -46,7 +46,7 @@ or
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
-(running the given version of ROR from Docker Hub dev repo)
+(running the given version of ROR from Docker Hub development repo)
 ```bash
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --dev
 ```
