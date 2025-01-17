@@ -27,19 +27,14 @@ jobs:
 
       - name: Run tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
+          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
       - name: S3 Upload Videos & show logs
         if: failure()
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          aws configure set region eu-west-1
-          aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
-  
+        uses: ./.github/workflows/common/upload-videos.yml
+
   develop-e2e-tests:
     if: github.ref == 'refs/heads/develop' || github.base_ref == 'develop'
     runs-on: ubuntu-latest
@@ -48,7 +43,9 @@ jobs:
       matrix:
         version: ["8.17.0", "7.17.27"]
         env: [docker, eck]
-        ror-version: ["1.62.0-pre5"]
+    env:
+      ROR_ES_VERSION: "1.62.0-pre5"
+      ROR_KBN_VERSION: "1.62.0-pre5"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -60,15 +57,10 @@ jobs:
 
       - name: Run tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ matrix.ror-version }} --ror-kbn ${{ matrix.ror-version }} --dev
+          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
       - name: S3 Upload Videos & show logs
         if: failure()
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          aws configure set region eu-west-1
-          aws s3 cp results/videos/ s3://readonlyrest-data/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
+        uses: ./.github/workflows/common/upload-videos.yml
