@@ -14,13 +14,17 @@ if ! command -v docker &> /dev/null; then
 fi
 
 show_help() {
-  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version>"
+  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
   exit 1
 }
 
 export ES_VERSION=""
 export KBN_VERSION=""
 export ECK_VERSION="2.14.0"
+export ROR_ES_VERSION="latest" 
+export ROR_KBN_VERSION="latest"
+export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
+export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -33,12 +37,30 @@ while [[ $# -gt 0 ]]; do
       show_help
     fi
     ;;
+  --ror-es)
+    if [[ -n $2 && $2 != --* ]]; then
+      ROR_ES_VERSION="$2"
+      shift 2
+    else
+      echo "Error: --ror-es requires a version argument"
+      show_help
+    fi
+    ;;
   --kbn)
     if [[ -n $2 && $2 != --* ]]; then
       KBN_VERSION="$2"
       shift 2
     else
       echo "Error: --kbn requires a version argument"
+      show_help
+    fi
+    ;;
+  --ror-kbn)
+    if [[ -n $2 && $2 != --* ]]; then
+      ROR_KBN_VERSION="$2"
+      shift 2
+    else
+      echo "Error: --ror-kbn requires a version argument"
       show_help
     fi
     ;;
@@ -51,6 +73,11 @@ while [[ $# -gt 0 ]]; do
         show_help
       fi
       ;;
+  --dev)
+    export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+    export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+    shift
+    ;;
   *)
     echo "Unknown option: $1"
     show_help
@@ -114,7 +141,7 @@ docker exec ror-eck-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl app
 
 echo ""
 echo "------------------------------------------"
-echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then open your browser and try to access https://localhost:5601/ (credentials admin:admin)"
+echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then open your browser and try to access https://localhost:5601/"
 echo ""
 
 check_pods_running() {
