@@ -10,7 +10,6 @@
     serverCaCertFile: '/example-app/certs/ca.crt',
     verifyServerCert: false,
     secretToken: process.env.APM_SECRET_TOKEN,
-    logLevel: 'trace'
   });
 
   const express = require('express');
