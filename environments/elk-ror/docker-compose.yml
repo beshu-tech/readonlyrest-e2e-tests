@@ -10,7 +10,7 @@ services:
         ROR_ES_VERSION: $ROR_ES_VERSION
     ports:
       - "9200:9200"
-      - "15000:5000"
+      - "5000:5000"
     deploy:
       resources:
         limits:
