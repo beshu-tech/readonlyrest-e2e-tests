@@ -61,7 +61,7 @@ services:
     environment:
       ES_API_URL: https://es-ror:9200
     healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:5601/api/status" ]
+      test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:5601/api/status" ]
       interval: 10s
       timeout: 10s
       retries: 30
@@ -83,7 +83,7 @@ services:
     ports:
       - "5601:443"
     healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:443/api/status" ]
+      test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:443/api/status" ]
       interval: 10s
       timeout: 10s
       retries: 30
@@ -91,6 +91,44 @@ services:
     networks:
       - es-ror-network
 
+  apm-server:
+    build:
+      context: .
+      dockerfile: images/apm/Dockerfile
+      args:
+        ES_VERSION: $ES_VERSION
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./certs:/usr/share/apm-server/config/certs:z
+    depends_on:
+      - es-ror
+      - kbn-ror
+    networks:
+      - es-ror-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+  app1:
+    build:
+      context: .
+      dockerfile: images/ubuntu/Dockerfile
+    command: node /example-app/app.js
+    depends_on:
+      - apm-server
+    expose:
+      - 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./certs:/example-app/certs:z
+    networks:
+      - es-ror-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 networks:
   es-ror-network:
     driver: bridge

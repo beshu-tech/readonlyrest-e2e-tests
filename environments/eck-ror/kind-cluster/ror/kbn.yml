@@ -12,6 +12,9 @@ spec:
     # csp needs to be disabled to let cypress e2e tests works
     csp.strict: false
     csp.warnLegacyBrowsers: false
+    xpack.fleet.packages:
+      - name: apm
+        version: latest
     # KBN ROR settings
     readonlyrest_kbn:
       cookiePass: '12312313123213123213123adadasdasdasd'

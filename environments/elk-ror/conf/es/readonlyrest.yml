@@ -1,7 +1,7 @@
 helpers:
   cr: &common-rules
     kibana_access: rw
-    kibana_hide_apps: ["Enterprise Search|Overview", "Observability"]
+    kibana_hide_apps: ["Enterprise Search|Overview"]
     kibana_index: ".kibana_@{acl:current_group}"
 
   ag: &all-groups
@@ -14,12 +14,6 @@ helpers:
         name: template
 
 readonlyrest:
-  ssl:
-    enable: true
-    keystore_file: "ror-keystore.jks"
-    keystore_pass: readonlyrest
-    key_pass: readonlyrest
-
   response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
   prompt_for_basic_auth: false
 
@@ -34,6 +28,10 @@ readonlyrest:
     - name: "Kibana service account - user/pass"
       verbosity: error
       auth_key: kibana:kibana
+
+    - name: "APM"
+      type: allow
+      auth_key: apm:test
 
     - name: PERSONAL_GRP
       groups: [Personal]

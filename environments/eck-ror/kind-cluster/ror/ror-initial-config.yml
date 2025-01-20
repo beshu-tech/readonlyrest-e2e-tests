@@ -5,7 +5,7 @@ data:
       helpers:
         cr: &common-rules
           kibana_access: rw
-          kibana_hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+          kibana_hide_apps: [ "Enterprise Search|Overview" ]
           kibana_index: ".kibana_@{acl:current_group}"
       
         ag: &all-groups
@@ -47,6 +47,10 @@ data:
         - name: "ELASTIC-INTERNAL"
           verbosity: error
           auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
+          
+        - name: "APM"
+          type: allow
+          auth_key: apm:test
           
         - name: PERSONAL_GRP
           groups: [ Personal ]
