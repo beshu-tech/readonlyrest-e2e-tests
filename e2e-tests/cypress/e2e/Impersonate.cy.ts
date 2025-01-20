@@ -4,7 +4,7 @@ import { SecuritySettings } from '../support/page-objects/SecuritySettings';
 import { TestSettings } from '../support/page-objects/TestSettings';
 import { rorApiClient } from '../support/helpers/RorApiClient';
 
-describe.skip('impersonate', () => {
+describe('impersonate', () => {
   beforeEach(() => {
     Login.initialization();
   });

@@ -4,7 +4,7 @@ import { Settings } from '../support/page-objects/Settings';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { userCredentials } from '../support/helpers';
 
-describe.skip('sanity check ro_strict kibana access', () => {
+describe('sanity check ro_strict kibana access', () => {
   beforeEach(() => {
     Login.initialization();
   });
