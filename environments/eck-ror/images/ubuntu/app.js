@@ -1,7 +1,6 @@
 
   
-  const express = require('express');
-  const app = express();
+
 
   // Import and start the Elastic APM agent at the very top of your application
   var apm = require('elastic-apm-node').start({
@@ -14,7 +13,8 @@
     logLevel: 'trace'
   });
 
-  app.use(apm.middleware.connect());
+  const express = require('express');
+  const app = express();
 
   // Sample route that triggers some APM instrumentation
   app.get('/', (req, res) => {
