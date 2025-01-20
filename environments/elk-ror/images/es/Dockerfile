@@ -1,15 +1,8 @@
-ARG ES_VERSION
+ARG ES_VERSION="UNDEFINED_ES_VERSION"
+ARG ROR_ES_REPO="UNDEFINED_ROR_ES_REPO"
+ARG ROR_ES_VERSION="UNDEFINED_ROR_ES_VERSION"
 
-FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
-
-ARG ES_ROR_FILE
-
-COPY images/plugins/$ES_ROR_FILE /tmp/ror.zip
-
-USER elasticsearch
-RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/ror.zip
-USER root
-RUN /usr/share/elasticsearch/jdk/bin/java -jar /usr/share/elasticsearch/plugins/readonlyrest/ror-tools.jar patch
+FROM ${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}
 
 USER elasticsearch
 
@@ -20,3 +13,6 @@ COPY certs/ca.crt /usr/share/elasticsearch/config/ca.crt
 COPY certs/elasticsearch.crt /usr/share/elasticsearch/config/elasticsearch.crt
 COPY certs/elasticsearch.csr /usr/share/elasticsearch/config/elasticsearch.csr
 COPY certs/elasticsearch.key /usr/share/elasticsearch/config/elasticsearch.key
+
+ENV I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING yes
+USER root

@@ -18,7 +18,7 @@ if [[ -z "${ROR_ACTIVATION_KEY}" ]]; then
 fi
 
 show_help() {
-  echo "Usage: ./run.sh --es <elasticsearch_version> --kbn <kibana_version>"
+  echo "Usage: ./run.sh --es <elasticsearch_version> --kbn <kibana_version>  [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
   exit 1
 }
 
@@ -26,6 +26,10 @@ echo "Preparing environment the tests will be run at ..."
 
 export ES_VERSION=""
 export KBN_VERSION=""
+export ROR_ES_VERSION="latest" 
+export ROR_KBN_VERSION="latest"
+export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
+export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -38,6 +42,15 @@ while [[ $# -gt 0 ]]; do
       show_help
     fi
     ;;
+  --ror-es)
+    if [[ -n $2 && $2 != --* ]]; then
+      ROR_ES_VERSION="$2"
+      shift 2
+    else
+      echo "Error: --ror-es requires a version argument"
+      show_help
+    fi
+    ;;
   --kbn)
     if [[ -n $2 && $2 != --* ]]; then
       KBN_VERSION="$2"
@@ -46,6 +59,20 @@ while [[ $# -gt 0 ]]; do
       echo "Error: --kbn requires a version argument"
       show_help
     fi
+    ;;
+  --ror-kbn)
+    if [[ -n $2 && $2 != --* ]]; then
+      ROR_KBN_VERSION="$2"
+      shift 2
+    else
+      echo "Error: --ror-kbn requires a version argument"
+      show_help
+    fi
+    ;;
+  --dev)
+    export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+    export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+    shift
     ;;
   *)
     echo "Unknown option: $1"
@@ -58,14 +85,6 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   echo "Error: Both --es and --kbn arguments are required"
   show_help
 fi
-
-echo "Downloading ROR ES plugin ..."
-export ES_ROR_FILE
-ES_ROR_FILE=$(./download-ror-es.sh "$ES_VERSION")
-
-echo "Downloading ROR KBN plugin ..."
-export KBN_ROR_FILE
-KBN_ROR_FILE=$(./download-ror-kbn.sh "$KBN_VERSION")
 
 echo "Bootstrapping the docker-based environment ..."
 
