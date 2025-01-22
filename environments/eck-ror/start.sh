@@ -25,6 +25,8 @@ export ROR_ES_VERSION="latest"
 export ROR_KBN_VERSION="latest"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
 export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
+export APM_USERNAME="apm"
+export APM_PASSWORD="test"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -90,18 +92,7 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-DOCKERFILE_DIR="./images/ubuntu"
-IMAGE_NAME="node-apm-app"
-TAG="latest"
 
-docker build -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR"
-
-if [ $? -eq 0 ]; then
-    echo "Docker image built successfully: $IMAGE_NAME:$TAG"
-else
-    echo "Docker image build failed."
-    exit 1
-fi
 
 
 echo "CONFIGURING K8S CLUSTER ..."
@@ -110,17 +101,19 @@ docker exec ror-eck-control-plane /bin/bash -c "sysctl -w vm.max_map_count=26214
 docker exec ror-eck-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec ror-eck-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
- # Load the Docker image into the Kind cluster
-    CLUSTER_NAME="ror-eck"
+# Build node-apm-app Docker image
+DOCKERFILE_DIR="../common/images/node-apm-app"
+IMAGE_NAME="node-apm-app"
+TAG="latest"
 
-    kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME"
+docker build -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
+echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
-    if [ $? -eq 0 ]; then
-        echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
-    else
-        echo "Failed to load Docker image into Kind cluster."
-        exit 1
-    fi
+# Load node-apm-app Docker image into the Kind cluster
+CLUSTER_NAME="ror-eck"
+
+kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
+echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
 docker cp kind-cluster/bootstrap-eck.sh ror-eck-control-plane:/

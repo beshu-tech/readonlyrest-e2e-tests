@@ -18,9 +18,8 @@ spec:
 
     output:
       elasticsearch:
-        hosts: [ "https://quickstart-es-http.default.svc:9200" ]
-        username: "apm"
-        password: "test"
+        username: ${APM_USERNAME}
+        password: ${APM_PASSWORD}
         ssl:
           enabled: true
           verification_mode: "full"

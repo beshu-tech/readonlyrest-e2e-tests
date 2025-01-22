@@ -5,14 +5,14 @@ RUN apt-get update && \
     ln -s /usr/x86_64-linux-gnu/lib64/ /lib64 && \
     mkdir -p /example-app
 
-COPY app.js /example-app
+COPY ./app.js /example-app
 
 RUN cd /example-app && \
     npm install elastic-apm-node && \
     npm install express
-    
+
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/lib64:/usr/x86_64-linux-gnu/lib"
-# Set the working directory
+
 WORKDIR /example-app
 
 EXPOSE 3000

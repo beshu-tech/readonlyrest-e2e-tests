@@ -19,7 +19,7 @@ spec:
           command: ['sh', '-c', 'until nc -z quickstart-apm-http.default.svc 8200; do echo waiting for APM server; sleep 2; done;']
       containers:
         - name: node-apm-app
-          image: node-apm-app:latest  # Use the image name and tag
+          image: node-apm-app:latest
           imagePullPolicy: Never
           ports:
             - containerPort: 3000
@@ -33,6 +33,8 @@ spec:
                 secretKeyRef:
                   name: quickstart-apm-token
                   key: secret-token
+            - name: APM_URL
+              value: https://quickstart-apm-http.default.svc:8200
       volumes:
         - name: apm-cert-volume
           secret:

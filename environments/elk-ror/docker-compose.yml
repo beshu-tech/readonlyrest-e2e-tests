@@ -110,11 +110,12 @@ services:
       resources:
         limits:
           memory: 1G
-  app1:
+  node-apm-app:
     build:
-      context: .
-      dockerfile: images/ubuntu/Dockerfile
-    command: node /example-app/app.js
+      context: ../common/images/node-apm-app/
+      dockerfile: Dockerfile
+    environment:
+      APM_URL: https://apm-server:8200
     depends_on:
       - apm-server
     expose:

@@ -1,10 +1,6 @@
-
-  
-
-
-  // Import and start the Elastic APM agent at the very top of your application
+// Import and start the Elastic APM agent at the very top of your application
   var apm = require('elastic-apm-node').start({
-    serverUrl: 'https://quickstart-apm-http.default.svc:8200',
+    serverUrl: process.env.APM_URL,
     serviceName: 'app1',
     environment: 'development',
     serverCaCertFile: '/example-app/certs/ca.crt',
