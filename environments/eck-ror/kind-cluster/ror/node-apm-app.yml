@@ -16,7 +16,7 @@ spec:
       initContainers:
         - name: wait-for-apm
           image: busybox
-          command: ['sh', '-c', 'until nc -z quickstart-apm-http.default.svc 8200; do echo waiting for APM server; sleep 2; done;']
+          command: ['sh', '-c', 'timeout 300 sh -c "until nc -z quickstart-apm-http.default.svc 8200; do echo waiting for APM server; sleep 2; done;"']
       containers:
         - name: node-apm-app
           image: node-apm-app:latest
