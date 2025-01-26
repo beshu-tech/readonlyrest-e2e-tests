@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quickstart-node-apm-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-apm-app
+  template:
+    metadata:
+      labels:
+        app: node-apm-app
+    spec:
+      initContainers:
+        - name: wait-for-apm
+          image: busybox
+          command: ['sh', '-c', 'timeout 300 sh -c "until nc -z quickstart-apm-http.default.svc 8200; do echo waiting for APM server; sleep 2; done;"']
+      containers:
+        - name: node-apm-app
+          image: node-apm-app:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: apm-cert-volume
+              mountPath: /example-app/certs
+              readOnly: true
+          env:
+            - name: APM_SECRET_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: quickstart-apm-token
+                  key: secret-token
+            - name: APM_URL
+              value: https://quickstart-apm-http.default.svc:8200
+      volumes:
+        - name: apm-cert-volume
+          secret:
+            secretName: quickstart-apm-kibana-ca

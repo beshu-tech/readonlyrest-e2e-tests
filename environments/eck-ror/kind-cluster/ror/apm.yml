@@ -1,0 +1,31 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: quickstart
+  namespace: default
+spec:
+  version: ${ES_VERSION}
+  count: 1
+  config:
+    apm-server:
+      rum:
+        enabled: true
+      kibana:
+        enabled: false
+      ssl:
+        enabled: true
+        client_authentication: "none"
+
+    output:
+      elasticsearch:
+        username: ${APM_USERNAME}
+        password: ${APM_PASSWORD}
+        ssl:
+          enabled: true
+          verification_mode: "full"
+    logging:
+      level: "debug"
+  elasticsearchRef:
+    name: quickstart
+  kibanaRef:
+    name: quickstart

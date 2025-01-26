@@ -9,8 +9,8 @@ ARG ROR_ACTIVATION_KEY
 USER kibana
 
 COPY conf/kbn/kibana.yml /usr/share/kibana/config/kibana.yml
-COPY conf/kbn/kibana.key /usr/share/kibana/config/kibana.key
-COPY conf/kbn/kibana.crt /usr/share/kibana/config/kibana.crt
+COPY certs/kibana.key /usr/share/kibana/config/kibana.key
+COPY certs/kibana.crt /usr/share/kibana/config/kibana.crt
 
 ENV ROR_ACTIVATION_KEY=$ROR_ACTIVATION_KEY
 
