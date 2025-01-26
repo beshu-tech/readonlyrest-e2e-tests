@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["8.17.0", "7.17.27"]
+        version: ["8.17.1", "7.17.27"]
         env: [docker, eck]
     env:
       ROR_ES_VERSION: "1.62.0-pre5"
