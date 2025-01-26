@@ -102,14 +102,19 @@ services:
     volumes:
       - ./certs:/usr/share/apm-server/config/certs:z
     depends_on:
-      - es-ror
-      - kbn-ror
+      es-ror:
+        condition: service_healthy
     networks:
       - es-ror-network
     deploy:
       resources:
         limits:
           memory: 1G
+    healthcheck:
+      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:8200" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   node-apm-app:
     build:
@@ -118,7 +123,8 @@ services:
     environment:
       APM_URL: https://apm-server:8200
     depends_on:
-      - apm-server
+      apm-server:
+        condition: service_healthy
     expose:
       - 3000
     ports:
@@ -131,6 +137,11 @@ services:
       resources:
         limits:
           memory: 128MB
+    healthcheck:
+      test: [ "CMD", "curl", "-k", "--fail", "https://apm-server:8200" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 networks:
   es-ror-network:
     driver: bridge

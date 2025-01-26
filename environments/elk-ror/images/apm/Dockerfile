@@ -2,6 +2,9 @@ ARG ES_VERSION
 
 FROM docker.elastic.co/apm/apm-server:${ES_VERSION}
 
+USER root
+RUN apt-get update && apt-get install -y curl
+
 COPY ./certs /usr/share/apm-server/config/certs
 
 EXPOSE 8200
