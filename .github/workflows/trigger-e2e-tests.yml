@@ -18,7 +18,7 @@ jobs:
         env: [docker, eck]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: master 
 
@@ -35,10 +35,13 @@ jobs:
 
       - name: S3 Upload Videos & show logs
         if: failure()
-        uses: ./.github/workflows/common/upload-videos.yml
-
+        uses: ./.github/upload-videos
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        
   develop-e2e-tests:
-    if: github.event_name != 'schedule' || github.ref == 'refs/heads/develop' || github.base_ref == 'develop'
+    if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -50,7 +53,7 @@ jobs:
       ROR_KBN_VERSION: "latest"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: develop 
 
@@ -67,4 +70,7 @@ jobs:
 
       - name: S3 Upload Videos & show logs
         if: failure()
-        uses: ./.github/workflows/common/upload-videos.yml
+        uses: ./.github/upload-videos
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
