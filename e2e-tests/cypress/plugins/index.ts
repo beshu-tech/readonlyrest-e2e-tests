@@ -3,6 +3,12 @@ import fetch, { Response } from 'node-fetch';
 import FormData from 'form-data';
 
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
+  on('before:browser:launch', (browser = {}, launchOptions) => {
+    if (browser.family === 'chromium') {
+      launchOptions.args.push('--js-flags="--max_old_space_size=1024 --max_semi_space_size=1024"');
+    }
+    return launchOptions;
+  });
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
       const { method, url, headers, body } = options;
