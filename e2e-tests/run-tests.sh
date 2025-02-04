@@ -17,7 +17,7 @@ KBN_VERSION="$1"
 echo "Running E2E Cypress tests ..."
 
 yarn --frozen-lockfile install
-yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY" --no-runner-ui
+yarn run run --browser electron --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY"
 
 if [[ $? -ne 0 ]]; then
   echo "❌ E2E tests failed :("
