@@ -7,7 +7,7 @@
     "lint": "eslint .",
     "lint:fix": "yarn lint -- --fix",
     "open": "./node_modules/.bin/cypress open",
-    "run": "./node_modules/.bin/cypress run --browser electron"
+    "run": "./node_modules/.bin/cypress run"
   },
   "license": "Beshu Limited, All rights reserved",
   "dependencies": {
