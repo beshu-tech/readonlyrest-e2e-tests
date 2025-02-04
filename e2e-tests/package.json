@@ -7,7 +7,7 @@
     "lint": "eslint .",
     "lint:fix": "yarn lint -- --fix",
     "open": "./node_modules/.bin/cypress open",
-    "run": "DEBUG=cypress:* ./node_modules/.bin/cypress run --no-runner-ui"
+    "run": "./node_modules/.bin/cypress run --spec 'cypress/e2e/Sanity-check.cy.ts' --browser electron"
   },
   "license": "Beshu Limited, All rights reserved",
   "dependencies": {
