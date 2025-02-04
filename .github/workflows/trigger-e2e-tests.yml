@@ -18,12 +18,12 @@ jobs:
         env: [ docker, eck ]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -49,12 +49,12 @@ jobs:
         env: [docker, eck]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: master
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -72,7 +72,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   develop-e2e-tests:
-    if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
+    if: github.event_name != 'schedule' && github.event_name != 'pull_request' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -84,12 +84,12 @@ jobs:
       ROR_KBN_VERSION: "latest"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: develop
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
