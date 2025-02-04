@@ -40,7 +40,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   master-e2e-tests:
-    if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
+    if: github.event_name == 'schedule' || (github.event_name != 'pull_request' && (github.ref == 'refs/heads/master' || github.base_ref == 'master'))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -51,7 +51,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: master 
+          ref: master
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -70,7 +70,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        
+
   develop-e2e-tests:
     if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
@@ -86,7 +86,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: develop 
+          ref: develop
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
