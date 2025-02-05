@@ -136,8 +136,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
    * Don't fail test when these specific errors from kibana platform
    */
   if (
-    err.message.includes('ResizeObserver loop limit exceeded') ||
-    err.message.includes('ResizeObserver loop completed with undelivered notifications.') || // kibana 8.11.0 and above throws this error
+    // err.message.includes('ResizeObserver loop limit exceeded') ||
+    // err.message.includes('ResizeObserver loop completed with undelivered notifications.') || // kibana 8.11.0 and above throws this error
     err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
     err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
     err.message.includes("Cannot read properties of undefined (reading 'includes')") || // kibana 8.7.0 throws this error
