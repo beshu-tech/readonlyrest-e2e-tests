@@ -19,10 +19,10 @@ export default defineConfig({
   responseTimeout: 20000,
   pageLoadTimeout: 20000,
   taskTimeout: 20000,
-  // retries: {
-  //   openMode: 2,
-  //   runMode: 2
-  // },
+  retries: {
+    openMode: 2,
+    runMode: 2
+  },
   e2e: {
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
