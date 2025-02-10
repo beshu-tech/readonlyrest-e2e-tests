@@ -42,8 +42,8 @@ jobs:
           dotnet: true
           haskell: true
           large-packages: true
-          docker-images: true
-          swap-storage: true
+          docker-images: false
+          swap-storage: false
           
       - name: Check2
         run: df -h
