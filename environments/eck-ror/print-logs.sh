@@ -8,3 +8,5 @@ for pod in $(docker exec ror-eck-control-plane kubectl get pods --output=jsonpat
   kubectl logs $pod
   echo "--------------------------------------------------"
 done
+
+df -h

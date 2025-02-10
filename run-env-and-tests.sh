@@ -72,12 +72,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 handle_error() {
-  df -h
   ./environments/"$ENV_NAME"/print-logs.sh
 }
 
 cleanup() {
-  df -h
   ./environments/"$ENV_NAME"/stop-and-clean.sh
 }
 
