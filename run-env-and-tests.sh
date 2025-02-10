@@ -5,8 +5,6 @@ show_help() {
   exit 1
 }
 
-df -h
-
 ENV_NAME=""
 ELK_VERSION="$1"
 ROR_ES_VERSION=""

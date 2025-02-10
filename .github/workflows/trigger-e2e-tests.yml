@@ -27,6 +27,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Check
+        run: df -h
+
       - name: Run tests
         run: |
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
