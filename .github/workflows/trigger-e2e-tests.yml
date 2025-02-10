@@ -30,16 +30,37 @@ jobs:
       - name: Check
         run: df -h
 
+      - name: Free space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/go"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/Ruby"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/Python"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/PyPy"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/CodeQL"
+          sudo rm -rf /usr/lib/firefox
+          sudo rm -rf /opt/google/chrome
+          sudo rm -rf /opt/microsoft/msedge
+          sudo rm -rf /opt/microsoft/powershell
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/share/powershell
+
+      - name: Check2
+        run: df -h
+
       - name: Run tests
         run: |
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
-      - name: Check2
+      - name: Check3
         run: df -h
 
-      - name: Check3
+      - name: Check4
         if: failure()
         run: df -h
 
