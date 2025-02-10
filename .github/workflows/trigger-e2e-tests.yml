@@ -36,6 +36,9 @@ jobs:
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
+      - name: Chec2
+        run: df -h
+
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
