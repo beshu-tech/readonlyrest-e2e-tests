@@ -99,3 +99,5 @@ echo -e "E2E TESTS\n"
 
 time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $ROR_ES_VERSION $ROR_KBN_VERSION $MODE
 time ./e2e-tests/run-tests.sh "$ELK_VERSION"
+
+df -h
