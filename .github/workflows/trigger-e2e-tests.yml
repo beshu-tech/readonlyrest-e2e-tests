@@ -36,7 +36,11 @@ jobs:
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
-      - name: Chec2
+      - name: Check2
+        run: df -h
+
+      - name: Check3
+        if: failure()
         run: df -h
 
       - name: S3 Upload Videos & show logs
