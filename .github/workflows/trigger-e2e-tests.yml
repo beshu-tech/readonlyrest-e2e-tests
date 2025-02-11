@@ -30,20 +30,12 @@ jobs:
       - name: Check
         run: df -h
 
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-          tool-cache: false
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: false
+      - name: Clean up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
           
       - name: Check2
         run: df -h
