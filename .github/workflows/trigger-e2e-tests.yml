@@ -27,6 +27,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Clean up disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        
       - name: Run tests
         run: |
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
@@ -62,6 +69,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Clean up disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        
       - name: Run tests
         run: |
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
