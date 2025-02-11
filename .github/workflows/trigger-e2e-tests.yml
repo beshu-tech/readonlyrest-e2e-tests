@@ -27,7 +27,7 @@ jobs:
 
       - name: Run tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
+          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es 1.62.0 --ror-kbn 1.63.0-pre1 --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
