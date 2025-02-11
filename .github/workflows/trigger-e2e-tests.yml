@@ -18,7 +18,7 @@ jobs:
         env: [docker, eck]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           ref: master 
 
@@ -56,7 +56,7 @@ jobs:
       ROR_KBN_VERSION: "latest"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           ref: develop 
 
