@@ -18,9 +18,7 @@ jobs:
         env: [docker, eck]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          ref: master 
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -56,9 +54,7 @@ jobs:
       ROR_KBN_VERSION: "latest"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          ref: develop 
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
