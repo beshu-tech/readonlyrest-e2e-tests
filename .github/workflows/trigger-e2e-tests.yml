@@ -28,11 +28,11 @@ jobs:
           node-version: '20'
 
       - name: Clean up disk space
-      run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
-        sudo apt-get clean
-        sudo rm -rf /var/lib/apt/lists/*
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
         
       - name: Run tests
         run: |
@@ -70,11 +70,11 @@ jobs:
           node-version: '20'
 
       - name: Clean up disk space
-      run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
-        sudo apt-get clean
-        sudo rm -rf /var/lib/apt/lists/*
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
         
       - name: Run tests
         run: |
