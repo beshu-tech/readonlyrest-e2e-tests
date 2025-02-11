@@ -18,7 +18,7 @@ jobs:
         env: [docker, eck]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: master 
 
@@ -28,11 +28,7 @@ jobs:
           node-version: '20'
 
       - name: Clean up disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
+        uses: ./.github/cleanup-disk-space
         
       - name: Run tests
         run: |
@@ -60,7 +56,7 @@ jobs:
       ROR_KBN_VERSION: "latest"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: develop 
 
@@ -70,11 +66,7 @@ jobs:
           node-version: '20'
 
       - name: Clean up disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
+        uses: ./.github/cleanup-disk-space
         
       - name: Run tests
         run: |
