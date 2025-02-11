@@ -1,0 +1,16 @@
+name: 'Cleanup disk space'
+description: 'Cleanup runner disk space'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cleanup disk space
+      shell: bash
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        
+        echo "Available disk space after cleanup:"
+        df -h
