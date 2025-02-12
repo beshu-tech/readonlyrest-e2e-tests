@@ -27,6 +27,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+
       - name: Run tests
         run: |
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
