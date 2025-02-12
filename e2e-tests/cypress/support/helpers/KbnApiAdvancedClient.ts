@@ -11,12 +11,12 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
-  public deleteDataViews(credentials: string) {
+  public deleteDataViews(credentials: string, group?: string) {
     cy.log(`get all data_views for the ${credentials}`);
-    this.getDataViews(credentials).then(result => {
+    this.getDataViews(credentials, group).then(result => {
       result.data_view.forEach(dataView => {
         cy.log(`Remove ${dataView.id} saved object for ${credentials}`);
-        this.deleteDataView(dataView.id, credentials);
+        this.deleteDataView(dataView.id, credentials, group);
       });
     });
   }

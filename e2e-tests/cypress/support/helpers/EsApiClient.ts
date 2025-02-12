@@ -25,6 +25,13 @@ export class EsApiClient {
     });
   }
 
+  public deleteDataStream(index: string): void {
+    cy.esDelete({
+      endpoint: `_data_stream/${index}`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
   public addDocument(index: string, id: string, doc: object): void {
     cy.esPost({
       endpoint: `${index}/_doc/${id}`,
