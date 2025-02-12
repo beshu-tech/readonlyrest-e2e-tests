@@ -50,13 +50,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: master
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
 
       - name: Run tests
         run: |
@@ -85,13 +86,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: develop
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
 
       - name: Run tests
         run: |
