@@ -32,6 +32,7 @@ jobs:
 
       - name: Run tests
         run: |
+          export NODE_OPTIONS=--enable-unsafe-swiftshader
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
@@ -64,6 +65,7 @@ jobs:
 
       - name: Run tests
         run: |
+          export NODE_OPTIONS=--enable-unsafe-swiftshader
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
@@ -100,7 +102,7 @@ jobs:
 
       - name: Run tests
         run: |
-          export NODE_OPTIONS=--enable-unsafe-swiftshader 
+          export NODE_OPTIONS=--enable-unsafe-swiftshader
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
