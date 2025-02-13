@@ -27,7 +27,6 @@ jobs:
 
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
-
       - name: Run tests
         run: |
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
@@ -40,7 +39,6 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
   develop-e2e-tests:
     if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
