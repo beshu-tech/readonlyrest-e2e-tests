@@ -32,8 +32,6 @@ export default defineConfig({
     },
     baseUrl: 'https://localhost:5601',
     videosFolder: '../results/videos',
-    screenshotsFolder: '../results/screenshots',
-    experimentalMemoryManagement: true,
-    numTestsKeptInMemory: 1
+    screenshotsFolder: '../results/screenshots'
   }
 });
