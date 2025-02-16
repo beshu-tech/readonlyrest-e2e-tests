@@ -10,11 +10,16 @@ export class Reporting {
     cy.contains('No reports have been created').should('be.visible');
   }
 
-  static verifySavedReport(reportName: string, openBy: OpenBy, reportsCount) {
+  static verifySavedReport(reportNames: string[]) {
     cy.log('verifySavedReport');
-    this.openReportingPage(openBy);
-    cy.contains(reportName).should('be.visible');
-    cy.get('[data-test-subj=reportJobListing]').get('.euiTableRow').should('have.length', reportsCount);
+    reportNames.forEach(reportName => {
+      cy.contains(reportName).should('be.visible');
+      cy.contains(reportName)
+        .closest('[data-test-subj=reportJobRow]')
+        .contains(/Done|Completed/)
+        .should('be.visible');
+    });
+    cy.get('[data-test-subj=reportJobRow]').should('have.length', reportNames.length);
   }
 
   static verifyIfReportingPageAfterRefresh() {
@@ -23,7 +28,19 @@ export class Reporting {
     cy.reload();
     cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`);
   }
-  private static openReportingPage(openBy: OpenBy) {
+
+  static removeReport(reportName: string) {
+    cy.log('remove report');
+    cy.get('[data-test-subj=reportJobRow]')
+      .contains(reportName)
+      .closest('[data-test-subj=reportJobRow]')
+      .find('[type=checkbox]')
+      .click();
+    cy.get('[data-test-subj=deleteReportButton]').click();
+    cy.get('[data-test-subj=confirmModalConfirmButton]').click();
+  }
+
+  static openReportingPage(openBy: OpenBy) {
     if (openBy === 'rorMenu') {
       RorMenu.openReportingPage();
       Reporting.verifyIfReportingPageAfterRefresh();

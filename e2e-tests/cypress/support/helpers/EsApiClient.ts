@@ -25,6 +25,13 @@ export class EsApiClient {
     });
   }
 
+  public deleteDataStream(index: string): void {
+    cy.esDelete({
+      endpoint: `_data_stream/${index}`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
   public addDocument(index: string, id: string, doc: object): void {
     cy.esPost({
       endpoint: `${index}/_doc/${id}`,
@@ -37,6 +44,16 @@ export class EsApiClient {
     return cy.esGet({
       endpoint: '_cat/indices?format=json',
       credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public attachLifecyclePolicy(index: string, policyName: string): void {
+    cy.esPut({
+      endpoint: `${index}/_settings`,
+      credentials: Cypress.env().kibanaUserCredentials,
+      payload: {
+        'index.lifecycle.name': policyName
+      }
     });
   }
 }
