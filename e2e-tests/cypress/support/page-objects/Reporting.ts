@@ -14,7 +14,10 @@ export class Reporting {
     cy.log('verifySavedReport');
     reportNames.forEach(reportName => {
       cy.contains(reportName).should('be.visible');
-      cy.contains(reportName).closest('[data-test-subj=reportJobRow]').contains(/Done|Completed/).should('be.visible');
+      cy.contains(reportName)
+        .closest('[data-test-subj=reportJobRow]')
+        .contains(/Done|Completed/)
+        .should('be.visible');
     });
     cy.get('[data-test-subj=reportJobRow]').should('have.length', reportNames.length);
   }

@@ -46,6 +46,16 @@ export class EsApiClient {
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
+
+  public attachLifecyclePolicy(index: string, policyName: string): void {
+    cy.esPut({
+      endpoint: `${index}/_settings`,
+      credentials: Cypress.env().kibanaUserCredentials,
+      payload: {
+        'index.lifecycle.name': policyName
+      }
+    });
+  }
 }
 
 export const esApiClient = new EsApiClient();

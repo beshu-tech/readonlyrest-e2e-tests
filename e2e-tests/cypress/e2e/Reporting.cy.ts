@@ -9,6 +9,7 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import * as semver from 'semver';
+import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecyclesPolicies';
 
 if (semver.gte(getKibanaVersion(), '8.15.0')) {
   describe('Reporting', () => {
@@ -19,11 +20,8 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
     beforeEach(() => {
       cy.fixture('old_format_reporting_doc.json').then(oldFormatReportingDoc => {
         oldFormatReportingName = oldFormatReportingDoc.payload.title;
-        esApiClient.addDocument(
-          '.reporting.kibana_admins_group-2025-02-02',
-          oldFormatReportingDoc.id,
-          oldFormatReportingDoc
-        );
+        esApiClient.addDocument(oldFormatReportingIndex, oldFormatReportingDoc.id, oldFormatReportingDoc);
+        esApiClient.attachLifecyclePolicy(oldFormatReportingIndex, 'kibana-reporting');
       });
 
       cy.visit(Cypress.config().baseUrl);
@@ -54,6 +52,8 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       Reporting.verifySavedReport([oldFormatReportingName]);
       Reporting.removeReport(oldFormatReportingName);
       Reporting.verifySavedReport([]);
+      IndexLifecyclesPolicies.openIndexLifecyclePolicy();
+      IndexLifecyclesPolicies.verifyIndexLifecyclePolicy();
     });
   });
 } else {
