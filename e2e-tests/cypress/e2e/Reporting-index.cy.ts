@@ -8,7 +8,7 @@ import * as semver from 'semver';
 import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 
-describe('Reporting index', () => {
+describe('Index Pattern Configuration for Reporting index', () => {
   const admin = 'admin:dev';
 
   beforeEach(() => {
