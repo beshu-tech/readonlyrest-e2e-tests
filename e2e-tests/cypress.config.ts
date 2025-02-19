@@ -27,18 +27,13 @@ export default defineConfig({
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
-      on('before:browser:launch', (_, launchOptions) => {
-        launchOptions.args.push(
-          '--disable-gpu',
-          '--disable-software-rasterizer',
-          '--disable-dev-shm-usage',
-          '--no-sandbox',
-          '--force-cpu-draw',
-          '--disable-gpu-sandbox',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gl-drawing-for-tests'
-        );
-
+      on('before:browser:launch', (browser, launchOptions) => {
+        if (browser.isHeadless) {
+          launchOptions.args.push('--no-sandbox');
+          launchOptions.args.push('--disable-gl-drawing-for-tests');
+          launchOptions.args.push('--disable-gpu');
+        }
+        launchOptions.args.push('--js-flags=--max-old-space-size=3500');
         return launchOptions;
       });
 
