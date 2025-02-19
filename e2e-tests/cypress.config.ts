@@ -28,7 +28,16 @@ export default defineConfig({
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
       on('before:browser:launch', (_, launchOptions) => {
-        launchOptions.args.push('--disable-gpu');
+        launchOptions.args.push(
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-dev-shm-usage',
+          '--no-sandbox',
+          '--force-cpu-draw',
+          '--disable-gpu-sandbox',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gl-drawing-for-tests'
+        );
 
         return launchOptions;
       });
