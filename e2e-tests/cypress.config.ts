@@ -27,6 +27,12 @@ export default defineConfig({
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
+      on('before:browser:launch', (_, launchOptions) => {
+        launchOptions.args.push('--disable-gpu');
+
+        return launchOptions;
+      });
+
       // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
       return require('./cypress/plugins/index.ts')(on, config);
     },
