@@ -27,16 +27,6 @@ export default defineConfig({
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
-      on('before:browser:launch', (browser, launchOptions) => {
-        if (browser.isHeadless) {
-          launchOptions.args.push('--no-sandbox');
-          launchOptions.args.push('--disable-gl-drawing-for-tests');
-          launchOptions.args.push('--disable-gpu');
-        }
-        launchOptions.args.push('--js-flags=--max-old-space-size=3500');
-        return launchOptions;
-      });
-
       // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
       return require('./cypress/plugins/index.ts')(on, config);
     },
