@@ -150,9 +150,32 @@ Cypress.on('uncaught:exception', (err, runnable) => {
 });
 
 Cypress.on('window:before:load', (win) => {
-  cy.stub(win, 'ResizeObserver').callsFake(() => ({
-    observe: cy.stub(),
-    unobserve: cy.stub(),
-    disconnect: cy.stub(),
-  }));
+  class ResizeObserverMock {
+    private callback: ResizeObserverCallback;
+    private elements: Set<Element>;
+
+    constructor(callback: ResizeObserverCallback) {
+      // Debounce the callback to prevent ResizeObserver loops
+      this.callback = Cypress._.debounce(callback, 200);
+      this.elements = new Set();
+    }
+
+    observe(element: Element) {
+      this.elements.add(element);
+      // Simulate an initial resize call
+      setTimeout(() => {
+        this.callback([{ target: element, contentRect: element.getBoundingClientRect() }] as ResizeObserverEntry[], this);
+      }, 200);
+    }
+
+    unobserve(element: Element) {
+      this.elements.delete(element);
+    }
+
+    disconnect() {
+      this.elements.clear();
+    }
+  }
+
+  win.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });
