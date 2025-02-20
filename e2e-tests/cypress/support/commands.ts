@@ -149,7 +149,7 @@ Cypress.on('uncaught:exception', (err, runnable) => {
   }
 });
 
-Cypress.on('window:before:load', (win) => {
+Cypress.on('window:before:load', win => {
   class ResizeObserverMock {
     private callback: ResizeObserverCallback;
     private elements: Set<Element>;
@@ -162,9 +162,21 @@ Cypress.on('window:before:load', (win) => {
 
     observe(element: Element) {
       this.elements.add(element);
-      // Simulate an initial resize call
+
+      // Simulate a resize event with a valid ResizeObserverEntry structure
       setTimeout(() => {
-        this.callback([{ target: element, contentRect: element.getBoundingClientRect() }] as ResizeObserverEntry[], this);
+        if (this.elements.has(element)) {
+          const entries: ResizeObserverEntry[] = [
+            {
+              target: element,
+              contentRect: element.getBoundingClientRect(),
+              borderBoxSize: [{ inlineSize: element.clientWidth, blockSize: element.clientHeight }],
+              contentBoxSize: [{ inlineSize: element.clientWidth, blockSize: element.clientHeight }],
+              devicePixelContentBoxSize: [{ inlineSize: element.clientWidth, blockSize: element.clientHeight }]
+            } as ResizeObserverEntry
+          ];
+          this.callback(entries, this);
+        }
       }, 200);
     }
 
@@ -177,5 +189,6 @@ Cypress.on('window:before:load', (win) => {
     }
   }
 
+  // Override ResizeObserver in the test environment
   win.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });
