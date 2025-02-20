@@ -148,3 +148,11 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     return false;
   }
 });
+
+Cypress.on('window:before:load', (win) => {
+  cy.stub(win, 'ResizeObserver').callsFake(() => ({
+    observe: cy.stub(),
+    unobserve: cy.stub(),
+    disconnect: cy.stub(),
+  }));
+});
