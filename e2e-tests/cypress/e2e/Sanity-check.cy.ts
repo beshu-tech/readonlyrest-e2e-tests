@@ -10,12 +10,6 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
 
-/**
- *  This test needs to be run as first due to "chromium renderer process just crashed error"
- *  https://github.com/cypress-io/cypress/issues/27415
- *  which is unfixable from our side.
- */
-
 describe('sanity check', () => {
   beforeEach(() => {
     SampleData.createSampleData('sample_index', 1);
