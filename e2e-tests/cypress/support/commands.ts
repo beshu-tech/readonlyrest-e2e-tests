@@ -151,5 +151,6 @@ Cypress.on('uncaught:exception', (err, runnable) => {
 });
 
 Cypress.on('window:before:load', win => {
-  cy.stub(win, 'ResizeObserver').returns(ResizeObserverMock);
+  // Override ResizeObserver in the test environment to resolve process exit unexpectedly issue https://docs.cypress.io/app/references/error-messages#The-browser-process-running-your-tests-just-exited-unexpectedly
+  win.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });
