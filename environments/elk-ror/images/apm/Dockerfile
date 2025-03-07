@@ -3,7 +3,23 @@ ARG ES_VERSION
 FROM docker.elastic.co/apm/apm-server:${ES_VERSION}
 
 USER root
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && \
+    apt-get install -y --fix-broken && \
+    apt-get install -y openssl && \
+    apt-get install -y libnsl2 libtirpc3 && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get install -y \
+    libbrotli1 \
+    libgssapi-krb5-2 \
+    libldap-2.5-0 \
+    libnghttp2-14 \
+    libpsl5 \
+    librtmp1 \
+    libssh-4 \
+    curl \
+    libcurl4 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 USER apm-server
 COPY ./certs /usr/share/apm-server/config/certs
