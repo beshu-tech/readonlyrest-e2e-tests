@@ -10,12 +10,6 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
 
-/**
- *  This test needs to be run as first due to "chromium renderer process just crashed error"
- *  https://github.com/cypress-io/cypress/issues/27415
- *  which is unfixable from our side.
- */
-
 describe('sanity check', () => {
   beforeEach(() => {
     SampleData.createSampleData('sample_index', 1);
@@ -38,7 +32,8 @@ describe('sanity check', () => {
     cy.log('Create a CSV report');
     Discover.saveReport('admin_search');
     Discover.exportToCsv();
-    Reporting.verifySavedReport('admin_search', 'kibanaNavigation', 1);
+    Reporting.openReportingPage('kibanaNavigation');
+    Reporting.verifySavedReport(['admin_search']);
 
     cy.log('Change tenancy, and initialize it');
     RorMenu.changeTenancy('Infosec', '/app/management/insightsAndAlerting/reporting');
@@ -60,7 +55,8 @@ describe('sanity check', () => {
       cy.log('Create CSV report for the second tenancy');
       Discover.saveReport('infosec_search');
       Discover.exportToCsv();
-      Reporting.verifySavedReport('infosec_search', 'rorMenu', 1);
+      Reporting.openReportingPage('rorMenu');
+      Reporting.verifySavedReport(['infosec_search']);
     }
 
     cy.log('Verify the hidden apps feature');

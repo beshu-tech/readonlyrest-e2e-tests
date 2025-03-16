@@ -1,0 +1,78 @@
+{
+  "id": "ab47a9a1-dcd9-4ccb-89b7-59fb11508894",
+  "index": ".reporting.kibana-2025-02-02",
+  "kibana_name": "7b520ecbfbfb",
+  "kibana_id": "8ab4e798-7532-4651-a7b1-8cad53bdf6a5",
+  "jobtype": "csv_searchsource",
+  "created_at": "2025-02-03T06:09:37.100Z",
+  "created_by": false,
+  "meta": {
+    "objectType": "search"
+  },
+  "timeout": 240000,
+  "max_attempts": 3,
+  "status": "completed",
+  "attempts": 1,
+  "started_at": "2025-02-03T06:09:41.791Z",
+  "completed_at": "2025-02-03T06:09:42.440Z",
+  "migration_version": "7.14.0",
+  "payload": {
+    "pagingStrategy": "pit",
+    "browserTimezone": "Europe/Warsaw",
+    "columns": [],
+    "objectType": "search",
+    "searchSource": {
+      "fields": [
+        {
+          "field": "*",
+          "include_unmapped": "true"
+        }
+      ],
+      "filter": [
+        {
+          "meta": {
+            "field": "order_date",
+            "index": "ff959d40-b880-11e8-a6d9-e546fe2bba5f",
+            "params": {}
+          },
+          "query": {
+            "range": {
+              "order_date": {
+                "format": "strict_date_optional_time",
+                "gte": "2025-02-03T05:54:31.286Z",
+                "lte": "2025-02-03T06:09:31.286Z"
+              }
+            }
+          }
+        }
+      ],
+      "index": "ff959d40-b880-11e8-a6d9-e546fe2bba5f",
+      "query": {
+        "language": "kuery",
+        "query": ""
+      },
+      "sort": [
+        {
+          "order_date": {
+            "format": "strict_date_optional_time",
+            "order": "desc"
+          }
+        }
+      ]
+    },
+    "title": "old format reporting index doc",
+    "version": "8.14.3",
+    "kibanaIndex": ".kibana"
+  },
+  "output": {
+    "content_type": "text/csv",
+    "size": 1,
+    "csv_contains_formulas": false,
+    "max_size_reached": false
+  },
+  "metrics": {
+    "csv": {
+      "rows": 0
+    }
+  }
+}
