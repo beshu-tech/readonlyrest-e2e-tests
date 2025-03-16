@@ -6,7 +6,6 @@ export class Login {
       sessionStorage.setItem('ror:ignoreKeyExpirationInfo', 'true');
       localStorage.setItem('home:welcome:show', 'false');
     });
-    cy.visit(Cypress.config().baseUrl);
     Login.signIn();
     Loader.loading();
   }
