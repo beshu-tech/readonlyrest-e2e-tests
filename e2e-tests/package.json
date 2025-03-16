@@ -12,7 +12,7 @@
   "license": "Beshu Limited, All rights reserved",
   "dependencies": {
     "@testing-library/cypress": "^10.0.1",
-    "cypress": "14.0.2",
+    "cypress": "14.0.3",
     "form-data": "^4.0.0",
     "js-yaml": "^4.1.0",
     "node-fetch": "2.6.7",
