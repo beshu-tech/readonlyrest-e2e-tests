@@ -14,7 +14,7 @@ Prerequisites:
 To bootstrap a Docker-based or ECK environment (ES with latest ROR + KBN with latest ROR) and execute Cypress E2E tests run:
 
 ```bash
-./run-env-and-tests.sh 8.15.2 docker
+./run-env-and-tests.sh --elk 8.15.2  --env docker
 ```
 
 or 
@@ -53,7 +53,7 @@ or
 
 To run tests on the env:
 ```bash
-./e2e-tests/run-tests.sh "8.15.2"
+./e2e-tests/run-tests.sh --elk "8.15.2"
 ```
 
 #### Cypress tests in interactive GUI
