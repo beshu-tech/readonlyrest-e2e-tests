@@ -43,4 +43,10 @@ export class RorMenu {
   static pressLogoutButton() {
     cy.contains('Log out').click();
   }
+
+  static verifyCurrentTenant(tenancyName: string) {
+    cy.log('Verify current tenant');
+
+    cy.get('[data-testid="current-tenant"]').contains(tenancyName).should('be.visible');
+  }
 }
