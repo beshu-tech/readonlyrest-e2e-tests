@@ -95,5 +95,5 @@ echo -e "
 
 echo -e "E2E TESTS\n"
 
-time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" --ror-es 1.64.0-pre1 --ror-kbn 1.64.0-pre1 --dev
+time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $ROR_ES_VERSION $ROR_KBN_VERSION $MODE
 time ./e2e-tests/run-tests.sh "$ELK_VERSION"
