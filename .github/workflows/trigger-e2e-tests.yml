@@ -2,12 +2,43 @@ name: End-to-end test workflow
 
 on:
   workflow_dispatch:
+    inputs:
+      ror_es_version:
+        description: 'ReadOnlyREST Elasticsearch Version'
+        required: false
+        type: string
+      ror_kbn_version:
+        description: 'ReadOnlyREST Kibana Version'
+        required: false
+        type: string
+      elk_version:
+        description: 'ELK Stack Version'
+        required: false
+        default: '8.17.3'
+        type: choice
+        options: 
+          - '8.17.3'
+          - '7.17.28'
+      environment:
+        description: 'Environment to run tests in'
+        required: false
+        default: 'docker'
+        type: choice
+        options:
+          - 'docker'
+          - 'eck'
+      mode:
+        description: 'Test mode'
+        required: false
+        default: ''
+        type: string
   schedule:
     - cron: '0 0 * * *'
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
+
   master-e2e-tests:
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
     runs-on: ubuntu-latest
@@ -40,6 +71,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
   develop-e2e-tests:
     if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
@@ -66,7 +98,7 @@ jobs:
 
       - name: Run tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
+          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
@@ -76,3 +108,53 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  manual-e2e-tests:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["8.17.3", "7.17.28"]
+        env: [docker, eck]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+
+      - name: Run tests
+        run: |
+          PARAMS="--env ${{ matrix.env }} --elk ${{ matrix.version }}"
+          
+          if [ -n "${{ github.event.inputs.ror_es_version }}" ]; then
+            PARAMS="$PARAMS --ror-es ${{ github.event.inputs.ror_es_version }}"
+          fi
+          
+          if [ -n "${{ github.event.inputs.ror_kbn_version }}" ]; then
+            PARAMS="$PARAMS --ror-kbn ${{ github.event.inputs.ror_kbn_version }}"
+          fi
+          
+          if [ -n "${{ github.event.inputs.mode }}" ]; then
+            PARAMS="$PARAMS --mode ${{ github.event.inputs.mode }}"
+          fi
+          
+          ./run-env-and-tests.sh $PARAMS
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+          
+      - name: S3 Upload Videos & show logs
+        if: failure()
+        uses: ./.github/upload-videos
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+        
