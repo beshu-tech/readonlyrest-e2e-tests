@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       ror_es_version:
-        description: 'ReadOnlyREST Elasticsearch Version'
+        description: 'ReadOnlyREST Elasticsearch Version (at least one version required)'
         required: false
         type: string
       ror_kbn_version:
-        description: 'ReadOnlyREST Kibana Version'
+        description: 'ReadOnlyREST Kibana Version (at least one version required)'
         required: false
         type: string
       mode:
@@ -102,6 +102,13 @@ jobs:
         version: ["8.17.3", "7.17.28"]
         env: [docker, eck]
     steps:
+      - name: Validate inputs
+        run: |
+          if [ -z "${{ github.event.inputs.ror_es_version }}" ] && [ -z "${{ github.event.inputs.ror_kbn_version }}" ]; then
+            echo "ERROR: At least one of 'ror_es_version' or 'ror_kbn_version' must be provided!"
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
 
