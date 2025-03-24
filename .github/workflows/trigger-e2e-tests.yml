@@ -11,26 +11,10 @@ on:
         description: 'ReadOnlyREST Kibana Version'
         required: false
         type: string
-      elk_version:
-        description: 'ELK Stack Version'
-        required: false
-        default: '8.17.3'
-        type: choice
-        options: 
-          - '8.17.3'
-          - '7.17.28'
-      environment:
-        description: 'Environment to run tests in'
-        required: false
-        default: 'docker'
-        type: choice
-        options:
-          - 'docker'
-          - 'eck'
       mode:
-        description: 'Test mode'
+        description: 'Repository source for ROR plugin docker image (e.g., prod, dev)'
         required: false
-        default: ''
+        default: 'prod'
         type: string
   schedule:
     - cron: '0 0 * * *'
