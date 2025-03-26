@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 show_help() {
-  echo "Usage: ./run-evn-and-tests.sh --env <docker|eck> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Usage: ./run-evn-and-tests.sh --env <docker|eck> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --mode <prod|dev> (default: prod)]"
   exit 1
 }
 
@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
           ENV_NAME="eck-ror"
           ;;
         *)
-          echo "Error: --env: Only "docker" and 'eck' are available environments"
+          echo "Error: --env: Only 'docker' and 'eck' are available environments"
           show_help
           ;;
       esac
@@ -60,9 +60,25 @@ while [[ $# -gt 0 ]]; do
       show_help
     fi
     ;;
-  --dev)
-    MODE="--dev"
-    shift
+  --mode)
+    if [[ -n $2 && $2 != --* ]]; then
+      case "$2" in
+        "prod")
+          MODE="--mode $2"
+          ;;
+        "dev")
+          MODE="--mode $2"
+          ;;
+        *)
+          echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+          show_help
+          ;;
+      esac
+      shift 2
+    else
+      echo "Error: --mode requires a mode argument"
+      show_help
+    fi
     ;;
   *)
     echo "Unknown option: $1"
