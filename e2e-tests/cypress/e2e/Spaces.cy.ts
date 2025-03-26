@@ -30,12 +30,7 @@ describe('Spaces', () => {
     cy.contains('Default').click();
 
     cy.log('Set feature visibility to hidden');
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.get('[data-test-subj="manageSpaces"]').click();
-      cy.get('[data-test-subj="default-hyperlink"]').click();
-    } else if (semver.gte(getKibanaVersion(), '8.4.0')) {
-      cy.get('[data-test-subj=Default-editSpace]').click();
-    }
+    Spaces.openEditSpace('default');
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
     cy.get('[data-test-subj=save-space-button]').click();
     cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
@@ -70,14 +65,7 @@ describe('Spaces', () => {
   });
 
   it('should create and navigate to new space with hidden features', () => {
-    cy.log('Create new space');
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.get('[data-test-subj=manageSpaces]').click({ force: true });
-    cy.get('[data-test-subj=createSpace]').click();
-    cy.get('[data-test-subj=addSpaceName]').type(SPACE_NAME);
-    cy.get('#featureCategoryCheckbox_kibana').uncheck();
-    cy.get('[data-test-subj=save-space-button]').click();
-    cy.contains(`Space '${SPACE_NAME}' was saved.`);
+    Spaces.createNewSpace(SPACE_NAME);
 
     cy.log('Switch to newly created space');
     cy.get('[data-test-subj=spacesNavSelector]').click();
@@ -96,5 +84,22 @@ describe('Spaces', () => {
     KibanaNavigation.checkIfNotExists('Analytics');
 
     Spaces.removeSpace(SPACE_NAME);
+  });
+
+  it('should hide space permission tab and not permit to navigate to itm', () => {
+    cy.log('Navigate to default space management');
+    cy.get('[data-test-subj=spacesNavSelector]').click();
+    cy.contains('Manage spaces').should('be.visible').click({ force: true });
+    cy.contains('Default').click();
+
+    Spaces.openEditSpace('default');
+    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+      cy.log('check if space manage permissions tab hidden');
+      cy.contains('a[role="tab"]', /general settings/i).should('be.visible');
+      cy.contains('a[role="tab"]', /permissions/i).should('not.be.visible');
+      cy.log('check if space manage permissions tab not permitted');
+      cy.visit('/s/default/app/management/kibana/spaces/edit/default/roles');
+      cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/home`);
+    }
   });
 });

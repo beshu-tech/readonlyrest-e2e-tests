@@ -30,15 +30,19 @@ describe('Direct kibana request', () => {
 
       cy.log('Get imported saved objects for user1 Administrators group');
       kbnApiAdvancedClient.getSavedObjects(user1).then(result => {
-        expect(result.saved_objects[0].id).equal('my-pattern');
-        expect(result.saved_objects[1].id).equal('my-dashboard');
+        const savedObjectIds = result.saved_objects.map(obj => obj.id);
+
+        expect(savedObjectIds).to.includes('my-pattern');
+        expect(savedObjectIds).to.includes('my-dashboard');
         expect(result.saved_objects).to.have.length(2);
       });
 
       cy.log('Get imported saved objects for admin Administrators group');
       kbnApiAdvancedClient.getSavedObjects(admin).then(result => {
-        expect(result.saved_objects[0].id).equal('my-pattern');
-        expect(result.saved_objects[1].id).equal('my-dashboard');
+        const savedObjectIds = result.saved_objects.map(obj => obj.id);
+
+        expect(savedObjectIds).to.includes('my-pattern');
+        expect(savedObjectIds).to.includes('my-dashboard');
         expect(result.saved_objects).to.have.length(2);
       });
 

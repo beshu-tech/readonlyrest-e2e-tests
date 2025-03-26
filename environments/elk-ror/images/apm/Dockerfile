@@ -4,30 +4,34 @@ FROM docker.elastic.co/apm/apm-server:${ES_VERSION}
 
 USER root
 
-
 COPY images/apm/version_check.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/version_check.sh
 
-RUN if /usr/local/bin/version_check.sh ${ES_VERSION} "8.17.3"; then \
+RUN if [ -f /usr/local/bin/version_check.sh ] && /usr/local/bin/version_check.sh ${ES_VERSION} "8.17.3"; then \
+    if command -v apt-get > /dev/null; then \
         apt-get update && \
         apt-get install -y --fix-broken && \
-        apt-get install -y openssl && \
-        apt-get install -y --no-install-recommends ca-certificates && \
-        apt-get install -y libcurl4  || true && \
-        apt-get install -y \
-        libbrotli1 \
-        libgssapi-krb5-2 \
-        libldap-2.5-0 \
-        libnghttp2-14 \
-        libpsl5 \
-        librtmp1 \
-        libssh-4 \
-        curl || true; \
+        apt-get install -y openssl ca-certificates curl; \
+    elif command -v apk > /dev/null; then \
+        apk add --no-cache openssl ca-certificates curl; \
+    elif command -v yum > /dev/null; then \
+        yum install -y openssl ca-certificates curl; \
+    elif command -v dnf > /dev/null; then \
+        dnf install -y openssl ca-certificates curl; \
+    elif command -v zypper > /dev/null; then \
+        zypper install -y openssl ca-certificates curl; \
     else \
-        apt-get update && \
-        apt-get install -y curl; \
-    fi && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+        echo "Checking for curl installation..."; \
+        if ! command -v curl > /dev/null; then \
+            echo "No supported package manager found and curl not installed"; \
+            echo "Using built-in tools only"; \
+        else \
+            echo "curl is already installed"; \
+        fi; \
+    fi \
+else \
+    echo "Using minimal dependencies"; \
+fi
 
 USER apm-server
 COPY ./certs /usr/share/apm-server/config/certs

@@ -26,8 +26,8 @@ echo "Preparing environment the tests will be run at ..."
 
 export ES_VERSION=""
 export KBN_VERSION=""
-export ROR_ES_VERSION="latest" 
-export ROR_KBN_VERSION="latest"
+export ROR_ES_VERSION="1.63.0"
+export ROR_KBN_VERSION="1.63.0"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
 export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
 
