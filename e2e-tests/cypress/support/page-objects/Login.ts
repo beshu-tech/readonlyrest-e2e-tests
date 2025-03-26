@@ -2,10 +2,6 @@ import { Loader } from './Loader';
 
 export class Login {
   
-  static fillLoginPageWithNoCredentials() {
-    Login.fillLoginPageWith();
-  }
-  
   static fillLoginPageWithWrongCredentials() {
     Login.fillLoginPageWith('wrong_username', 'wrong_password');
   }

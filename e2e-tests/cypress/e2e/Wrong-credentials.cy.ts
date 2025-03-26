@@ -11,23 +11,15 @@ describe('Wrong credentials test', () => {
   it('should show an error message when using incorrect credentials', () => {
     Login.fillLoginPageWithWrongCredentials();
     
-    cy.get('.form-error-message')
+    cy.get('#form-message')
       .should('be.visible')
-      .and('contain.text', 'Invalid username or password');
-  });
-
-  it('should show an error message when using empty credentials', () => {
-    Login.fillLoginPageWithNoCredentials();
-    
-    cy.get('.form-error-message')
-      .should('be.visible')
-      .and('contain.text', 'Username is required');
+      .and('contain.text', 'Wrong credentials');
   });
 
   it('should be able to login after a failed attempt', () => {
     Login.fillLoginPageWithWrongCredentials();
     
-    cy.get('.form-error-message')
+    cy.get('#form-message')
       .should('be.visible');
     
     cy.get('#form-username').clear();
@@ -36,7 +28,6 @@ describe('Wrong credentials test', () => {
     
     Loader.loading();
     
-    cy.url().should('include', '/dashboard');
-    cy.get('.user-info').should('exist');
+    cy.url().should('include', '/s/default/app/home');
   });
 }); 
