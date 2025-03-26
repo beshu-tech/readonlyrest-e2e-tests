@@ -49,8 +49,8 @@ jobs:
         version: ["8.17.3", "7.17.28"]
         env: [docker, eck]
     env:
-      ROR_ES_VERSION: "1.64.0-pre1"
-      ROR_KBN_VERSION: "1.64.0-pre1"
+      ROR_ES_VERSION: "1.64.0-pre2"
+      ROR_KBN_VERSION: "1.64.0-pre2"
       MODE: 'dev'
     steps:
       - name: Checkout code
