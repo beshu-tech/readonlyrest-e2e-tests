@@ -48,7 +48,6 @@ jobs:
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
@@ -85,7 +84,6 @@ jobs:
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
@@ -139,7 +137,6 @@ jobs:
           ./run-env-and-tests.sh $PARAMS
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
           
       - name: S3 Upload Videos & show logs
         if: failure()
@@ -147,5 +144,3 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-        
