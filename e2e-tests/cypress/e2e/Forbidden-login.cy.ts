@@ -13,15 +13,7 @@ describe('Forbidden login test', () => {
     cy.visit('/');
   });
 
-  it('should show an error message when using incorrect credentials', () => {
-    Login.fillLoginPageWithWrongCredentials();
-    
-    cy.get('#form-message')
-      .should('be.visible')
-      .and('contain.text', 'You shall not pass!');
-  });
-
-  it('should be able to login after a failed attempt', () => {
+  it('should be able to login after a failed attempt with incorrect credentials', () => {
     Login.fillLoginPageWithWrongCredentials();
     
     cy.get('#form-message')
