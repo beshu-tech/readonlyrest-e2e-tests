@@ -1,7 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { Loader } from '../support/page-objects/Loader';
 
-describe('Wrong credentials test', () => {
+describe('Forbidden login test', () => {
   beforeEach(() => {
     cy.clearCookies();
     cy.clearLocalStorage();
@@ -13,14 +13,15 @@ describe('Wrong credentials test', () => {
     
     cy.get('#form-message')
       .should('be.visible')
-      .and('contain.text', 'Wrong credentials');
+      .and('contain.text', 'You shall not pass!');
   });
 
   it('should be able to login after a failed attempt', () => {
     Login.fillLoginPageWithWrongCredentials();
     
     cy.get('#form-message')
-      .should('be.visible');
+      .should('be.visible')
+      .and('contain.text', 'You shall not pass!');
     
     cy.get('#form-username').clear();
     cy.get('#form-password').clear();
