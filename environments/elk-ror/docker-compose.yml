@@ -10,7 +10,7 @@ services:
         ROR_ES_VERSION: $ROR_ES_VERSION
     ports:
       - "9200:9200"
-      - "5000:5000"
+      - "15000:5000"
     deploy:
       resources:
         limits:
@@ -39,7 +39,7 @@ services:
       memlock:
         soft: -1
         hard: -1
-  
+
   kbn-ror:
     build:
       context: .
@@ -71,7 +71,7 @@ services:
     ulimits:
       memlock:
         soft: -1
-        hard: -1   
+        hard: -1
 
   kbn-proxy:
     build:
@@ -111,7 +111,7 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:8200" ]
+      test: ["CMD", "sh", "-c", "echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' > /dev/tcp/localhost/8200 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
