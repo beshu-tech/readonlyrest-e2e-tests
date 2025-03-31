@@ -111,7 +111,12 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: ["CMD", "sh", "-c", "echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' > /dev/tcp/localhost/8200 || exit 1"]
+      test: [ "CMD", "sh", "-c", "
+             if command -v curl > /dev/null; then
+                 curl -s http://localhost:8200 || exit 1;
+             else
+                 echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' > /dev/tcp/localhost/8200 || exit 1;
+             fi" ]
       interval: 10s
       timeout: 5s
       retries: 3
