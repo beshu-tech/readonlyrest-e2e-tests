@@ -20,7 +20,7 @@ show_help() {
 
 export ES_VERSION=""
 export KBN_VERSION=""
-export ECK_VERSION="2.14.0"
+export ECK_VERSION="2.16.0"
 export ROR_ES_VERSION="latest" 
 export ROR_KBN_VERSION="latest"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
