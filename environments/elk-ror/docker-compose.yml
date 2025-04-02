@@ -10,7 +10,7 @@ services:
         ROR_ES_VERSION: $ROR_ES_VERSION
     ports:
       - "9200:9200"
-      - "15000:5000"
+      - "5005:5005"
     deploy:
       resources:
         limits:
@@ -22,7 +22,7 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       # for a sake of debugging and profiling
-      - "ES_JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5000 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=9010 -Djava.rmi.server.hostname=127.0.0.1"
+      - "ES_JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=9010 -Djava.rmi.server.hostname=127.0.0.1"
       # for a sake of ROR settings marked as "<-- related to ECK environment -->"
       - KIBANA_SERVICE_ACCOUNT_TOKEN=UNUSED
       - INTERNAL_PROBE_PASS=UNUSED
@@ -111,12 +111,7 @@ services:
         limits:
           memory: 1G
     healthcheck:
-      test: [ "CMD", "sh", "-c", "
-             if command -v curl > /dev/null; then
-                 curl -s http://localhost:8200 || exit 1;
-             else
-                 echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' > /dev/tcp/localhost/8200 || exit 1;
-             fi" ]
+      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:8200" ]
       interval: 10s
       timeout: 5s
       retries: 3
