@@ -25,12 +25,12 @@ spec:
               
   podTemplate:
     spec:
-      securityContext:
-        runAsNonRoot: false
-        runAsUser: 0
-        runAsGroup: 0
       containers:
         - name: kibana
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
           env:
             - name: ROR_ACTIVATION_KEY
               value: "${ROR_ACTIVATION_KEY}"

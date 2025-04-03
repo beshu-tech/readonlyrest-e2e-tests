@@ -15,7 +15,6 @@ spec:
       ssl:
         enabled: true
         client_authentication: "none"
-
     output:
       elasticsearch:
         username: ${APM_USERNAME}
@@ -29,3 +28,14 @@ spec:
     name: quickstart
   kibanaRef:
     name: quickstart
+
+  podTemplate:
+    spec:
+      containers:
+        - name: apm-server
+          command:
+            - "/usr/share/apm-server/apm-server"
+            - "run"
+            - "-e"
+            - "-c"
+            - "config/config-secret/apm-server.yml"
