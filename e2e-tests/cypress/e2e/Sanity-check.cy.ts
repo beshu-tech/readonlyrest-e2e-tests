@@ -4,7 +4,7 @@ import { Discover } from '../support/page-objects/Discover';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { getKibanaVersion } from '../support/helpers';
+import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
@@ -17,7 +17,7 @@ describe('sanity check', () => {
   });
 
   afterEach(() => {
-    esApiAdvancedClient.deleteIndex('sample_index');
+    kbnApiAdvancedClient.deleteSampleData('ecommerce', userCredentials);
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();

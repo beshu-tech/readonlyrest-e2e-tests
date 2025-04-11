@@ -7,17 +7,29 @@ if [ -z "$ROR_ACTIVATION_KEY" ]; then
   exit 1
 fi
 
-if [ $# -ne 1 ]; then
-  echo "One parameter is required: 1) KBN version"
+if [ $# -lt 1 ]; then
+  echo "At least one parameter is required: 1) KBN version [2) run type (run|open), default: run]"
   exit 1
 fi
 
 KBN_VERSION="$1"
+RUN_TYPE="${2:-run}" # Default to "run" if not provided
 
-echo "Running E2E Cypress tests ..."
+# Validate run type
+if [[ "$RUN_TYPE" != "run" && "$RUN_TYPE" != "open" ]]; then
+  echo "Run type must be 'run' or 'open'"
+  exit 1
+fi
+
+echo "Running E2E Cypress tests (mode: $RUN_TYPE) ..."
 
 yarn --frozen-lockfile install
-yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY"
+
+if [[ "$RUN_TYPE" == "open" ]]; then
+  yarn open --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY"
+else
+  yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY"
+fi
 
 if [[ $? -ne 0 ]]; then
   echo "❌ E2E tests failed :("

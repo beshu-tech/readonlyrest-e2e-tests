@@ -1,51 +1,18 @@
 ARG ES_VERSION
 
-FROM docker.elastic.co/apm/apm-server:${ES_VERSION}
+FROM docker.elastic.co/apm/apm-server:${ES_VERSION} AS apm
+FROM registry.access.redhat.com/ubi9/ubi:latest
 
-USER root
+COPY --from=apm /usr/share/apm-server /usr/share/apm-server
+COPY ./certs /usr/share/apm-server/config/certs
+COPY images/apm/entrypoint.sh /usr/local/bin/
 
-
-COPY images/apm/version_check.sh /usr/local/bin/
-
-RUN if /usr/local/bin/version_check.sh ${ES_VERSION} "8.17.3"; then \
-        apt-get update && \
-        apt-get install -y --fix-broken && \
-        apt-get install -y openssl && \
-        apt-get install -y --no-install-recommends ca-certificates && \
-        apt-get install -y libcurl4  || true && \
-        apt-get install -y \
-        libbrotli1 \
-        libgssapi-krb5-2 \
-        libldap-2.5-0 \
-        libnghttp2-14 \
-        libpsl5 \
-        librtmp1 \
-        libssh-4 \
-        curl || true; \
-    else \
-        apt-get update && \
-        apt-get install -y curl; \
-    fi && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN useradd -r -u 1000 apm-server \
+ && chown -R apm-server:apm-server /usr/share/apm-server
 
 USER apm-server
-COPY ./certs /usr/share/apm-server/config/certs
 
+WORKDIR /usr/share/apm-server
 EXPOSE 8200
 
-CMD ["apm-server", "-e", \
-     "-E", "apm-server.rum.enabled=true", \
-     "-E", "apm-server.kibana.enabled=false", \
-     "-E", "apm-server.ssl.enabled=true", \
-     "-E", "apm-server.ssl.certificate=/usr/share/apm-server/config/certs/apm-server.crt", \
-     "-E", "apm-server.ssl.key=/usr/share/apm-server/config/certs/apm-server.key", \
-     "-E", "apm-server.ssl.certificate_authorities=/usr/share/apm-server/config/certs/ca.crt", \
-     "-E", "apm-server.ssl.client_authentication=none", \
-     "-E", "output.elasticsearch.hosts=['https://es-ror:9200']", \
-     "-E", "output.elasticsearch.username=apm", \
-     "-E", "output.elasticsearch.password=test", \
-     "-E", "output.elasticsearch.ssl.enabled=true", \
-     "-E", "output.elasticsearch.ssl.verification_mode=full", \
-     "-E", "output.elasticsearch.ssl.certificate_authorities=/usr/share/apm-server/config/certs/ca.crt", \
-     "-E", "logging.level=debug"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

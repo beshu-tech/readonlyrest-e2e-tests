@@ -35,26 +35,31 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Discover.newButtonNotExist();
     Discover.saveButtonNotExist();
 
-    cy.log('Verify Canvas features');
+    /*
+     * It's deprecated and not visible in a Kibana 9.0.0 https://github.com/elastic/kibana/issues/200649
+     */
+    if (semver.lt(getKibanaVersion(), '9.0.0-beta1')) {
+      cy.log('Verify Canvas features');
 
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.intercept('/s/default/internal/canvas/fns').as('canvasResolve');
-    } else if (semver.gte(getKibanaVersion(), '8.9.0')) {
-      cy.intercept('/s/default/internal/canvas/fns?compress=true').as('canvasResolve');
-    } else if (semver.gte(getKibanaVersion(), '7.17.15')) {
-      cy.intercept('/s/default/api/canvas/fns?compress=true').as('canvasResolve');
-    } else {
-      cy.intercept('/s/default/internal/bsearch').as('canvasResolve');
+      if (semver.gte(getKibanaVersion(), '8.16.0')) {
+        cy.intercept('/s/default/internal/canvas/fns').as('canvasResolve');
+      } else if (semver.gte(getKibanaVersion(), '8.9.0')) {
+        cy.intercept('/s/default/internal/canvas/fns?compress=true').as('canvasResolve');
+      } else if (semver.gte(getKibanaVersion(), '7.17.15')) {
+        cy.intercept('/s/default/api/canvas/fns?compress=true').as('canvasResolve');
+      } else {
+        cy.intercept('/s/default/internal/bsearch').as('canvasResolve');
+      }
+
+      KibanaNavigation.openPage('Canvas');
+      Canvas.openItem(0);
+      SubHeader.readonlyBadgeVisible();
+      SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
+      Canvas.addElementButtonNotExist();
+      Canvas.editButtonNotExist();
+      Canvas.workPadSettingsNotExist();
+      cy.wait('@canvasResolve');
     }
-
-    KibanaNavigation.openPage('Canvas');
-    Canvas.openItem(0);
-    SubHeader.readonlyBadgeVisible();
-    SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
-    Canvas.addElementButtonNotExist();
-    Canvas.editButtonNotExist();
-    Canvas.workPadSettingsNotExist();
-    cy.wait('@canvasResolve');
 
     cy.log('Verify Index Pattern features');
     KibanaNavigation.openPage('Stack Management');
