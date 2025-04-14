@@ -14,7 +14,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 show_help() {
-  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --mode <prod|dev> (default: prod)]"
   exit 1
 }
 
@@ -75,10 +75,28 @@ while [[ $# -gt 0 ]]; do
         show_help
       fi
       ;;
-  --dev)
-    export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-    export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
-    shift
+  --mode)
+    if [[ -n $2 && $2 != --* ]]; then
+      case "$2" in
+        "prod")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
+          shift 2
+          ;;
+        "dev")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+          shift 2
+          ;;
+        *)
+          echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+          show_help
+          ;;
+      esac
+    else
+      echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+      show_help
+    fi
     ;;
   *)
     echo "Unknown option: $1"
