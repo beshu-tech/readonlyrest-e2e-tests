@@ -16,7 +16,7 @@ describe('Observability', () => {
 
   it('should verify APM functionality', () => {
     Observability.addSampleApmEvents();
-    if (semver.gte(getKibanaVersion(), '9.0.0-beta1')) {
+    if (semver.gte(getKibanaVersion(), '8.18.0')) {
       KibanaNavigation.openPage('Applications');
     } else {
       KibanaNavigation.openPage('APM');
