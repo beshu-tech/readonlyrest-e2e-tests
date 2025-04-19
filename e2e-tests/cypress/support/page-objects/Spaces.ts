@@ -39,7 +39,7 @@ export class Spaces {
     cy.get('[data-test-subj=addSpaceName]').type(spaceName);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
 
-    if (semver.gte(getKibanaVersion(), '9.0.0-beta1')) {
+    if (semver.gte(getKibanaVersion(), '8.18.0')) {
       cy.get('[data-test-subj="solutionViewSelect"]').click();
       cy.get('[data-test-subj="solutionViewClassicOption"]').click();
     }
