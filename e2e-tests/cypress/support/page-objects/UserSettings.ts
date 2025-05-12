@@ -13,4 +13,21 @@ export class UserSettings {
     cy.log('Click User settings tab');
     SecuritySettings.getIframeBody().find('[class=euiTabs]').find('#user_Settings').click();
   }
+
+  static openViaMenuIcon() {
+    cy.log('Open via menu icon');
+    cy.get('[data-testid="user-settings-icon"]').click();
+  }
+
+  static changeUserSettingsValue(userSettings: string, value: string) {
+    SecuritySettings.getIframeBody()
+      .find(`[data-testid="${userSettings}"]`)
+      .find(`[data-test-subj="${value}"]`)
+      .click({ force: true });
+
+    SecuritySettings.getIframeBody()
+      .find(`[data-testid="${userSettings}"]`)
+      .find(`[data-test-subj="${value}"]`)
+      .should('be.checked');
+  }
 }

@@ -14,7 +14,7 @@ helpers:
         name: template
 
 readonlyrest:
-  response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+  response_if_req_forbidden: You shall not pass!
   prompt_for_basic_auth: false
 
   audit:
