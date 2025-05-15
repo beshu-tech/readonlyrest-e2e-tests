@@ -17,6 +17,11 @@ export class UserSettings {
   static openViaMenuIcon() {
     cy.log('Open via menu icon');
     cy.get('[data-testid="user-settings-icon"]').click();
+
+    // First ensure the iframe is visible in the DOM
+    cy.get('#readonlyrestIframe').should('be.visible');
+
+    SecuritySettings.waitForIframeContent();
   }
 
   static changeUserSettingsValue(userSettings: string, value: string) {
