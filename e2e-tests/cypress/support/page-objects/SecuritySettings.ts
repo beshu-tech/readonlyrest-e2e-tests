@@ -31,6 +31,24 @@ export class SecuritySettings {
     return cy.get('#readonlyrestIframe').its('0.contentWindow').should('exist');
   };
 
+  static waitForIframeContent(selector = '.euiTabs', timeout = 15000) {
+    cy.get('#readonlyrestIframe').should('be.visible');
+
+    return cy.window().then({ timeout }, win => {
+      return new Cypress.Promise(resolve => {
+        const checkIframe = () => {
+          const iframe: HTMLIFrameElement = win.document.querySelector('#readonlyrestIframe');
+          if (iframe && iframe.contentDocument && iframe.contentDocument.querySelector(selector)) {
+            resolve();
+          } else {
+            setTimeout(checkIframe, 100);
+          }
+        };
+        checkIframe();
+      });
+    });
+  }
+
   static checkActiveTab(tab: string) {
     SecuritySettings.getIframeBody().findByRole('tab', { name: tab, selected: true }).should('be.visible');
   }

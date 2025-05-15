@@ -17,6 +17,8 @@ export class UserSettings {
   static openViaMenuIcon() {
     cy.log('Open via menu icon');
     cy.get('[data-testid="user-settings-icon"]').click();
+
+    SecuritySettings.waitForIframeContent();
   }
 
   static changeUserSettingsValue(userSettings: string, value: string) {
