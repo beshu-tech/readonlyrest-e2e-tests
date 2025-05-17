@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
           ENV_NAME="elk-ror"
           ;;
         eck-*)
-          ENV_NAME="$2-ror"
+          ENV_NAME="eck-ror"
           OPTIONAL_ECK_ARG="--eck ${2#eck-}"
           ;;
         *)
