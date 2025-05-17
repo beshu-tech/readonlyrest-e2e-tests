@@ -63,7 +63,7 @@ while [[ $# -gt 0 ]]; do
     fi
     ;;
   --dev)
-    MODE="--dev"
+    OPTIONAL_MODE="--dev"
     shift
     ;;
   *)
@@ -104,5 +104,5 @@ echo -e "
 
 echo -e "E2E TESTS\n"
 
-time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $MODE
+time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_MODE
 time ./e2e-tests/run-tests.sh "$ELK_VERSION"

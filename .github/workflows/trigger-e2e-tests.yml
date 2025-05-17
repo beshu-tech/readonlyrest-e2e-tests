@@ -47,7 +47,7 @@ jobs:
       fail-fast: false
       matrix:
         version: ["9.0.1", "8.18.1", "7.17.28"]
-        env: [docker, eck-2x, eck-3x]
+        env: [docker, eck-2.16.1, eck-3.0.0]
     env:
       ROR_ES_VERSION: "latest"
       ROR_KBN_VERSION: "latest"
