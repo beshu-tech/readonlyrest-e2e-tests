@@ -73,13 +73,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ "$ENV_NAME" == "eck-ror" ]; then
-  if [ -z "$ECK_VERSION" ]; then
-    echo "Error: --eck is required when env is eck"
-    show_help
-  fi
-fi
-
 handle_error() {
   ./environments/"$ENV_NAME"/print-logs.sh
 }
