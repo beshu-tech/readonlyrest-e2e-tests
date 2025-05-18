@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
           OPTIONAL_ECK_ARG="--eck ${2#eck-}"
           ;;
         *)
-          echo "Error: --env: Only "docker" and 'eck' are available environments"
+          echo "Error: --env: Only 'docker' and 'eck-x.y.z' patterns are supported"
           show_help
           ;;
       esac
