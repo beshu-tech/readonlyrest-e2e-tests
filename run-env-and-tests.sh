@@ -1,15 +1,16 @@
 #!/bin/bash -e
 
 show_help() {
-  echo "Usage: ./run-evn-and-tests.sh --env <docker|eck> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Usage: ./run-evn-and-tests.sh --env <docker|eck-x.y.z> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
   exit 1
 }
 
 ENV_NAME=""
 ELK_VERSION="$1"
-ROR_ES_VERSION=""
-ROR_KBN_VERSION=""
-MODE=""
+OPTIONAL_ECK_ARG=""
+OPTIONAL_ROR_ES_ARG=""
+OPTIONAL_ROR_KBN_ARG=""
+OPTIONAL_MODE=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -19,11 +20,12 @@ while [[ $# -gt 0 ]]; do
         "docker")
           ENV_NAME="elk-ror"
           ;;
-        "eck")
+        eck-*)
           ENV_NAME="eck-ror"
+          OPTIONAL_ECK_ARG="--eck ${2#eck-}"
           ;;
         *)
-          echo "Error: --env: Only "docker" and 'eck' are available environments"
+          echo "Error: --env: Only 'docker' and 'eck-x.y.z' patterns are supported"
           show_help
           ;;
       esac
@@ -44,7 +46,7 @@ while [[ $# -gt 0 ]]; do
     ;;
   --ror-es)
     if [[ -n $2 && $2 != --* ]]; then
-      ROR_ES_VERSION="--ror-es $2"
+      OPTIONAL_ROR_ES_ARG="--ror-es $2"
       shift 2
     else
       echo "Error: --ror-es requires a version argument"
@@ -53,7 +55,7 @@ while [[ $# -gt 0 ]]; do
     ;;
   --ror-kbn)
     if [[ -n $2 && $2 != --* ]]; then
-      ROR_KBN_VERSION="--ror-kbn $2"
+      OPTIONAL_ROR_KBN_ARG="--ror-kbn $2"
       shift 2
     else
       echo "Error: --ror-kbn requires a version argument"
@@ -61,7 +63,7 @@ while [[ $# -gt 0 ]]; do
     fi
     ;;
   --dev)
-    MODE="--dev"
+    OPTIONAL_MODE="--dev"
     shift
     ;;
   *)
@@ -95,5 +97,5 @@ echo -e "
 
 echo -e "E2E TESTS\n"
 
-time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $ROR_ES_VERSION $ROR_KBN_VERSION $MODE
+time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_MODE
 time ./e2e-tests/run-tests.sh "$ELK_VERSION"
