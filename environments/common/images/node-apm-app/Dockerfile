@@ -1,7 +1,7 @@
 FROM ubuntu:24.04
 
 RUN apt-get update && \
-    apt-get install -y libc6-amd64-cross vim curl npm && \
+    apt-get install -y --fix-missing libc6-amd64-cross vim curl npm && \
     ln -s /usr/x86_64-linux-gnu/lib64/ /lib64 && \
     mkdir -p /example-app
 
