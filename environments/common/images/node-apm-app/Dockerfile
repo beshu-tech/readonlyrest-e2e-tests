@@ -9,8 +9,7 @@ RUN mkdir -p /example-app
 
 WORKDIR /example-app
 
-COPY ./package.json /example-app/
-RUN npm install
+RUN npm install elastic-apm-node express
 
 COPY ./app.js /example-app
 
