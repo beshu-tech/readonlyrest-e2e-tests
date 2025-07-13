@@ -17,9 +17,6 @@ spec:
                 runAsUser: 0
                 runAsGroup: 0
               env:
-                # For ROR_ES_VERSION >= 1.64.0
-                - name: I_UNDERSTAND_AND_ACCEPT_ES_PATCHING
-                  value: "yes"
                 # For ROR_ES_VERSION < 1.64.0
                 - name: I_UNDERSTAND_IMPLICATION_OF_ES_PATCHING
                   value: "yes"
