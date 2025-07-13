@@ -63,6 +63,13 @@ export class EsApiClient {
       }
     });
   }
+
+  public getIndexSettings(index: string): Cypress.Chainable<any> {
+    return cy.esGet({
+      endpoint: `${index}/_settings`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
 }
 
 export const esApiClient = new EsApiClient();

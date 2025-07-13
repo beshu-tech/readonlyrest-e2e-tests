@@ -154,6 +154,24 @@ function uploadFile(
   });
 }
 
+Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, property, value) => {
+  cy.wrap(subject).should($el => {
+    expect($el).to.exist;
+    expect($el.length).to.be.at.least(1);
+
+    const win = $el[0].ownerDocument.defaultView;
+    const computedStyle = win.getComputedStyle($el[0]);
+    const actualValue = computedStyle.getPropertyValue(property);
+
+    // Handle RGB vs HEX color formats
+    if (property === 'color' || property.includes('color')) {
+      expect(actualValue.replace(/\s/g, '')).to.eq(value.replace(/\s/g, ''));
+    } else {
+      expect(actualValue).to.eq(value);
+    }
+  });
+});
+
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**
    * Don't fail test when these specific errors from kibana platform

@@ -1,8 +1,8 @@
 helpers:
-  cr: &common-rules
-    kibana_access: rw
-    kibana_hide_apps: ["Enterprise Search|Overview"]
-    kibana_index: ".kibana_@{acl:current_group}"
+  ckr: &common-kibana-rules
+    access: rw
+    hide_apps: ["Enterprise Search|Overview", "Observability"]
+    index: ".kibana_@{acl:current_group}"
 
   ag: &all-groups
     groups:
@@ -29,45 +29,30 @@ readonlyrest:
       verbosity: error
       auth_key: kibana:kibana
 
-    - name: "APM"
-      type: allow
-      auth_key: apm:test
-
-    # <-- related to ECK environment -->
-    - name: "Kibana service account - token"
-      verbosity: error
-      token_authentication:
-        token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"
-        username: service_account
-
-    - name: "PROBE"
-      verbosity: error
-      auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
-
-    - name: "ELASTIC-INTERNAL"
-      verbosity: error
-      auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
-    # <!-- related to ECK environment -->
-
     - name: PERSONAL_GRP
       groups: [Personal]
-      <<: *common-rules
-      kibana_index: ".kibana_@{user}"
+      kibana:
+        <<: *common-kibana-rules
+        index: ".kibana_@{user}"
 
     - name: ADMIN_GRP
       groups: [admins_group]
-      <<: *common-rules
-      kibana_access: admin
-
+      kibana:
+        <<: *common-kibana-rules
+        access: admin
+        metadata:
+          alert_message: "Dear @{acl:user}"
     - name: infosec
       groups: [infosec_group]
-      <<: *common-rules
-      kibana_hide_apps:
-        ["Enterprise Search|Overview", "Observability", "Management"]
+      kibana:
+        <<: *common-kibana-rules
+        hide_apps:
+          ["Enterprise Search|Overview", "Observability", "Management"]
 
     - name: Template Tenancy
       groups: [template_group]
-      <<: *common-rules
+      kibana:
+        <<: *common-kibana-rules
 
     - name: "ReadonlyREST Enterprise instance #1"
       kibana_index: ".kibana_external_auth"

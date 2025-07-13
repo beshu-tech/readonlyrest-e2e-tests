@@ -7,6 +7,9 @@ import { getKibanaVersion } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
+import { Reporting } from '../support/page-objects/Reporting';
+import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { SampleData } from '../support/helpers/SampleData';
 import { esApiClient } from '../support/helpers/EsApiClient';
 
 describe('Kibana-config', () => {
@@ -69,6 +72,33 @@ describe('Kibana-config', () => {
       }
       Dashboard.verifyDashboardNotExist('Look at my dashboard');
     });
+
+    it('should verify custom Kibana CSS', () => {
+      Login.initialization();
+      cy.get('h1').shouldHaveStyle('color', 'rgb(0,128,0)');
+    });
+
+    it('should verify custom Kibana JS', () => {
+      Login.initialization();
+      cy.get('[data-testid="metadata-alert-message"]')
+        .should('exist')
+        .then($el => {
+          cy.log(`Alert message: ${$el.text()}`);
+
+          cy.wrap($el).should('contain', 'Dear admin');
+        });
+    });
+
+    it('should verify custom middleware', () => {
+      Login.initialization();
+      cy.get('[data-testid="metadata-enriched-data"]')
+        .should('exist')
+        .then($el => {
+          cy.log(`Entiched data: ${$el.text()}`);
+
+          cy.wrap($el).should('contain', 'custom enriched data');
+        });
+    });
   });
 
   describe('Custom kibana config multitenancy disabled', () => {
@@ -93,4 +123,42 @@ describe('Kibana-config', () => {
       });
     });
   });
+  if (semver.lt(getKibanaVersion(), '8.0.0')) {
+    describe('Custom kibana config custom xpack.reporting.index', () => {
+      before(() => {
+        rorApiInternalKbnClient.changeKibanaConfig('customKibanaConfigXpackReportingIndex.yml');
+        kbnApiAdvancedClient.waitForKibanaHealth(Cypress.config().baseUrl);
+      });
+
+      it('should verify custom reporting index', () => {
+        const docsIndex = 'sample_index';
+
+        SampleData.createSampleData(docsIndex, 1);
+        Login.initialization();
+
+        Discover.openDataViewPage();
+        Discover.createIndexPattern('sample_index');
+        Discover.saveReport('admin_search');
+        Discover.exportToCsv();
+        Reporting.openReportingPage('kibanaNavigation');
+        Reporting.verifySavedReport(['admin_search']);
+        esApiAdvancedClient.getAllReportingIndices().then(results => {
+          expect(results).to.be.length(1);
+          const xpackReportingCustomIndex = results.find(index => index.index.startsWith('.reporting-test-index'));
+          /* eslint-disable no-unused-expressions */
+          expect(xpackReportingCustomIndex).to.exist;
+          expect(xpackReportingCustomIndex.health).to.equal('green');
+          expect(Number.parseInt(xpackReportingCustomIndex['docs.count'], 10)).to.equal(1);
+        });
+
+        esApiClient.deleteIndex(docsIndex);
+        esApiAdvancedClient.pruneAllReportingIndices();
+        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+      });
+    });
+  } else {
+    describe.skip('Custom kibana config custom xpack.reporting.index', () => {
+      // Tests are skipped
+    });
+  }
 });

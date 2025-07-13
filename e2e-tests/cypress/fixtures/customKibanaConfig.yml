@@ -18,3 +18,36 @@ readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
   kibanaIndexTemplate: ".kibana_template_group"
   resetKibanaIndexToTemplate: true
+  whitelistedPaths: [".*/api/status$", ".*/api/index_management/indices$"]
+  store_sessions_in_index: true
+  sessions_index_name: 'test_index'
+  session_timeout_minutes: 0.05
+  sessions_cleanup_interval: '7s'
+  tenantIndex:
+    number_of_shards: 2
+    number_of_replicas: 2
+  kibana_custom_css_inject: 'h1 { color: rgb(0,128,0) !important;}'
+  kibana_custom_js_inject: "if (window.ROR_METADATA.customMetadata && window.ROR_METADATA.customMetadata.alert_message) {
+        const div = document.createElement('div');
+        div.setAttribute('data-testid', 'metadata-alert-message');
+        div.textContent = window.ROR_METADATA.customMetadata.alert_message;
+        document.body.appendChild(div);
+      };
+      if (window.ROR_METADATA.enrichedData) {
+        const div = document.createElement('div');
+        div.setAttribute('data-testid', 'metadata-enriched-data');
+        div.textContent = window.ROR_METADATA.enrichedData;
+        document.body.appendChild(div);
+      };"
+  custom_middleware_inject: "async function customMiddleware(req, res, next) {
+      const metadata =
+        req.rorRequest && req.rorRequest.getIdentitySession() && req.rorRequest.getIdentitySession().metadata;
+    
+      if (metadata && metadata.username === 'admin') {
+        req.rorRequest.enrichIdentitySessionMetadata({
+          enrichedData: 'custom enriched data',
+        });
+      }
+
+      return next();
+      }"

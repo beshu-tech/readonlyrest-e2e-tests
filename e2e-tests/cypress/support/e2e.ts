@@ -130,6 +130,7 @@ declare global {
         payload?: Payload;
       }): Chainable<Subject>;
       esDelete({ endpoint, credentials }: { endpoint: string; credentials: string }): Chainable<Subject>;
+      shouldHaveStyle(property: string, value: string): Chainable<Element>;
     }
 
     type Payload = string | object;
