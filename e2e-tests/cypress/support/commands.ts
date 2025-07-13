@@ -1,40 +1,44 @@
 import '@testing-library/cypress/add-commands';
-import { ResizeObserverMock } from './mocks/ResizeObserverMock';
 
-Cypress.Commands.add('kbnPost', ({ endpoint, credentials, payload, currentGroupHeader }, ...args) => {
-  cy.kbnRequest({
-    method: 'POST',
-    endpoint: endpoint,
-    credentials: credentials,
-    payload: payload,
-    currentGroupHeader: currentGroupHeader
-  });
-});
+Cypress.Commands.add(
+  'kbnPost',
+  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) => {
+    cy.kbnRequest({
+      method: 'POST',
+      endpoint,
+      credentials,
+      payload,
+      currentGroupHeader,
+      headers,
+      impersonating
+    });
+  }
+);
 
 Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
   cy.esRequest({
     method: 'POST',
-    endpoint: endpoint,
-    credentials: credentials,
-    payload: payload
+    endpoint,
+    credentials,
+    payload
   })
 );
 
 Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) =>
   cy.kbnRequest({
     method: 'PUT',
-    endpoint: endpoint,
-    credentials: credentials,
-    payload: payload
+    endpoint,
+    credentials,
+    payload
   })
 );
 
 Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
   cy.esRequest({
     method: 'PUT',
-    endpoint: endpoint,
-    credentials: credentials,
-    payload: payload
+    endpoint,
+    credentials,
+    payload
   })
 );
 
@@ -42,47 +46,60 @@ Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename }, .
   uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, { 'kbn-xsrf': 'true' })
 );
 
-Cypress.Commands.add('kbnGet', ({ endpoint, credentials, currentGroupHeader }, ...args) =>
-  cy.kbnRequest({
-    method: 'GET',
-    endpoint: endpoint,
-    credentials: credentials,
-    currentGroupHeader: currentGroupHeader
-  })
+Cypress.Commands.add(
+  'kbnGet',
+  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode }, ...args) =>
+    cy.kbnRequest({
+      method: 'GET',
+      endpoint,
+      credentials,
+      currentGroupHeader,
+      impersonating,
+      failOnStatusCode
+    })
 );
 
 Cypress.Commands.add('esGet', ({ endpoint, credentials }, ...args) =>
   cy.esRequest({
     method: 'GET',
-    endpoint: endpoint,
-    credentials: credentials
+    endpoint,
+    credentials
   })
 );
 
-Cypress.Commands.add('kbnDelete', ({ endpoint, credentials, currentGroupHeader }, ...args) =>
+Cypress.Commands.add('kbnDelete', ({ endpoint, credentials, currentGroupHeader, impersonating }, ...args) =>
   cy.kbnRequest({
     method: 'DELETE',
-    endpoint: endpoint,
-    credentials: credentials,
-    currentGroupHeader: currentGroupHeader
+    endpoint,
+    credentials,
+    currentGroupHeader,
+    impersonating
   })
 );
 
 Cypress.Commands.add('esDelete', ({ endpoint, credentials }, ...args) =>
   cy.esRequest({
     method: 'DELETE',
-    endpoint: endpoint,
-    credentials: credentials
+    endpoint,
+    credentials
   })
 );
 
-Cypress.Commands.add('kbnRequest', ({ method, endpoint, credentials, payload, currentGroupHeader }) => {
-  const customHeaders: { [key: string]: string } = { 'kbn-xsrf': 'true' };
-  if (currentGroupHeader) {
-    customHeaders['x-ror-current-group'] = currentGroupHeader;
+Cypress.Commands.add(
+  'kbnRequest',
+  ({ method, endpoint, credentials, payload, currentGroupHeader, impersonating, failOnStatusCode, headers }) => {
+    const customHeaders: { [key: string]: string } = { 'kbn-xsrf': 'true', ...headers };
+    if (currentGroupHeader) {
+      customHeaders['x-ror-current-group'] = currentGroupHeader;
+    }
+
+    if (impersonating) {
+      customHeaders['x-ror-impersonating'] = impersonating;
+    }
+
+    httpCall(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders, failOnStatusCode);
   }
-  httpCall(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders);
-});
+);
 
 Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload }) => {
   httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload);
@@ -93,7 +110,8 @@ function httpCall(
   url: string,
   credentials: string,
   payload?: string | object,
-  headers?: { [key: string]: string }
+  headers?: { [key: string]: string },
+  failOnStatusCode = true
 ): Cypress.Chainable<any> {
   const options = {
     method,
@@ -103,7 +121,8 @@ function httpCall(
       authorization: `Basic ${btoa(credentials)}`,
       ...headers
     },
-    body: payload ? JSON.stringify(payload) : null
+    body: payload ? JSON.stringify(payload) : null,
+    failOnStatusCode
   };
 
   return cy.task('httpCall', options);
@@ -145,13 +164,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
-    err.message.includes('Not Found') // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
+    err.message.includes('Not Found') // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Foun
   ) {
     return false;
   }
-});
-
-Cypress.on('window:before:load', win => {
-  // Override ResizeObserver in the test environment to resolve process exit unexpectedly issue https://docs.cypress.io/app/references/error-messages#The-browser-process-running-your-tests-just-exited-unexpectedly
-  win.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });

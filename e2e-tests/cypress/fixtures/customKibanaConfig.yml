@@ -1,0 +1,20 @@
+server.host: 0.0.0.0
+server.port: 5601
+server.ssl.enabled: true
+server.ssl.certificate: /etc/cert/localhost.cer
+server.ssl.key: /etc/cert/localhost.key
+elasticsearch.ssl.verificationMode: none
+elasticsearch.pingTimeout: 3000 # default: 30000
+elasticsearch.requestTimeout: 30000
+# csp needs to be disabled to let cypress e2e tests works
+csp.strict: false
+csp.warnLegacyBrowsers: false
+elasticsearch.hosts: [ "https://localhost:9200" ]
+elasticsearch.username: kibana
+elasticsearch.password: kibana
+xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!"
+telemetry.enabled: false
+kibana.index: .kibana_custom
+readonlyrest_kbn:
+  cookiePass: '12312313123213123213123adadasdasdasd'
+  multiTenancyEnabled: false

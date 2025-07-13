@@ -1,9 +1,9 @@
 export class RorApiInternalKbnClient {
   public getLicense({
-                      impersonating,
-                      failOnStatusCode,
-                      credentials = Cypress.env().kibanaUserCredentials
-                    }: { impersonating?: string; failOnStatusCode?: boolean; credentials?: string } = {}): Cypress.Chainable<{
+    impersonating,
+    failOnStatusCode,
+    credentials = Cypress.env().kibanaUserCredentials
+  }: { impersonating?: string; failOnStatusCode?: boolean; credentials?: string } = {}): Cypress.Chainable<{
     status: string;
     statusCode: number;
     message: string;
@@ -17,8 +17,8 @@ export class RorApiInternalKbnClient {
   }
 
   public deactivateTestSettings({
-                                  credentials = Cypress.env().kibanaUserCredentials
-                                }: { credentials?: string } = {}): Cypress.Chainable<void> {
+    credentials = Cypress.env().kibanaUserCredentials
+  }: { credentials?: string } = {}): Cypress.Chainable<void> {
     return cy.kbnDelete({
       endpoint: 'pkp/api/test',
       credentials
