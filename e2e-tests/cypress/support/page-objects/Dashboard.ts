@@ -16,4 +16,9 @@ export class Dashboard {
     cy.log('Clone button Not exist');
     cy.findByText(/clone/i).should('not.exist');
   }
+
+  static verifyDashboardExists(dashboardName: string) {
+    cy.log(`Verifying that dashboard "${dashboardName}" exists`);
+    cy.get('[data-test-subj*="dashboardListingTitleLink"]').contains(dashboardName).should('exist');
+  }
 }

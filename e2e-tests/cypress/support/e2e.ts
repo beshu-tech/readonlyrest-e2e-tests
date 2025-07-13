@@ -80,11 +80,13 @@ declare global {
       kbnImport({
         endpoint,
         credentials,
-        fixtureFilename
+        fixtureFilename,
+        currentGroupHeader
       }: {
         endpoint: string;
         credentials: string;
         fixtureFilename: string;
+        currentGroupHeader?: string;
       }): Chainable<Subject>;
       kbnDelete({
         endpoint,

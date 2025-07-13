@@ -13,6 +13,11 @@ export class EsApiAdvancedClient extends EsApiClient {
     });
     cy.log('Pruning all reporting indices - DONE!');
   }
+
+  public getAllReportingIndices(){
+    cy.log('Getting all reporting indices...');
+    return this.indices().then(result => result.filter(index => index.index.startsWith('.reporting')));
+  }
 }
 
 export const esApiAdvancedClient = new EsApiAdvancedClient();

@@ -42,8 +42,11 @@ Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
   })
 );
 
-Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename }, ...args) =>
-  uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, { 'kbn-xsrf': 'true' })
+Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }, ...args) =>
+  uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
+    'kbn-xsrf': 'true',
+    ...(currentGroupHeader ? { 'x-ror-current-group': currentGroupHeader } : {})
+  })
 );
 
 Cypress.Commands.add(

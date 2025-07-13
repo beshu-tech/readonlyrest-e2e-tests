@@ -14,6 +14,7 @@ elasticsearch.username: kibana
 elasticsearch.password: kibana
 xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!"
 telemetry.enabled: false
+kibana.index: .kibana_custom
 readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
-  kibanaIndexTemplate: ".kibana_template_group"
+  multiTenancyEnabled: false
