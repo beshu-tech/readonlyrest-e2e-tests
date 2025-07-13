@@ -3,11 +3,11 @@ import { rorApiInternalKbnClient } from '../support/helpers/RorApiInternalKbnCli
 import { Login } from '../support/page-objects/Login';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import { esApiClient } from '../support/helpers/EsApiClient';
 import { getKibanaVersion } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
+import { esApiClient } from '../support/helpers/EsApiClient';
 
 describe('Kibana-config', () => {
   after(() => {
@@ -16,13 +16,21 @@ describe('Kibana-config', () => {
   });
 
   describe('Custom kibana config', () => {
+    const adminCredentials = 'admin:dev';
+
     before(() => {
       rorApiInternalKbnClient.changeKibanaConfig('customKibanaConfig.yml');
       kbnApiAdvancedClient.waitForKibanaHealth(Cypress.config().baseUrl);
     });
-    it('should verify kibanaIndexTemplate functionality', () => {
-      const adminCredentials = 'admin:dev';
 
+    afterEach(() => {
+      kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
+
+      // deleteSavedObjects will return 404 error because, thanks to resetKibanaIndexToTemplate: true, ROR KBN plugin will reset all data to template_group deleted above, first
+      kbnApiAdvancedClient.getSavedObjects(adminCredentials);
+    });
+
+    it('should verify kibanaIndexTemplate functionality', () => {
       cy.kbnImport({
         endpoint: 'api/saved_objects/_import?overwrite=true',
         credentials: adminCredentials,
@@ -39,8 +47,27 @@ describe('Kibana-config', () => {
         KibanaNavigation.openPage('Dashboard');
       }
       Dashboard.verifyDashboardExists('ReadonlyREST Audit Dashboard');
-      kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
-      kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
+
+      // Verify that the index is reset to the template
+      cy.kbnImport({
+        endpoint: 'api/saved_objects/_import?overwrite=true',
+        credentials: adminCredentials,
+        fixtureFilename: 'file.ndjson',
+        currentGroupHeader: 'admins_group'
+      });
+
+      cy.reload();
+      Dashboard.verifyDashboardExists('Look at my dashboard');
+      RorMenu.openRorMenu();
+
+      RorMenu.pressLogoutButton();
+      Login.initialization();
+      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+        KibanaNavigation.openPage('Dashboards');
+      } else {
+        KibanaNavigation.openPage('Dashboard');
+      }
+      Dashboard.verifyDashboardNotExist('Look at my dashboard');
     });
   });
 

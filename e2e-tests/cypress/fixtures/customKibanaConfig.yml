@@ -17,3 +17,4 @@ telemetry.enabled: false
 readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
   kibanaIndexTemplate: ".kibana_template_group"
+  resetKibanaIndexToTemplate: true
