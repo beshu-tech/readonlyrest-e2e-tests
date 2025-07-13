@@ -8,9 +8,9 @@ import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Reporting } from '../support/page-objects/Reporting';
-import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
 import { esApiClient } from '../support/helpers/EsApiClient';
+import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 
 describe('Kibana-config', () => {
   after(() => {
@@ -20,6 +20,7 @@ describe('Kibana-config', () => {
 
   describe('Custom kibana config', () => {
     const adminCredentials = 'admin:dev';
+    const customSessionIndex = `test_index`;
 
     before(() => {
       rorApiInternalKbnClient.changeKibanaConfig('customKibanaConfig.yml');
@@ -31,6 +32,8 @@ describe('Kibana-config', () => {
 
       // deleteSavedObjects will return 404 error because, thanks to resetKibanaIndexToTemplate: true, ROR KBN plugin will reset all data to template_group deleted above, first
       kbnApiAdvancedClient.getSavedObjects(adminCredentials);
+
+      esApiClient.deleteIndex(customSessionIndex);
     });
 
     it('should verify kibanaIndexTemplate functionality', () => {
@@ -71,6 +74,13 @@ describe('Kibana-config', () => {
         KibanaNavigation.openPage('Dashboard');
       }
       Dashboard.verifyDashboardNotExist('Look at my dashboard');
+    });
+
+    it('should verify index based session', () => {
+      Login.initialization();
+      esApiAdvancedClient.waitForDocsCount(customSessionIndex, 1).then(() => {
+        esApiAdvancedClient.waitForDocsCount(customSessionIndex, 0);
+      });
     });
 
     it('should verify custom Kibana CSS', () => {
