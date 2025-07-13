@@ -42,7 +42,7 @@ describe('User settings', () => {
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
     cy.url().should('include', `nextGroup=`);
-    Login.fillLoginPage();
+    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
     Loader.loading();
     RorMenu.openRorMenu();
     RorMenu.verifyCurrentTenant(selectedTenant);
@@ -53,9 +53,22 @@ describe('User settings', () => {
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
     cy.url().should('not.include', `nextGroup=`);
-    Login.fillLoginPage();
+    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
     Loader.loading();
     RorMenu.openRorMenu();
     RorMenu.verifyCurrentTenant('administrators');
+  });
+
+  it('should not switch group to the remember one when the group is not available for the logged in user', () => {
+    RorMenu.changeTenancy('infosec');
+    RorMenu.openRorMenu();
+    UserSettings.openViaMenuIcon();
+    UserSettings.changeUserSettingsValue('remember-group-after-logout-settings', 'enabled');
+    RorMenu.openRorMenu();
+    RorMenu.pressLogoutButton();
+    Login.fillLoginPageWith('kibana', 'kibana');
+    Loader.loading();
+    RorMenu.openRorMenu();
+    RorMenu.verifyNoTenantAvailable();
   });
 });
