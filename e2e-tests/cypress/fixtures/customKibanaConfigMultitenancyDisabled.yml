@@ -26,7 +26,7 @@ xpack.reporting.encryptionKey: "321421321211231241232132132132132"
 
 telemetry.enabled: false
 
+kibana.index: .kibana_custom
 readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
-  logLevel: info
-  store_sessions_in_index: true
+  multiTenancyEnabled: false
