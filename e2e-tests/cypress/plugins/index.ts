@@ -93,7 +93,8 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
             method: 'GET',
             rejectUnauthorized: false,
             headers: {
-              'kbn-xsrf': 'true'
+              'kbn-xsrf': 'true',
+              Authorization: 'Basic ' + Buffer.from('kibana:kibana').toString('base64')
             }
           },
           res => {

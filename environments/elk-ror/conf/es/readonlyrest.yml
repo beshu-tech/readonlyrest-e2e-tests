@@ -1,9 +1,10 @@
 helpers:
   cr: &common-rules
-    kibana_access: rw
-    kibana_hide_apps: ["Enterprise Search|Overview"]
-    kibana_index: ".kibana_@{acl:current_group}"
-
+    verbosity: error
+  ckr: &common-kibana-rules
+    access: rw
+    hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+    index: ".kibana_@{acl:current_group}"
   ag: &all-groups
     groups:
       - id: admins_group
@@ -34,24 +35,31 @@ readonlyrest:
       auth_key: apm:test
 
     - name: PERSONAL_GRP
-      groups: [Personal]
+      groups: [ Personal ]
       <<: *common-rules
-      kibana_index: ".kibana_@{user}"
+      kibana:
+        <<: *common-kibana-rules
+        index: '.kibana_@{user}'
 
     - name: ADMIN_GRP
-      groups: [admins_group]
+      groups: [ admins_group ]
       <<: *common-rules
-      kibana_access: admin
-
+      kibana:
+        <<: *common-kibana-rules
+        access: admin
+        metadata:
+          alert_message: "Dear @{acl:user}"
     - name: infosec
-      groups: [infosec_group]
-      <<: *common-rules
-      kibana_hide_apps:
-        ["Enterprise Search|Overview", "Observability", "Management"]
+      groups: [ infosec_group ]
+      kibana:
+        <<: *common-kibana-rules
+        access: admin
+        hide_apps: [ "Enterprise Search|Overview", "Observability", "Management" ]
 
     - name: Template Tenancy
-      groups: [template_group]
-      <<: *common-rules
+      groups: [ template_group ]
+      kibana:
+        <<: *common-kibana-rules
 
     - name: "Reporting tests: user2"
       auth_key: user2:dev
