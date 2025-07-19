@@ -1,7 +1,7 @@
 helpers:
   ckr: &common-kibana-rules
     access: rw
-    hide_apps: ["Enterprise Search|Overview", "Observability"]
+    hide_apps: ["Enterprise Search|Overview"]
     index: ".kibana_@{acl:current_group}"
 
   ag: &all-groups
@@ -47,7 +47,7 @@ readonlyrest:
       kibana:
         <<: *common-kibana-rules
         hide_apps:
-          ["Enterprise Search|Overview", "Observability", "Management"]
+          ["Enterprise Search|Overview", "Management"]
 
     - name: Template Tenancy
       groups: [template_group]

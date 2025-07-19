@@ -3,7 +3,7 @@ helpers:
     verbosity: error
   ckr: &common-kibana-rules
     access: rw
-    hide_apps: [ "Enterprise Search|Overview", "Observability" ]
+    hide_apps: [ "Enterprise Search|Overview" ]
     index: ".kibana_@{acl:current_group}"
   ag: &all-groups
     groups:
@@ -54,7 +54,7 @@ readonlyrest:
       kibana:
         <<: *common-kibana-rules
         access: admin
-        hide_apps: [ "Enterprise Search|Overview", "Observability", "Management" ]
+        hide_apps: [ "Enterprise Search|Overview", "Management" ]
 
     - name: Template Tenancy
       groups: [ template_group ]

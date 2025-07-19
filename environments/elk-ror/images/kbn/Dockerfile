@@ -18,7 +18,9 @@ ENV I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING yes
 USER root
 
 # Install netstat
-RUN apt-get update && apt-get install -y net-tools && rm -rf /var/lib/apt/lists/*
+RUN (command -v microdnf >/dev/null && microdnf install -y net-tools && microdnf clean all) || \
+    (command -v apt-get >/dev/null && apt-get update && apt-get install -y net-tools && rm -rf /var/lib/apt/lists/*) || \
+    echo "Could not install net-tools, proceeding without it"
 
 # Permissions for Kibana config editing from ReadonlyREST plugin
 RUN chmod 777 /root
