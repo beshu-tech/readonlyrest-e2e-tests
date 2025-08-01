@@ -1,5 +1,7 @@
+import * as semver from 'semver';
 import { RorMenu } from './RorMenu';
 import { StackManagement } from './StackManagement';
+import { getKibanaVersion } from '../helpers';
 
 type OpenBy = 'rorMenu' | 'kibanaNavigation';
 
@@ -24,9 +26,16 @@ export class Reporting {
 
   static verifyIfReportingPageAfterRefresh() {
     cy.log('Verify if reporting page open after refresh');
-    cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`);
+    const expectedUrl =
+      semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')
+        ? `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting/exports`
+        : `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`;
+
+    cy.url().should('include', expectedUrl);
+
     cy.reload();
-    cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`);
+
+    cy.url().should('include', expectedUrl);
   }
 
   static removeReport(reportName: string) {

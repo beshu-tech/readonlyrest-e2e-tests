@@ -36,7 +36,12 @@ describe('sanity check', () => {
     Reporting.verifySavedReport(['admin_search']);
 
     cy.log('Change tenancy, and initialize it');
-    RorMenu.changeTenancy('Infosec', '/app/management/insightsAndAlerting/reporting');
+    const finishUrl =
+      semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')
+        ? '/app/management/insightsAndAlerting/reporting/exports'
+        : '/app/management/insightsAndAlerting/reporting';
+
+    RorMenu.changeTenancy('Infosec', finishUrl);
 
     if (semver.gte(getKibanaVersion(), '8.8.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');

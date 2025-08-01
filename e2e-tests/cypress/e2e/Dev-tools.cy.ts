@@ -1,5 +1,7 @@
+import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { DevTools } from '../support/page-objects/DevTools';
+import { getKibanaVersion } from '../support/helpers';
 
 describe('Dev tools', () => {
   beforeEach(() => {
@@ -12,24 +14,33 @@ describe('Dev tools', () => {
     DevTools.sendRequest(
       'POST /xx-enrich-iis/_bulk {enter} {{} "index" : {{} {}} {}} {enter} {{} "index" : {{} {}} {}}'
     );
+    DevTools.verifyIfRequestInProgress();
     DevTools.verifyIf403Status();
 
     cy.log('should verify GET /_index_template successful with 403 status');
     DevTools.sendRequest('GET /_index_template/');
+    DevTools.verifyIfRequestInProgress();
     DevTools.verifyIf200Status();
 
     cy.log('should verify POST .kibana/_search successful with 200 status');
     DevTools.sendRequest('POST .kibana/_search');
+    DevTools.verifyIfRequestInProgress();
     DevTools.verifyIf200Status();
 
     cy.log('should verify GET _search successful with 200 status');
     DevTools.sendRequest('GET _search {enter} {{} {enter} "query": {{} {enter} "match_all": {{}} {enter} } } ');
+    DevTools.verifyIfRequestInProgress();
     DevTools.verifyIf200Status();
 
     cy.log('should verify GET _search successful with 200 status');
     DevTools.sendRequest(
       'GET _search {enter} {{} {enter} "query": {{} BAD_JSON {enter} "match_all": {{}} {enter} } } '
     );
-    DevTools.verifyIf400Status();
+
+    if (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
+      DevTools.verifyIfContainsErrorsMessage();
+    } else {
+      DevTools.verifyIf400Status();
+    }
   });
 });

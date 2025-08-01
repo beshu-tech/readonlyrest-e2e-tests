@@ -35,7 +35,6 @@ export class DevTools {
       cy.get('[data-test-subj=console-textarea]').type(text, { force: true });
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
-    cy.contains('Request in progress');
   }
 
   static verifyIf200Status() {
@@ -51,5 +50,19 @@ export class DevTools {
   static verifyIf403Status() {
     cy.log('verify if 403 status');
     cy.contains('403 - Forbidden').should('be.visible');
+  }
+
+  static verifyIfContainsErrorsMessage() {
+    cy.log('Verify if contains errors message');
+    cy.contains(
+      '[data-test-subj="globalToastList"]',
+      'The selected request contains errors. Please resolve them and try again.'
+    ).should('be.visible');
+  }
+
+  static verifyIfRequestInProgress() {
+    cy.log('Verify if request in progress');
+
+    cy.contains('Request in progress');
   }
 }

@@ -47,6 +47,13 @@ export class EsApiClient {
     });
   }
 
+  public dataStreams(): Cypress.Chainable<GetDataStreams> {
+    return cy.esGet({
+      endpoint: '_data_stream?format=json&expand_wildcards=all',
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
   public attachLifecyclePolicy(index: string, policyName: string): void {
     cy.esPut({
       endpoint: `${index}/_settings`,
@@ -62,4 +69,10 @@ export const esApiClient = new EsApiClient();
 
 export interface GetIndices {
   index: string;
+}
+
+export interface GetDataStreams {
+  data_streams: {
+    name: string;
+  }[];
 }
