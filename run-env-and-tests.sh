@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 show_help() {
-  echo "Usage: ./run-evn-and-tests.sh --env <docker|eck-x.y.z> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Usage: ./run-env-and-tests.sh --env <docker|eck-x.y.z> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
   exit 1
 }
 
@@ -98,4 +98,4 @@ echo -e "
 echo -e "E2E TESTS\n"
 
 time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_MODE
-time ./e2e-tests/run-tests.sh "$ELK_VERSION"
+time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"

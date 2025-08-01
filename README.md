@@ -51,9 +51,14 @@ or
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --dev
 ```
 
-To run tests on the env:
+To run tests on the env from a docker environment:
 ```bash
-./e2e-tests/run-tests.sh --elk "8.15.2"
+./e2e-tests/run-tests.sh  "8.15.2" "elk-ror"
+```
+
+To run tests on the env from eck environment:
+```bash
+./e2e-tests/run-tests.sh  "8.15.2" "eck-ror"
 ```
 
 #### Cypress tests in interactive GUI
