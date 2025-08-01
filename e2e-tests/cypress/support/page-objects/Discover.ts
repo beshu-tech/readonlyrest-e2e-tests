@@ -31,12 +31,18 @@ export class Discover {
 
   static exportToCsv() {
     cy.log('exportToCsv');
-    cy.get('[data-test-subj=shareTopNavButton]').click();
-    if (semver.gte(getKibanaVersion(), '8.15.0')) {
-      cy.get('[data-test-subj=export]').click();
+
+    if (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
+      cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
-      cy.get('[data-test-subj=sharePanel-CSVReports]').click();
+      cy.get('[data-test-subj=shareTopNavButton]').click();
+      if (semver.gte(getKibanaVersion(), '8.15.0')) {
+        cy.get('[data-test-subj=export]').click();
+      } else {
+        cy.get('[data-test-subj=sharePanel-CSVReports]').click();
+      }
     }
+
     cy.get('[data-test-subj=generateReportButton]').click();
     cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
     cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');
@@ -125,6 +131,7 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     if (semver.gte(getKibanaVersion(), '8.4.0')) {
       cy.get('[data-test-subj=createIndexPatternTitleInput]').type(indexPatternName); // Added title field in 8.4.0
     }
+
     cy.contains('Select a timestamp field for use with the global time filter.');
     cy.get('[data-test-subj=timestampField]').click();
     cy.contains('@timestamp').click({ force: true });
