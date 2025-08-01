@@ -16,3 +16,13 @@ ENV ROR_ACTIVATION_KEY=$ROR_ACTIVATION_KEY
 
 ENV I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING yes
 USER root
+
+# Install netstat
+RUN (command -v microdnf >/dev/null && microdnf install -y net-tools && microdnf clean all) || \
+    (command -v apt-get >/dev/null && apt-get update && apt-get install -y net-tools && rm -rf /var/lib/apt/lists/*) || \
+    echo "Could not install net-tools, proceeding without it"
+
+# Permissions for Kibana config editing from ReadonlyREST plugin
+RUN chmod 777 /root
+RUN chown -R kibana:kibana /usr/share/kibana/config
+RUN chmod 664 /usr/share/kibana/config/kibana.yml

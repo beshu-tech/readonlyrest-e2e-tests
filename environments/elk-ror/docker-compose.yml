@@ -41,6 +41,7 @@ services:
         hard: -1
 
   kbn-ror:
+    restart: always
     build:
       context: .
       dockerfile: images/kbn/Dockerfile
@@ -53,8 +54,6 @@ services:
       es-ror:
         condition: service_healthy
     deploy:
-      mode: replicated
-      replicas: 2
       resources:
         limits:
           memory: 1G

@@ -13,11 +13,17 @@ if [ $# -lt 1 ]; then
 fi
 
 KBN_VERSION="$1"
-RUN_TYPE="${2:-run}" # Default to "run" if not provided
-
+ENV_NAME="$2"
+RUN_TYPE="${3:-run}" # Default to "run" if not provided
 # Validate run type
 if [[ "$RUN_TYPE" != "run" && "$RUN_TYPE" != "open" ]]; then
   echo "Run type must be 'run' or 'open'"
+  exit 1
+fi
+
+# Validate ENV_NAME
+if [[ "$ENV_NAME" != "elk-ror" && "$ENV_NAME" != "eck-ror" ]]; then
+  echo "ENV_NAME must be a type 'elk-ror' or 'eck-ror'"
   exit 1
 fi
 
@@ -26,9 +32,9 @@ echo "Running E2E Cypress tests (mode: $RUN_TYPE) ..."
 yarn --frozen-lockfile install
 
 if [[ "$RUN_TYPE" == "open" ]]; then
-  yarn open --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY"
+  yarn open --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY,envName=$ENV_NAME"
 else
-  yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY"
+  yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY,envName=$ENV_NAME"
 fi
 
 if [[ $? -ne 0 ]]; then

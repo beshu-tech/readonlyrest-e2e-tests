@@ -70,7 +70,7 @@ describe('sanity check', () => {
     KibanaNavigation.openPage('Maps');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
-    Login.fillLoginPage();
+    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
 
     if (semver.gte(getKibanaVersion(), '8.7.0')) {
       Loader.loading(

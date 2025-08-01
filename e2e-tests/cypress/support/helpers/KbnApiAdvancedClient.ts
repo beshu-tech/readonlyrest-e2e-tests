@@ -31,6 +31,35 @@ export class KbnApiAdvancedClient extends KbnApiClient {
         });
     });
   }
+
+  public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {
+    let attempts = 0;
+
+    function poll() {
+      return cy
+        .task('checkKibanaHealth', {
+          url: baseUrl
+        })
+        .then(status => {
+          const kibana8xAndAboveSuccessStatus = status === 'available';
+          const kibana7xSuccessStatus = status === 'green';
+
+          if (kibana8xAndAboveSuccessStatus || kibana7xSuccessStatus) {
+            cy.log('✅ Kibana is healthy');
+            return;
+          }
+
+          if (attempts >= retries) {
+            throw new Error(`❌ Kibana never became healthy (last status: ${status})`);
+          }
+
+          attempts += 1;
+          return cy.wait(delay).then(poll);
+        });
+    }
+
+    return poll();
+  }
 }
 
 export const kbnApiAdvancedClient = new KbnApiAdvancedClient();
