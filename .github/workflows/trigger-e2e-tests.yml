@@ -28,9 +28,6 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
 
-      - name: Install Firefox
-        run: sudo apt-get update && sudo apt-get install -y firefox
-
       - name: Run tests
         run: |
           ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
