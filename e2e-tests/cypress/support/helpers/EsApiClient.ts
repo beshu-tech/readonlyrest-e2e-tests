@@ -26,9 +26,19 @@ export class EsApiClient {
   }
 
   public deleteDataStream(index: string): void {
-    cy.esDelete({
+    cy.esGet({
       endpoint: `_data_stream/${index}`,
-      credentials: Cypress.env().kibanaUserCredentials
+      credentials: Cypress.env().kibanaUserCredentials,
+      failOnStatusCode: false
+    }).then((response: any) => {
+      if (response?.data_streams?.length > 0) {
+        cy.esDelete({
+          endpoint: `_data_stream/${index}`,
+          credentials: Cypress.env().kibanaUserCredentials
+        });
+      } else {
+        cy.log(`Data stream '${index}' does not exist, skipping deletion`);
+      }
     });
   }
 
@@ -43,6 +53,13 @@ export class EsApiClient {
   public indices(): Cypress.Chainable<GetIndices[]> {
     return cy.esGet({
       endpoint: '_cat/indices?format=json',
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public dataStreams(): Cypress.Chainable<GetDataStreams> {
+    return cy.esGet({
+      endpoint: '_data_stream?format=json&expand_wildcards=all',
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
@@ -78,4 +95,10 @@ export interface GetIndices {
   index: string;
   'docs.count': string;
   health: 'green' | 'yellow' | 'red';
+}
+
+export interface GetDataStreams {
+  data_streams: {
+    name: string;
+  }[];
 }
