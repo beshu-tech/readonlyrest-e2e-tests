@@ -17,6 +17,7 @@ export class DevTools {
 
   static sendRequest(text: string) {
     cy.log('Send request');
+    cy.intercept({ method: 'POST', pathname: '/s/default/api/console/proxy' }).as('sendRequest');
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
       cy.get('[data-test-subj="clearConsoleInput"]').click();
       cy.get('[data-test-subj="consoleMonacoEditor"]').click().type(text);
@@ -35,6 +36,7 @@ export class DevTools {
       cy.get('[data-test-subj=console-textarea]').type(text, { force: true });
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
+    cy.wait('@sendRequest');
   }
 
   static verifyIf200Status() {
@@ -58,11 +60,5 @@ export class DevTools {
       '[data-test-subj="globalToastList"]',
       'The selected request contains errors. Please resolve them and try again.'
     ).should('be.visible');
-  }
-
-  static verifyIfRequestInProgress() {
-    cy.log('Verify if request in progress');
-
-    cy.contains('Request in progress');
   }
 }

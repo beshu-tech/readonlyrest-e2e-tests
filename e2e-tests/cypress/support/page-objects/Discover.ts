@@ -32,7 +32,10 @@ export class Discover {
   static exportToCsv() {
     cy.log('exportToCsv');
 
-    if (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
+    if (
+      (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) ||
+      semver.gte(getKibanaVersion(), '9.1.0')
+    ) {
       cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
       cy.get('[data-test-subj=shareTopNavButton]').click();
