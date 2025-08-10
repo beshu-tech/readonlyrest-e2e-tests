@@ -1,14 +1,13 @@
 export class KibanaNavigation {
   static openPage(page: string | RegExp) {
-    cy.log('openPage');
+    cy.log('open page');
     KibanaNavigation.openKibanaNavigation();
-    cy.findByRole('link', {
-      name: page
-    }).click();
+
+    cy.get('[data-test-subj="collapsibleNav"]').find(`[title="${page}"]`).first().click();
   }
 
   static openSubPage(page: string) {
-    cy.log('openPage');
+    cy.log('open sub-page');
     cy.findByRole('link', {
       name: page
     }).click();
