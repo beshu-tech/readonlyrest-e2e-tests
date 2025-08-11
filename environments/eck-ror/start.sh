@@ -92,9 +92,6 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-
-
-
 echo "CONFIGURING K8S CLUSTER ..."
 kind create cluster --name ror-eck --config kind-cluster/kind-cluster-config.yml
 docker exec ror-eck-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
@@ -106,7 +103,7 @@ DOCKERFILE_DIR="../common/images/node-apm-app"
 IMAGE_NAME="node-apm-app"
 TAG="latest"
 
-docker build -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
+docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
 echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
 # Load node-apm-app Docker image into the Kind cluster
