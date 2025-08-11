@@ -1,4 +1,5 @@
 import '@testing-library/cypress/add-commands';
+import { ResizeObserverMock } from './mocks/ResizeObserverMock';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -189,4 +190,9 @@ Cypress.on('uncaught:exception', (err, runnable) => {
   ) {
     return false;
   }
+});
+
+Cypress.on('window:before:load', win => {
+  // Override ResizeObserver in the test environment to resolve process exit unexpectedly issue https://docs.cypress.io/app/references/error-messages#The-browser-process-running-your-tests-just-exited-unexpectedly
+  win.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });
