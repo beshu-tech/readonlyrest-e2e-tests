@@ -26,7 +26,7 @@ export class KbnApiClient {
 
   public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
     return cy.kbnGet({
-      endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=config',
+      endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard',
       credentials,
       currentGroupHeader: group
     });

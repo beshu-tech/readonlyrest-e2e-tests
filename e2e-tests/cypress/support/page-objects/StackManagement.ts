@@ -20,6 +20,7 @@ export class StackManagement {
 
   static openRulesPage() {
     cy.log('open rules page');
+    KibanaNavigation.openPage('Stack Management');
     KibanaNavigation.openSubPage('Rules');
   }
 

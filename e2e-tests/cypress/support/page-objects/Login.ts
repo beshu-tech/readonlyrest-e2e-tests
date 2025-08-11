@@ -1,11 +1,10 @@
 import { Loader } from './Loader';
 
 export class Login {
-  
   static fillLoginPageWithWrongCredentials() {
     Login.fillLoginPageWith('wrong_username', 'wrong_password');
   }
-  
+
   static initialization() {
     cy.on('url:changed', () => {
       sessionStorage.setItem('ror:ignoreKeyExpirationInfo', 'true');
@@ -17,10 +16,6 @@ export class Login {
 
   static signIn() {
     cy.visit(Cypress.config().baseUrl);
-    Login.fillLoginPage();
-  }
-
-  static fillLoginPage() {
     Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
   }
 
@@ -28,18 +23,24 @@ export class Login {
     cy.log('has license changed message');
     cy.contains(/The licensing edition has been changed./i);
   }
-  
-  private static fillLoginPageWith(username?: string, password?: string) {
+
+  static fillLoginPageWith(username?: string, password?: string) {
     cy.get('#form-username', { timeout: 30000 }).should('be.visible');
-    
+
     if (username) {
       cy.get('#form-username').type(username);
     }
-    
+
     if (password) {
       cy.get('#form-password').type(password);
     }
-    
+
     cy.get('#form-submit').click({ force: true });
+  }
+
+  static verifyLoginPageTitle(title: string) {
+    cy.log('Verify login page title');
+
+    cy.contains(title);
   }
 }

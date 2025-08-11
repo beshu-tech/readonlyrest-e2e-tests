@@ -16,7 +16,7 @@ const formatLoggerData = (data: unknown) => {
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
-      const { method, url, headers, body } = options;
+      const { method, url, headers, body, failOnStatusCode } = options;
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
@@ -108,6 +108,7 @@ interface HttpCallOptions {
   url: string;
   headers?: { [key: string]: string };
   body: string | null;
+  failOnStatusCode?: boolean;
 }
 
 interface FileToUpload {
