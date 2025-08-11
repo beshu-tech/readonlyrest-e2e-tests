@@ -2,41 +2,9 @@ import https, { Agent } from 'https';
 import fetch, { Response } from 'node-fetch';
 import FormData from 'form-data';
 
-module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
+module.exports = async (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   on('task', {
-    async httpCall(options: HttpCallOptions): Promise<any> {
-      const { method, url, headers, body, failOnStatusCode } = options;
-
-      const agent: Agent = new Agent({
-        rejectUnauthorized: false,
-        secureProtocol: 'TLSv1_2_method'
-      });
-
-      try {
-        const response: Response = await fetch(url, { method, headers, body, agent });
-
-        if (!response.ok && failOnStatusCode) {
-          throw new Error(
-            `HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${await response.text()}`
-          );
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-        const data = contentType.includes('application/json') ? await response.json() : await response.text();
-
-        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
-        return data;
-      } catch (error) {
-        console.error('HTTP Request failed:', {
-          error: (error as Error).message,
-          url,
-          method,
-          headers,
-          body
-        });
-        throw error;
-      }
-    },
+    httpCall,
     async uploadFile(options: UploadFileOptions): Promise<any> {
       const { url, headers, file } = options;
 
@@ -116,7 +84,54 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       });
     }
   });
+
+  config.env.envname = await getEnvironmentName(config);
+
+  return config;
 };
+
+async function httpCall(options: HttpCallOptions): Promise<any> {
+  const { method, url, headers, body, failOnStatusCode } = options;
+
+  const agent: Agent = new Agent({
+    rejectUnauthorized: false,
+    secureProtocol: 'TLSv1_2_method'
+  });
+
+  try {
+    const response: Response = await fetch(url, { method, headers, body, agent });
+
+    if (!response.ok && failOnStatusCode) {
+      throw new Error(`HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${await response.text()}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await response.json() : await response.text();
+
+    console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
+    return data;
+  } catch (error) {
+    console.error('HTTP Request failed:', {
+      error: (error as Error).message,
+      url,
+      method,
+      headers,
+      body
+    });
+    throw error;
+  }
+}
+
+async function getEnvironmentName(config: Cypress.PluginConfigOptions) {
+  const response = await httpCall({
+    url: config.env.elasticsearchUrl,
+    method: 'GET',
+    body: null,
+    headers: { Authorization: 'Basic ' + Buffer.from(config.env.kibanaUserCredentials).toString('base64') }
+  });
+
+  return response.name === 'quickstart' ? 'elk-ror' : 'eck-ror';
+}
 
 interface HttpCallOptions {
   method: string;

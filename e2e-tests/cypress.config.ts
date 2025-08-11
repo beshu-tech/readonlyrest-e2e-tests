@@ -8,7 +8,7 @@ export default defineConfig({
     elasticsearchUrl: 'https://localhost:9200',
     enterpriseActivationKey: 'PROVIDE_YOUR_ACTIVATION_KEY',
     kibanaUserCredentials: 'kibana:kibana',
-    envName: 'elk-ror' // 'elk-ror' or 'eck-ror'
+    envName: 'PROVIDED_IN_THE_CYPRESS_SETUP_NODE_EVENTS' // 'elk-ror' or 'eck-ror'
   },
   video: true,
   videoCompression: false,
