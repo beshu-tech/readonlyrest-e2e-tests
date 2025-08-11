@@ -49,4 +49,10 @@ export class RorMenu {
 
     cy.get('[data-testid="current-tenant"]').contains(tenancyName).should('be.visible');
   }
+
+  static verifyNoTenantAvailable() {
+    cy.log('Verify no tenant available');
+
+    cy.get('[data-testid="current-tenant"]').should('not.exist');
+  }
 }

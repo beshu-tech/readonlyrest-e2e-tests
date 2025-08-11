@@ -1,4 +1,4 @@
-import { Agent } from 'https';
+import https, { Agent } from 'https';
 import fetch, { Response } from 'node-fetch';
 import FormData from 'form-data';
 import { inspect } from 'util';
@@ -99,6 +99,35 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         });
         throw error;
       }
+    },
+    checkKibanaHealth({ url }) {
+      return new Promise(resolve => {
+        const req = https.request(
+          `${url}/api/status`,
+          {
+            method: 'GET',
+            rejectUnauthorized: false,
+            headers: {
+              'kbn-xsrf': 'true'
+            }
+          },
+          res => {
+            let data = '';
+            res.on('data', chunk => (data += chunk));
+            res.on('end', () => {
+              try {
+                const json = JSON.parse(data);
+                resolve(json.status?.overall?.level || json.status.overall.state || 'unknown');
+              } catch (e) {
+                resolve('parse-error');
+              }
+            });
+          }
+        );
+
+        req.on('error', () => resolve('error'));
+        req.end();
+      });
     }
   });
 };

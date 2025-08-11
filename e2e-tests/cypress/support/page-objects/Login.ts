@@ -37,10 +37,4 @@ export class Login {
 
     cy.get('#form-submit').click({ force: true });
   }
-
-  static verifyLoginPageTitle(title: string) {
-    cy.log('Verify login page title');
-
-    cy.contains(title);
-  }
 }

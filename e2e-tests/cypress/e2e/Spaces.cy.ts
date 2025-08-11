@@ -65,7 +65,7 @@ describe('Spaces', () => {
   });
 
   if (semver.gte(getKibanaVersion(), '9.1.0')) {
-    // FIXME: fr Kibana 9.1.0 there is a new .kibana_security_search index not handled on es side yet
+    // FIXME: fr Kibana 9.1.0 there is a new .kibana_security_search indexnot handled on es side yet
     it.skip('should create and navigate to new space with hidden features');
   } else {
     it('should create and navigate to new space with hidden features', () => {

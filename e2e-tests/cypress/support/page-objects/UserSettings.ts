@@ -22,14 +22,14 @@ export class UserSettings {
   }
 
   static changeUserSettingsValue(userSettings: string, value: string) {
-    SecuritySettings.getIframeBody()
-      .find(`[data-testid="${userSettings}"]`)
-      .find(`[data-test-subj="${value}"]`)
-      .click({ force: true });
+    cy.log('Change user settings value');
 
-    SecuritySettings.getIframeBody()
-      .find(`[data-testid="${userSettings}"]`)
-      .find(`[data-test-subj="${value}"]`)
-      .should('be.checked');
+    SecuritySettings.getIframeBody().contains('ReadonlyREST User settings').should('be.visible');
+
+    SecuritySettings.getIframeBody().find(`[data-testid="${userSettings}"]`).as('userSettingsElement');
+
+    cy.get(`@userSettingsElement`).find(`[data-test-subj="${value}"]`).as('userSettingsValue').click({ force: true });
+
+    cy.get('@userSettingsValue').should('be.checked');
   }
 }

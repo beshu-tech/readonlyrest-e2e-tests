@@ -96,6 +96,15 @@ export class Discover {
     }
     return openDataPageForKibanaBefore7_18_1();
   };
+
+  static verifyIndexPatternSwitchLink = (indexPatternName: string) => {
+    cy.log('verify Index Pattern Switch Link');
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.get('[data-test-subj*=detail-link]').contains(indexPatternName);
+    } else {
+      cy.get('[data-test-subj=indexPattern-switch-link]').contains(indexPatternName);
+    }
+  };
 }
 
 const createKibanaIndexPattern = (indexPatternName: string) => {
