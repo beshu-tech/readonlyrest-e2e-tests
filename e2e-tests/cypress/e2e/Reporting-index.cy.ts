@@ -33,7 +33,6 @@ describe('Index Pattern Configuration for Reporting index', () => {
   it('should correctly match index pattern when audit index_template contains .reporting', () => {
     const indexPattern = 'xxx.reporting';
     RorMenu.changeTenancy('Infosec', '/app/home#/');
-    KibanaNavigation.openKibanaNavigation();
     KibanaNavigation.openPage('Stack Management');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       KibanaNavigation.openSubPage('Data Views');
