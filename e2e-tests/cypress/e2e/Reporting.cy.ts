@@ -13,7 +13,7 @@ import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecycles
 
 if (semver.gte(getKibanaVersion(), '8.15.0') && Cypress.env().envName === 'elk-ror') {
   //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
-  describe.skip('Reporting', () => {
+  describe('Reporting', () => {
     const oldFormatReportingIndex = '.reporting.kibana_admins_group-2025-02-02';
     const newFormatReportingName = 'new format reporting index doc';
     let oldFormatReportingName: string;
