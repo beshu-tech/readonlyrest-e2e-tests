@@ -98,7 +98,7 @@ module.exports = async (on: Cypress.PluginEvents, config: Cypress.PluginConfigOp
     }
   });
 
-  config.env.envname = await getEnvironmentName(config);
+  config.env.envName = await getEnvironmentName(config);
 
   return config;
 };
