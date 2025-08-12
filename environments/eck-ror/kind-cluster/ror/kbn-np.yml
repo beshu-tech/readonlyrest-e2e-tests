@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: kbn-np
+  name: eck-ror
 spec:
   type: NodePort
   ports:
@@ -10,4 +10,4 @@ spec:
     nodePort: 30011
   selector:
     common.k8s.elastic.co/type: kibana
-    kibana.k8s.elastic.co/name: quickstart
+    kibana.k8s.elastic.co/name: eck-ror

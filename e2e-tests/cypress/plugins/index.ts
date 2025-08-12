@@ -130,7 +130,7 @@ async function getEnvironmentName(config: Cypress.PluginConfigOptions) {
     headers: { Authorization: 'Basic ' + Buffer.from(config.env.kibanaUserCredentials).toString('base64') }
   });
 
-  return response.name === 'quickstart' ? 'elk-ror' : 'eck-ror';
+  return response.cluster_name === 'eck-ror' ? 'eck-ror' : 'elk-ror';
 }
 
 interface HttpCallOptions {

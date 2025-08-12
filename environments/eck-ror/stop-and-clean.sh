@@ -3,4 +3,4 @@ set -e
 
 cd "$(dirname "$0")"
 
-kind delete cluster --name ror-eck
+kind delete cluster --name eck-ror

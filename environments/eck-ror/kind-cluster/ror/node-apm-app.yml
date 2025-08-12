@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: quickstart-node-apm-app
+  name: eck-ror
   namespace: default
 spec:
   replicas: 1
@@ -16,7 +16,7 @@ spec:
       initContainers:
         - name: wait-for-apm
           image: busybox
-          command: ['sh', '-c', 'timeout 300 sh -c "until nc -z quickstart-apm-http.default.svc 8200; do echo waiting for APM server; sleep 2; done;"']
+          command: ['sh', '-c', 'timeout 300 sh -c "until nc -z eck-ror-apm-http.default.svc 8200; do echo waiting for APM server; sleep 2; done;"']
       containers:
         - name: node-apm-app
           image: node-apm-app:latest
@@ -31,11 +31,11 @@ spec:
             - name: APM_SECRET_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: quickstart-apm-token
+                  name: eck-ror-apm-token
                   key: secret-token
             - name: APM_URL
-              value: https://quickstart-apm-http.default.svc:8200
+              value: https://eck-ror-apm-http.default.svc:8200
       volumes:
         - name: apm-cert-volume
           secret:
-            secretName: quickstart-apm-kibana-ca
+            secretName: eck-ror-apm-kibana-ca

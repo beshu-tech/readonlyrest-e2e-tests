@@ -1,7 +1,7 @@
 apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
-  name: quickstart
+  name: eck-ror
   namespace: default
 spec:
   version: ${ES_VERSION}
@@ -25,9 +25,9 @@ spec:
     logging:
       level: "debug"
   elasticsearchRef:
-    name: quickstart
+    name: eck-ror
   kibanaRef:
-    name: quickstart
+    name: eck-ror
 
   podTemplate:
     spec:

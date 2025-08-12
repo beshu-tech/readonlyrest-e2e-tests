@@ -1,4 +1,4 @@
-server.name: "kibana-ror-${HOSTNAME}"
+server.name: "elk-ror-kbn-node-${HOSTNAME}"
 server.host: 0.0.0.0
 server.port: 5601
 server.publicBaseUrl: "http://localhost:5601"
