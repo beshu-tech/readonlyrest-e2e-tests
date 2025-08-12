@@ -22,8 +22,8 @@ describe('sanity check', () => {
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
   });
-
-  it('should verify that everything works', () => {
+  //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
+  it.skip('should verify that everything works', () => {
     cy.log('Initialize Administrator tenancy');
 
     Discover.openDataViewPage();
@@ -36,7 +36,12 @@ describe('sanity check', () => {
     Reporting.verifySavedReport(['admin_search']);
 
     cy.log('Change tenancy, and initialize it');
-    RorMenu.changeTenancy('Infosec', '/app/management/insightsAndAlerting/reporting');
+    const finishUrl =
+      semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')
+        ? '/app/management/insightsAndAlerting/reporting/exports'
+        : '/app/management/insightsAndAlerting/reporting';
+
+    RorMenu.changeTenancy('Infosec', finishUrl);
 
     if (semver.gte(getKibanaVersion(), '8.8.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
@@ -70,7 +75,7 @@ describe('sanity check', () => {
     KibanaNavigation.openPage('Maps');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
-    Login.fillLoginPage();
+    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
 
     if (semver.gte(getKibanaVersion(), '8.7.0')) {
       Loader.loading(

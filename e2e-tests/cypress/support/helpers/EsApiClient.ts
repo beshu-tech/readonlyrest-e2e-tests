@@ -47,6 +47,20 @@ export class EsApiClient {
     });
   }
 
+  public dataStreams(): Cypress.Chainable<GetDataStreams> {
+    return cy.esGet({
+      endpoint: '_data_stream?format=json&expand_wildcards=all',
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public findIndicesByPattern(pattern: string): Cypress.Chainable<GetIndices[]> {
+    return cy.esGet({
+      endpoint: `_cat/indices/${pattern}?format=json`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
   public attachLifecyclePolicy(index: string, policyName: string): void {
     cy.esPut({
       endpoint: `${index}/_settings`,
@@ -56,10 +70,25 @@ export class EsApiClient {
       }
     });
   }
+
+  public getIndexSettings(index: string): Cypress.Chainable<any> {
+    return cy.esGet({
+      endpoint: `${index}/_settings`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
 }
 
 export const esApiClient = new EsApiClient();
 
 export interface GetIndices {
   index: string;
+  'docs.count': string;
+  health: 'green' | 'yellow' | 'red';
+}
+
+export interface GetDataStreams {
+  data_streams: {
+    name: string;
+  }[];
 }

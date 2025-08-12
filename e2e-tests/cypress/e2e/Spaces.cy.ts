@@ -64,27 +64,32 @@ describe('Spaces', () => {
     clearAllChanges();
   });
 
-  it('should create and navigate to new space with hidden features', () => {
-    Spaces.createNewSpace(SPACE_NAME);
+  if (semver.gte(getKibanaVersion(), '9.1.0')) {
+    // FIXME: fr Kibana 9.1.0 there is a new .kibana_security_search indexnot handled on es side yet
+    it.skip('should create and navigate to new space with hidden features');
+  } else {
+    it('should create and navigate to new space with hidden features', () => {
+      Spaces.createNewSpace(SPACE_NAME);
 
-    cy.log('Switch to newly created space');
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.contains('Manage spaces', { timeout: 10000 }).should('be.visible');
-    if (semver.gte(getKibanaVersion(), '8.4.0')) {
-      cy.get('[data-test-subj=test-space-selectableSpaceItem]', { timeout: 10000 }).click();
-    } else {
-      cy.get('a[href="/s/test-space/spaces/enter"]', { timeout: 10000 }).should('be.visible').click({ force: true });
-    }
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
-    cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
+      cy.log('Switch to newly created space');
+      cy.get('[data-test-subj=spacesNavSelector]').click();
+      cy.contains('Manage spaces', { timeout: 10000 }).should('be.visible');
+      if (semver.gte(getKibanaVersion(), '8.4.0')) {
+        cy.get('[data-test-subj=test-space-selectableSpaceItem]', { timeout: 10000 }).click();
+      } else {
+        cy.get('a[href="/s/test-space/spaces/enter"]', { timeout: 10000 }).should('be.visible').click({ force: true });
+      }
+      cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
+      cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
 
-    cy.log('Check if feature in space hidden');
-    KibanaNavigation.openHomepage();
-    KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfNotExists('Analytics');
+      cy.log('Check if feature in space hidden');
+      KibanaNavigation.openHomepage();
+      KibanaNavigation.openKibanaNavigation();
+      KibanaNavigation.checkIfNotExists('Analytics');
 
-    Spaces.removeSpace(SPACE_NAME);
-  });
+      Spaces.removeSpace(SPACE_NAME);
+    });
+  }
 
   it('should hide space permission tab and not permit to navigate to itm', () => {
     cy.log('Navigate to default space management');

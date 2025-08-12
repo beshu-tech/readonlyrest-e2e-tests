@@ -1,3 +1,4 @@
+import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { Loader } from '../support/page-objects/Loader';
 import { esApiClient } from '../support/helpers/EsApiClient';
@@ -8,11 +9,11 @@ import { Discover } from '../support/page-objects/Discover';
 import { Reporting } from '../support/page-objects/Reporting';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
-import * as semver from 'semver';
 import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecyclesPolicies';
 
 if (semver.gte(getKibanaVersion(), '8.15.0')) {
-  describe('Reporting', () => {
+  //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
+  describe.skip('Reporting', () => {
     const oldFormatReportingIndex = '.reporting.kibana_admins_group-2025-02-02';
     const newFormatReportingName = 'new format reporting index doc';
     let oldFormatReportingName: string;

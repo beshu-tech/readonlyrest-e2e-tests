@@ -1,11 +1,22 @@
-import { Agent } from 'https';
+import https, { Agent } from 'https';
 import fetch, { Response } from 'node-fetch';
 import FormData from 'form-data';
+import { inspect } from 'util';
+
+const formatLoggerData = (data: unknown) => {
+  return inspect(data, {
+    depth: 5,
+    breakLength: Infinity,
+    maxArrayLength: Infinity,
+    maxStringLength: Infinity,
+    compact: true
+  });
+};
 
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
-      const { method, url, headers, body } = options;
+      const { method, url, headers, body, failOnStatusCode } = options;
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
@@ -15,16 +26,18 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       try {
         const response: Response = await fetch(url, { method, headers, body, agent });
 
-        if (!response.ok) {
+        if (!response.ok && failOnStatusCode) {
           throw new Error(
-            `HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${await response.text()}`
+            `HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(
+              await response.text()
+            )}`
           );
         }
 
         const contentType = response.headers.get('content-type') || '';
         const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
-        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
+        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(data)}`);
         return data;
       } catch (error) {
         console.error('HTTP Request failed:', {
@@ -67,13 +80,15 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status} | URL: ${url} | Body: ${await response.text()}`);
+          throw new Error(
+            `HTTP error! Status: ${response.status} | URL: ${url} | Body: ${formatLoggerData(await response.text())}`
+          );
         }
 
         const contentType = response.headers.get('content-type') || '';
         const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
-        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
+        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(data)}`);
         return data;
       } catch (error) {
         console.error('HTTP Request failed:', {
@@ -84,6 +99,35 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         });
         throw error;
       }
+    },
+    checkKibanaHealth({ url }) {
+      return new Promise(resolve => {
+        const req = https.request(
+          `${url}/api/status`,
+          {
+            method: 'GET',
+            rejectUnauthorized: false,
+            headers: {
+              'kbn-xsrf': 'true'
+            }
+          },
+          res => {
+            let data = '';
+            res.on('data', chunk => (data += chunk));
+            res.on('end', () => {
+              try {
+                const json = JSON.parse(data);
+                resolve(json.status?.overall?.level || json.status.overall.state || 'unknown');
+              } catch (e) {
+                resolve('parse-error');
+              }
+            });
+          }
+        );
+
+        req.on('error', () => resolve('error'));
+        req.end();
+      });
     }
   });
 };
@@ -93,6 +137,7 @@ interface HttpCallOptions {
   url: string;
   headers?: { [key: string]: string };
   body: string | null;
+  failOnStatusCode?: boolean;
 }
 
 interface FileToUpload {
