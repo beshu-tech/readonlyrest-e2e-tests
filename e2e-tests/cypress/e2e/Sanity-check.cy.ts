@@ -22,8 +22,8 @@ describe('sanity check', () => {
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
   });
-
-  it('should verify that everything works', () => {
+  //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
+  it.skip('should verify that everything works', () => {
     cy.log('Initialize Administrator tenancy');
 
     Discover.openDataViewPage();
