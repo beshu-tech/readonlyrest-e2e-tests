@@ -1,3 +1,5 @@
+import { KibanaNavigation } from './KibanaNavigation';
+
 export class Dashboard {
   static openItem(number) {
     cy.findAllByRole('row')
@@ -25,5 +27,15 @@ export class Dashboard {
   static verifyDashboardNotExist(dashboardName: string) {
     cy.log(`Verifying that dashboard "${dashboardName}" does not exist`);
     cy.get('[data-test-subj*="dashboardListingTitleLink"]').contains(dashboardName).should('not.exist');
+  }
+
+  static openDashboards() {
+    cy.log('Open dashboard');
+    KibanaNavigation.openPage('Dashboards');
+  }
+
+  static openDashboard() {
+    cy.log('Open dashboard');
+    KibanaNavigation.openPage('Dashboard');
   }
 }

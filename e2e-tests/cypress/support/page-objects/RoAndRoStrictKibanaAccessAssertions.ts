@@ -21,7 +21,11 @@ export class RoAndRoStrictKibanaAccessAssertions {
 
     cy.log('Verify Dashboard features');
     cy.intercept('*65024-65279.pbf').as('dashboardResolve');
-    KibanaNavigation.openPage(/dashboard/i);
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      Dashboard.openDashboards();
+    } else {
+      Dashboard.openDashboard();
+    }
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
     Dashboard.editButtonNotExist();
@@ -38,7 +42,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     /*
      * It's deprecated and not visible in a Kibana 9.0.0 https://github.com/elastic/kibana/issues/200649
      */
-    if (semver.lt(getKibanaVersion(), '9.0.0-beta1')) {
+    if (semver.lt(getKibanaVersion(), '9.0.0')) {
       cy.log('Verify Canvas features');
 
       if (semver.gte(getKibanaVersion(), '8.16.0')) {

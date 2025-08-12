@@ -1,6 +1,17 @@
 import https, { Agent } from 'https';
 import fetch, { Response } from 'node-fetch';
 import FormData from 'form-data';
+import { inspect } from 'util';
+
+const formatLoggerData = (data: unknown) => {
+  return inspect(data, {
+    depth: 5,
+    breakLength: Infinity,
+    maxArrayLength: Infinity,
+    maxStringLength: Infinity,
+    compact: true
+  });
+};
 
 module.exports = async (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   on('task', {
@@ -35,13 +46,15 @@ module.exports = async (on: Cypress.PluginEvents, config: Cypress.PluginConfigOp
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status} | URL: ${url} | Body: ${await response.text()}`);
+          throw new Error(
+            `HTTP error! Status: ${response.status} | URL: ${url} | Body: ${formatLoggerData(await response.text())}`
+          );
         }
 
         const contentType = response.headers.get('content-type') || '';
         const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
-        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
+        console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(data)}`);
         return data;
       } catch (error) {
         console.error('HTTP Request failed:', {
@@ -108,7 +121,7 @@ async function httpCall(options: HttpCallOptions): Promise<any> {
     const contentType = response.headers.get('content-type') || '';
     const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
-    console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${data}`);
+    console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(data)}`);
     return data;
   } catch (error) {
     console.error('HTTP Request failed:', {

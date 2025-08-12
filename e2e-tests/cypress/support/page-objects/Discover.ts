@@ -31,12 +31,21 @@ export class Discover {
 
   static exportToCsv() {
     cy.log('exportToCsv');
-    cy.get('[data-test-subj=shareTopNavButton]').click();
-    if (semver.gte(getKibanaVersion(), '8.15.0')) {
-      cy.get('[data-test-subj=export]').click();
+
+    if (
+      (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) ||
+      semver.gte(getKibanaVersion(), '9.1.0')
+    ) {
+      cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
-      cy.get('[data-test-subj=sharePanel-CSVReports]').click();
+      cy.get('[data-test-subj=shareTopNavButton]').click();
+      if (semver.gte(getKibanaVersion(), '8.15.0')) {
+        cy.get('[data-test-subj=export]').click();
+      } else {
+        cy.get('[data-test-subj=sharePanel-CSVReports]').click();
+      }
     }
+
     cy.get('[data-test-subj=generateReportButton]').click();
     cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
     cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');

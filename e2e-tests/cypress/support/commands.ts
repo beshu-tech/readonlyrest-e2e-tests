@@ -1,4 +1,5 @@
 import '@testing-library/cypress/add-commands';
+import { ResizeObserverMock } from './mocks/ResizeObserverMock';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -62,12 +63,11 @@ Cypress.Commands.add(
     })
 );
 
-Cypress.Commands.add('esGet', ({ endpoint, credentials, failOnStatusCode }, ...args) =>
+Cypress.Commands.add('esGet', ({ endpoint, credentials }, ...args) =>
   cy.esRequest({
     method: 'GET',
     endpoint,
-    credentials,
-    failOnStatusCode
+    credentials
   })
 );
 
@@ -105,8 +105,8 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload, failOnStatusCode }) => {
-  httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload, {}, failOnStatusCode);
+Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload }) => {
+  httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload);
 });
 
 function httpCall(
@@ -178,17 +178,21 @@ Cypress.on('uncaught:exception', (err, runnable) => {
    * Don't fail test when these specific errors from kibana platform
    */
   if (
-    (err.message.includes('ResizeObserver loop limit exceeded') ||
-      err.message.includes('ResizeObserver loop completed with undelivered notifications.') || // kibana 8.11.0 and above throws this error
-      err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
-      err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
-      err.message.includes("Cannot read properties of undefined (reading 'includes')") || // kibana 8.7.0 throws this error
-      err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
-      err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
-      err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
-      err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found,
-    err.message.includes('NetworkError when attempting to fetch resource.')) // kibana 8.9.0
+    err.message.includes('ResizeObserver loop limit exceeded') ||
+    err.message.includes('ResizeObserver loop completed with undelivered notifications.') || // kibana 8.11.0 and above throws this error
+    err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
+    err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
+    err.message.includes("Cannot read properties of undefined (reading 'includes')") || // kibana 8.7.0 throws this error
+    err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
+    err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
+    err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
+    err.message.includes('Not Found') // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Foun
   ) {
     return false;
   }
+});
+
+Cypress.on('window:before:load', win => {
+  // Override ResizeObserver in the test environment to resolve process exit unexpectedly issue https://docs.cypress.io/app/references/error-messages#The-browser-process-running-your-tests-just-exited-unexpectedly
+  win.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });

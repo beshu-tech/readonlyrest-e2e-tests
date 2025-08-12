@@ -6,7 +6,7 @@ export class EsApiAdvancedClient extends EsApiClient {
   public pruneAllReportingIndices(): void {
     cy.log('Pruning all reporting indices...');
 
-    if (semver.gte(getKibanaVersion(), '8.19.0')) {
+    if (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
       this.dataStreams().then(result => {
         result.data_streams
           .filter(dataStream => dataStream.name.startsWith('.kibana-reporting-'))
