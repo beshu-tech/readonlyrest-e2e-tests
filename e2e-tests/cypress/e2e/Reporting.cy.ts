@@ -11,7 +11,7 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecyclesPolicies';
 
-if (semver.gte(getKibanaVersion(), '8.15.0')) {
+if (semver.gte(getKibanaVersion(), '8.15.0') && Cypress.env().envName === 'elk-ror') {
   //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
   describe.skip('Reporting', () => {
     const oldFormatReportingIndex = '.reporting.kibana_admins_group-2025-02-02';
