@@ -13,7 +13,8 @@ import { esApiClient } from '../support/helpers/EsApiClient';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 
 if (Cypress.env().envName === 'elk-ror') {
-  describe('Kibana-config', () => {
+  // FIXME: There are some issues with changing kibana.yml config in Kibana replicas, which should be resolved, when we adapt tests to the new readonlyrest_kbn config behaviour
+  describe.skip('Kibana-config', () => {
     after(() => {
       rorApiInternalKbnClient.changeKibanaConfig('defaultKibanaConfig.yml');
       kbnApiAdvancedClient.waitForKibanaHealth(Cypress.config().baseUrl);

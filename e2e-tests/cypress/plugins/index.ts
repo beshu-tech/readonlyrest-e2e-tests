@@ -84,6 +84,9 @@ module.exports = async (on: Cypress.PluginEvents, config: Cypress.PluginConfigOp
             res.on('end', () => {
               try {
                 const json = JSON.parse(data);
+                console.log(
+                  `Response: ${req.method} ${url}/api/status: HTTP STATUS ${res.statusCode}; Body: ${formatLoggerData(json)}`
+                );
                 resolve(json.status?.overall?.level || json.status.overall.state || 'unknown');
               } catch (e) {
                 resolve('parse-error');
