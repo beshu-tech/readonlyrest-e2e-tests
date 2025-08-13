@@ -149,7 +149,16 @@ async function getEnvironmentName(config: Cypress.PluginConfigOptions) {
     headers: { Authorization: 'Basic ' + Buffer.from(config.env.kibanaUserCredentials).toString('base64') }
   });
 
-  return response.cluster_name === EnvName.ECK_ROR ? EnvName.ECK_ROR : EnvName.ELK_ROR;
+  return response.cluster_name === EnvName.ECK_ROR
+    ? EnvName.ECK_ROR
+    : response.cluster_name === EnvName.ELK_ROR
+    ? EnvName.ELK_ROR
+    : (() => {
+        throw new Error(
+          'cluster_name is missing or not handled value provided. Provider response.cluster_name: ' +
+            response.cluster_name
+        );
+      })();
 }
 
 interface HttpCallOptions {

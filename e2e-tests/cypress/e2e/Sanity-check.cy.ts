@@ -24,7 +24,7 @@ describe('sanity check', () => {
     esApiAdvancedClient.pruneAllReportingIndices();
   });
   //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
-  if (Cypress.env().envName === EnvName.ECK_ROR) {
+  if (Cypress.env().envName === EnvName.ELK_ROR) {
     it('should verify that everything works', () => {
       cy.log('Initialize Administrator tenancy');
 
