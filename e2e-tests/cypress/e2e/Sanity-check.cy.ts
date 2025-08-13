@@ -9,6 +9,7 @@ import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
+import { EnvName } from '../support/types';
 
 describe('sanity check', () => {
   beforeEach(() => {
@@ -23,7 +24,7 @@ describe('sanity check', () => {
     esApiAdvancedClient.pruneAllReportingIndices();
   });
   //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
-  if (Cypress.env().envName === 'elk-ror') {
+  if (Cypress.env().envName === EnvName.ECK_ROR) {
     it('should verify that everything works', () => {
       cy.log('Initialize Administrator tenancy');
 

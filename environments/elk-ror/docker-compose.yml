@@ -41,7 +41,7 @@ services:
         hard: -1
 
   kbn-ror:
-    restart: always
+    restart: always # To restart Kibana during kibana config changes e2e tests on signint. Without it, Container is stopped and not restarted.
     build:
       context: .
       dockerfile: images/kbn/Dockerfile

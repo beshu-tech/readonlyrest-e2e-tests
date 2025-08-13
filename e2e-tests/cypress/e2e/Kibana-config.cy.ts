@@ -11,8 +11,9 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { SampleData } from '../support/helpers/SampleData';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { EnvName } from '../support/types';
 
-if (Cypress.env().envName === 'elk-ror') {
+if (Cypress.env().envName === EnvName.ELK_ROR) {
   // FIXME: There are some issues with changing kibana.yml config in Kibana replicas, which should be resolved, when we adapt tests to the new readonlyrest_kbn config behaviour
   describe.skip('Kibana-config', () => {
     after(() => {

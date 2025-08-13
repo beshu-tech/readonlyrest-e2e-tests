@@ -2,6 +2,7 @@ import https, { Agent } from 'https';
 import fetch, { Response } from 'node-fetch';
 import FormData from 'form-data';
 import { inspect } from 'util';
+import { EnvName } from '../support/types';
 
 const formatLoggerData = (data: unknown) => {
   return inspect(data, {
@@ -85,7 +86,9 @@ module.exports = async (on: Cypress.PluginEvents, config: Cypress.PluginConfigOp
               try {
                 const json = JSON.parse(data);
                 console.log(
-                  `Response: ${req.method} ${url}/api/status: HTTP STATUS ${res.statusCode}; Body: ${formatLoggerData(json)}`
+                  `Response: ${req.method} ${url}/api/status: HTTP STATUS ${res.statusCode}; Body: ${formatLoggerData(
+                    json
+                  )}`
                 );
                 resolve(json.status?.overall?.level || json.status.overall.state || 'unknown');
               } catch (e) {
@@ -146,7 +149,7 @@ async function getEnvironmentName(config: Cypress.PluginConfigOptions) {
     headers: { Authorization: 'Basic ' + Buffer.from(config.env.kibanaUserCredentials).toString('base64') }
   });
 
-  return response.cluster_name === 'eck-ror' ? 'eck-ror' : 'elk-ror';
+  return response.cluster_name === EnvName.ECK_ROR ? EnvName.ECK_ROR : EnvName.ELK_ROR;
 }
 
 interface HttpCallOptions {
