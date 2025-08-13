@@ -156,7 +156,7 @@ if (Cypress.env().envName === EnvName.ELK_ROR) {
           Reporting.openReportingPage('kibanaNavigation');
           Reporting.verifySavedReport(['admin_search']);
           esApiAdvancedClient.getAllReportingIndices().then(results => {
-            expect(results).to.be.length(1);
+            expect(results).to.have.lengthOf(1);
             const xpackReportingCustomIndex = results.find(index => index.index.startsWith('.reporting-test-index'));
             /* eslint-disable no-unused-expressions */
             expect(xpackReportingCustomIndex).to.exist;

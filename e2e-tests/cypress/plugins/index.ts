@@ -156,7 +156,7 @@ async function getEnvironmentName(config: Cypress.PluginConfigOptions) {
       return EnvName.ELK_ROR;
     default:
       throw new Error(
-        `cluster_name is missing or the provided value is not handled. Provided cluster_name: ${response.cluster_name}`
+        `cluster_name is missing or the provided value is not handled. Provided cluster_name: ${response.cluster_name}. Expected value should be ${EnvName.ECK_ROR} or ${EnvName.ELK_ROR}`
       );
   }
 }
