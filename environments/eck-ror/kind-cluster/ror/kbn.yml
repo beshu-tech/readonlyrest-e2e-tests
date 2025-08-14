@@ -1,13 +1,13 @@
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: quickstart
+  name: eck-ror
 spec:
   version: ${KBN_VERSION}
   image: ${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}
   count: 1
   elasticsearchRef:
-    name: quickstart
+    name: eck-ror
   config:
     # csp needs to be disabled to let cypress e2e tests works
     csp.strict: false

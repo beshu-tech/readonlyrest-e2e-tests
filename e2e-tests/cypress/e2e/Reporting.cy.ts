@@ -10,10 +10,11 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecyclesPolicies';
+import { EnvName } from '../support/types';
 
-if (semver.gte(getKibanaVersion(), '8.15.0')) {
+if (semver.gte(getKibanaVersion(), '8.15.0') && Cypress.env().envName === EnvName.ELK_ROR) {
   //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
-  describe.skip('Reporting', () => {
+  describe('Reporting', () => {
     const oldFormatReportingIndex = '.reporting.kibana_admins_group-2025-02-02';
     const newFormatReportingName = 'new format reporting index doc';
     let oldFormatReportingName: string;

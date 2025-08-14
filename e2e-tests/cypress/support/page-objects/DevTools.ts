@@ -32,7 +32,8 @@ export class DevTools {
       cy.get('.ace_scroller:nth-child(4) > .ace_content').click({ force: true });
       cy.get('.conApp__editorActionButton path').click({ force: true });
     } else {
-      cy.get('[data-test-subj=console-textarea]').clear({ force: true });
+      cy.get('[data-test-subj=console-textarea]').focus();
+      cy.get('[data-test-subj=console-textarea]').clear();
       cy.get('[data-test-subj=console-textarea]').type(text, { force: true });
       cy.get('[data-test-subj=sendRequestButton]').click();
     }

@@ -93,10 +93,10 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
 fi
 
 echo "CONFIGURING K8S CLUSTER ..."
-kind create cluster --name ror-eck --config kind-cluster/kind-cluster-config.yml
-docker exec ror-eck-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
-docker exec ror-eck-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
-docker exec ror-eck-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
+kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml
+docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
+docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
+docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
 # Build node-apm-app Docker image
 DOCKERFILE_DIR="../common/images/node-apm-app"
@@ -107,15 +107,15 @@ docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Do
 echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
 # Load node-apm-app Docker image into the Kind cluster
-CLUSTER_NAME="ror-eck"
+CLUSTER_NAME="eck-ror"
 
 kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
 echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
-docker cp kind-cluster/bootstrap-eck.sh ror-eck-control-plane:/
-docker exec ror-eck-control-plane chmod +x bootstrap-eck.sh
-docker exec ror-eck-control-plane bash -c "export ECK_VERSION=$ECK_VERSION && ./bootstrap-eck.sh"
+docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
+docker exec eck-ror-control-plane chmod +x bootstrap-eck.sh
+docker exec eck-ror-control-plane bash -c "export ECK_VERSION=$ECK_VERSION && ./bootstrap-eck.sh"
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
 
@@ -134,9 +134,9 @@ subsitute_env_in_yaml_templates() {
   if [[ "$MAJOR_VERSION" -eq 7 && "$MINOR_VERSION" -le 16 ]]; then
     export ELATICSEARCH_USER="elasticsearch.username: kibana"
     export ELATICSEARCH_PASSWORD="elasticsearch.password: kibana"
-    export QUICK_KIBANA_USER_SECRET_KEY="default-quickstart-kibana-user"
+    export ROR_ECK_KIBANA_USER_SECRET_KEY="default-eck-ror-kibana-user"
   else
-    export QUICK_KIBANA_USER_SECRET_KEY="token"
+    export ROR_ECK_KIBANA_USER_SECRET_KEY="token"
   fi
   
   for file in kind-cluster/ror/*.yml; do
@@ -148,12 +148,12 @@ subsitute_env_in_yaml_templates() {
     fi
   done
 
-  docker cp "$SUBSTITUTED_DIR" ror-eck-control-plane:/ror/
+  docker cp "$SUBSTITUTED_DIR" eck-ror-control-plane:/ror/
 }
 
 subsitute_env_in_yaml_templates
 
-docker exec ror-eck-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl apply -f'
+docker exec eck-ror-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl apply -f'
 
 echo ""
 echo "------------------------------------------"
@@ -161,7 +161,7 @@ echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then op
 echo ""
 
 check_pods_running() {
-  pod_status=$(docker exec ror-eck-control-plane kubectl get pods | grep quickstart)
+  pod_status=$(docker exec eck-ror-control-plane kubectl get pods | grep eck-ror)
 
   all_ready=true
   while read -r line; do

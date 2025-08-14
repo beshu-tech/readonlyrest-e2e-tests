@@ -9,6 +9,7 @@ import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
+import { EnvName } from '../support/types';
 
 describe('sanity check', () => {
   beforeEach(() => {
@@ -23,53 +24,57 @@ describe('sanity check', () => {
     esApiAdvancedClient.pruneAllReportingIndices();
   });
   //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
-  it.skip('should verify that everything works', () => {
-    cy.log('Initialize Administrator tenancy');
+  if (Cypress.env().envName === EnvName.ELK_ROR) {
+    it('should verify that everything works', () => {
+      cy.log('Initialize Administrator tenancy');
 
-    Discover.openDataViewPage();
-    Discover.createIndexPattern('s');
-
-    cy.log('Create a CSV report');
-    Discover.saveReport('admin_search');
-    Discover.exportToCsv();
-    Reporting.openReportingPage('kibanaNavigation');
-    Reporting.verifySavedReport(['admin_search']);
-
-    cy.log('Change tenancy, and initialize it');
-    const finishUrl =
-      semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')
-        ? '/app/management/insightsAndAlerting/reporting/exports'
-        : '/app/management/insightsAndAlerting/reporting';
-
-    RorMenu.changeTenancy('Infosec', finishUrl);
-
-    if (semver.gte(getKibanaVersion(), '8.8.0')) {
-      Reporting.noReportsCreatedCheck('rorMenu');
-      RorMenu.openDataViewsPage();
-      Discover.createIndexPattern('sa');
-    } else if (semver.gte(getKibanaVersion(), '8.1.0')) {
-      Reporting.noReportsCreatedCheck('rorMenu');
-      RorMenu.openDataViewsPage();
       Discover.openDataViewPage();
-      Discover.createIndexPattern('sa');
-    } else {
-      Reporting.noReportsCreatedCheck('rorMenu');
-      Discover.openDataViewPage();
-      Discover.createIndexPattern('sa');
+      Discover.createIndexPattern('s');
 
-      cy.log('Create CSV report for the second tenancy');
-      Discover.saveReport('infosec_search');
+      cy.log('Create a CSV report');
+      Discover.saveReport('admin_search');
       Discover.exportToCsv();
-      Reporting.openReportingPage('rorMenu');
-      Reporting.verifySavedReport(['infosec_search']);
-    }
+      Reporting.openReportingPage('kibanaNavigation');
+      Reporting.verifySavedReport(['admin_search']);
 
-    cy.log('Verify the hidden apps feature');
-    KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfNotVisible('Stack Management');
-    KibanaNavigation.checkIfNotExists('Dev Tools');
-    KibanaNavigation.checkIfRouteNotReachable('/s/default/app/management');
-  });
+      cy.log('Change tenancy, and initialize it');
+      const finishUrl =
+        semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')
+          ? '/app/management/insightsAndAlerting/reporting/exports'
+          : '/app/management/insightsAndAlerting/reporting';
+
+      RorMenu.changeTenancy('Infosec', finishUrl);
+
+      if (semver.gte(getKibanaVersion(), '8.8.0')) {
+        Reporting.noReportsCreatedCheck('rorMenu');
+        RorMenu.openDataViewsPage();
+        Discover.createIndexPattern('sa');
+      } else if (semver.gte(getKibanaVersion(), '8.1.0')) {
+        Reporting.noReportsCreatedCheck('rorMenu');
+        RorMenu.openDataViewsPage();
+        Discover.openDataViewPage();
+        Discover.createIndexPattern('sa');
+      } else {
+        Reporting.noReportsCreatedCheck('rorMenu');
+        Discover.openDataViewPage();
+        Discover.createIndexPattern('sa');
+
+        cy.log('Create CSV report for the second tenancy');
+        Discover.saveReport('infosec_search');
+        Discover.exportToCsv();
+        Reporting.openReportingPage('rorMenu');
+        Reporting.verifySavedReport(['infosec_search']);
+      }
+
+      cy.log('Verify the hidden apps feature');
+      KibanaNavigation.openKibanaNavigation();
+      KibanaNavigation.checkIfNotVisible('Stack Management');
+      KibanaNavigation.checkIfNotExists('Dev Tools');
+      KibanaNavigation.checkIfRouteNotReachable('/s/default/app/management');
+    });
+  } else {
+    it.skip('should verify that everything works');
+  }
 
   it('should check that logout functionality set nextUrl path as expected', () => {
     KibanaNavigation.openPage('Maps');

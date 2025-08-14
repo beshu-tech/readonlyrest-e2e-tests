@@ -1,0 +1,64 @@
+server.name: "elk-ror-kbn-node-${HOSTNAME}"
+server.host: 0.0.0.0
+server.port: 5601
+
+# csp needs to be disabled to let cypress e2e tests works
+csp.strict: false
+csp.warnLegacyBrowsers: false
+
+elasticsearch.hosts: [ "${ES_API_URL}" ]
+elasticsearch.username: kibana
+elasticsearch.password: kibana
+elasticsearch.ssl.verificationMode: none
+elasticsearch.pingTimeout: 3000 # default: 30000
+elasticsearch.requestTimeout: 30000
+
+# generated with:
+# $ openssl req -x509 -batch -nodes -days 3650 -newkey rsa:2048 -keyout kibana.key -out kibana.crt
+server.ssl.enabled: true
+server.ssl.certificate: /usr/share/kibana/config/kibana.crt
+server.ssl.key: /usr/share/kibana/config/kibana.key
+server.ssl.redirectHttpFromPort: 80
+
+#xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!" //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
+xpack.reporting.encryptionKey: "321421321211231241232132132132132"
+
+telemetry.enabled: false
+
+readonlyrest_kbn:
+  cookiePass: '12312313123213123213123adadasdasdasd'
+  kibanaIndexTemplate: ".kibana_template_group"
+  resetKibanaIndexToTemplate: true
+  store_sessions_in_index: true
+  sessions_index_name: 'test_index'
+  session_timeout_minutes: 0.05
+  sessions_cleanup_interval: '1s'
+  whitelistedPaths: [".*/api/status$", ".*/api/index_management/indices$"]
+  tenantIndex:
+    number_of_shards: 2
+    number_of_replicas: 2
+  kibana_custom_css_inject: 'h1 { color: rgb(0,128,0) !important;}'
+  kibana_custom_js_inject: "if (window.ROR_METADATA.customMetadata && window.ROR_METADATA.customMetadata.alert_message) {
+        const div = document.createElement('div');
+        div.setAttribute('data-testid', 'metadata-alert-message');
+        div.textContent = window.ROR_METADATA.customMetadata.alert_message;
+        document.body.appendChild(div);
+      };
+      if (window.ROR_METADATA.enrichedData) {
+        const div = document.createElement('div');
+        div.setAttribute('data-testid', 'metadata-enriched-data');
+        div.textContent = window.ROR_METADATA.enrichedData;
+        document.body.appendChild(div);
+      };"
+  custom_middleware_inject: "async function customMiddleware(req, res, next) {
+      const metadata =
+        req.rorRequest && req.rorRequest.getIdentitySession() && req.rorRequest.getIdentitySession().metadata;
+    
+      if (metadata && metadata.username === 'admin') {
+        req.rorRequest.enrichIdentitySessionMetadata({
+          enrichedData: 'custom enriched data',
+        });
+      }
+
+      return next();
+      }"

@@ -103,14 +103,24 @@ declare global {
         method,
         endpoint,
         credentials,
-        payload
+        payload,
+        failOnStatusCode
       }: {
         method: string;
         endpoint: string;
         credentials: string;
         payload?: Payload;
+        failOnStatusCode?: boolean;
       }): Chainable<Subject>;
-      esGet({ endpoint, credentials }: { endpoint: string; credentials: string }): Chainable<Subject>;
+      esGet({
+        endpoint,
+        credentials,
+        failOnStatusCode
+      }: {
+        endpoint: string;
+        credentials: string;
+        failOnStatusCode?: boolean;
+      }): Chainable<Subject>;
       esPost({
         endpoint,
         credentials,

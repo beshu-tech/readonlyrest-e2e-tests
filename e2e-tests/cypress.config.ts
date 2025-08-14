@@ -7,9 +7,11 @@ export default defineConfig({
     kibanaVersion: 'KIBANA_VERSION_NOT_SET_YET',
     elasticsearchUrl: 'https://localhost:9200',
     enterpriseActivationKey: 'PROVIDE_YOUR_ACTIVATION_KEY',
-    kibanaUserCredentials: 'kibana:kibana'
+    kibanaUserCredentials: 'kibana:kibana',
+    envName: 'PROVIDED_IN_THE_CYPRESS_SETUP_NODE_EVENTS' // 'elk-ror' or 'eck-ror'
   },
   video: true,
+  videoCompression: false,
   screenshotOnRunFailure: true,
   viewportWidth: 1280,
   viewportHeight: 720,
@@ -19,6 +21,7 @@ export default defineConfig({
   responseTimeout: 20000,
   pageLoadTimeout: 20000,
   taskTimeout: 20000,
+  defaultBrowser: 'chrome', // On default electron browser tests crashing due to memory issues on eck environment
   retries: {
     openMode: 2,
     runMode: 2

@@ -26,9 +26,19 @@ export class EsApiClient {
   }
 
   public deleteDataStream(index: string): void {
-    cy.esDelete({
+    cy.esGet({
       endpoint: `_data_stream/${index}`,
-      credentials: Cypress.env().kibanaUserCredentials
+      credentials: Cypress.env().kibanaUserCredentials,
+      failOnStatusCode: false
+    }).then((response: any) => {
+      if (response?.data_streams?.length > 0) {
+        cy.esDelete({
+          endpoint: `_data_stream/${index}`,
+          credentials: Cypress.env().kibanaUserCredentials
+        });
+      } else {
+        cy.log(`Data stream '${index}' does not exist, skipping deletion`);
+      }
     });
   }
 

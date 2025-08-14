@@ -17,8 +17,8 @@ services:
           memory: 2G # ES heap will get 1GB
     environment:
       - ES_VERSION=$ES_VERSION
-      - cluster.name=ror-es-cluster
-      - node.name=es-ror-single
+      - cluster.name=elk-ror
+      - node.name=elk-ror-es-node
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       # for a sake of debugging and profiling
@@ -41,6 +41,7 @@ services:
         hard: -1
 
   kbn-ror:
+    restart: always # To restart Kibana during kibana config changes e2e tests on signint. Without it, Container is stopped and not restarted.
     build:
       context: .
       dockerfile: images/kbn/Dockerfile

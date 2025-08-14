@@ -1,6 +1,6 @@
-import { EsApiClient, GetIndices } from './EsApiClient';
 import * as semver from 'semver';
 import { getKibanaVersion } from './index';
+import { EsApiClient, GetIndices } from './EsApiClient';
 
 export class EsApiAdvancedClient extends EsApiClient {
   public pruneAllReportingIndices(): void {
