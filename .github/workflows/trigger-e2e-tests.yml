@@ -68,6 +68,8 @@ jobs:
       - name: Run bootstrap tests
         run: |
           ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
   # ==========================================
   # E2E TESTS - DEVELOP BRANCH
