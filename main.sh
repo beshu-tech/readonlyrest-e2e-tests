@@ -1,7 +1,19 @@
 #!/bin/bash -e
 
 show_help() {
-  echo "Usage: ./main.sh --mode <e2e|bootstrap> (default: e2e) --env <docker|eck-x.y.z> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)"
+  echo "E2E Test Runner"
+  echo ""
+  echo "Options:"
+  echo "  --mode <mode>            Run mode: 'e2e' for running tests, 'bootstrap' for environment setup only (default: e2e)"
+  echo "  --env <environment>      Environment type: 'docker' for Docker Compose, 'eck-x.y.z' for ECK with version (required)"
+  echo "  --elk <version>          ELK stack version (required)"
+  echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
+  echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
+  echo "  --dev                    Use development images"
+  echo ""
+  echo "Examples:"
+  echo "  ./main.sh --env docker --elk 8.11.0                    # Run E2E tests with Docker Compose"
+  echo "  ./main.sh --mode bootstrap --env eck-2.15.0 --elk 8.11.0 # Bootstrap ECK environment only"
   exit 1
 }
 

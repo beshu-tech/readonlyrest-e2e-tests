@@ -14,7 +14,18 @@ if ! command -v docker &> /dev/null; then
 fi
 
 show_help() {
-  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Start ECK-based ReadonlyREST environment"
+  echo ""
+  echo "Options:"
+  echo "  --es <version>           Elasticsearch version (required)"
+  echo "  --kbn <version>          Kibana version (required)"
+  echo "  --eck <version>          ECK version (required)"
+  echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
+  echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
+  echo "  --dev                    Use development images"
+  echo ""
+  echo "Examples:"
+  echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --eck 2.15.0"
   exit 1
 }
 
