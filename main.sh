@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 show_help() {
-  echo "Usage: ./run-env-and-tests.sh --env <docker|eck-x.y.z> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Usage: ./main.sh --mode <e2e|bootstrap> (default: e2e) --env <docker|eck-x.y.z> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)"
   exit 1
 }
 
@@ -10,10 +10,31 @@ ELK_VERSION="$1"
 OPTIONAL_ECK_ARG=""
 OPTIONAL_ROR_ES_ARG=""
 OPTIONAL_ROR_KBN_ARG=""
-OPTIONAL_MODE=""
+OPTIONAL_DEV_ARG=""
+OPTIONAL_RUN_MODE=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+  --mode)
+    if [[ -n $2 && $2 != --* ]]; then
+      case "$2" in
+        "e2e")
+          OPTIONAL_RUN_MODE="e2e"
+          ;;
+        "bootstrap")
+          OPTIONAL_RUN_MODE="bootstrap"
+          ;;
+        *)
+          echo "Error: --mode: Only 'e2e' and 'bootstrap' are supported"
+          show_help
+          ;;
+      esac
+      shift 2
+    else
+      echo "Error: --mode requires an argument (e2e or bootstrap)"
+      show_help
+    fi
+    ;;
   --env)
     if [[ -n $2 && $2 != --* ]]; then
       case "$2" in
@@ -63,7 +84,7 @@ while [[ $# -gt 0 ]]; do
     fi
     ;;
   --dev)
-    OPTIONAL_MODE="--dev"
+    OPTIONAL_DEV_ARG="--dev"
     shift
     ;;
   *)
@@ -95,7 +116,13 @@ echo -e "
                                          __/ |
 "
 
-echo -e "E2E TESTS\n"
+echo -e "Running environment...\n"
 
-time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_MODE
-time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG
+
+if [[ "$OPTIONAL_RUN_MODE" == "e2e" ]]; then
+  echo -e "Running E2E tests...\n"
+  time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+else
+  echo -e "Bootstrap mode: Cluster setup completed.\n"
+fi

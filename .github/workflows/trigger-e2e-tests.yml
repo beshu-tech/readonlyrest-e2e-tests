@@ -28,18 +28,39 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
 
-      - name: Run tests
+      - name: Run E2E tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
+          ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  bootstrap-tests:
+    #if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["9.0.0", "8.18.0", "8.15.0", "8.10.0", "8.5.0", "8.0.0", "7.17.0", "7.16.0", "7.13.0", "7.9.0"]
+        env: [docker, eck-3.1.0]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+
+      - name: Run bootstrap tests
+        run: |
+          ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
+
   develop-e2e-tests:
     if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
@@ -63,9 +84,9 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
 
-      - name: Run tests
+      - name: Run E2E tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
+          ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
