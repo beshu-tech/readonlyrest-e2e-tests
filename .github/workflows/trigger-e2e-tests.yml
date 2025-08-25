@@ -49,9 +49,10 @@ jobs:
   # ==========================================
   # BOOTSTRAP TESTS
   # ==========================================
-  bootstrap-tests:
+  master-bootstrap-tests:
     name: "🚀 Bootstrap Tests"
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
+    needs: master-e2e-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
