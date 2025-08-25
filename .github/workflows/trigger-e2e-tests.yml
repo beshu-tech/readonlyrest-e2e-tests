@@ -8,7 +8,11 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
+  # ==========================================
+  # E2E TESTS - MASTER BRANCH
+  # ==========================================
   master-e2e-tests:
+    name: "🔬 Master E2E Tests"
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
     runs-on: ubuntu-latest
     strategy:
@@ -42,7 +46,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+  # ==========================================
+  # BOOTSTRAP TESTS
+  # ==========================================
   bootstrap-tests:
+    name: "🚀 Bootstrap Tests"
     #if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
     runs-on: ubuntu-latest
     strategy:
@@ -61,7 +69,11 @@ jobs:
         run: |
           ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
 
+  # ==========================================
+  # E2E TESTS - DEVELOP BRANCH
+  # ==========================================
   develop-e2e-tests:
+    name: "🧪 Develop E2E Tests"
     if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
     strategy:
