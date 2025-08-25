@@ -33,5 +33,5 @@ docker run --rm $DIND_OPTIONS $DOCKER_RUN_OPTIONS \
   -v ./../e2e-tests:/app/e2e-tests \
   -v ./../enviroments/elk-ror:/app/enviroments/elk-ror \
   -v ./../results:/app/results \
-  -v ./../run-env-and-tests.sh:/app/run-env-and-tests.sh \
+  -v ./../main.sh:/app/main.sh \
   e2e-tests-dev-env:"$DOCKER_BASED_ROR_DEV_ENV_HASH" "$COMMAND"

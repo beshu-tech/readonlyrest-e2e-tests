@@ -92,57 +92,6 @@ services:
     networks:
       - es-ror-network
 
-  apm-server:
-    build:
-      context: .
-      dockerfile: images/apm/Dockerfile
-      args:
-        ES_VERSION: $ES_VERSION
-    ports:
-      - "8200:8200"
-    volumes:
-      - ./certs:/usr/share/apm-server/config/certs:z
-    depends_on:
-      es-ror:
-        condition: service_healthy
-    networks:
-      - es-ror-network
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-    healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://localhost:8200" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  node-apm-app:
-    build:
-      context: ../common/images/node-apm-app/
-      dockerfile: Dockerfile
-    environment:
-      APM_URL: https://apm-server:8200
-    depends_on:
-      apm-server:
-        condition: service_healthy
-    expose:
-      - 3000
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./certs:/example-app/certs:z
-    networks:
-      - es-ror-network
-    deploy:
-      resources:
-        limits:
-          memory: 128MB
-    healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://apm-server:8200" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 networks:
   es-ror-network:
     driver: bridge

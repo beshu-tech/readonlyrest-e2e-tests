@@ -14,13 +14,27 @@ if ! command -v docker &> /dev/null; then
 fi
 
 show_help() {
-  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Start ECK-based ReadonlyREST environment"
+  echo ""
+  echo "Options:"
+  echo "  --es <version>           Elasticsearch version (required)"
+  echo "  --kbn <version>          Kibana version (required)"
+  echo "  --eck <version>          ECK version (required)"
+  echo "  --cluster-type <type>    Cluster type: 'base' for basic cluster, 'apm' for cluster with APM (default: base)"
+  echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
+  echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
+  echo "  --dev                    Use development images"
+  echo ""
+  echo "Examples:"
+  echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --eck 2.15.0                    # Start base cluster"
+  echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --eck 2.15.0 --cluster-type apm # Start cluster with APM"
   exit 1
 }
 
 export ES_VERSION=""
 export KBN_VERSION=""
 export ECK_VERSION="2.15.0"
+export CLUSTER_TYPE="base"
 export ROR_ES_VERSION="latest" 
 export ROR_KBN_VERSION="latest"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
@@ -75,10 +89,27 @@ while [[ $# -gt 0 ]]; do
         show_help
       fi
       ;;
+  --cluster-type)
+    if [[ -n $2 && $2 != --* ]]; then
+      if [[ "$2" == "base" || "$2" == "apm" ]]; then
+        CLUSTER_TYPE="$2"
+        shift 2
+      else
+        echo "Error: --cluster-type must be 'base' or 'apm'"
+        show_help
+      fi
+    else
+      echo "Error: --cluster-type requires a value (base or apm)"
+      show_help
+    fi
+    ;;
   --dev)
     export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
     export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
     shift
+    ;;
+  --help|-h)
+    show_help
     ;;
   *)
     echo "Unknown option: $1"
@@ -98,19 +129,7 @@ docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=26214
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
-# Build node-apm-app Docker image
-DOCKERFILE_DIR="../common/images/node-apm-app"
-IMAGE_NAME="node-apm-app"
-TAG="latest"
 
-docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
-echo "Docker image built successfully: $IMAGE_NAME:$TAG"
-
-# Load node-apm-app Docker image into the Kind cluster
-CLUSTER_NAME="eck-ror"
-
-kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
-echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
 docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
@@ -118,6 +137,31 @@ docker exec eck-ror-control-plane chmod +x bootstrap-eck.sh
 docker exec eck-ror-control-plane bash -c "export ECK_VERSION=$ECK_VERSION && ./bootstrap-eck.sh"
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
+echo "Cluster type: $CLUSTER_TYPE"
+
+if [[ "$CLUSTER_TYPE" == "base" ]]; then
+  echo "Starting base cluster (Elasticsearch + Kibana + ReadonlyREST)"
+elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
+  echo "Starting cluster with APM (Elasticsearch + Kibana + ReadonlyREST + APM Server + APM App)"
+  
+  # Build node-apm-app Docker image for APM cluster
+  echo "Building node-apm-app Docker image for APM cluster..."
+  DOCKERFILE_DIR="../common/images/node-apm-app"
+  IMAGE_NAME="node-apm-app"
+  TAG="latest"
+  
+  docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
+  echo "Docker image built successfully: $IMAGE_NAME:$TAG"
+  
+  # Load node-apm-app Docker image into the Kind cluster
+  CLUSTER_NAME="eck-ror"
+  
+  kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
+  echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
+else
+  echo "Error: Invalid cluster type '$CLUSTER_TYPE'. Must be 'base' or 'apm'"
+  exit 3
+fi
 
 SUBSTITUTED_DIR="kind-cluster/subst-ror"
 cleanup() {
@@ -139,14 +183,29 @@ subsitute_env_in_yaml_templates() {
     export ROR_ECK_KIBANA_USER_SECRET_KEY="token"
   fi
   
-  for file in kind-cluster/ror/*.yml; do
+  echo "Processing base cluster YAML files..."
+  for file in kind-cluster/ror/base/*.yml; do
     filename=$(basename "$file")
-    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" || "$filename" == "apm.yml" || "$filename" == "node-apm-app.yml" ]]; then
+    echo "  Processing: $filename"
+    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" ]]; then
       envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
     else
       cp "$file" "$SUBSTITUTED_DIR"
     fi
   done
+  
+  if [[ "$CLUSTER_TYPE" == "apm" ]]; then
+    echo "Processing APM cluster YAML files..."
+    for file in kind-cluster/ror/apm/*.yml; do
+      filename=$(basename "$file")
+      echo "  Processing: $filename"
+      if [[ "$filename" == "apm.yml" || "$filename" == "node-apm-app.yml" ]]; then
+        envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
+      else
+        cp "$file" "$SUBSTITUTED_DIR"
+      fi
+    done
+  fi
 
   docker cp "$SUBSTITUTED_DIR" eck-ror-control-plane:/ror/
 }

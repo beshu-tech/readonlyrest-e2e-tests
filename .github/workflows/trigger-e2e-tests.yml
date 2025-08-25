@@ -8,7 +8,11 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
+  # ==========================================
+  # E2E TESTS - MASTER BRANCH
+  # ==========================================
   master-e2e-tests:
+    name: "🔬 Master E2E Tests"
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
     runs-on: ubuntu-latest
     strategy:
@@ -28,19 +32,51 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
 
-      - name: Run tests
+      - name: Run E2E tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
+          ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # ==========================================
+  # BOOTSTRAP TESTS
+  # ==========================================
+  master-bootstrap-tests:
+    name: "🚀 Bootstrap Tests"
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
+    needs: master-e2e-tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["9.1.1", "9.0.5", "8.19.2", "8.18.5", "8.17.10", "8.16.6", "8.15.5", "8.14.3", "8.13.4", "8.12.2", "8.11.4", "8.10.4", "8.9.2", "8.8.2", "8.7.1", "8.6.2", "8.5.3", "8.4.3", "8.3.3", "8.2.3", "8.1.3", "8.0.1", "7.17.29", "7.16.3", "7.15.2", "7.14.2", "7.13.4", "7.12.1", "7.11.2", "7.10.2", "7.9.3"]
+        env: [docker, eck-3.1.0]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+
+      - name: Run bootstrap tests
+        run: |
+          ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+
+  # ==========================================
+  # E2E TESTS - DEVELOP BRANCH
+  # ==========================================
   develop-e2e-tests:
+    name: "🧪 Develop E2E Tests"
     if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
     runs-on: ubuntu-latest
     strategy:
@@ -63,9 +99,9 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
 
-      - name: Run tests
+      - name: Run E2E tests
         run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
+          ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
