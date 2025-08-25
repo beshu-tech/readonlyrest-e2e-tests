@@ -98,19 +98,6 @@ docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=26214
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
-# Build node-apm-app Docker image
-DOCKERFILE_DIR="../common/images/node-apm-app"
-IMAGE_NAME="node-apm-app"
-TAG="latest"
-
-docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
-echo "Docker image built successfully: $IMAGE_NAME:$TAG"
-
-# Load node-apm-app Docker image into the Kind cluster
-CLUSTER_NAME="eck-ror"
-
-kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
-echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
 docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
