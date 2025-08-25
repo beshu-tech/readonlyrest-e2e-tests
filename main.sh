@@ -23,7 +23,7 @@ OPTIONAL_ECK_ARG=""
 OPTIONAL_ROR_ES_ARG=""
 OPTIONAL_ROR_KBN_ARG=""
 OPTIONAL_DEV_ARG=""
-OPTIONAL_RUN_MODE=""
+CLUSTER_TYPE="apm"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -31,10 +31,10 @@ while [[ $# -gt 0 ]]; do
     if [[ -n $2 && $2 != --* ]]; then
       case "$2" in
         "e2e")
-          OPTIONAL_RUN_MODE="e2e"
+          CLUSTER_TYPE="apm"
           ;;
         "bootstrap")
-          OPTIONAL_RUN_MODE="bootstrap"
+          CLUSTER_TYPE="base"
           ;;
         *)
           echo "Error: --mode: Only 'e2e' and 'bootstrap' are supported"
@@ -130,13 +130,11 @@ echo -e "
 
 echo -e "Running environment...\n"
 
-#time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG
+time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG
 
-if [[ "$OPTIONAL_RUN_MODE" == "e2e" ]]; then
+if [[ "$CLUSTER_TYPE" == "e2e" ]]; then
   echo -e "Running E2E tests...\n"
-  time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
 else
-  time ./environments2/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG
   echo -e "Bootstrap mode: Cluster setup completed.\n"
 fi

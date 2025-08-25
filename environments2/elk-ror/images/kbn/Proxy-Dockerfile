@@ -1,5 +1,0 @@
-FROM nginx:latest
-
-COPY conf/kbn/kbn-proxy-nginx.conf /etc/nginx/nginx.conf
-COPY certs/kibana.key /etc/nginx/kibana/kibana.key
-COPY certs/kibana.crt /etc/nginx/kibana/kibana.crt
