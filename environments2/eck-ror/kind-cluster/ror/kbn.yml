@@ -1,0 +1,38 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: eck-ror
+spec:
+  version: ${KBN_VERSION}
+  image: ${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}
+  count: 1
+  elasticsearchRef:
+    name: eck-ror
+  config:
+    # csp needs to be disabled to let cypress e2e tests works
+    csp.strict: false
+    csp.warnLegacyBrowsers: false
+    xpack.fleet.packages:
+      - name: apm
+        version: latest
+    # KBN ROR settings
+    readonlyrest_kbn:
+      cookiePass: '12312313123213123213123adadasdasdasd'
+      logLevel: trace
+      store_sessions_in_index: true
+    ${ELATICSEARCH_USER}    
+    ${ELATICSEARCH_PASSWORD}
+              
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+          env:
+            - name: ROR_ACTIVATION_KEY
+              value: "${ROR_ACTIVATION_KEY}"
+            - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
+              value: "yes"

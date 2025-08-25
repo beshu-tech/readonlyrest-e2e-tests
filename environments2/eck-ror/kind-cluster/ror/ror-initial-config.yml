@@ -1,0 +1,104 @@
+apiVersion: v1
+data:
+   readonlyrest.yml: |
+
+      helpers:
+        cr: &common-rules
+          kibana_access: rw
+          kibana_hide_apps: [ "Enterprise Search|Overview" ]
+          kibana_index: ".kibana_@{acl:current_group}"
+      
+        ag: &all-groups
+          groups:
+            - id: admins_group
+              name: administrators
+            - id: infosec_group
+              name: infosec
+            - id: template_group
+              name: template
+      
+      readonlyrest:
+        
+        response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+        prompt_for_basic_auth: false
+      
+        audit:
+          enabled: true
+          outputs:
+          - type: index
+            index_template: "'readonlyrest_audit_'yyyy-MM-dd"
+      
+        access_control_rules:
+      
+        - name: "Kibana service account - token"
+          verbosity: error
+          token_authentication:
+            token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
+            username: service_account
+      
+        - name: "Kibana service account - user/pass"
+          verbosity: error
+          auth_key: kibana:kibana
+
+        - name: "PROBE"
+          verbosity: error
+          auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
+  
+        - name: "ELASTIC-INTERNAL"
+          verbosity: error
+          auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
+          
+        - name: "APM"
+          type: allow
+          auth_key: apm:test
+          
+        - name: PERSONAL_GRP
+          groups: [ Personal ]
+          <<: *common-rules
+          kibana_index: '.kibana_@{user}'
+      
+        - name: ADMIN_GRP
+          groups: [ admins_group ]
+          <<: *common-rules
+          kibana_access: admin
+      
+        - name: infosec
+          groups: [ infosec_group ]
+          <<: *common-rules
+          kibana_hide_apps: [ "Enterprise Search|Overview", "Observability", "Management" ]
+      
+        - name: Template Tenancy
+          groups: [ template_group ]
+          <<: *common-rules
+      
+        - name: "Reporting tests: user2"
+          auth_key: user2:dev
+          kibana:
+            index: ".kibana_user2"
+            access: rw
+          indices: [ "invoices" ]
+      
+        - name: "Reporting tests: user3"
+          auth_key: user3:dev
+          kibana:
+            index: ".kibana_user3"
+            access: rw
+          indices: [ "invoices" ]
+      
+        users:
+        - username: admin
+          auth_key: admin:dev
+          <<: *all-groups
+      
+        - username: user1
+          auth_key: user1:dev
+          <<: *all-groups
+      
+        impersonation:
+          - impersonator: admin
+            users: ["*"]
+            auth_key: admin:dev
+      
+kind: ConfigMap
+metadata:
+  name: config-readonlyrest.yml
