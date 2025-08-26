@@ -36,6 +36,7 @@ jobs:
         uses: nick-fields/retry@v2
         with:
           max_attempts: 2
+          timeout_minutes: 60
           command: |
             ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
@@ -73,6 +74,7 @@ jobs:
         uses: nick-fields/retry@v2
         with:
           max_attempts: 2
+          timeout_minutes: 30
           command: |
             ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
@@ -109,6 +111,7 @@ jobs:
         uses: nick-fields/retry@v2
         with:
           max_attempts: 2
+          timeout_minutes: 60
           command: |
             ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
