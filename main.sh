@@ -23,6 +23,7 @@ OPTIONAL_ECK_ARG=""
 OPTIONAL_ROR_ES_ARG=""
 OPTIONAL_ROR_KBN_ARG=""
 OPTIONAL_DEV_ARG=""
+MODE="e2e"
 CLUSTER_TYPE="apm"
 
 while [[ $# -gt 0 ]]; do
@@ -31,9 +32,11 @@ while [[ $# -gt 0 ]]; do
     if [[ -n $2 && $2 != --* ]]; then
       case "$2" in
         "e2e")
+          MODE="e2e"
           CLUSTER_TYPE="apm"
           ;;
         "bootstrap")
+          MODE="bootstrap"
           CLUSTER_TYPE="base"
           ;;
         *)
