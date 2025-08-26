@@ -33,10 +33,11 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Run E2E tests
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           max_attempts: 2
           timeout_minutes: 60
+          retry_wait_seconds: 120
           command: |
             ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
@@ -71,7 +72,7 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Run bootstrap tests
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           max_attempts: 2
           timeout_minutes: 30
@@ -108,10 +109,11 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Run E2E tests
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           max_attempts: 2
           timeout_minutes: 60
+          retry_wait_seconds: 120
           command: |
             ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
