@@ -1,7 +1,19 @@
 #!/bin/bash -e
 
 show_help() {
-  echo "Usage: ./run-env-and-tests.sh --env <docker|eck-x.y.z> --elk <elk_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "E2E Test Runner"
+  echo ""
+  echo "Options:"
+  echo "  --mode <mode>            Run mode: 'e2e' for running tests, 'bootstrap' for environment setup only (default: e2e)"
+  echo "  --env <environment>      Environment type: 'docker' for Docker Compose, 'eck-x.y.z' for ECK with version (required)"
+  echo "  --elk <version>          ELK stack version (required)"
+  echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
+  echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
+  echo "  --dev                    Use development images"
+  echo ""
+  echo "Examples:"
+  echo "  ./main.sh --env docker --elk 8.11.0                    # Run E2E tests with Docker Compose"
+  echo "  ./main.sh --mode bootstrap --env eck-2.15.0 --elk 8.11.0 # Bootstrap ECK environment only"
   exit 1
 }
 
@@ -10,10 +22,34 @@ ELK_VERSION="$1"
 OPTIONAL_ECK_ARG=""
 OPTIONAL_ROR_ES_ARG=""
 OPTIONAL_ROR_KBN_ARG=""
-OPTIONAL_MODE=""
+OPTIONAL_DEV_ARG=""
+MODE="e2e"
+CLUSTER_TYPE="apm"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+  --mode)
+    if [[ -n $2 && $2 != --* ]]; then
+      case "$2" in
+        "e2e")
+          MODE="e2e"
+          CLUSTER_TYPE="apm"
+          ;;
+        "bootstrap")
+          MODE="bootstrap"
+          CLUSTER_TYPE="base"
+          ;;
+        *)
+          echo "Error: --mode: Only 'e2e' and 'bootstrap' are supported"
+          show_help
+          ;;
+      esac
+      shift 2
+    else
+      echo "Error: --mode requires an argument (e2e or bootstrap)"
+      show_help
+    fi
+    ;;
   --env)
     if [[ -n $2 && $2 != --* ]]; then
       case "$2" in
@@ -63,7 +99,7 @@ while [[ $# -gt 0 ]]; do
     fi
     ;;
   --dev)
-    OPTIONAL_MODE="--dev"
+    OPTIONAL_DEV_ARG="--dev"
     shift
     ;;
   *)
@@ -95,7 +131,13 @@ echo -e "
                                          __/ |
 "
 
-echo -e "E2E TESTS\n"
+echo -e "Running environment...\n"
 
-time ./environments/$ENV_NAME/start.sh --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_MODE
-time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG
+
+if [[ "$MODE" == "e2e" ]]; then
+  echo -e "Running E2E tests...\n"
+  time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+else
+  echo -e "Bootstrap mode: Cluster setup completed.\n"
+fi

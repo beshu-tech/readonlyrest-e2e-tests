@@ -18,7 +18,19 @@ if [[ -z "${ROR_ACTIVATION_KEY}" ]]; then
 fi
 
 show_help() {
-  echo "Usage: ./run.sh --es <elasticsearch_version> --kbn <kibana_version>  [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --dev (use dev images)]"
+  echo "Start Docker Compose-based ELK cluster with ReadonlyREST"
+  echo ""
+  echo "Options:"
+  echo "  --es <version>           Elasticsearch version (required)"
+  echo "  --kbn <version>          Kibana version (required)"
+  echo "  --cluster-type <type>    Cluster type: 'base' for basic cluster, 'apm' for cluster with APM (default: base)"
+  echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
+  echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
+  echo "  --dev                    Use development images"
+  echo ""
+  echo "Examples:"
+  echo "  ./start.sh --es 8.11.0 --kbn 8.11.0                    # Start base cluster"
+  echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --cluster-type apm # Start cluster with APM"
   exit 1
 }
 
@@ -26,6 +38,7 @@ echo "Preparing environment the tests will be run at ..."
 
 export ES_VERSION=""
 export KBN_VERSION=""
+export CLUSTER_TYPE="base"
 export ROR_ES_VERSION="latest"
 export ROR_KBN_VERSION="latest"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
@@ -69,10 +82,27 @@ while [[ $# -gt 0 ]]; do
       show_help
     fi
     ;;
+  --cluster-type)
+    if [[ -n $2 && $2 != --* ]]; then
+      if [[ "$2" == "base" || "$2" == "apm" ]]; then
+        CLUSTER_TYPE="$2"
+        shift 2
+      else
+        echo "Error: --cluster-type must be 'base' or 'apm'"
+        show_help
+      fi
+    else
+      echo "Error: --cluster-type requires a value (base or apm)"
+      show_help
+    fi
+    ;;
   --dev)
     export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
     export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
     shift
+    ;;
+  --help|-h)
+    show_help
     ;;
   *)
     echo "Unknown option: $1"
@@ -87,13 +117,29 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
 fi
 
 echo "Bootstrapping the docker-based environment ..."
+echo "Cluster type: $CLUSTER_TYPE"
 
-if ! docker compose config > /dev/null; then
+# Set compose files based on cluster type
+if [[ "$CLUSTER_TYPE" == "base" ]]; then
+  DOCKER_COMPOSE_FILES="-f base.docker-compose.yml"
+  echo "Starting base cluster (Elasticsearch + Kibana + ReadonlyREST)"
+elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
+  DOCKER_COMPOSE_FILES="-f base.docker-compose.yml -f apm.docker-compose.yml"
+  echo "Starting cluster with APM (Elasticsearch + Kibana + ReadonlyREST + APM Server + APM App)"
+fi
+
+if ! docker compose $DOCKER_COMPOSE_FILES config > /dev/null; then
   echo "Cannot validate docker compose configuration."
   exit 3
 fi
 
-docker compose up -d --build --remove-orphans --force-recreate --wait
-docker compose logs -f > elk-ror.log 2>&1 &
+handle_docker_compose_error() {
+  docker compose $DOCKER_COMPOSE_FILES logs -f > elk-ror.log 2>&1 &
+  exit 1
+}
 
-echo "The environment ready"
+trap 'handle_docker_compose_error' ERR
+
+docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate --wait
+
+echo "The environment is ready"

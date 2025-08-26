@@ -14,13 +14,27 @@ Prerequisites:
 To bootstrap a Docker-based or ECK environment (ES with latest ROR + KBN with latest ROR) and execute Cypress E2E tests run:
 
 ```bash
-./run-env-and-tests.sh --elk 8.15.2  --env docker
+./main.sh --mode e2e --elk 8.15.2 --env docker
 ```
 
 or 
 
 ```bash
-./run-env-and-tests.sh 7.17.24 eck
+./main.sh --mode e2e --elk 7.17.24 --env eck
+```
+
+#### Bootstrap tests with one command
+
+You can also run cluster bootstrap test in context of a Docker-based or ECK environment:
+
+```bash
+./main.sh --mode bootstrap --elk 8.15.2 --env docker
+```
+
+or 
+
+```bash
+./main.sh --mode bootstrap --elk 7.17.24 --env eck
 ```
 
 #### Tested environment & E2E tests separately
