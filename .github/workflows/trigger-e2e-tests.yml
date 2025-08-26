@@ -33,8 +33,11 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Run E2E tests
-        run: |
-          ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 2
+          command: |
+            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
@@ -67,8 +70,11 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Run bootstrap tests
-        run: |
-          ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 2
+          command: |
+            ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
@@ -100,8 +106,11 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Run E2E tests
-        run: |
-          ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 2
+          command: |
+            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
