@@ -133,7 +133,13 @@ if ! docker compose $DOCKER_COMPOSE_FILES config > /dev/null; then
   exit 3
 fi
 
+handle_docker_compose_error() {
+  docker compose $DOCKER_COMPOSE_FILES logs -f > elk-ror.log 2>&1 &
+  exit 1
+}
+
+trap 'handle_docker_compose_error' ERR
+
 docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate --wait
-docker compose $DOCKER_COMPOSE_FILES logs -f > elk-ror.log 2>&1 &
 
 echo "The environment is ready"
