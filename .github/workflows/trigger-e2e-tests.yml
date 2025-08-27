@@ -95,7 +95,6 @@ jobs:
   develop-e2e-tests:
     name: "🧪 Develop E2E Tests"
     if: >
-      github.event_name == 'schedule' ||
       github.ref == 'refs/heads/develop' ||
       (github.base_ref == 'develop' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
     runs-on: ubuntu-latest
