@@ -82,7 +82,7 @@ jobs:
       - name: Run bootstrap tests
         uses: nick-fields/retry@v3
         with:
-          max_attempts: 2
+          max_attempts: 3
           timeout_minutes: 30
           command: |
             ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
