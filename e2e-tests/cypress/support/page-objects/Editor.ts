@@ -13,6 +13,26 @@ export class Editor {
       .type(config, { force: true });
   }
 
+  static pasteConfig(config) {
+    cy.log('paste config');
+    const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
+    SecuritySettings.getIframeBody()
+      .findByRole('code')
+      .find('textarea')
+      .eq(0)
+      .focus()
+      .type(`${selectAllKeys}{backspace}`, { force: true })
+      .then($el => {
+        const pasteEvent = new ClipboardEvent('paste', {
+          bubbles: true,
+          cancelable: true,
+          clipboardData: new DataTransfer()
+        });
+        pasteEvent.clipboardData.setData('text/plain', config);
+        $el[0].dispatchEvent(pasteEvent);
+      });
+  }
+
   static replaceValues(findValue, newValue) {
     cy.log('Replace values');
     const findKeys = Cypress.platform === 'darwin' ? '{cmd}f' : '{ctrl}f';

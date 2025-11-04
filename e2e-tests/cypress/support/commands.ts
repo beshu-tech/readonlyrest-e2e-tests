@@ -1,5 +1,4 @@
 import '@testing-library/cypress/add-commands';
-import { ResizeObserverMock } from './mocks/ResizeObserverMock';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -81,11 +80,12 @@ Cypress.Commands.add('kbnDelete', ({ endpoint, credentials, currentGroupHeader, 
   })
 );
 
-Cypress.Commands.add('esDelete', ({ endpoint, credentials }, ...args) =>
+Cypress.Commands.add('esDelete', ({ endpoint, credentials, failOnStatusCode }, ...args) =>
   cy.esRequest({
     method: 'DELETE',
     endpoint,
-    credentials
+    credentials,
+    failOnStatusCode
   })
 );
 
@@ -105,8 +105,8 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload }) => {
-  httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload);
+Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload, failOnStatusCode }) => {
+  httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload, undefined, failOnStatusCode);
 });
 
 function httpCall(
@@ -173,6 +173,10 @@ Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, propert
   });
 });
 
+Cypress.Commands.add('getByDataTestSubj', (value: string, options?: any) => {
+  return cy.get(`[data-test-subj="${value}"]`, options);
+});
+
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**
    * Don't fail test when these specific errors from kibana platform
@@ -190,9 +194,4 @@ Cypress.on('uncaught:exception', (err, runnable) => {
   ) {
     return false;
   }
-});
-
-Cypress.on('window:before:load', win => {
-  // Override ResizeObserver in the test environment to resolve process exit unexpectedly issue https://docs.cypress.io/app/references/error-messages#The-browser-process-running-your-tests-just-exited-unexpectedly
-  win.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 });

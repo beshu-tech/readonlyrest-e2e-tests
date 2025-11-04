@@ -1,0 +1,76 @@
+helpers:
+    ckr: &common-kibana-rules
+        access: rw
+        hide_apps: ["Enterprise Search|Overview", "Observability"]
+        index: ".kibana_@{acl:current_group}"
+
+    ag: &all-groups
+        groups:
+            - id: admins_group
+              name: administrators
+            - id: infosec_group
+              name: infosec
+            - id: template_group
+              name: template
+
+readonlyrest:
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    audit:
+        enabled: true
+        outputs:
+            - type: index
+              index_template: "'readonlyrest_audit_'yyyy-MM-dd"
+
+    access_control_rules:
+
+        - name: "Kibana service account - user/pass"
+          verbosity: error
+          auth_key: kibana:kibana
+
+        - name: PERSONAL_GRP
+          groups: [Personal]
+          kibana:
+              <<: *common-kibana-rules
+              index: ".kibana_@{user}"
+
+        - name: ADMIN_GRP
+          groups: [admins_group]
+          kibana:
+              <<: *common-kibana-rules
+              access: admin
+              metadata:
+                  alert_message: "Dear @{acl:user}"
+        - name: infosec
+          groups: [infosec_group]
+          kibana:
+              <<: *common-kibana-rules
+              hide_apps:
+                ["Enterprise Search|Overview", "Observability", "Management"]
+
+        - name: Template Tenancy
+          groups: [template_group]
+          kibana:
+              <<: *common-kibana-rules
+
+    users:
+        - username: admin
+          auth_key: admin:dev
+          <<: *all-groups
+
+        - username: user1
+          auth_key: user1:dev
+          <<: *all-groups
+
+readonlyrest_kbn:
+    cookiePass: '12312313123213123213123adadasdasdasd'
+    logLevel: 'trace'
+    logPrettyPrintEnabled: true
+    whitelistedPaths: [.*/api/status$]
+    clearSessionOnEvents: [login, tenancyHop]
+    sessions_probe_interval_seconds: 60
+    store_sessions_in_index: true
+    login_title: Loaded from index!
+    login_subtitle: 'PRO/Enterprise: You should see a red border, a tiny unicorn logo, a two column page, and this text. You should see none of these customisation when testing ROR Free.'
+    login_custom_logo: 'https://i.imgur.com/MdRBUfV.gif'
+    login_html_head_inject: '<style> body { border: 3px solid red; }</style>'
+    login_custom_js_inject_file: '/usr/share/kibana/custom_login.js'

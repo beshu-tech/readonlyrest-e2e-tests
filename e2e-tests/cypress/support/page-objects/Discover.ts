@@ -12,7 +12,7 @@ export class Discover {
       cy.contains('Discover').click({ force: true });
     }
 
-    cy.contains(indexPatternName).should('be.visible');
+    Discover.verifyIndexTitle(indexPatternName);
   }
 
   static saveReport(reportName: string) {
@@ -32,10 +32,7 @@ export class Discover {
   static exportToCsv() {
     cy.log('exportToCsv');
 
-    if (
-      (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) ||
-      semver.gte(getKibanaVersion(), '9.1.0')
-    ) {
+    if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
       cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
       cy.get('[data-test-subj=shareTopNavButton]').click();
@@ -103,6 +100,52 @@ export class Discover {
       cy.get('[data-test-subj*=detail-link]').contains(indexPatternName);
     } else {
       cy.get('[data-test-subj=indexPattern-switch-link]').contains(indexPatternName);
+    }
+  };
+
+  static verifyDocumentWithTodayRange = (row: number, indexPatternName: string) => {
+    cy.log('verify Document with Today Range');
+
+    Discover.selectTodayDataRange();
+
+    Discover.verifyDocument(row, indexPatternName);
+  };
+
+  static verifyDocument = (row: number, indexPatternName: string) => {
+    cy.log('verify Document');
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.contains('[data-test-subj="discoverCellDescriptionList"]', indexPatternName).eq(row).should('be.visible');
+    } else {
+      cy.get('[data-test-subj="docTableExpandToggleColumn"]').eq(row).click();
+      cy.contains('[data-test-subj="tableDocViewRow-_index"]', indexPatternName).should('exist');
+    }
+  };
+
+  static selectTodayDataRange = () => {
+    cy.log('Select Today Data Range');
+    cy.get('[data-test-subj="superDatePickerToggleQuickMenuButton"]').click();
+    cy.get('[data-test-subj="superDatePickerCommonlyUsed_Today"]').click();
+  };
+
+  static toastErrorNotVisible = (message: string) => {
+    cy.log('Toast Error not Visible');
+
+    cy.contains('[data-test-subj="globalToastList"]', message).should('not.exist');
+  };
+
+  static discoverSearchCompleted = () => {
+    cy.log('Discover search completed');
+    cy.get('[data-test-subj="searchSessionIndicator"][data-state="completed"]').should('be.visible');
+  };
+
+  static verifyIndexTitle = (indexPatternName: string) => {
+    cy.log('Verify Index title');
+
+    if (semver.gte(getKibanaVersion(), '9.2.0')) {
+      cy.contains('[data-test-subj="indexPatternTitle"]', indexPatternName).as('indexPatternTitle').scrollIntoView();
+      cy.get('@indexPatternTitle').should('be.visible');
+    } else {
+      cy.contains(indexPatternName).should('be.visible');
     }
   };
 }

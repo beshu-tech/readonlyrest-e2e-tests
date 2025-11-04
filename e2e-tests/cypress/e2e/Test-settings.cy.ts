@@ -1,14 +1,13 @@
 import { Login } from '../support/page-objects/Login';
 import { TestSettings } from '../support/page-objects/TestSettings';
 import { Settings } from '../support/page-objects/Settings';
-import { Editor } from '../support/page-objects/Editor';
 
 describe('Test ACL', () => {
   beforeEach(() => {
     Login.initialization();
     Settings.open();
     Settings.reloadFromFileSettings();
-    Settings.saveFileSettings();
+    Settings.clickSaveButton();
     TestSettings.setDefaultData();
   });
 

@@ -1,0 +1,18 @@
+readonlyrest:
+  access_control_rules:
+
+    - name: "Kibana service account - user/pass"
+      verbosity: error
+      auth_key: kibana:kibana
+
+    - name: ADMIN_GRP
+      groups: [admins_group]
+      kibana_hide_apps: [ "Enterprise Search", "Observability", "Elasticsearch", "Analytics", "Management"]
+      kibana_access: admin
+
+  users:
+    - username: admin
+      auth_key: admin:dev
+      groups:
+        -   id: admins_group
+            name: administrators

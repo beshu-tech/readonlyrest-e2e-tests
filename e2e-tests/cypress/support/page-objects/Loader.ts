@@ -5,6 +5,10 @@ export class Loader {
     this.finish(finishUrl);
   }
 
+  public static waitForBreadcrumb(breadcrumb: string) {
+    cy.getByDataTestSubj('breadcrumb first last').contains(breadcrumb);
+  }
+
   private static start() {
     cy.log('loading start');
     cy.contains('Loading Elastic', { timeout: 80000 }).should('exist');

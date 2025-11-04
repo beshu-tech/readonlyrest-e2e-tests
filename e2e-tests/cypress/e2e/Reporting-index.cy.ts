@@ -1,6 +1,5 @@
 import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
-import { Loader } from '../support/page-objects/Loader';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Discover } from '../support/page-objects/Discover';
 import { Settings } from '../support/page-objects/Settings';
@@ -13,13 +12,7 @@ describe('Reporting index', () => {
 
   beforeEach(() => {
     Settings.setSettingsData('reportingSettings.yaml');
-    cy.visit(Cypress.config().baseUrl);
-    cy.on('url:changed', () => {
-      sessionStorage.setItem('ror:ignoreTrialInfo', 'true');
-      localStorage.setItem('home:welcome:show', 'false');
-    });
-    Login.signIn();
-    Loader.loading();
+    Login.initialization();
   });
 
   afterEach(() => {
@@ -42,6 +35,6 @@ describe('Reporting index', () => {
     Discover.createIndexPattern(indexPattern);
     cy.contains('@timestamp').should('be.visible');
     cy.contains('acl_history').should('be.visible');
-    cy.contains(indexPattern).should('be.visible');
+    Discover.verifyIndexTitle(indexPattern);
   });
 });
