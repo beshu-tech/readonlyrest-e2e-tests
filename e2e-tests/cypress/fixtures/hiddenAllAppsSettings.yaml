@@ -1,18 +1,33 @@
 readonlyrest:
   access_control_rules:
-
-    - name: "Kibana service account - user/pass"
+    - name: 'Kibana service account - user/pass'
       verbosity: error
       auth_key: kibana:kibana
 
     - name: ADMIN_GRP
       groups: [admins_group]
-      kibana_hide_apps: [ "Enterprise Search", "Observability", "Elasticsearch", "Analytics", "Management"]
+      kibana_hide_apps: ['Enterprise Search', 'Observability', 'Elasticsearch', 'Analytics', 'Management']
       kibana_access: admin
+
+      # <-- related to ECK environment -->
+    - name: 'Kibana service account - token'
+      verbosity: error
+      token_authentication:
+        token: 'Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}'
+        username: service_account
+
+    - name: 'PROBE'
+      verbosity: error
+      auth_key: 'elastic-internal-probe:${INTERNAL_PROBE_PASS}'
+
+    - name: 'ELASTIC-INTERNAL'
+      verbosity: error
+      auth_key: 'elastic-internal:${INTERNAL_USR_PASS}'
+    # <!-- related to ECK environment -->
 
   users:
     - username: admin
       auth_key: admin:dev
       groups:
-        -   id: admins_group
-            name: administrators
+        - id: admins_group
+          name: administrators
