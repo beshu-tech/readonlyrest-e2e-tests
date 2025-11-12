@@ -36,8 +36,7 @@ describe('Dev tools', () => {
     if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
       DevTools.verifyIfContainsErrorsMessage();
     } else {
-      // TODO: change it to verifyIf400Status when issue fixed on ROR ES plugin side
-      DevTools.verifyIf500Status();
+      DevTools.verifyIf400Status();
     }
 
     cy.log('should verify whether .kibana index is not tweaked');

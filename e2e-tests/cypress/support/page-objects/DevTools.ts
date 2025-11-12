@@ -51,11 +51,6 @@ export class DevTools {
     cy.contains('400 - Bad Request').should('be.visible');
   }
 
-  static verifyIf500Status() {
-    cy.log('verify if 50 status');
-    cy.contains('500 - Internal Server Error').should('be.visible');
-  }
-
   static verifyIf403Status() {
     cy.log('verify if 403 status');
     cy.contains('403 - Forbidden').should('be.visible');
