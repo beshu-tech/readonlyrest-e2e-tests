@@ -37,5 +37,7 @@ export default defineConfig({
     videosFolder: '../results/videos',
     screenshotsFolder: '../results/screenshots'
   },
-  experimentalMemoryManagement: true
+  experimentalMemoryManagement: true,
+  chromeWebSecurity: false,
+  numTestsKeptInMemory: 0
 });
