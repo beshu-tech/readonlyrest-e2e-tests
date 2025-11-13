@@ -10,7 +10,7 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
 
-describe.skip('sanity check', () => {
+describe('sanity check', () => {
   beforeEach(() => {
     SampleData.createSampleData('sample_index', 1);
     Login.initialization();
