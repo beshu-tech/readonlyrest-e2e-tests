@@ -20,7 +20,7 @@ export class Discover {
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Discover').click();
     cy.get('[data-test-subj=discoverSaveButton]').click();
-    cy.get('[data-test-subj=savedObjectTitle]').invoke('val', reportName).trigger('input');
+    cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
     cy.contains('was saved', { timeout: 10000 }).should('exist');
 
