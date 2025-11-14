@@ -173,7 +173,7 @@ Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, propert
   });
 });
 
-Cypress.Commands.add('getByDataTestSubj', (value: string, options?: any) => {
+Cypress.Commands.add('getByDataTestSubj', (value, options?) => {
   return cy.get(`[data-test-subj="${value}"]`, options);
 });
 
