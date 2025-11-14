@@ -103,10 +103,12 @@ describe('impersonate', () => {
     cy.log('should free impersonate user check');
     Impersonate.freeTypeImpersonateUser('new_user');
     Impersonate.finishImpersonation();
+    Impersonate.verifyFinishedImpersonation();
 
     cy.log('should impersonate localUser');
     Impersonate.impersonateUserFromTheList(3, 2, 'new_user');
     Impersonate.finishImpersonation();
+    Impersonate.verifyFinishedImpersonation();
 
     cy.log('should impersonate LDAP user');
     Impersonate.impersonateUserFromTheList(0, 1, 'RobertSmith');

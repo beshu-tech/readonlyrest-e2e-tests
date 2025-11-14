@@ -169,15 +169,19 @@ export class Impersonate {
     RorMenu.closeRorMenu();
   }
 
+  static verifyFinishedImpersonation() {
+    cy.log('verify finished impersonation');
+    cy.get('[data-testid=identity-logged-in-as]').contains('admin');
+    cy.get('[data-testid=identity-impersonating]').should('not.exist');
+    cy.get('[data-testid=automatically-deactivate]').should('not.exist');
+  }
+
   static finishImpersonation() {
     cy.log('finish impersonation');
     RorMenu.openRorMenu();
     cy.contains('Finish impersonation').click();
     Loader.loading();
     RorMenu.openRorMenu();
-    cy.get('[data-testid=identity-logged-in-as]').contains('admin');
-    cy.get('[data-testid=identity-impersonating]').should('not.exist');
-    cy.get('[data-testid=automatically-deactivate]').should('not.exist');
   }
 
   static setTestSettingsData(): Cypress.Chainable<void> {
