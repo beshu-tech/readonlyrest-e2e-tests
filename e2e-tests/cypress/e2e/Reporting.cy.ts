@@ -36,7 +36,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
         esApiAdvancedClient.pruneAllReportingIndices();
         esApiClient.deleteIndex(oldFormatReportingIndex);
-        kbnApiClient.deleteSampleData('ecommerce', userCredentials);
+        kbnApiClient.deleteSampleData('ecommerce', `${username}:${password}`);
       });
 
       it(`should correctly display all reports from both the old reporting index and the new reporting data stream`, () => {
@@ -76,7 +76,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
     afterEach(() => {
       kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
       esApiAdvancedClient.pruneAllReportingIndices();
-      kbnApiClient.deleteSampleData('ecommerce', userCredentials);
+      kbnApiClient.deleteSampleData('ecommerce', `${username}:${password}`);
     });
     describe(`Reporting tests for ${username}`, () => {
       it('should correctly display all reporting data', () => {
