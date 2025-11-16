@@ -12,6 +12,7 @@ export class Observability {
 
   static openApmInstance(name: string) {
     cy.log('Open APM instance');
+    Observability.waitForApmApp(name);
     cy.findByText(name).click();
   }
 
@@ -31,36 +32,66 @@ export class Observability {
   static getApmError(name: string) {
     cy.log(`Get apm error`);
     Observability.changeApmTransactionType('request');
+    Observability.waitForErrorTransaction(name);
     return cy.findByRole('link', {
-      name: name
+      name
     });
   }
 
-  static waitForApmData(timeout = 100000, interval = 1000) {
-    const startTime = Date.now();
+  static waitWithRefreshButtonClick({ targetSelector, checkFn, timeout = 100000, interval = 1000 }) {
+    const start = Date.now();
+
+    const refreshButtonSelector = semver.gte(getKibanaVersion(), '8.0.0')
+      ? '[data-test-subj="querySubmitButton"]'
+      : '[data-test-subj="superDatePickerApplyTimeButton"]';
 
     function retry() {
-      const elapsedTime = Date.now() - startTime;
-      const clickSelector = semver.gte(getKibanaVersion(), '8.0.0')
-        ? cy.get('[data-test-subj="querySubmitButton"]')
-        : cy.get('[data-test-subj="superDatePickerApplyTimeButton"]');
-      const targetSelector = cy.get('[data-test-subj="headerFilterTransactionType"]');
+      const elapsed = Date.now() - start;
 
-      if (elapsedTime > timeout) {
-        throw new Error(`Timed out after ${timeout}ms waiting for ${targetSelector} to become visible`);
+      if (elapsed > timeout) {
+        throw new Error(`Timed out after ${timeout}ms waiting for condition on ${targetSelector}`);
       }
 
-      clickSelector.click();
-      cy.get('body').then(() => {
-        targetSelector.then($el => {
-          if ($el.val() !== 'request' && $el.val() !== 'custom') {
-            // Retry after interval if the element is not visible
-            cy.wait(interval).then(retry);
-          }
-        });
+      cy.get(refreshButtonSelector).click();
+
+      cy.then(() => {
+        const ok = checkFn(Cypress.$(targetSelector));
+        if (!ok) {
+          cy.wait(interval).then(retry);
+        }
       });
     }
 
     retry();
+  }
+
+  static waitForApmData() {
+    return this.waitWithRefreshButtonClick({
+      targetSelector: '[data-test-subj="headerFilterTransactionType"]',
+      checkFn: $el => {
+        const value = $el.val();
+        return value === 'request' || value === 'custom';
+      }
+    });
+  }
+
+  static waitForApmApp(appName: string) {
+    return this.waitWithRefreshButtonClick({
+      targetSelector: '[data-test-subj="apmServiceListAppLink"]',
+      checkFn: $el => {
+        return $el.filter((i, el) => el.textContent.includes(appName)).length > 0;
+      }
+    });
+  }
+
+  static waitForErrorTransaction(name: string) {
+    return this.waitWithRefreshButtonClick({
+      targetSelector: '[data-test-subj="apmErrorDetailsLink"]',
+      checkFn: $el => {
+        const matches = $el.filter((i, el) => el.innerText.includes(name));
+
+        return matches.length > 0;
+      }
+    });
   }
 }

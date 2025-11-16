@@ -15,6 +15,7 @@ describe('Observability', () => {
   });
 
   it('should verify APM functionality', () => {
+    cy.viewport(2000, 1300);
     Observability.addSampleApmEvents();
     if (semver.gte(getKibanaVersion(), '8.18.0')) {
       KibanaNavigation.openPage('Applications');
