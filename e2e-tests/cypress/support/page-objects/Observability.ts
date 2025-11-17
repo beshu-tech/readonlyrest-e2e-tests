@@ -38,31 +38,47 @@ export class Observability {
     });
   }
 
-  static waitWithRefreshButtonClick({ targetSelector, checkFn, timeout = 100000, interval = 1000 }) {
+  static waitWithRefreshButtonClick({
+    targetSelector,
+    checkFn,
+    timeout = 20000,
+    interval = 1000
+  }: {
+    targetSelector: string;
+    checkFn: (selector: JQuery<HTMLElement>) => boolean;
+    timeout?: number;
+    interval?: number;
+  }): Cypress.Chainable<void> {
     const start = Date.now();
 
     const refreshButtonSelector = semver.gte(getKibanaVersion(), '8.0.0')
       ? '[data-test-subj="querySubmitButton"]'
       : '[data-test-subj="superDatePickerApplyTimeButton"]';
 
-    function retry() {
+    function poll(): Cypress.Chainable<void> {
       const elapsed = Date.now() - start;
 
       if (elapsed > timeout) {
         throw new Error(`Timed out after ${timeout}ms waiting for condition on ${targetSelector}`);
       }
 
-      cy.get(refreshButtonSelector).click();
+      return cy
+        .get(refreshButtonSelector, { log: false })
+        .click({ force: true, log: false })
+        .then(() => cy.wait(interval, { log: false }))
+        .then(() => {
+          const $els = Cypress.$(targetSelector) as JQuery<HTMLElement>;
+          const ok = checkFn($els);
 
-      cy.then(() => {
-        const ok = checkFn(Cypress.$(targetSelector));
-        if (!ok) {
-          cy.wait(interval).then(retry);
-        }
-      });
+          if (ok) {
+            return;
+          }
+
+          return poll();
+        });
     }
 
-    retry();
+    return poll();
   }
 
   static waitForApmData() {
@@ -77,16 +93,17 @@ export class Observability {
 
   static waitForApmApp(appName: string) {
     return this.waitWithRefreshButtonClick({
-      targetSelector: '[data-test-subj="apmServiceListAppLink"]',
+      targetSelector: semver.gte(getKibanaVersion(), '8.0.0') ? '[data-test-subj="apmServiceListAppLink"]' : '.euiLink',
       checkFn: $el => {
-        return $el.filter((i, el) => el.textContent.includes(appName)).length > 0;
+        const matches = $el.filter((i, el) => el.textContent.includes(appName));
+        return matches.length > 0;
       }
     });
   }
 
   static waitForErrorTransaction(name: string) {
     return this.waitWithRefreshButtonClick({
-      targetSelector: '[data-test-subj="apmErrorDetailsLink"]',
+      targetSelector: semver.gte(getKibanaVersion(), '8.0.0') ? '[data-test-subj="apmErrorDetailsLink"]' : '.euiLink',
       checkFn: $el => {
         const matches = $el.filter((i, el) => el.innerText.includes(name));
 
