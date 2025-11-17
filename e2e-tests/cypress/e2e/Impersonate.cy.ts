@@ -115,9 +115,10 @@ describe('impersonate', () => {
     Impersonate.open();
     Impersonate.impersonateUserFromTheList(0, 1, 'RobertSmith');
     Impersonate.finishImpersonation();
+    Impersonate.verifyFinishedImpersonation();
 
     cy.log('should back from expired Test ACL dialog into a Test ACL tab');
-    TestSettings.clickTestSettingsTab();
+    TestSettings.open();
     TestSettings.pressInvalidateFileTestSettings();
     Impersonate.clickImpersonateTab();
     Impersonate.checkIfExpiredModal();

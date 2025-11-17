@@ -1,10 +1,7 @@
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
-import authMocks from '../../fixtures/authMocks.json';
-import { userCredentials } from '../helpers';
 import { rorApiClient } from '../helpers/RorApiClient';
-import { debug } from 'console';
 
 export class Impersonate {
   static open() {
@@ -16,7 +13,7 @@ export class Impersonate {
 
   static clickImpersonateTab() {
     cy.log('Click impersonate tab');
-    SecuritySettings.getIframeBody().find('[class=euiTabs]').find('#impersonate').click();
+    SecuritySettings.getIframeBody().findByRole('tab', { name: 'Impersonation' }).click();
   }
 
   static getServiceByIndex(index: number) {

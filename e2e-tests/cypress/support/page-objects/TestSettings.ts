@@ -15,7 +15,7 @@ export class TestSettings {
 
   static clickTestSettingsTab() {
     cy.log('Click Test ACL');
-    SecuritySettings.getIframeBody().find('[class=euiTabs]').find('#test_settings').click();
+    SecuritySettings.getIframeBody().findByRole('tab', { name: 'Test ACL' }).click();
   }
 
   static changeTtlValue(time: string, unit: 'Seconds' | 'Minutes' | 'Hours' | 'Days' = 'Minutes') {
