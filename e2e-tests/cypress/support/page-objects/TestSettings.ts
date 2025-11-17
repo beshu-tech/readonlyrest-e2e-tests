@@ -15,7 +15,10 @@ export class TestSettings {
 
   static clickTestSettingsTab() {
     cy.log('Click Test ACL');
-    SecuritySettings.getIframeBody().findByRole('tab', { name: 'Test ACL' }).click();
+    SecuritySettings.waitForIframeContent();
+    SecuritySettings.getIframeBody()
+      .findByRole('tab', { name: /test acl/i })
+      .click();
   }
 
   static changeTtlValue(time: string, unit: 'Seconds' | 'Minutes' | 'Hours' | 'Days' = 'Minutes') {

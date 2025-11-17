@@ -13,7 +13,10 @@ export class Impersonate {
 
   static clickImpersonateTab() {
     cy.log('Click impersonate tab');
-    SecuritySettings.getIframeBody().findByRole('tab', { name: 'Impersonation' }).click();
+    SecuritySettings.waitForIframeContent();
+    SecuritySettings.getIframeBody()
+      .findByRole('tab', { name: /impersonation/i })
+      .click();
   }
 
   static getServiceByIndex(index: number) {
