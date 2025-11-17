@@ -171,9 +171,11 @@ export class Impersonate {
 
   static verifyFinishedImpersonation() {
     cy.log('verify finished impersonation');
+    RorMenu.openRorMenu();
     cy.get('[data-testid=identity-logged-in-as]').contains('admin');
     cy.get('[data-testid=identity-impersonating]').should('not.exist');
     cy.get('[data-testid=automatically-deactivate]').should('not.exist');
+    RorMenu.closeRorMenu();
   }
 
   static finishImpersonation() {
@@ -181,7 +183,6 @@ export class Impersonate {
     RorMenu.openRorMenu();
     cy.contains('Finish impersonation').click();
     Loader.loading();
-    RorMenu.openRorMenu();
   }
 
   static setTestSettingsData(): Cypress.Chainable<void> {
