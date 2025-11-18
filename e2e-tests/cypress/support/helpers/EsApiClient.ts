@@ -21,24 +21,15 @@ export class EsApiClient {
   public deleteIndex(index: string): void {
     cy.esDelete({
       endpoint: index,
-      credentials: Cypress.env().kibanaUserCredentials
+      credentials: Cypress.env().kibanaUserCredentials,
+      failOnStatusCode: false
     });
   }
 
   public deleteDataStream(index: string): void {
-    cy.esGet({
+    cy.esDelete({
       endpoint: `_data_stream/${index}`,
-      credentials: Cypress.env().kibanaUserCredentials,
-      failOnStatusCode: false
-    }).then((response: any) => {
-      if (response?.data_streams?.length > 0) {
-        cy.esDelete({
-          endpoint: `_data_stream/${index}`,
-          credentials: Cypress.env().kibanaUserCredentials
-        });
-      } else {
-        cy.log(`Data stream '${index}' does not exist, skipping deletion`);
-      }
+      credentials: Cypress.env().kibanaUserCredentials
     });
   }
 
@@ -50,9 +41,20 @@ export class EsApiClient {
     });
   }
 
+  public createIndex(index: string, settings?: object, mappings?: object): void {
+    cy.esPut({
+      endpoint: index,
+      credentials: Cypress.env().kibanaUserCredentials,
+      payload: {
+        ...(settings && { settings }),
+        ...(mappings && { mappings })
+      }
+    });
+  }
+
   public indices(): Cypress.Chainable<GetIndices[]> {
     return cy.esGet({
-      endpoint: '_cat/indices?format=json',
+      endpoint: '_cat/indices?format=json&expand_wildcards=all',
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
@@ -84,6 +86,13 @@ export class EsApiClient {
   public getIndexSettings(index: string): Cypress.Chainable<any> {
     return cy.esGet({
       endpoint: `${index}/_settings`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public rolloverIndex(index): void {
+    cy.esPost({
+      endpoint: `${index}/_rollover`,
       credentials: Cypress.env().kibanaUserCredentials
     });
   }

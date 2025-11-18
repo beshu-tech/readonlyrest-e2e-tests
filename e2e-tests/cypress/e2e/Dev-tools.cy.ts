@@ -38,5 +38,9 @@ describe('Dev tools', () => {
     } else {
       DevTools.verifyIf400Status();
     }
+
+    cy.log('should verify whether .kibana index is not tweaked');
+    DevTools.sendRequest('GET .kibana');
+    DevTools.verifyResponseInConsole(`.kibana_${getKibanaVersion()}_001`);
   });
 });

@@ -1,12 +1,13 @@
 import * as semver from 'semver';
+import type { GetIndices } from './EsApiClient';
+import { EsApiClient } from './EsApiClient';
 import { getKibanaVersion } from './index';
-import { EsApiClient, GetIndices } from './EsApiClient';
 
 export class EsApiAdvancedClient extends EsApiClient {
   public pruneAllReportingIndices(): void {
     cy.log('Pruning all reporting indices...');
 
-    if (semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
+    if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
       this.dataStreams().then(result => {
         result.data_streams
           .filter(dataStream => dataStream.name.startsWith('.kibana-reporting-'))
@@ -31,6 +32,13 @@ export class EsApiAdvancedClient extends EsApiClient {
   public getAllReportingIndices() {
     cy.log('Getting all reporting indices...');
     return this.indices().then(result => result.filter(index => index.index.startsWith('.reporting')));
+  }
+
+  public getAllReportingDataStreamSegments(indexName: string) {
+    cy.log('Getting all reporting data stream segments...');
+    return this.indices().then(result =>
+      result.filter(index => index.index.startsWith(`.ds-.kibana-reporting-${indexName}`))
+    );
   }
 
   public waitForDocsCount(
@@ -70,6 +78,30 @@ export class EsApiAdvancedClient extends EsApiClient {
       });
 
     return cy.wrap(null).then(checkCount);
+  }
+
+  public deleteIndicesByPattern(pattern: string): void {
+    cy.log(`Deleting indices matching pattern ${pattern}...`);
+    this.indices().then(result => {
+      const regex = new RegExp(pattern);
+      const matchingIndices = result.filter(indexObj => regex.test(indexObj.index));
+      matchingIndices.forEach(matchingIndex => {
+        cy.log(`Deleting index ${matchingIndex.index}...`);
+        this.deleteIndex(matchingIndex.index);
+      });
+    });
+  }
+
+  public deleteDataStreamsByPattern(pattern: string): void {
+    cy.log(`Deleting data streams matching pattern ${pattern}...`);
+    this.dataStreams().then(result => {
+      const regex = new RegExp(pattern);
+      const matchingIndices = result.data_streams.filter(indexObj => regex.test(indexObj.name));
+      matchingIndices.forEach(matchingIndex => {
+        cy.log(`Deleting index ${matchingIndex.name}...`);
+        this.deleteDataStream(matchingIndex.name);
+      });
+    });
   }
 }
 

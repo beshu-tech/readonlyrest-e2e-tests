@@ -1,6 +1,5 @@
 import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
-import { Loader } from '../support/page-objects/Loader';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { Home } from '../support/page-objects/Home';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
@@ -10,56 +9,85 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecyclesPolicies';
-import { EnvName } from '../support/types';
 
-if (semver.gte(getKibanaVersion(), '8.15.0') && Cypress.env().envName === EnvName.ELK_ROR) {
-  //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
-  describe('Reporting', () => {
-    const oldFormatReportingIndex = '.reporting.kibana_admins_group-2025-02-02';
-    const newFormatReportingName = 'new format reporting index doc';
-    let oldFormatReportingName: string;
+const kibanaUser: [string, string] = Cypress.env().kibanaUserCredentials.split(':');
+const nonTenantUser = { username: kibanaUser[0], password: kibanaUser[1], index: '.kibana' };
+const tenantUser = { username: Cypress.env().login, password: Cypress.env().password, index: '.kibana_admins_group' };
 
-    beforeEach(() => {
-      cy.fixture('old_format_reporting_doc.json').then(oldFormatReportingDoc => {
-        oldFormatReportingName = oldFormatReportingDoc.payload.title;
-        esApiClient.addDocument(oldFormatReportingIndex, oldFormatReportingDoc.id, oldFormatReportingDoc);
-        esApiClient.attachLifecyclePolicy(oldFormatReportingIndex, 'kibana-reporting');
+const testData: { username: string; password: string; index: string }[] = [nonTenantUser, tenantUser];
+
+if (semver.gte(getKibanaVersion(), '8.15.0')) {
+  testData.forEach(({ username, password, index }) => {
+    describe(`Reporting tests for ${username}`, () => {
+      const oldFormatReportingIndex = `.reporting${index}-2025-02-02`;
+      const newFormatReportingIndex = `.kibana-reporting-${index}`;
+      const newFormatReportingName = 'new format reporting index doc';
+      let oldFormatReportingName: string;
+
+      beforeEach(() => {
+        cy.fixture('old_format_reporting_doc.json').then(oldFormatReportingDoc => {
+          oldFormatReportingName = oldFormatReportingDoc.payload.title;
+          esApiClient.addDocument(oldFormatReportingIndex, oldFormatReportingDoc.id, oldFormatReportingDoc);
+          esApiClient.attachLifecyclePolicy(oldFormatReportingIndex, 'kibana-reporting');
+        });
       });
 
-      cy.visit(Cypress.config().baseUrl);
-      cy.on('url:changed', () => {
-        sessionStorage.setItem('ror:ignoreTrialInfo', 'true');
-        localStorage.setItem('home:welcome:show', 'false');
+      afterEach(() => {
+        kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
+        esApiAdvancedClient.pruneAllReportingIndices();
+        esApiClient.deleteIndex(oldFormatReportingIndex);
+        kbnApiClient.deleteSampleData('ecommerce', `${username}:${password}`);
       });
-      Login.signIn();
-      Loader.loading();
-    });
 
-    afterEach(() => {
-      esApiClient.deleteIndex(oldFormatReportingIndex);
-      esApiClient.deleteDataStream('.kibana-reporting-.kibana_admins_group');
-      kbnApiClient.deleteSampleData('ecommerce', userCredentials);
-      kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
-      esApiAdvancedClient.pruneAllReportingIndices();
-    });
+      it(`should correctly display all reports from both the old reporting index and the new reporting data stream`, () => {
+        Login.initialization({ username, password });
+        Home.loadSampleData();
+        Discover.openDataViewPage();
+        Discover.saveReport(newFormatReportingName);
+        Discover.exportToCsv();
+        Reporting.openReportingPage('kibanaNavigation');
+        Reporting.verifySavedReport([newFormatReportingName, oldFormatReportingName]);
+        Reporting.removeReport(newFormatReportingName);
+        Reporting.verifySavedReport([oldFormatReportingName]);
+        Reporting.removeReport(oldFormatReportingName);
+        Reporting.verifySavedReport([]);
+        IndexLifecyclesPolicies.openIndexLifecyclePolicy();
+        IndexLifecyclesPolicies.verifyIndexLifecyclePolicy();
+      });
 
-    it('should correctly display all reports for both old reporting index and a new reporting stream data', () => {
-      Home.loadSampleData();
-      Discover.openDataViewPage();
-      Discover.saveReport(newFormatReportingName);
-      Discover.exportToCsv();
-      Reporting.openReportingPage('kibanaNavigation');
-      Reporting.verifySavedReport([newFormatReportingName, oldFormatReportingName]);
-      Reporting.removeReport(newFormatReportingName);
-      Reporting.verifySavedReport([oldFormatReportingName]);
-      Reporting.removeReport(oldFormatReportingName);
-      Reporting.verifySavedReport([]);
-      IndexLifecyclesPolicies.openIndexLifecyclePolicy();
-      IndexLifecyclesPolicies.verifyIndexLifecyclePolicy();
+      it('should display all reports from all reporting data stream segments', () => {
+        Login.initialization({ username, password });
+        Home.loadSampleData();
+        Discover.openDataViewPage();
+        Discover.saveReport(newFormatReportingName);
+        Discover.exportToCsv();
+        esApiClient.rolloverIndex(newFormatReportingIndex);
+        Reporting.verifyAllDataStreamsSegmentsCount(index, 2);
+        Discover.exportToCsv();
+        Reporting.openReportingPage('kibanaNavigation');
+        Reporting.verifySavedReport([newFormatReportingName, newFormatReportingName, oldFormatReportingName]);
+      });
     });
   });
 } else {
-  describe.skip('Reporting', () => {
-    // Tests are skipped
+  testData.forEach(({ username, password, index }) => {
+    const reportingName = `report for ${index} index`;
+
+    afterEach(() => {
+      kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
+      esApiAdvancedClient.pruneAllReportingIndices();
+      kbnApiClient.deleteSampleData('ecommerce', `${username}:${password}`);
+    });
+    describe(`Reporting tests for ${username}`, () => {
+      it('should correctly display all reporting data', () => {
+        Login.initialization({ username, password });
+        Home.loadSampleData();
+        Discover.openDataViewPage();
+        Discover.saveReport(reportingName);
+        Discover.exportToCsv();
+        Reporting.openReportingPage('kibanaNavigation');
+        Reporting.verifySavedReport([reportingName]);
+      });
+    });
   });
 }

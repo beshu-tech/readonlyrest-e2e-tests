@@ -1,5 +1,4 @@
 import { Login } from '../support/page-objects/Login';
-import { Loader } from '../support/page-objects/Loader';
 import { Settings } from '../support/page-objects/Settings';
 
 describe('Forbidden login test', () => {
@@ -18,11 +17,7 @@ describe('Forbidden login test', () => {
 
     cy.get('#form-message').should('be.visible').and('contain.text', 'You shall not pass!');
 
-    cy.get('#form-username').clear();
-    cy.get('#form-password').clear();
-    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
-
-    Loader.loading();
+    Login.initialization({ username: Cypress.env().login, password: Cypress.env().password });
 
     cy.url().should('include', '/s/default/app/home');
   });

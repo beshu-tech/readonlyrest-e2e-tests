@@ -1,6 +1,5 @@
 import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
-import { Loader } from '../support/page-objects/Loader';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
@@ -10,13 +9,7 @@ const SPACE_NAME = 'Test space';
 
 describe('Spaces', () => {
   beforeEach(() => {
-    cy.visit(Cypress.config().baseUrl);
-    cy.on('url:changed', () => {
-      sessionStorage.setItem('ror:ignoreKeyExpirationInfo', 'true');
-      localStorage.setItem('home:welcome:show', 'false');
-    });
-    Login.signIn();
-    Loader.loading();
+    Login.initialization();
   });
 
   afterEach(() => {

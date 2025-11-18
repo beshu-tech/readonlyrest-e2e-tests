@@ -30,7 +30,7 @@ export class RorMenu {
     cy.log('open reporting page');
     RorMenu.openRorMenu();
     cy.contains('Manage kibana').click({ force: true });
-    cy.get('.euiButtonEmpty').contains('Reporting').click({ force: true });
+    cy.contains('button', 'Reporting').click({ force: true });
   }
 
   static openDataViewsPage() {

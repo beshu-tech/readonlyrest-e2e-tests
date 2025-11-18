@@ -103,17 +103,22 @@ describe('impersonate', () => {
     cy.log('should free impersonate user check');
     Impersonate.freeTypeImpersonateUser('new_user');
     Impersonate.finishImpersonation();
+    Impersonate.verifyFinishedImpersonation();
 
     cy.log('should impersonate localUser');
+    Impersonate.open();
     Impersonate.impersonateUserFromTheList(3, 2, 'new_user');
     Impersonate.finishImpersonation();
+    Impersonate.verifyFinishedImpersonation();
 
     cy.log('should impersonate LDAP user');
+    Impersonate.open();
     Impersonate.impersonateUserFromTheList(0, 1, 'RobertSmith');
     Impersonate.finishImpersonation();
+    Impersonate.verifyFinishedImpersonation();
 
     cy.log('should back from expired Test ACL dialog into a Test ACL tab');
-    TestSettings.clickTestSettingsTab();
+    TestSettings.open();
     TestSettings.pressInvalidateFileTestSettings();
     Impersonate.clickImpersonateTab();
     Impersonate.checkIfExpiredModal();

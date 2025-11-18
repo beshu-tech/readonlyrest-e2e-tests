@@ -3,13 +3,11 @@ import { Settings } from '../support/page-objects/Settings';
 import { Editor } from '../support/page-objects/Editor';
 
 describe('settings', () => {
-  beforeEach(() => {
+  it('should check settings', () => {
     Login.initialization();
     Settings.open();
     Settings.reloadFromFileSettings();
-  });
 
-  it('should check settings', () => {
     /**
      * TODO: Uncomment all toast based assertions and try to make this check non-deterministic
      */
@@ -35,12 +33,23 @@ describe('settings', () => {
 
     cy.log('should check save changes functionality when malformed settings provided');
     Editor.changeConfig('readonlyrest:');
-    Settings.saveFileSettings();
+    Settings.clickSaveButton();
     // Settings.malformedSavedConfigurationToast().should('be.visible');
 
     cy.log('should check save changes functionality when success');
     Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP${Cypress._.random(0, 1e6)}`);
-    Settings.saveFileSettings();
+    Settings.clickSaveButton();
     // Settings.successfulSavedConfigurationToast().should('be.visible');
+  });
+
+  it('should save settings and verify success response from request when user without group logging in', () => {
+    const [username, password] = Cypress.env().kibanaUserCredentials.split(':');
+
+    Login.initialization({ username, password });
+    Settings.open();
+    cy.intercept('POST', '/pkp/api/settings').as('saveSettings');
+    Settings.clickSaveButton();
+
+    cy.wait('@saveSettings').its('response.statusCode').should('equal', 200);
   });
 });

@@ -1,10 +1,7 @@
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
-import authMocks from '../../fixtures/authMocks.json';
-import { userCredentials } from '../helpers';
 import { rorApiClient } from '../helpers/RorApiClient';
-import { debug } from 'console';
 
 export class Impersonate {
   static open() {
@@ -16,7 +13,10 @@ export class Impersonate {
 
   static clickImpersonateTab() {
     cy.log('Click impersonate tab');
-    SecuritySettings.getIframeBody().find('[class=euiTabs]').find('#impersonate').click();
+    SecuritySettings.waitForIframeContent();
+    SecuritySettings.getIframeBody()
+      .findByRole('tab', { name: /impersonation/i })
+      .click();
   }
 
   static getServiceByIndex(index: number) {
@@ -169,15 +169,20 @@ export class Impersonate {
     RorMenu.closeRorMenu();
   }
 
+  static verifyFinishedImpersonation() {
+    cy.log('verify finished impersonation');
+    RorMenu.openRorMenu();
+    cy.get('[data-testid=identity-logged-in-as]').contains('admin');
+    cy.get('[data-testid=identity-impersonating]').should('not.exist');
+    cy.get('[data-testid=automatically-deactivate]').should('not.exist');
+    RorMenu.closeRorMenu();
+  }
+
   static finishImpersonation() {
     cy.log('finish impersonation');
     RorMenu.openRorMenu();
     cy.contains('Finish impersonation').click();
     Loader.loading();
-    RorMenu.openRorMenu();
-    cy.get('[data-testid=identity-logged-in-as]').contains('admin');
-    cy.get('[data-testid=identity-impersonating]').should('not.exist');
-    cy.get('[data-testid=automatically-deactivate]').should('not.exist');
   }
 
   static setTestSettingsData(): Cypress.Chainable<void> {

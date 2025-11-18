@@ -8,10 +8,12 @@ export class DevTools {
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Dev Tools').click();
 
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.get("[data-test-subj='consoleSkipTourButton']").click();
-    } else {
-      cy.get('[data-test-subj="help-close-button"]').click();
+    if (semver.lt(getKibanaVersion(), '9.2.0')) {
+      if (semver.gte(getKibanaVersion(), '8.16.0')) {
+        cy.get("[data-test-subj='consoleSkipTourButton']").click();
+      } else {
+        cy.get('[data-test-subj="help-close-button"]').click();
+      }
     }
   }
 
@@ -32,8 +34,7 @@ export class DevTools {
       cy.get('.ace_scroller:nth-child(4) > .ace_content').click({ force: true });
       cy.get('.conApp__editorActionButton path').click({ force: true });
     } else {
-      cy.get('[data-test-subj=console-textarea]').focus();
-      cy.get('[data-test-subj=console-textarea]').clear();
+      cy.get('[data-test-subj=console-textarea]').clear({ force: true });
       cy.get('[data-test-subj=console-textarea]').type(text, { force: true });
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
@@ -61,5 +62,15 @@ export class DevTools {
       '[data-test-subj="globalToastList"]',
       'The selected request contains errors. Please resolve them and try again.'
     ).should('be.visible');
+  }
+
+  static verifyResponseInConsole(value: string) {
+    cy.log('verify response in console');
+
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.contains('[data-test-subj="consoleMonacoOutput"]', value);
+    } else {
+      cy.contains('[data-test-subj="response-editor"]', value);
+    }
   }
 }

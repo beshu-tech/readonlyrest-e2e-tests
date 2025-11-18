@@ -5,18 +5,23 @@ export class Login {
     Login.fillLoginPageWith('wrong_username', 'wrong_password');
   }
 
-  static initialization() {
+  static initialization(credentials?: { username: string; password: string }) {
     cy.on('url:changed', () => {
       sessionStorage.setItem('ror:ignoreKeyExpirationInfo', 'true');
       localStorage.setItem('home:welcome:show', 'false');
     });
-    Login.signIn();
+    Login.signIn(credentials);
     Loader.loading();
   }
 
-  static signIn() {
+  static signIn(
+    { username, password }: { username: string; password: string } = {
+      username: Cypress.env().login,
+      password: Cypress.env().password
+    }
+  ) {
     cy.visit(Cypress.config().baseUrl);
-    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
+    Login.fillLoginPageWith(username, password);
   }
 
   static hasLicenseChangedMessage() {
@@ -36,5 +41,11 @@ export class Login {
     }
 
     cy.get('#form-submit').click({ force: true });
+  }
+
+  static verifyLoginPageTitle(title: string) {
+    cy.log('Verify login page title');
+
+    cy.contains(title);
   }
 }
