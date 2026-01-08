@@ -134,7 +134,7 @@ if ! docker compose $DOCKER_COMPOSE_FILES config > /dev/null; then
 fi
 
 handle_docker_compose_error() {
-  docker compose $DOCKER_COMPOSE_FILES logs -f > elk-ror.log 2>&1 &
+  docker compose $DOCKER_COMPOSE_FILES logs > elk-ror.log 2>&1
   exit 1
 }
 
