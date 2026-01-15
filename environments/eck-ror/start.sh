@@ -226,20 +226,23 @@ check_pods_running() {
   while read -r line; do
     ready=$(echo "$line" | awk '{print $2}')
     status=$(echo "$line" | awk '{print $3}')
-    
-    if [[ "$status" != "Running" || "$ready" != "1/1" ]]; then
+
+    cur="${ready%/*}"   
+    total="${ready#*/}"
+
+    if [[ "$status" != "Running" || "$cur" != "$total" ]]; then
       all_ready=false
     fi
   done <<< "$pod_status"
-  echo -e "$pod_status"
 
+  echo -e "$pod_status"
   $all_ready && return 0 || return 1
 }
 
 TIMEOUT_IN_SECONDS=300
 INTERVAL_IN_SECONDS=5
 
-echo "Waiting for all pods to be in Running and Ready state (1/1)..."
+echo "Waiting for all pods to be in Running and Ready state..."
 elapsed_time=0
 while ! check_pods_running; do
   sleep $INTERVAL_IN_SECONDS
@@ -250,4 +253,4 @@ while ! check_pods_running; do
     exit 1
   fi
 done
-echo "All pods are in Running and Ready (1/1) state."
+echo "All pods are in Running and Ready state."

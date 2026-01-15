@@ -38,6 +38,8 @@ spec:
                     secretKeyRef:
                       name: eck-ror-kibana-user
                       key: ${ROR_ECK_KIBANA_USER_SECRET_KEY}
+                - name: ES_JAVA_OPTS
+                  value: "-Dcom.readonlyrest.settings.loading.attempts.count=0 -Dcom.readonlyrest.settings.loading.delay=0s"
               volumeMounts:
                 - name: config-ror
                   mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
@@ -45,6 +47,7 @@ spec:
                 - name: config-log4j2
                   mountPath: /usr/share/elasticsearch/config/log4j2.properties
                   subPath: log4j2.properties
+
           volumes:
             - name: config-ror
               configMap:
@@ -52,3 +55,4 @@ spec:
             - name: config-log4j2
               configMap:
                 name: config-log4j2.properties.yml
+            
