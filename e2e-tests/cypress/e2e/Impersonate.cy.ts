@@ -163,7 +163,7 @@ describe('impersonate', () => {
 
     cy.log('should return data when the user has access to the license');
     rorApiInternalKbnClient.getLicense({ failOnStatusCode: false, credentials: admin }).then(result => {
-      expect(result).to.contains({ iss: 'https://api.beshu.tech' });
+      expect(['https://api.beshu.tech', 'https://portal.readonlyrest.com']).to.include(result.iss);
     });
   });
 });

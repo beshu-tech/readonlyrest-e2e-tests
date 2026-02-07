@@ -112,15 +112,7 @@ declare global {
         payload?: Payload;
         failOnStatusCode?: boolean;
       }): Chainable<Subject>;
-      esGet({
-        endpoint,
-        credentials,
-        failOnStatusCode
-      }: {
-        endpoint: string;
-        credentials: string;
-        failOnStatusCode?: boolean;
-      }): Chainable<Subject>;
+      esGet({ endpoint, credentials }: { endpoint: string; credentials: string }): Chainable<Subject>;
       esPost({
         endpoint,
         credentials,
@@ -141,15 +133,15 @@ declare global {
       }): Chainable<Subject>;
       esDelete({
         endpoint,
-        credentials,
-        failOnStatusCode
+        credentials
       }: {
         endpoint: string;
         credentials: string;
         failOnStatusCode?: boolean;
       }): Chainable<Subject>;
       shouldHaveStyle(property: string, value: string): Chainable<Element>;
-      getByDataTestSubj(value: string, options?: any): Chainable<Subject>;
+      getByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
+      findByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
     }
 
     type Payload = string | object;
