@@ -20,7 +20,6 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Home.loadSampleDataButtonHidden();
 
     cy.log('Verify Dashboard features');
-    cy.intercept('*65024-65279.pbf').as('dashboardResolve');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       Dashboard.openDashboards();
     } else {
@@ -30,7 +29,9 @@ export class RoAndRoStrictKibanaAccessAssertions {
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
     Dashboard.editButtonNotExist();
     Dashboard.cloneButtonNotExist();
-    cy.wait('@dashboardResolve', { timeout: 30000 });
+    cy.waitForNetworkIdle('*.pbf', 3000, {
+      timeout: 30000
+    });
 
     cy.log('Verify Discover features');
     KibanaNavigation.openPage('Discover');

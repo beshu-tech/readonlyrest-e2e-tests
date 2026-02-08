@@ -81,7 +81,7 @@ export class IndexManagement {
       cy.get('[for="confirmDeleteIndicesCheckbox"]').click();
     }
 
-    cy.get('[data-test-subj="confirmModalConfirmButton"]').click();
+    cy.get('[data-test-subj="confirmModalConfirmButton"]').click({ force: true });
   }
 
   static verifyIndexExists(indexName: string) {

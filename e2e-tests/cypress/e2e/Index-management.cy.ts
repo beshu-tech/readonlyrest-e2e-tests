@@ -67,6 +67,7 @@ describe('Index management', () => {
     IndexManagement.searchIndices(testIndexName);
     IndexManagement.openIndex(testIndexName);
     IndexManagement.selectDeleteActionFromContextMenu();
+
     IndexManagement.clickConfirmDeleteIndexButton();
     IndexManagement.verifyIndexExists(testIndexName);
   });

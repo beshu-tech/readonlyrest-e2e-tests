@@ -148,6 +148,32 @@ export class Discover {
       cy.contains(indexPatternName).should('be.visible');
     }
   };
+
+  static openSaveSessionPanel = () => {
+    cy.log('Open Save Session Panel');
+    cy.get('button[aria-label="Search session complete"]').click();
+  };
+
+  static pressSaveSessionButton = () => {
+    cy.log('Press Save Session Button');
+    cy.getByDataTestSubj('searchSessionIndicatorSaveBtn').click();
+    cy.getByDataTestSubj('searchSessionIndicatorSaveBtn').should('not.exist');
+  };
+
+  static pressManageSessionsButton = () => {
+    cy.log('Press Manage Sessions Button');
+    cy.getByDataTestSubj('searchSessionIndicatorViewSearchSessionsLink').click();
+  };
+
+  static verifyDiscoverFromSearchSessionCorrectlyRestored = () => {
+    cy.log('Verify Discover from search session');
+
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.contains(/You are viewing cached data from a specific time range/i).should('be.visible');
+    } else {
+      cy.getByDataTestSubj('searchSessionIndicator').should('be.visible');
+    }
+  };
 }
 
 const createKibanaIndexPattern = (indexPatternName: string) => {

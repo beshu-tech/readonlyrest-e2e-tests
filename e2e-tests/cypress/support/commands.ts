@@ -1,4 +1,5 @@
 import '@testing-library/cypress/add-commands';
+import 'cypress-network-idle';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -173,8 +174,13 @@ Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, propert
   });
 });
 
-Cypress.Commands.add('getByDataTestSubj', (value, options?) => {
+Cypress.Commands.add('getByDataTestSubj', (value: string, options?: any) => {
   return cy.get(`[data-test-subj="${value}"]`, options);
+});
+
+Cypress.Commands.add('findByDataTestSubj', { prevSubject: 'element' }, (subject, value: string) => {
+  const el = subject.find(`[data-test-subj="${value}"]`);
+  return cy.wrap(el);
 });
 
 Cypress.on('uncaught:exception', (err, runnable) => {
@@ -190,7 +196,7 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
-    err.message.includes('Not Found') // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Foun
+    err.message.includes('Not Found') // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
   ) {
     return false;
   }

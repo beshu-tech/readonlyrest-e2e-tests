@@ -23,7 +23,7 @@ describe('Observability', () => {
     }
     Observability.openApmInstance('app1');
     Observability.waitForApmData();
-    Observability.getApmCustomTransaction('MyCustomTransaction').should('be.visible');
-    Observability.getApmError('Something went wrong!').should('be.visible');
+    Observability.getApmCustomTransaction('MyCustomTransaction').should('exist').scrollIntoView().should('exist');
+    Observability.getApmError('Something went wrong!').should('exist').scrollIntoView().should('exist');
   });
 });

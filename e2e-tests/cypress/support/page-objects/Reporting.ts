@@ -3,6 +3,7 @@ import { RorMenu } from './RorMenu';
 import { StackManagement } from './StackManagement';
 import { getKibanaVersion } from '../helpers';
 import { esApiAdvancedClient } from '../helpers/EsApiAdvancedClient';
+import { KibanaToast } from './KibanaToast';
 
 type OpenBy = 'rorMenu' | 'kibanaNavigation';
 
@@ -45,6 +46,9 @@ export class Reporting {
       .closest('[data-test-subj=reportJobRow]')
       .find('[type=checkbox]')
       .click();
+    if (semver.gte(getKibanaVersion(), '9.3.0')) {
+      KibanaToast.closeToastMessage();
+    }
     cy.get('[data-test-subj=deleteReportButton]').click();
     cy.get('[data-test-subj=confirmModalConfirmButton]').click();
   }
