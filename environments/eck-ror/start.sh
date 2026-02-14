@@ -123,17 +123,24 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-# ES 8.0.x–8.4.x bundle JDK 17.0.2 or JDK 18, both of which have cgroup v2 bug JDK-8287073:
-# CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport flag is checked.
-# Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+. ES 8.5.0+ ships JDK 19+.
-# We build a patched image: Corretto 17.0.5 for ES 8.0–8.1, Corretto 19.0.0 for ES 8.2–8.4.
+# ES 7.16.x–7.17.6 and 8.0.x–8.4.x bundle JDK 17.0.1/17.0.2 or JDK 18, which have cgroup v2
+# bug JDK-8287073: CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport is checked.
+# Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+.
+# We build a patched image: Corretto 17.0.5 for JDK-17 builds, Corretto 19.0.0 for JDK-18 builds.
 patch_es_image_if_needed() {
-  local MAJOR MINOR
+  local MAJOR MINOR PATCH
   MAJOR=$(echo "$ES_VERSION" | cut -d '.' -f1)
   MINOR=$(echo "$ES_VERSION" | cut -d '.' -f2)
+  PATCH=$(echo "$ES_VERSION" | cut -d '.' -f3)
 
   local CORRETTO_VERSION=""
-  if [[ "$MAJOR" -eq 8 && "$MINOR" -le 1 ]]; then
+  if [[ "$MAJOR" -eq 7 && "$MINOR" -eq 16 ]]; then
+    CORRETTO_VERSION="17.0.5.8.1"
+  elif [[ "$MAJOR" -eq 7 && "$MINOR" -eq 17 && "$PATCH" -le 2 ]]; then
+    CORRETTO_VERSION="17.0.5.8.1"
+  elif [[ "$MAJOR" -eq 7 && "$MINOR" -eq 17 && "$PATCH" -le 6 ]]; then
+    CORRETTO_VERSION="19.0.0.36.1"
+  elif [[ "$MAJOR" -eq 8 && "$MINOR" -le 1 ]]; then
     CORRETTO_VERSION="17.0.5.8.1"
   elif [[ "$MAJOR" -eq 8 && "$MINOR" -le 4 ]]; then
     CORRETTO_VERSION="19.0.0.36.1"
