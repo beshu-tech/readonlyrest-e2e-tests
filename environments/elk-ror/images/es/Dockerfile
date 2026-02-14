@@ -28,7 +28,7 @@ RUN MAJOR=$(echo "$ES_VERSION" | cut -d. -f1) && \
     if [ -n "$CORRETTO_VERSION" ]; then \
       ARCH=$(uname -m | sed 's/x86_64/x64/' | sed 's/arm64/aarch64/') && \
       echo "Replacing buggy bundled JDK with Corretto $CORRETTO_VERSION for ES $ES_VERSION (arch: $ARCH)" && \
-      curl -fsSL "https://corretto.aws/downloads/resources/${CORRETTO_VERSION}/amazon-corretto-${CORRETTO_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz && \
+      curl -fsSLk "https://corretto.aws/downloads/resources/${CORRETTO_VERSION}/amazon-corretto-${CORRETTO_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz && \
       rm -rf /usr/share/elasticsearch/jdk && \
       mkdir -p /usr/share/elasticsearch/jdk && \
       tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 && \
