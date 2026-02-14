@@ -123,24 +123,32 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-# ES 8.0.x and 8.1.x bundle JDK 17.0.2 which has cgroup v2 bug JDK-8287073:
+# ES 8.0.x–8.4.x bundle JDK 17.0.2 or JDK 18, both of which have cgroup v2 bug JDK-8287073:
 # CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport flag is checked.
-# Fixed in JDK 17.0.5+ (backport JDK-8288308). ES 8.2.0+ ships JDK 18+ which doesn't have the bug.
-# We build a patched image with Amazon Corretto 17.0.5 and load it into the KinD cluster.
+# Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+. ES 8.5.0+ ships JDK 19+.
+# We build a patched image: Corretto 17.0.5 for ES 8.0–8.1, Corretto 19.0.0 for ES 8.2–8.4.
 patch_es_image_if_needed() {
   local MAJOR MINOR
   MAJOR=$(echo "$ES_VERSION" | cut -d '.' -f1)
   MINOR=$(echo "$ES_VERSION" | cut -d '.' -f2)
 
+  local CORRETTO_VERSION=""
   if [[ "$MAJOR" -eq 8 && "$MINOR" -le 1 ]]; then
+    CORRETTO_VERSION="17.0.5.8.1"
+  elif [[ "$MAJOR" -eq 8 && "$MINOR" -le 4 ]]; then
+    CORRETTO_VERSION="19.0.0.36.1"
+  fi
+
+  if [[ -n "$CORRETTO_VERSION" ]]; then
     local ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
-    echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image..."
-    docker build --build-arg ES_IMAGE="$ES_IMAGE" -t "$ES_IMAGE" -f - . <<'PATCH_DOCKERFILE'
+    echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image with Corretto $CORRETTO_VERSION..."
+    docker build --build-arg ES_IMAGE="$ES_IMAGE" --build-arg CORRETTO_VERSION="$CORRETTO_VERSION" -t "$ES_IMAGE" -f - . <<'PATCH_DOCKERFILE'
 ARG ES_IMAGE
 FROM ${ES_IMAGE}
 USER root
+ARG CORRETTO_VERSION
 RUN ARCH=$(uname -m | sed 's/x86_64/x64/' | sed 's/arm64/aarch64/') && \
-    curl -fsSL "https://corretto.aws/downloads/resources/17.0.5.8.1/amazon-corretto-17.0.5.8.1-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz && \
+    curl -fsSL "https://corretto.aws/downloads/resources/${CORRETTO_VERSION}/amazon-corretto-${CORRETTO_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz && \
     rm -rf /usr/share/elasticsearch/jdk && \
     mkdir -p /usr/share/elasticsearch/jdk && \
     tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 && \
