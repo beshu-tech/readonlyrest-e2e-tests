@@ -12,6 +12,7 @@ spec:
         spec:
           containers:
             - name: elasticsearch
+              imagePullPolicy: IfNotPresent
               securityContext:
                 runAsNonRoot: false
                 runAsUser: 0
