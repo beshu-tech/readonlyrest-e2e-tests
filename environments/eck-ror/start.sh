@@ -123,44 +123,17 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-# ES 7.16.x–7.17.6 and 8.0.x–8.4.x bundle JDK 17.0.1/17.0.2 or JDK 18, which have cgroup v2
-# bug JDK-8287073: CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport is checked.
-# Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+.
-# We build a patched image: Corretto 17.0.5 for JDK-17 builds, Corretto 19.0.0 for JDK-18 builds.
+PATCH_SCRIPT_DIR="../common/images/es-jdk-patch"
+
 patch_es_image_if_needed() {
-  local MAJOR MINOR PATCH
-  MAJOR=$(echo "$ES_VERSION" | cut -d '.' -f1)
-  MINOR=$(echo "$ES_VERSION" | cut -d '.' -f2)
-  PATCH=$(echo "$ES_VERSION" | cut -d '.' -f3)
-
-  local CORRETTO_VERSION=""
-  if [[ "$MAJOR" -eq 7 && "$MINOR" -eq 16 ]]; then
-    CORRETTO_VERSION="17.0.5.8.1"
-  elif [[ "$MAJOR" -eq 7 && "$MINOR" -eq 17 && "$PATCH" -le 2 ]]; then
-    CORRETTO_VERSION="17.0.5.8.1"
-  elif [[ "$MAJOR" -eq 7 && "$MINOR" -eq 17 && "$PATCH" -le 6 ]]; then
-    CORRETTO_VERSION="19.0.0.36.1"
-  elif [[ "$MAJOR" -eq 8 && "$MINOR" -le 1 ]]; then
-    CORRETTO_VERSION="17.0.5.8.1"
-  elif [[ "$MAJOR" -eq 8 && "$MINOR" -le 4 ]]; then
-    CORRETTO_VERSION="19.0.0.36.1"
-  fi
-
-  if [[ -n "$CORRETTO_VERSION" ]]; then
-    local ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
-    echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image with Corretto $CORRETTO_VERSION..."
-    docker build --build-arg ES_IMAGE="$ES_IMAGE" --build-arg CORRETTO_VERSION="$CORRETTO_VERSION" -t "$ES_IMAGE" -f - . <<'PATCH_DOCKERFILE'
-ARG ES_IMAGE
-FROM ${ES_IMAGE}
-USER root
-ARG CORRETTO_VERSION
-RUN ARCH=$(uname -m | sed 's/x86_64/x64/' | sed 's/arm64/aarch64/') && \
-    curl -fsSLk "https://corretto.aws/downloads/resources/${CORRETTO_VERSION}/amazon-corretto-${CORRETTO_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz && \
-    rm -rf /usr/share/elasticsearch/jdk && \
-    mkdir -p /usr/share/elasticsearch/jdk && \
-    tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 && \
-    rm /tmp/jdk.tar.gz
-PATCH_DOCKERFILE
+  local ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+  if ES_VERSION="$ES_VERSION" "$PATCH_SCRIPT_DIR/patch-es-jdk.sh" --check; then
+    echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image..."
+    docker build \
+      --build-arg BASE_IMAGE="$ES_IMAGE" \
+      --build-arg ES_VERSION="$ES_VERSION" \
+      -t "$ES_IMAGE" \
+      "$PATCH_SCRIPT_DIR"
     echo "Patched ES image built successfully: $ES_IMAGE"
     kind load docker-image "$ES_IMAGE" --name eck-ror || { echo "Failed to load patched ES image into KinD cluster."; exit 1; }
     echo "Patched ES image loaded into KinD cluster: $ES_IMAGE"
