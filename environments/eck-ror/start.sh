@@ -123,11 +123,30 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
+PATCH_SCRIPT_DIR="../common/images/es-jdk-patch"
+
+patch_es_image_if_needed() {
+  local ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+  if ES_VERSION="$ES_VERSION" "$PATCH_SCRIPT_DIR/patch-es-jdk.sh" --check; then
+    echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image..."
+    docker build \
+      --build-arg BASE_IMAGE="$ES_IMAGE" \
+      --build-arg ES_VERSION="$ES_VERSION" \
+      -t "$ES_IMAGE" \
+      "$PATCH_SCRIPT_DIR"
+    echo "Patched ES image built successfully: $ES_IMAGE"
+    kind load docker-image "$ES_IMAGE" --name eck-ror || { echo "Failed to load patched ES image into KinD cluster."; exit 1; }
+    echo "Patched ES image loaded into KinD cluster: $ES_IMAGE"
+  fi
+}
+
 echo "CONFIGURING K8S CLUSTER ..."
 kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml
 docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
+
+patch_es_image_if_needed
 
 
 

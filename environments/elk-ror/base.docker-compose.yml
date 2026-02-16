@@ -5,9 +5,7 @@ services:
       context: .
       dockerfile: images/es/Dockerfile
       args:
-        ROR_ES_REPO: $ROR_ES_REPO
-        ES_VERSION: $ES_VERSION
-        ROR_ES_VERSION: $ROR_ES_VERSION
+        ES_PATCHED_IMAGE: $ES_PATCHED_IMAGE
     ports:
       - "9200:9200"
       - "5005:5005"

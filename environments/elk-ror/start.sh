@@ -116,6 +116,14 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
+echo "Building JDK-patched ES base image ..."
+export ES_PATCHED_IMAGE="es-ror-patched:${ES_VERSION}"
+docker build \
+  --build-arg BASE_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}" \
+  --build-arg ES_VERSION="$ES_VERSION" \
+  -t "$ES_PATCHED_IMAGE" \
+  ../common/images/es-jdk-patch/
+
 echo "Bootstrapping the docker-based environment ..."
 echo "Cluster type: $CLUSTER_TYPE"
 
