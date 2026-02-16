@@ -1,5 +1,5 @@
 #!/bin/sh
-# ES 7.16.x-7.17.6 and 8.0.x-8.4.x bundle JDK 17.0.1/17.0.2 or JDK 18, which have cgroup v2
+# ES 7.15.1-7.17.6 and 8.0.x-8.4.x bundle JDK 17.0.0/17.0.1/17.0.2 or JDK 18, which have cgroup v2
 # bug JDK-8287073: CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport is checked.
 # Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+.
 # We replace the bundled JDK: Corretto 17.0.5 for JDK-17 builds, Corretto 19.0.0 for JDK-18 builds.
@@ -14,7 +14,9 @@ MINOR=$(echo "$ES_VERSION" | cut -d. -f2)
 PATCH=$(echo "$ES_VERSION" | cut -d. -f3)
 
 CORRETTO_VERSION=""
-if [ "$MAJOR" -eq 7 ] && [ "$MINOR" -eq 16 ]; then
+if [ "$MAJOR" -eq 7 ] && [ "$MINOR" -eq 15 ] && [ "$PATCH" -ge 1 ]; then
+  CORRETTO_VERSION="17.0.5.8.1"
+elif [ "$MAJOR" -eq 7 ] && [ "$MINOR" -eq 16 ]; then
   CORRETTO_VERSION="17.0.5.8.1"
 elif [ "$MAJOR" -eq 7 ] && [ "$MINOR" -eq 17 ] && [ "$PATCH" -le 2 ]; then
   CORRETTO_VERSION="17.0.5.8.1"
