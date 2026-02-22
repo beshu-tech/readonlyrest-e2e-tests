@@ -57,14 +57,19 @@ services:
       resources:
         limits:
           memory: 1G
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     environment:
       ES_API_URL: https://es-ror:9200
     healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:5601/api/status" ]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 60s
+      test: ["CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:5601/api/status"]
+      interval: 15s
+      timeout: 15s
+      retries: 20
+      start_period: 90s
     networks:
       - es-ror-network
     ulimits:
