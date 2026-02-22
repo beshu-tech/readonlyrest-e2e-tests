@@ -10,8 +10,11 @@ elasticsearch.hosts: [ "${ES_API_URL}" ]
 elasticsearch.username: kibana
 elasticsearch.password: kibana
 elasticsearch.ssl.verificationMode: none
-elasticsearch.pingTimeout: 3000 # default: 30000
-elasticsearch.requestTimeout: 30000
+elasticsearch.pingTimeout: 10000 # increased from 3000 to prevent socket hang ups in a Kibana requests
+elasticsearch.requestTimeout: 60000
+elasticsearch.maxSockets: 256
+elasticsearch.maxIdleSockets: 256
+elasticsearch.idleSocketTimeout: 60000
 
 # generated with:
 # $ openssl req -x509 -batch -nodes -days 3650 -newkey rsa:2048 -keyout kibana.key -out kibana.crt
