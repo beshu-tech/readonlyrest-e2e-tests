@@ -64,11 +64,12 @@ services:
         window: 120s
     environment:
       ES_API_URL: https://es-ror:9200
+      NODE_OPTIONS: "--max-old-space-size=768"
     healthcheck:
       test: ["CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:5601/api/status"]
-      interval: 15s
-      timeout: 15s
-      retries: 20
+      interval: 10s
+      timeout: 10s
+      retries: 30
       start_period: 90s
     networks:
       - es-ror-network
