@@ -47,7 +47,7 @@ services:
         limits:
           memory: 128MB
     healthcheck:
-      test: [ "CMD", "curl", "-k", "--fail", "https://apm-server:8200" ]
+      test: [ "CMD", "curl", "-k", "--http1.1", "--fail", "https://apm-server:8200" ]
       interval: 10s
       timeout: 5s
       retries: 3

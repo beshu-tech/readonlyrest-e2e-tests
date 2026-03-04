@@ -29,5 +29,3 @@ readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
   logLevel: info
   store_sessions_in_index: true
-
-xpack.fleet.agentless.enabled: false
