@@ -139,21 +139,6 @@ export class Impersonate {
     SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').click();
   }
 
-  static openImpersonateDialog() {
-    cy.log('Open impersonate dialog');
-    SecuritySettings.getIframeBody().findByTestId('impersonate-button').click();
-  }
-
-  static freeTypeImpersonateUser(username) {
-    cy.log('Free type impersonate user');
-    Impersonate.openImpersonateDialog();
-    SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').as('confirm-button');
-    cy.get('@confirm-button').should('be.disabled');
-    SecuritySettings.getIframeBody().find('[data-testid=name-field]').type(username);
-    cy.get('@confirm-button').click();
-    Impersonate.verifyImpersonation(username);
-  }
-
   static impersonateUserFromTheList(index: number, rowIndex: number, username: string) {
     cy.log('impersonation user from the list');
     Impersonate.getServiceByIndex(index).as('service');

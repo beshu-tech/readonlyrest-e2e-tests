@@ -34,3 +34,5 @@ spec:
               value: "${ROR_ACTIVATION_KEY}"
             - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
               value: "yes"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=768"
