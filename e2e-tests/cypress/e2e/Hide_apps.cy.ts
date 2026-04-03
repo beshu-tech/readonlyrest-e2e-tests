@@ -1,21 +1,19 @@
+import semver from 'semver';
 import { Settings } from '../support/page-objects/Settings';
 import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import semver from 'semver/preload';
 import { getKibanaVersion } from '../support/helpers';
+import { PageNotFound } from '../support/page-objects/PageNotFound';
 
 describe('Hide apps', () => {
-  beforeEach(() => {
-    Settings.setSettingsData('hiddenSpaceManagementSettings.yaml');
-    Login.initialization();
-  });
-
   afterEach(() => {
     Settings.setSettingsData('defaultSettings.yaml');
   });
 
   it('should hide all apps except of Stack Management', () => {
+    Settings.setSettingsData('hiddenSpaceManagementSettings.yaml');
+    Login.initialization();
     RorMenu.openReportingPage();
     KibanaNavigation.checkStackManagementSectionElementsCount('ingest', 0);
     KibanaNavigation.checkStackManagementSectionElementsCount('data', 0);
@@ -28,5 +26,11 @@ describe('Hide apps', () => {
       KibanaNavigation.checkIfStackManagementSubPageVisible('Index Patterns');
     }
     KibanaNavigation.checkIfStackManagementSubPageVisible('Saved Objects');
+  });
+
+  it('should show "Page not found" on Login when navigation to the default route is prohibited', () => {
+    Settings.setSettingsData('hiddenHomePageSettings.yaml');
+    Login.initialization({ finishUrl: '/app/page-not-found', spacePrefix: '' });
+    PageNotFound.visible();
   });
 });

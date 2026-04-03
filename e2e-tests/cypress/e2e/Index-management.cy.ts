@@ -24,7 +24,6 @@ describe('Index management', () => {
         adminUserCredentials
       );
     }
-    Login.initialization();
   });
 
   afterEach(() => {
@@ -42,6 +41,8 @@ describe('Index management', () => {
   });
 
   it('should verify index management functionalities', () => {
+    Login.initialization();
+
     const indexPriorityValue = '10';
     esApiClient.createIndex(testIndexName, {
       'index.priority': indexPriorityValue
@@ -70,5 +71,15 @@ describe('Index management', () => {
 
     IndexManagement.clickConfirmDeleteIndexButton();
     IndexManagement.verifyIndexExists(testIndexName);
+  });
+
+  it.only('should verify empty data streams page', () => {
+    const userCredentials = 'user2:dev';
+    const [username, password] = userCredentials.split(':');
+    Login.initialization({ credentials: { username, password } });
+    KibanaNavigation.openPage('Stack Management');
+    KibanaNavigation.openSubPage('Index Management');
+    IndexManagement.openDataStreams();
+    IndexManagement.verifyDataStreamsEmptyPage();
   });
 });

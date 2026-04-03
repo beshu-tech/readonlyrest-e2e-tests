@@ -9,6 +9,8 @@ import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
+import { TENANCY_QUERY_STRING_KEY } from '../../../shared/constants/queryStringKeys';
+import { Tenancy } from '../support/page-objects/Tenancy';
 
 describe('sanity check', () => {
   beforeEach(() => {
@@ -70,7 +72,9 @@ describe('sanity check', () => {
     KibanaNavigation.openKibanaNavigation();
     KibanaNavigation.checkIfNotVisible('Stack Management');
     KibanaNavigation.checkIfNotExists('Dev Tools');
-    KibanaNavigation.checkIfRouteNotReachable('/s/default/app/management');
+    KibanaNavigation.checkIfRouteNotReachable(
+      `/s/default/app/management?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`
+    );
   });
 
   it('should check that logout functionality set nextUrl path as expected', () => {
@@ -81,11 +85,11 @@ describe('sanity check', () => {
 
     if (semver.gte(getKibanaVersion(), '8.7.0')) {
       Loader.loading(
-        "/app/maps/map#?_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
+        "/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
       );
     } else {
       Loader.loading(
-        "/app/maps/map#?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
+        "/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
       );
     }
 

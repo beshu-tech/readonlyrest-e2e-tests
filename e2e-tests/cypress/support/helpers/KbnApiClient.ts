@@ -26,7 +26,7 @@ export class KbnApiClient {
 
   public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
     return cy.kbnGet({
-      endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard',
+      endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url',
       credentials,
       currentGroupHeader: group
     });
@@ -63,6 +63,35 @@ export class KbnApiClient {
       currentGroupHeader: group
     });
   }
+
+  public createShortUrl(
+    payload: ShortUrlPayload,
+    credentials: string,
+    group?: string
+  ): Cypress.Chainable<ShortUrlResponse> {
+    return cy.kbnPost({
+      endpoint: 's/default/api/short_url',
+      credentials,
+      currentGroupHeader: group,
+      payload
+    });
+  }
+
+  public createShortUrlLegacy(credentials: string, group?: string): Cypress.Chainable<ShortUrlResponse> {
+    return cy.kbnPost({
+      endpoint: 'api/saved_objects/url',
+      credentials,
+      currentGroupHeader: group,
+      payload: {
+        attributes: {
+          url: '/app/discover',
+          accessCount: 0,
+          createDate: new Date().toISOString(),
+          accessDate: new Date().toISOString()
+        }
+      }
+    });
+  }
 }
 
 export const kbnApiClient = new KbnApiClient();
@@ -91,4 +120,13 @@ interface Space {
   color: string;
   disabledFeatures: string[];
   imageUrl: string;
+}
+
+export interface ShortUrlPayload {
+  locatorId: string;
+  params: Record<string, unknown>;
+}
+
+export interface ShortUrlResponse {
+  id: string;
 }

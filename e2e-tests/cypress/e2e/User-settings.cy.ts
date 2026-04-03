@@ -41,7 +41,7 @@ describe('User settings', () => {
     UserSettings.changeUserSettingsValue('remember-group-after-logout-settings', 'enabled');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
-    cy.url().should('include', `nextGroup=`);
+    cy.url().should('include', `tenancy%3D`);
     Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
     Loader.loading();
     RorMenu.openRorMenu();
@@ -52,7 +52,7 @@ describe('User settings', () => {
     UserSettings.changeUserSettingsValue('remember-group-after-logout-settings', 'disabled');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
-    cy.url().should('not.include', `nextGroup=`);
+    cy.url().should('not.include', `tenancy%3D`);
     Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
     Loader.loading();
     RorMenu.openRorMenu();

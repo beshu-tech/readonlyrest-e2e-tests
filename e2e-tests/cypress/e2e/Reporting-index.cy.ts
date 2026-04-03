@@ -6,6 +6,7 @@ import { Settings } from '../support/page-objects/Settings';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
+import { TENANCY_QUERY_STRING_KEY } from '../../../shared/constants/queryStringKeys';
 
 describe('Reporting index', () => {
   const admin = 'admin:dev';
@@ -25,7 +26,7 @@ describe('Reporting index', () => {
 
   it('should correctly match index pattern when audit index_template contains .reporting', () => {
     const indexPattern = 'xxx.reporting';
-    RorMenu.changeTenancy('Infosec', '/app/home#/');
+    RorMenu.changeTenancy('Infosec', `/app/home?${TENANCY_QUERY_STRING_KEY}=*#/`);
     KibanaNavigation.openPage('Stack Management');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       KibanaNavigation.openSubPage('Data Views');

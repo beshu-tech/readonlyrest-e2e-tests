@@ -45,7 +45,7 @@ describe('settings', () => {
   it('should save settings and verify success response from request when user without group logging in', () => {
     const [username, password] = Cypress.env().kibanaUserCredentials.split(':');
 
-    Login.initialization({ username, password });
+    Login.initialization({ credentials: { username, password } });
     Settings.open();
     cy.intercept('POST', '/pkp/api/settings').as('saveSettings');
     Settings.clickSaveButton();

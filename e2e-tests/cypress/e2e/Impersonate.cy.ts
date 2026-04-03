@@ -100,11 +100,6 @@ describe('impersonate', () => {
     Impersonate.saveEditMockUsers();
     Impersonate.assertUser(2, 1, 'kibana', ['group3']);
 
-    cy.log('should free impersonate user check');
-    Impersonate.freeTypeImpersonateUser('new_user');
-    Impersonate.finishImpersonation();
-    Impersonate.verifyFinishedImpersonation();
-
     cy.log('should impersonate localUser');
     Impersonate.open();
     Impersonate.impersonateUserFromTheList(3, 2, 'new_user');

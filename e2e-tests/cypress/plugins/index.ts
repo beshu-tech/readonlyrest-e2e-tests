@@ -1,10 +1,24 @@
 import https, { Agent } from 'https';
+import { createHmac } from 'crypto';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
+
+let embeddedServer: ReturnType<typeof https.createServer> | null = null;
+const EMBEDDED_SERVER_PORT = 8080;
+const ROOT_DIR = path.join(__dirname, '..', '..', '..');
+const FIXTURES_DIR = path.join(__dirname, '..', 'fixtures');
+const JWT_SECRET = 'a-string-secret-at-least-256-bits-long';
+
+const generateJwt = (payload: object): string => {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${signature}`;
+};
 
 const formatLoggerData = (data: unknown) =>
   inspect(data, {
@@ -130,6 +144,59 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         req.on('error', () => resolve('error'));
         req.end();
       });
+    },
+    startEmbeddedServer(): Promise<number> {
+      if (embeddedServer) return Promise.resolve(EMBEDDED_SERVER_PORT);
+
+      const certDir = path.join(ROOT_DIR, 'local-testing', 'config', 'kbn_certs');
+      const sslOptions = {
+        key: fs.readFileSync(path.join(certDir, 'localhost.key')),
+        cert: fs.readFileSync(path.join(certDir, 'localhost.cer')),
+        rejectUnauthorized: false
+      };
+      const html = fs.readFileSync(path.join(FIXTURES_DIR, 'embedded.html'));
+
+      return new Promise((resolve, reject) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        embeddedServer = (https.createServer as any)(sslOptions, (_req: any, res: any) => {
+          const jwt = generateJwt({ sub: 'admin', group: ['administrators', 'infosec', 'template'], iat: Math.floor(Date.now() / 1000) });
+          const htmlWithJwt = html.toString().replace(/jwt=[^&"#\s]+/, `jwt=${jwt}`);
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(htmlWithJwt);
+        });
+
+        embeddedServer.listen(EMBEDDED_SERVER_PORT, () => {
+          console.log(`Embedded server started at https://localhost:${EMBEDDED_SERVER_PORT}`);
+          resolve(EMBEDDED_SERVER_PORT);
+        });
+
+        embeddedServer.on('error', (err: NodeJS.ErrnoException) => {
+          if (err.code === 'EADDRINUSE') {
+            console.log(`Port ${EMBEDDED_SERVER_PORT} already in use — assuming server is running`);
+            embeddedServer = null;
+            resolve(EMBEDDED_SERVER_PORT);
+          } else {
+            reject(err);
+          }
+        });
+      });
+    },
+    stopEmbeddedServer(): Promise<null> {
+      return new Promise(resolve => {
+        if (!embeddedServer) {
+          resolve(null);
+          return;
+        }
+        embeddedServer.closeAllConnections?.();
+        embeddedServer.close(() => {
+          embeddedServer = null;
+          console.log('Embedded server stopped');
+          resolve(null);
+        });
+      });
+    },
+    generateJwt(payload: object): string {
+      return generateJwt(payload);
     },
     async clearDownloads() {
       const downloadsFolder = path.join('cypress', 'downloads');

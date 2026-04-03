@@ -40,7 +40,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       });
 
       it(`should correctly display all reports from both the old reporting index and the new reporting data stream`, () => {
-        Login.initialization({ username, password });
+        Login.initialization({ credentials: { username, password } });
         Home.loadSampleData();
         Discover.openDataViewPage();
         Discover.saveReport(newFormatReportingName);
@@ -56,7 +56,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       });
 
       it('should display all reports from all reporting data stream segments', () => {
-        Login.initialization({ username, password });
+        Login.initialization({ credentials: { username, password } });
         Home.loadSampleData();
         Discover.openDataViewPage();
         Discover.saveReport(newFormatReportingName);
@@ -80,7 +80,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
     });
     describe(`Reporting tests for ${username}`, () => {
       it('should correctly display all reporting data', () => {
-        Login.initialization({ username, password });
+        Login.initialization({ credentials: { username, password } });
         Home.loadSampleData();
         Discover.openDataViewPage();
         Discover.saveReport(reportingName);
