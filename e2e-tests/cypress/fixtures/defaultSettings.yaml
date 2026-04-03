@@ -48,6 +48,13 @@ readonlyrest:
       auth_key: 'elastic-internal:${INTERNAL_USR_PASS}'
     # <!-- related to ECK environment -->
 
+    - name: JWT_AUTH
+      jwt_auth:
+        name: "jwt1"
+        groups_any_of: [ "administrators", "infosec", "template" ]
+      kibana:
+        access: admin
+
     - name: PERSONAL_GRP
       groups: [ Personal ]
       <<: *common-rules

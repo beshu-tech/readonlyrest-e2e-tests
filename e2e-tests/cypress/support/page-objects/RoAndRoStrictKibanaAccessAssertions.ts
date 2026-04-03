@@ -9,22 +9,20 @@ import { Discover } from './Discover';
 import { Canvas } from './Canvas';
 import { IndexPattern } from './IndexPattern';
 import { getKibanaVersion } from '../helpers';
+import { Tenancy } from './Tenancy';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
 
 export class RoAndRoStrictKibanaAccessAssertions {
   static runAssertions(fixtureYamlFileName: string) {
-    RorMenu.changeTenancy('template', '/app/home#/');
+    RorMenu.changeTenancy('template');
     Home.loadSampleData();
     Settings.setSettingsData(fixtureYamlFileName);
-    RorMenu.changeTenancy('administrators', '/app/home#/');
-    RorMenu.changeTenancy('template', '/app/home#/');
+    RorMenu.changeTenancy('administrators');
+    RorMenu.changeTenancy('template');
     Home.loadSampleDataButtonHidden();
 
     cy.log('Verify Dashboard features');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      Dashboard.openDashboards();
-    } else {
-      Dashboard.openDashboard();
-    }
+    Dashboard.openDashboard();
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
     Dashboard.editButtonNotExist();
@@ -39,6 +37,22 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Discover.optionsButtonNotExist();
     Discover.newButtonNotExist();
     Discover.saveButtonNotExist();
+
+    cy.log('Verify discover Link sharing');
+    Tenancy.getTenancyFromUrl().then(tenancy => {
+      Discover.openShareDiscover();
+      Discover.clickCopyLinkButton('ro');
+      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+        cy.getValueFromClipboard()
+          .should('contain', 'https://localhost:5601/s/default/app/r?l=DISCOVER_APP_LOCATOR')
+          .should('contain', `&${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
+      } else {
+        cy.getValueFromClipboard().should(
+          'contain',
+          `https://localhost:5601/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${tenancy}#`
+        );
+      }
+    });
 
     /*
      * It's deprecated and not visible in a Kibana 9.0.0 https://github.com/elastic/kibana/issues/200649
@@ -66,8 +80,18 @@ export class RoAndRoStrictKibanaAccessAssertions {
       cy.wait('@canvasResolve');
     }
 
-    cy.log('Verify Index Pattern features');
     KibanaNavigation.openPage('Stack Management');
+    cy.log('Verify navigation items');
+
+    const VISIBLE_STACK_MANAGEMENT_ITEMS = semver.gte(getKibanaVersion(), '8.0.0')
+      ? ['Reporting', 'Data Views', 'Saved Objects']
+      : ['Reporting', 'Index Patterns', 'Saved Objects'];
+    cy.get('.euiSideNavItem a').should('have.length', VISIBLE_STACK_MANAGEMENT_ITEMS.length);
+    VISIBLE_STACK_MANAGEMENT_ITEMS.forEach(title => {
+      cy.get(`span[title="${title}"]`).should('be.visible');
+    });
+
+    cy.log('Verify Index Pattern features');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       KibanaNavigation.openSubPage('Data Views');
     } else {

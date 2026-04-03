@@ -1,8 +1,10 @@
+import { TENANCY_QUERY_STRING_KEY } from '../types';
+
 export class Loader {
-  public static loading(finishUrl?: string) {
+  public static loading(finishUrl?: string, spacePrefix?: string) {
     cy.log('loading');
     this.start();
-    this.finish(finishUrl);
+    this.finish(finishUrl, spacePrefix);
   }
 
   public static waitForBreadcrumb(breadcrumb: string) {
@@ -14,10 +16,10 @@ export class Loader {
     cy.contains('Loading Elastic', { timeout: 80000 }).should('exist');
   }
 
-  private static finish(finishUrl = '/app/home', spacePrefix = '/s/default') {
+  private static finish(finishUrl = `/app/home?${TENANCY_QUERY_STRING_KEY}=*`, spacePrefix = '/s/default') {
     cy.log('loading finish');
     cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
-    cy.url().should('include', `${Cypress.config().baseUrl}${spacePrefix}${finishUrl}`);
+    cy.urlShouldMatch(`${spacePrefix}${finishUrl}`);
     cy.get('[data-test-subj=globalLoadingIndicator-hidden]').should('be.visible');
   }
 }

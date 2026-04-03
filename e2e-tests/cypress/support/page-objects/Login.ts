@@ -1,27 +1,41 @@
 import { Loader } from './Loader';
 
+type Credentials = { username: string; password: string };
 export class Login {
   static fillLoginPageWithWrongCredentials() {
     Login.fillLoginPageWith('wrong_username', 'wrong_password');
   }
 
-  static initialization(credentials?: { username: string; password: string }) {
+  static suppressPostLoginNotices() {
     cy.on('url:changed', () => {
       sessionStorage.setItem('ror:ignoreKeyExpirationInfo', 'true');
       localStorage.setItem('home:welcome:show', 'false');
     });
-    Login.signIn(credentials);
-    Loader.loading();
   }
 
-  static signIn(
-    { username, password }: { username: string; password: string } = {
-      username: Cypress.env().login,
-      password: Cypress.env().password
-    }
-  ) {
-    cy.visit(Cypress.config().baseUrl);
-    Login.fillLoginPageWith(username, password);
+  static initialization({
+    credentials,
+    visitedUrl,
+    finishUrl,
+    spacePrefix
+  }: { credentials?: Credentials; visitedUrl?: string; finishUrl?: string; spacePrefix?: string } = {}) {
+    Login.suppressPostLoginNotices();
+    Login.signIn({ credentials, visitedUrl });
+    Loader.loading(finishUrl, spacePrefix);
+  }
+
+  static signIn({
+    credentials = {
+      username: Cypress.env('login'),
+      password: Cypress.env('password')
+    },
+    visitedUrl = Cypress.config('baseUrl')
+  }: {
+    credentials?: Credentials;
+    visitedUrl?: string;
+  } = {}) {
+    cy.visit(visitedUrl);
+    Login.fillLoginPageWith(credentials.username, credentials.password);
   }
 
   static hasLicenseChangedMessage() {
@@ -47,5 +61,10 @@ export class Login {
     cy.log('Verify login page title');
 
     cy.contains(title);
+  }
+
+  static visitWithSessionCookie(cookieValue: string, url: string) {
+    cy.setCookie('rorCookie', cookieValue);
+    cy.visit(url);
   }
 }
