@@ -9,7 +9,7 @@ import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
-import { TENANCY_QUERY_STRING_KEY } from '../../../shared/constants/queryStringKeys';
+import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Tenancy } from '../support/page-objects/Tenancy';
 
 describe('sanity check', () => {

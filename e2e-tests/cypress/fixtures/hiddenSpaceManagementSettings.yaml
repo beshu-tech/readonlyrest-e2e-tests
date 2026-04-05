@@ -3,7 +3,7 @@ readonlyrest:
     - name: 'Kibana service account - user/pass'
       verbosity: error
       auth_key: kibana:kibana
-
+      kibana_access: unrestricted
     - name: ADMIN_GRP
       groups: [admins_group]
       kibana_hide_apps: ['Management|Stack Management']

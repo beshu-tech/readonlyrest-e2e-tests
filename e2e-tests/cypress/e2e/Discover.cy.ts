@@ -8,7 +8,7 @@ import { getKibanaVersion } from '../support/helpers';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { SearchSessions } from '../support/page-objects/SearchSessions';
 
-const userCredentials = 'user2:dev';
+const userCredentials = 'user4:dev';
 const tenantIndex = '.kibana_admins_group';
 const indexWithSearchSessions = semver.lt(getKibanaVersion(), '8.0.0')
   ? `${tenantIndex}_${getKibanaVersion()}_001`

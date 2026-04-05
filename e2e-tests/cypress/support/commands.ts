@@ -210,7 +210,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
-    err.message.includes('Not Found') // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
+    err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
+    err.message.includes('Loading chunk') // kibana 9.3.2
   ) {
     return false;
   }

@@ -9,7 +9,7 @@ import { Home } from '../support/page-objects/Home';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Dashboard } from '../support/page-objects/Dashboard';
-import { TENANCY_QUERY_STRING_KEY } from '../../../shared/constants/queryStringKeys';
+import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Spaces } from '../support/page-objects/Spaces';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 

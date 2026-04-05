@@ -147,11 +147,10 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     },
     startEmbeddedServer(): Promise<number> {
       if (embeddedServer) return Promise.resolve(EMBEDDED_SERVER_PORT);
-
-      const certDir = path.join(ROOT_DIR, 'local-testing', 'config', 'kbn_certs');
+      const certDir = path.join(ROOT_DIR, 'environments', 'elk-ror', 'certs');
       const sslOptions = {
-        key: fs.readFileSync(path.join(certDir, 'localhost.key')),
-        cert: fs.readFileSync(path.join(certDir, 'localhost.cer')),
+        key: fs.readFileSync(path.join(certDir, 'kibana.key')),
+        cert: fs.readFileSync(path.join(certDir, 'kibana.crt')),
         rejectUnauthorized: false
       };
       const html = fs.readFileSync(path.join(FIXTURES_DIR, 'embedded.html'));
@@ -159,7 +158,11 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       return new Promise((resolve, reject) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         embeddedServer = (https.createServer as any)(sslOptions, (_req: any, res: any) => {
-          const jwt = generateJwt({ sub: 'admin', group: ['administrators', 'infosec', 'template'], iat: Math.floor(Date.now() / 1000) });
+          const jwt = generateJwt({
+            sub: 'admin',
+            group: ['administrators', 'infosec', 'template'],
+            iat: Math.floor(Date.now() / 1000)
+          });
           const htmlWithJwt = html.toString().replace(/jwt=[^&"#\s]+/, `jwt=${jwt}`);
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(htmlWithJwt);

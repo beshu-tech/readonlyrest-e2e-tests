@@ -6,7 +6,7 @@ import { Settings } from '../support/page-objects/Settings';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
-import { TENANCY_QUERY_STRING_KEY } from '../../../shared/constants/queryStringKeys';
+import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 
 describe('Reporting index', () => {
   const admin = 'admin:dev';
