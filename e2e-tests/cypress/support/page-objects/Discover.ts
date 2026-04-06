@@ -124,6 +124,11 @@ export class Discover {
     }
   };
 
+  static selectDataView(dataView: string) {
+    cy.getByDataTestSubj('discover-dataView-switch-link').click();
+    cy.contains('[data-test-subj="fullText"]', dataView).click();
+  }
+
   static verifyDocumentWithTodayRange = (row: number, indexPatternName: string) => {
     cy.log('verify Document with Today Range');
 

@@ -6,9 +6,10 @@ import { Home } from '../support/page-objects/Home';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
-import { userCredentials } from '../support/helpers';
+import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Login } from '../support/page-objects/Login';
 import { RorMenu } from '../support/page-objects/RorMenu';
+import semver from 'semver';
 
 describe('Index Session', () => {
   beforeEach(() => {
@@ -42,6 +43,9 @@ describe('Index Session', () => {
 
     Home.loadSampleData();
     KibanaNavigation.openPage('Discover');
+    if (semver.gte(getKibanaVersion(), '9.0.0')) {
+      Discover.selectDataView('Kibana Sample Data eCommerce');
+    }
     Discover.verifyDocumentWithTodayRange(0, 'kibana_sample_data_ecommerce');
   });
 
