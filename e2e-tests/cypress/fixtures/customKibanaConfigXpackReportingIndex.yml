@@ -20,11 +20,11 @@ server.ssl.certificate: /usr/share/kibana/config/kibana.crt
 server.ssl.key: /usr/share/kibana/config/kibana.key
 server.ssl.redirectHttpFromPort: 80
 
-#xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!" //FIXME: see https://github.com/beshu-tech/ror-sandbox/pull/74
+xpack.encryptedSavedObjects.encryptionKey: "19+230i1902i310293213i109312i31209302193219039120i3j23h31h3h213h123!"
 xpack.reporting.encryptionKey: "321421321211231241232132132132132"
+xpack.reporting.index: '.reporting-test-index'
 
 telemetry.enabled: false
 
-xpack.reporting.index: '.reporting-test-index'
 readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'

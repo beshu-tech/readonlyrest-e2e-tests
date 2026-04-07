@@ -3,7 +3,7 @@ helpers:
     verbosity: error
   ckr: &common-kibana-rules
     access: rw
-    hide_apps: [ "Enterprise Search|Overview" ]
+    hide_apps: ["Enterprise Search|Overview"]
     index: ".kibana_@{acl:current_group}"
   ag: &all-groups
     groups:
@@ -16,8 +16,6 @@ helpers:
 
 readonlyrest:
   response_if_req_forbidden: You shall not pass!
-  prompt_for_basic_auth: false
-
   audit:
     enabled: true
     outputs:
@@ -25,10 +23,11 @@ readonlyrest:
         index_template: "'readonlyrest_audit_'yyyy-MM-dd"
 
   access_control_rules:
-    - name: 'Kibana service account - user/pass'
+
+    - name: "Kibana service account - user/pass"
       verbosity: error
       auth_key: kibana:kibana
-
+      kibana_access: unrestricted
     - name: 'APM'
       type: allow
       auth_key: apm:test
@@ -49,6 +48,13 @@ readonlyrest:
       auth_key: 'elastic-internal:${INTERNAL_USR_PASS}'
     # <!-- related to ECK environment -->
 
+    - name: JWT_AUTH
+      jwt_auth:
+        name: "jwt1"
+        groups_any_of: [ "administrators", "infosec", "template" ]
+      kibana:
+        access: admin
+
     - name: PERSONAL_GRP
       groups: [ Personal ]
       <<: *common-rules
@@ -64,6 +70,7 @@ readonlyrest:
         access: admin
         metadata:
           alert_message: "Dear @{acl:user}"
+
     - name: infosec
       groups: [ infosec_group ]
       kibana:
@@ -89,6 +96,7 @@ readonlyrest:
         index: ".kibana_user3"
         access: rw
       indices: ["invoices"]
+
     - name: "defined indices: user 4"
       auth_key: user4:dev
       verbosity: error
@@ -96,6 +104,7 @@ readonlyrest:
       kibana:
         access: rw
         index: '.default_index'
+
   users:
     - username: admin
       auth_key: admin:dev
@@ -104,6 +113,34 @@ readonlyrest:
     - username: user1
       auth_key: user1:dev
       <<: *all-groups
+
+    - username: "*"
+      jwt_auth:
+        name: "jwt1"
+      groups:
+        - local_group:
+            id: admins_group
+            name: administrators
+          external_group_ids: ["administrators"]
+        - local_group:
+            id: infosec_group
+            name: infosec
+          external_group_ids: ["infosec"]
+        - local_group:
+            id: template_group
+            name: template
+          external_group_ids: ["template"]
+
+  jwt:
+    - name: jwt1
+      signature_key: "a-string-secret-at-least-256-bits-long"
+      group_ids_claim: group
+      user_claim: sub
+      header_name: Authorization
+
+  ror_kbn:
+    - name: kbn1
+      signature_key: "9yzBfnLaTYLfGPzyKW9es76RKYhUVgmuv6ZtehaScj5msGpBpa5FWpwk295uJYaaffTFnQC5tsknh2AguVDaTrqCLfM5zCTqdE4UGNL73h28Bg4dPrvTAFQyygQqv4xfgnevBED6VZYdfjXAQLc8J8ywaHQQSmprZqYCWGE6sM3vzNUEWWB3kmGrEKa4sGbXhmXZCvL6NDnEJhXPDJAzu9BMQxn8CzVLqrx6BxDgPYF8gZCxtyxMckXwCaYXrxAGbjkYH69F4wYhuAdHSWgRAQCuWwYmWCA6g39j4VPge5pv962XYvxwJpvn23Y5KvNZ5S5c6crdG4f4gTCXnU36x92fKMQzsQV9K4phcuNvMWkpqVB6xMA5aPzUeHcGytD93dG8D52P5BxsgaJJE6QqDrk3Y2vyLw9ZEbJhPRJxbuBKVCBtVx26Ldd46dq5eyyzmNEyQGLrjQ4qd978VtG8TNT5rkn4ETJQEju5HfCBbjm3urGLFVqxhGVawecT4YM9Rry4EqXWkRJGTFQWQRnweUFbKNbVTC9NxcXEp6K5rSPEy9trb5UYLYhhMJ9fWSBMuenGRjNSJxeurMRCaxPpNppBLFnp8qW5ezfHgCBpEjkSNNzP4uXMZFAXmdUfJ8XQdPTWuYfdHYc5TZWnzrdq9wcfFQRDpDB2zX5Myu96krDt9vA7wNKfYwkSczA6qUQV66jA8nV4Cs38cDAKVBXnxz22ddAVrPv8ajpu7hgBtULMURjvLt94Nc5FDKw79CTTQxffWEj9BJCDCpQnTufmT8xenywwVJvtj49yv2MP2mGECrVDRmcGUAYBKR8G6ZnFAYDVC9UhY46FGWDcyVX3HKwgtHeb45Ww7dsW8JdMnZYctaEU585GZmqTJp2LcAWRcQPH25JewnPX8pjzVpJNcy7avfA2bcU86bfASvQBDUCrhjgRmK2ECR6vzPwTsYKRgFrDqb62FeMdrKgJ9vKs435T5ACN7MNtdRXHQ4fj5pNpUMDW26Wd7tt9bkBTqEGf"
 
   impersonation:
     - impersonator: admin

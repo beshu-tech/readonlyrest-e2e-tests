@@ -2,8 +2,6 @@ import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
 import { rorApiClient } from '../helpers/RorApiClient';
-import semver from 'semver';
-import { getKibanaVersion } from '../helpers';
 
 export class Impersonate {
   static open() {
@@ -139,6 +137,11 @@ export class Impersonate {
     SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').click();
   }
 
+  static openImpersonateDialog() {
+    cy.log('Open impersonate dialog');
+    SecuritySettings.getIframeBody().findByTestId('impersonate-button').click();
+  }
+
   static impersonateUserFromTheList(index: number, rowIndex: number, username: string) {
     cy.log('impersonation user from the list');
     Impersonate.getServiceByIndex(index).as('service');
@@ -169,12 +172,7 @@ export class Impersonate {
     cy.log('finish impersonation');
     RorMenu.openRorMenu();
     cy.contains('Finish impersonation').click();
-    if (semver.gte(getKibanaVersion(), '9.3.0')) {
-
-    } else {
-      Loader.loading();
-
-    }
+    Loader.loading();
   }
 
   static setTestSettingsData(): Cypress.Chainable<void> {

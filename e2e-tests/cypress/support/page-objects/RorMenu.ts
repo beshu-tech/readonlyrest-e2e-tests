@@ -17,13 +17,13 @@ export class RorMenu {
     });
   }
 
-  static changeTenancy(tenancyName: string, finishUrl?: string) {
+  static changeTenancy(tenancyName: string, finishUrl?: string, spacePrefix?: string) {
     cy.log('changeTenancy');
     RorMenu.openRorMenu();
     cy.get('.ror_change_tenancy', { timeout: 30000 }).should('be.visible');
     cy.contains('Change tenancy').click({ force: true });
     cy.contains(tenancyName, { matchCase: false }).click({ force: true });
-    Loader.loading(finishUrl);
+    Loader.loading(finishUrl, spacePrefix);
   }
 
   static openReportingPage() {

@@ -21,13 +21,13 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
-  public deleteAllSpaces(credentials: string): void {
+  public deleteAllSpaces(credentials: string, group?: string): void {
     cy.log(`Delete all spaces`);
-    this.getAllSpaces(credentials).then(spaces => {
+    this.getAllSpaces(credentials, group).then(spaces => {
       spaces
         .filter(space => space.id !== 'default')
         .forEach(space => {
-          this.deleteSpace(space.id, credentials);
+          this.deleteSpace(space.id, credentials, group);
         });
     });
   }

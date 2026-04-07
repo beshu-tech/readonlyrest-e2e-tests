@@ -58,7 +58,7 @@ describe('Spaces', () => {
   });
 
   if (semver.gte(getKibanaVersion(), '9.1.0')) {
-    // FIXME: fr Kibana 9.1.0 there is a new .kibana_security_search indexnot handled on es side yet
+    // FIXME: for Kibana 9.1.0 there is a new .kibana_security_search index not handled on es side yet
     it.skip('should create and navigate to new space with hidden features');
   } else {
     it('should create and navigate to new space with hidden features', () => {
@@ -70,7 +70,7 @@ describe('Spaces', () => {
       if (semver.gte(getKibanaVersion(), '8.4.0')) {
         cy.get('[data-test-subj=test-space-selectableSpaceItem]', { timeout: 10000 }).click();
       } else {
-        cy.get('a[href="/s/test-space/spaces/enter"]', { timeout: 10000 }).should('be.visible').click({ force: true });
+        cy.get('a[href*="/s/test-space/spaces/enter"]', { timeout: 10000 }).should('be.visible').click({ force: true });
       }
       cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
       cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
@@ -84,7 +84,7 @@ describe('Spaces', () => {
     });
   }
 
-  it('should hide space permission tab and not permit to navigate to itm', () => {
+  it('should hide space permission tab and not permit to navigate to it', () => {
     cy.log('Navigate to default space management');
     cy.get('[data-test-subj=spacesNavSelector]').click();
     cy.contains('Manage spaces').should('be.visible').click({ force: true });

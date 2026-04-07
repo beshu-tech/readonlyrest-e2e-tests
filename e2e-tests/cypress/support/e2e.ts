@@ -142,6 +142,8 @@ declare global {
       shouldHaveStyle(property: string, value: string): Chainable<Element>;
       getByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
       findByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
+      getValueFromClipboard(): Chainable<string>;
+      urlShouldMatch(urlPattern: string): Chainable<string>;
     }
 
     type Payload = string | object;

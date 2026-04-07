@@ -52,9 +52,4 @@ export class SecuritySettings {
   static checkActiveTab(tab: string) {
     SecuritySettings.getIframeBody().findByRole('tab', { name: tab, selected: true }).should('be.visible');
   }
-
-  static closeSecuritySettings() {
-    cy.log('close security settings');
-    SecuritySettings.getIframeBody().find('[aria-label="Close settings"]').click();
-  }
 }

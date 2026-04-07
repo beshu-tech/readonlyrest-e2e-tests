@@ -47,4 +47,25 @@ export class Spaces {
     cy.get('[data-test-subj=save-space-button]').click();
     cy.contains(`Space '${spaceName}' was saved.`);
   }
+
+  static openSpace(spaceName: string) {
+    cy.log('Open space');
+    cy.getByDataTestSubj('spacesNavSelector').click();
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.getByDataTestSubj(`${spaceName}-selectableSpaceItem`).click();
+    } else {
+      cy.getByDataTestSubj(`${spaceName}-gotoSpace`).click();
+    }
+  }
+
+  static verifyCurrentSpace(spaceName: string) {
+    cy.log('Verify current space');
+    if (semver.gte(getKibanaVersion(), '9.0.0')) {
+      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');
+    } else if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('exist');
+    } else {
+      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');
+    }
+  }
 }

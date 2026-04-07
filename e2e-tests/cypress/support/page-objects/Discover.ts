@@ -55,6 +55,27 @@ export class Discover {
     // cy.readFile('cypress/downloads/admin_search.csv').should('not.be.null');
   }
 
+  static openShareDiscover() {
+    cy.log('openShareDiscoverUrl');
+    cy.getByDataTestSubj('shareTopNavButton').click();
+
+    if (semver.lt(getKibanaVersion(), '8.0.0')) {
+      cy.getByDataTestSubj('sharePanel-Permalinks').click();
+    }
+  }
+
+  static clickCopyLinkButton(accessLevel: 'admin' | 'rw' | 'ro' | 'ro_strict') {
+    cy.log('clickCopyLinkButton');
+
+    if (semver.gte(getKibanaVersion(), '8.0.0') && ['admin', 'rw'].includes(accessLevel)) {
+      cy.intercept({ method: 'POST', pathname: '/s/default/api/short_url' }).as('generateShortUrl');
+      cy.getByDataTestSubj('copyShareUrlButton').click();
+      cy.wait('@generateShortUrl');
+    } else {
+      cy.getByDataTestSubj('copyShareUrlButton').click();
+    }
+  }
+
   static optionsButtonNotExist() {
     cy.log('Options button Not exist');
     if (semver.gte(getKibanaVersion(), '8.8.0')) {
@@ -103,6 +124,11 @@ export class Discover {
     }
   };
 
+  static selectDataView(dataView: string) {
+    cy.getByDataTestSubj('discover-dataView-switch-link').click();
+    cy.contains('[data-test-subj="fullText"]', dataView).click();
+  }
+
   static verifyDocumentWithTodayRange = (row: number, indexPatternName: string) => {
     cy.log('verify Document with Today Range');
 
@@ -123,8 +149,15 @@ export class Discover {
 
   static selectTodayDataRange = () => {
     cy.log('Select Today Data Range');
+    const searchUrl = semver.gte(getKibanaVersion(), '9.0.0')
+      ? `/s/default/internal/search/ese**`
+      : `/s/default/internal/bsearch**`;
+    cy.intercept('POST', searchUrl).as('search');
+
     cy.get('[data-test-subj="superDatePickerToggleQuickMenuButton"]').click();
     cy.get('[data-test-subj="superDatePickerCommonlyUsed_Today"]').click();
+
+    cy.wait('@search');
   };
 
   static toastErrorNotVisible = (message: string) => {

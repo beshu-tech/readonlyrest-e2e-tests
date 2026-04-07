@@ -1,4 +1,6 @@
+import semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
+import { getKibanaVersion } from '../helpers';
 
 export class Dashboard {
   static openItem(number) {
@@ -36,6 +38,55 @@ export class Dashboard {
 
   static openDashboard() {
     cy.log('Open dashboard');
-    KibanaNavigation.openPage('Dashboard');
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      KibanaNavigation.openPage('Dashboards');
+    } else {
+      KibanaNavigation.openPage('Dashboard');
+    }
+  }
+
+  static openShareDashboard() {
+    cy.log('openShareDiscoverUrl');
+    cy.getByDataTestSubj('shareTopNavButton').click();
+
+    if (semver.lt(getKibanaVersion(), '8.0.0')) {
+      cy.getByDataTestSubj('sharePanel-Permalinks').click();
+    }
+  }
+
+  static clickCopyLinkButton() {
+    cy.log('clickCopyLinkButton');
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.intercept({ method: 'POST', pathname: '/s/default/api/short_url' }).as('generateShortUrl');
+      cy.getByDataTestSubj('copyShareUrlButton').click();
+      cy.wait('@generateShortUrl');
+    } else {
+      cy.getByDataTestSubj('copyShareUrlButton').click();
+    }
+  }
+
+  static clickEmbedTab() {
+    cy.log('clickEmbedTab');
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.getByDataTestSubj('embed').click();
+    } else {
+      cy.getByDataTestSubj('sharePanel-Embedcode').click();
+    }
+  }
+
+  static clickCopyEmbedCodeButton() {
+    cy.log('clickCopyEmbedCodeButton');
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.getByDataTestSubj('copyEmbedUrlButton').click();
+    } else {
+      cy.getByDataTestSubj('copyShareUrlButton').click();
+    }
+  }
+
+  static backToShareDashboard() {
+    cy.log('backToShareDashboard');
+    if (semver.lt(getKibanaVersion(), '8.0.0')) {
+      cy.getByDataTestSubj('contextMenuPanelTitleButton').click();
+    }
   }
 }

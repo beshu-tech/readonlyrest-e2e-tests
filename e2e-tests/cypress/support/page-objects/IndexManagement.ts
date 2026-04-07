@@ -94,4 +94,16 @@ export class IndexManagement {
       cy.contains('No indices to show').should('be.visible');
     }
   }
+
+  static openDataStreams() {
+    cy.log('Open Data Streams');
+
+    cy.get('[data-test-subj="data_streamsTab"]').click();
+  }
+
+  static verifyDataStreamsEmptyPage() {
+    cy.log('Verify data streams empty page');
+
+    cy.contains('[data-test-subj="title"]', "You don't have any data streams yet");
+  }
 }

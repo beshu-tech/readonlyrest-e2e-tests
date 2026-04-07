@@ -1,3 +1,5 @@
+import { PageNotFound } from './PageNotFound';
+
 export class KibanaNavigation {
   static openPage(page: string | RegExp) {
     cy.log('open page');
@@ -40,6 +42,8 @@ export class KibanaNavigation {
   static checkIfRouteNotReachable(pathname: string, spacePrefix = '/s/default') {
     cy.log('checkIfRouteNotReachable');
     cy.visit(`${Cypress.config().baseUrl}${pathname}`);
+    PageNotFound.visible();
+    PageNotFound.goToDefaultRoute();
     cy.url().should('include', `${Cypress.config().baseUrl}${spacePrefix}/app/home`);
   }
 
@@ -77,5 +81,12 @@ export class KibanaNavigation {
         .children()
         .should('have.length', count);
     }
+  }
+
+  static verifyKibanaNavigationLinkItemHref(href: string) {
+    cy.log('verifyKibanaNavigationLinkItemHref');
+    KibanaNavigation.openKibanaNavigation();
+
+    cy.get(`a[href*="${href}"]`);
   }
 }

@@ -17,7 +17,7 @@ describe('Forbidden login test', () => {
 
     cy.get('#form-message').should('be.visible').and('contain.text', 'You shall not pass!');
 
-    Login.initialization({ username: Cypress.env().login, password: Cypress.env().password });
+    Login.initialization({ credentials: { username: Cypress.env().login, password: Cypress.env().password } });
 
     cy.url().should('include', '/s/default/app/home');
   });

@@ -10,6 +10,7 @@ import { Reporting } from '../support/page-objects/Reporting';
 import { SampleData } from '../support/helpers/SampleData';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { Tenancy } from '../support/page-objects/Tenancy';
 
 const customKibanaIndexName = '.kibana_custom';
 
@@ -51,11 +52,7 @@ describe.skip('Kibana-config', () => {
       Login.initialization();
       Discover.openDataViewPage();
       Discover.verifyIndexPatternSwitchLink('readonlyrest_audit-*');
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        Dashboard.openDashboards();
-      } else {
-        Dashboard.openDashboard();
-      }
+      Dashboard.openDashboard();
       Dashboard.verifyDashboardExists('ReadonlyREST Audit Dashboard');
 
       // Verify that the index is reset to the template
@@ -72,11 +69,7 @@ describe.skip('Kibana-config', () => {
 
       RorMenu.pressLogoutButton();
       Login.initialization();
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        Dashboard.openDashboards();
-      } else {
-        Dashboard.openDashboard();
-      }
+      Dashboard.openDashboard();
       Dashboard.verifyDashboardNotExist('Look at my dashboard');
     });
 
@@ -123,6 +116,19 @@ describe.skip('Kibana-config', () => {
         expect(response.status).to.equal(403);
         expect(response.body.error).to.equal('Unauthorized');
       });
+    });
+  });
+
+  describe('Default tenant middleware', () => {
+    before(() => {
+      rorApiInternalKbnClient.changeKibanaConfig('customMiddlewareDefaultTenantKibanaConfig.yml');
+      kbnApiAdvancedClient.waitForKibanaHealth(Cypress.config().baseUrl);
+    });
+
+    it('should open correct tenancy after login when custom middleware sets defaultGroup', () => {
+      Login.initialization();
+
+      Tenancy.checkTenancyNameInBadge('infosec', 'a');
     });
   });
 

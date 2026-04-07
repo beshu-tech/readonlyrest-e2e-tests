@@ -29,10 +29,18 @@ readonlyrest:
     - name: "Kibana service account - user/pass"
       verbosity: error
       auth_key: kibana:kibana
+      kibana_access: unrestricted
 
     - name: "APM"
       type: allow
       auth_key: apm:test
+
+    - name: JWT_AUTH
+      jwt_auth:
+        name: "jwt1"
+        groups_any_of: [ "administrators", "infosec", "template" ]
+      kibana:
+        access: admin
 
     - name: PERSONAL_GRP
       groups: [ Personal ]
@@ -94,3 +102,10 @@ readonlyrest:
     - impersonator: admin
       users: ["*"]
       auth_key: admin:dev
+
+  jwt:
+    - name: jwt1
+      signature_key: "a-string-secret-at-least-256-bits-long"
+      group_ids_claim: group
+      user_claim: sub
+      header_name: Authorization

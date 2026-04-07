@@ -52,14 +52,15 @@ Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, cur
 
 Cypress.Commands.add(
   'kbnGet',
-  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode }, ...args) =>
+  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode, headers }, ...args) =>
     cy.kbnRequest({
       method: 'GET',
       endpoint,
       credentials,
       currentGroupHeader,
       impersonating,
-      failOnStatusCode
+      failOnStatusCode,
+      headers
     })
 );
 
@@ -174,14 +175,27 @@ Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, propert
   });
 });
 
-Cypress.Commands.add('getByDataTestSubj', (value: string, options?: any) => {
-  return cy.get(`[data-test-subj="${value}"]`, options);
+Cypress.Commands.add('getByDataTestSubj', (selector: string) => {
+  return cy.get(`[data-test-subj="${selector}"]`);
 });
 
 Cypress.Commands.add('findByDataTestSubj', { prevSubject: 'element' }, (subject, value: string) => {
   const el = subject.find(`[data-test-subj="${value}"]`);
   return cy.wrap(el);
 });
+
+Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
+  const baseUrl = (Cypress.config().baseUrl ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedPath = urlPattern
+    .replace(/\*/g, '\x00WILDCARD\x00')
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\x00WILDCARD\x00/g, '.+');
+  const hasQueryOrHash = urlPattern.includes('?') || urlPattern.includes('#');
+  const suffix = hasQueryOrHash ? '' : '(\\?[^#]*)?(#.*)?';
+  return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
+});
+
+Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
 
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**
@@ -196,7 +210,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
-    err.message.includes('Not Found') // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
+    err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
+    err.message.includes('Loading chunk') // kibana 9.3.2
   ) {
     return false;
   }
