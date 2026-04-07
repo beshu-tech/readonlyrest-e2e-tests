@@ -40,6 +40,14 @@ export class KbnApiClient {
     });
   }
 
+  public loadSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
+    cy.kbnPost({
+      endpoint: `api/sample_data/${sampleDatasetName}`,
+      credentials,
+      currentGroupHeader: group
+    });
+  }
+
   public deleteSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
     cy.kbnDelete({
       endpoint: `api/sample_data/${sampleDatasetName}`,

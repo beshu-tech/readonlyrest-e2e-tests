@@ -5,16 +5,12 @@ import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { userCredentials } from '../support/helpers';
 
 describe('sanity check ro kibana access', () => {
-  beforeEach(() => {
-    Login.initialization();
-  });
-
   afterEach(() => {
     Settings.setSettingsData('defaultSettings.yaml');
     kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
   });
 
   it('should verify that everything works', () => {
-    RoAndRoStrictKibanaAccessAssertions.runAssertions('roSettings.yaml');
+    RoAndRoStrictKibanaAccessAssertions.runAssertions('roSettings.yaml', userCredentials);
   });
 });

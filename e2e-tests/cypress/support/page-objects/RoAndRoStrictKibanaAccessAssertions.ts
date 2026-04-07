@@ -11,13 +11,14 @@ import { IndexPattern } from './IndexPattern';
 import { getKibanaVersion } from '../helpers';
 import { Tenancy } from './Tenancy';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
+import { kbnApiClient } from '../helpers/KbnApiClient';
+import { Login } from './Login';
 
 export class RoAndRoStrictKibanaAccessAssertions {
-  static runAssertions(fixtureYamlFileName: string) {
-    RorMenu.changeTenancy('template');
-    Home.loadSampleData();
+  static runAssertions(fixtureYamlFileName: string, credentials: string) {
+    kbnApiClient.loadSampleData('ecommerce', credentials, 'template_group');
     Settings.setSettingsData(fixtureYamlFileName);
-    RorMenu.changeTenancy('administrators');
+    Login.initialization();
     RorMenu.changeTenancy('template');
     Home.loadSampleDataButtonHidden();
 
