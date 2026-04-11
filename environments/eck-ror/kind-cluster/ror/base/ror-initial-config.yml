@@ -39,7 +39,7 @@ data:
         - name: "Kibana service account - user/pass"
           verbosity: error
           auth_key: kibana:kibana
-          kibana_access: unrestricted
+          
         - name: "PROBE"
           verbosity: error
           auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"

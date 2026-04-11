@@ -26,7 +26,7 @@ readonlyrest:
     - name: "Kibana service account - user/pass"
       verbosity: error
       auth_key: kibana:kibana
-      kibana_access: unrestricted
+      
     # <-- related to ECK environment -->
     - name: "Kibana service account - token"
       verbosity: error

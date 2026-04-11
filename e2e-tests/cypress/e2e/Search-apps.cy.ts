@@ -20,13 +20,11 @@ describe('Search apps', () => {
     SearchApps.verifyAppsInSearchResults(['Stack Management']); // only Stack Management app should be visible, because if we hide all apps, there is only loading indicator visible in a Kibana UI
     Home.verifyIfCatalogueEmpty();
 
-    //FIXME: there is a problem with integrations visiblility when xpack.security.enabled: true
-
-    // SearchApps.searchApp('aws');
-    // SearchApps.noResultsFound();
-    //
-    // SearchApps.searchApp('type:integration');
-    // SearchApps.noResultsFound();
+    SearchApps.searchApp('aws');
+    SearchApps.noResultsFound();
+    
+    SearchApps.searchApp('type:integration');
+    SearchApps.noResultsFound();
 
     SearchApps.searchApp('readonly');
     SearchApps.noResultsFound();

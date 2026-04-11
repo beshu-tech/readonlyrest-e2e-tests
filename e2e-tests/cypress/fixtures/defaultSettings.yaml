@@ -27,7 +27,7 @@ readonlyrest:
     - name: "Kibana service account - user/pass"
       verbosity: error
       auth_key: kibana:kibana
-      kibana_access: unrestricted
+      
     - name: 'APM'
       type: allow
       auth_key: apm:test
