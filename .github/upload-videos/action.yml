@@ -18,4 +18,4 @@ runs:
       shell: bash
       run: |
         aws configure set region ${{ inputs.region }}
-        aws s3 cp results/videos/ s3://${{ inputs.bucket }}/e2e-tests/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
+        aws s3 cp results/videos/ s3://${{ inputs.bucket }}/ror/e2e-reports/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
