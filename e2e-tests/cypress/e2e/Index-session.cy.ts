@@ -38,13 +38,16 @@ describe('Index Session', () => {
     );
 
     cy.wait('@tenancyInjector');
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 30000 }).should('be.visible');
 
     Tenancy.checkTenancyNameInBadge('template', 'rw');
 
     Home.loadSampleData();
     KibanaNavigation.openPage('Discover');
     if (semver.gte(getKibanaVersion(), '9.0.0')) {
+      cy.intercept('POST', '/s/default/internal/search/ese**').as('dataViewSearch');
       Discover.selectDataView('Kibana Sample Data eCommerce');
+      cy.wait('@dataViewSearch');
     }
     Discover.verifyDocumentWithTodayRange(0, 'kibana_sample_data_ecommerce');
   });
