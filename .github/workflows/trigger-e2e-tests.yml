@@ -50,9 +50,10 @@ jobs:
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}
 
   # ==========================================
   # BOOTSTRAP TESTS
@@ -133,6 +134,7 @@ jobs:
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}
