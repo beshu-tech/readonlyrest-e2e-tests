@@ -34,4 +34,4 @@ runs:
         echo "::add-mask::${AWS_ACCESS_KEY_ID}"
         echo "::add-mask::${AWS_SECRET_ACCESS_KEY}"
         aws configure set region ${{ inputs.region }}
-        aws s3 cp results/videos/ s3://${{ inputs.bucket }}/ror/e2e-reports/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
+        aws s3 cp results/videos/ s3://${{ inputs.bucket }}/ror/e2e_reports/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
