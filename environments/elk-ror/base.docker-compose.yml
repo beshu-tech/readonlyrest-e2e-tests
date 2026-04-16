@@ -26,7 +26,7 @@ services:
       - INTERNAL_PROBE_PASS=UNUSED
       - INTERNAL_USR_PASS=UNUSED
     healthcheck:
-      test: [ "CMD", "curl", "-fk", "-u", "kibana:kibana", "https://localhost:9200/_cluster/health" ]
+      test: [ "CMD", "sh", "-c", "curl -fsk -u kibana:kibana https://localhost:9200/_cluster/health && curl -sk -u kibana:kibana -o /dev/null -w '%{http_code}' https://localhost:9200/.readonlyrest/_doc/1 | grep -qE '^(200|404)$'" ]
       interval: 10s
       timeout: 10s
       retries: 30
