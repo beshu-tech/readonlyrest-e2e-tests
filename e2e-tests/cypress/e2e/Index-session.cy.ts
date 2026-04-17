@@ -53,6 +53,12 @@ describe('Index Session', () => {
       cy.intercept('POST', '/s/default/internal/search/ese**').as('dataViewSearch');
       Discover.selectDataView('Kibana Sample Data eCommerce');
       cy.wait('@dataViewSearch');
+    } else if (semver.lt(getKibanaVersion(), '8.0.0')) {
+      // Kibana 7.x: explicitly select the ecommerce index pattern to avoid stale Discover state
+      cy.intercept('POST', '/s/default/internal/bsearch**').as('dataViewSearch');
+      cy.get('[data-test-subj="indexPattern-switch-link"]').click();
+      cy.findByText('kibana_sample_data_ecommerce').click();
+      cy.wait('@dataViewSearch');
     }
     Discover.verifyDocumentWithTodayRange(0, 'kibana_sample_data_ecommerce');
   });
