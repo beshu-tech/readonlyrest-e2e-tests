@@ -22,6 +22,11 @@ describe('Index Session', () => {
   });
 
   it('should set correct tenancy when reading session without schema from legacy plugin UI', () => {
+    // Kibana throws uncaught promise rejections (Not Found, cloud plugin TypeError) when
+    // navigating to Discover with an empty tenancy index (no data views yet). These are
+    // expected browser errors that don't affect the test outcome.
+    cy.on('uncaught:exception', () => false);
+
     esApiClient.addDocument(
       SESSION_INDEX,
       'e47bcdeb-42ee-4bbf-abbd-0c8ef441873f',

@@ -2,6 +2,8 @@ import { defineConfig } from 'cypress';
 
 export default defineConfig({
   chromeWebSecurity: false,
+  experimentalMemoryManagement: true,
+  numTestsKeptInMemory: 0,
   env: {
     login: 'admin',
     password: 'dev',
