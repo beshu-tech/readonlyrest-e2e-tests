@@ -16,6 +16,7 @@ spec:
       initContainers:
         - name: wait-for-apm
           image: busybox
+          imagePullPolicy: IfNotPresent
           command: ['sh', '-c', 'timeout 300 sh -c "until nc -z eck-ror-apm-http.default.svc 8200; do echo waiting for APM server; sleep 2; done;"']
       containers:
         - name: node-apm-app
