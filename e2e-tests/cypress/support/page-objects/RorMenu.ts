@@ -19,6 +19,7 @@ export class RorMenu {
 
   static changeTenancy(tenancyName: string, finishUrl?: string, spacePrefix?: string) {
     cy.log('changeTenancy');
+    cy.get('[data-testid="tenant-indicator"]', { timeout: 30000 }).should('exist');
     RorMenu.openRorMenu();
     cy.get('.ror_change_tenancy', { timeout: 30000 }).should('be.visible');
     cy.contains('Change tenancy').click({ force: true });
