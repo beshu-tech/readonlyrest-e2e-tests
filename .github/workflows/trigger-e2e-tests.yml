@@ -22,30 +22,42 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-
+  # ==========================================
+  # E2E TESTS - MASTER BRANCH
+  # ==========================================
   master-e2e-tests:
-    if: github.event_name == 'schedule' || github.ref == 'refs/heads/master' || github.base_ref == 'master'
+    name: "🔬 Master E2E Tests"
+    if: >
+      github.event_name == 'schedule' ||
+      github.ref == 'refs/heads/master' ||
+      (github.base_ref == 'master' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ["8.17.3", "7.17.28"]
-        env: [docker, eck]
+        version: ["9.3.3", "9.2.8", "8.19.14", "7.17.29"]
+        env: [docker, eck-2.16.1, eck-3.1.0]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4.4.0
         with:
-          node-version: '20'
-
+          node-version: '24.11.0'
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
-
-      - name: Run tests
-        run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }}
+      # Retry mechanism to handle transient infrastructure issues:
+      # - npm error 429 Too Many Requests from registry.npmjs.org
+      # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
+      # These errors are typically temporary and resolve with a simple retry.
+      - name: Run E2E tests
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          timeout_minutes: 60
+          retry_wait_seconds: 120
+          command: |
+            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
       - name: S3 Upload Videos & show logs
@@ -55,35 +67,83 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-  develop-e2e-tests:
-    if: github.event_name != 'schedule' && (github.ref == 'refs/heads/develop' || github.base_ref == 'develop')
+  # ==========================================
+  # BOOTSTRAP TESTS
+  # ==========================================
+  master-bootstrap-tests:
+    name: "🚀 Bootstrap Tests"
+    if: >
+      github.event_name == 'schedule' ||
+      github.ref == 'refs/heads/master' ||
+      (github.base_ref == 'master' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
+    needs: master-e2e-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ["8.17.3", "7.17.28"]
-        env: [docker, eck]
+        version: ["9.3.0", "9.2.0", "9.1.0", "9.0.0", "8.19.0", "8.18.0", "8.17.0", "8.16.0", "8.15.0", "8.14.0", "8.13.0", "8.12.0", "8.11.0", "8.10.1", "8.9.0", "8.8.0", "8.7.0", "8.6.0", "8.5.0", "8.4.0", "8.3.0", "8.2.0", "8.1.0", "8.0.0", "7.17.0", "7.16.0", "7.15.0", "7.14.0", "7.13.0", "7.12.0", "7.11.2", "7.10.0", "7.9.0"]
+        env: [docker, eck-3.1.0]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+      # Retry mechanism to handle transient infrastructure issues:
+      # - npm error 429 Too Many Requests from registry.npmjs.org
+      # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
+      # These errors are typically temporary and resolve with a simple retry.
+      - name: Run bootstrap tests
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 3
+          timeout_minutes: 30
+          command: |
+            ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+
+  # ==========================================
+  # E2E TESTS - DEVELOP BRANCH
+  # ==========================================
+  develop-e2e-tests:
+    name: "🧪 Develop E2E Tests"
+    if: >
+      github.ref == 'refs/heads/develop' ||
+      (github.base_ref == 'develop' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [ "9.3.3", "9.2.8", "8.19.14", "7.17.29" ]
+        env: [docker, eck-2.16.1, eck-3.1.0]
     env:
-      ROR_ES_VERSION: "1.64.0-pre1"
-      ROR_KBN_VERSION: "1.64.0-pre1"
+      ROR_ES_VERSION: "latest"
+      ROR_KBN_VERSION: "latest"
       MODE: 'dev'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4.4.0
         with:
-          node-version: '20'
-
+          node-version: '24.11.0'
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
-
-      - name: Run tests
-        run: |
-          ./run-env-and-tests.sh --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
+      # Retry mechanism to handle transient infrastructure issues:
+      # - npm error 429 Too Many Requests from registry.npmjs.org
+      # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
+      # These errors are typically temporary and resolve with a simple retry.
+      - name: Run E2E tests
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          timeout_minutes: 60
+          retry_wait_seconds: 120
+          command: |
+            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
@@ -137,7 +197,7 @@ jobs:
           ./run-env-and-tests.sh $PARAMS
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-          
+
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos

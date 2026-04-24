@@ -9,24 +9,28 @@ import { Discover } from './Discover';
 import { Canvas } from './Canvas';
 import { IndexPattern } from './IndexPattern';
 import { getKibanaVersion } from '../helpers';
+import { Tenancy } from './Tenancy';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
+import { kbnApiClient } from '../helpers/KbnApiClient';
+import { Login } from './Login';
 
 export class RoAndRoStrictKibanaAccessAssertions {
-  static runAssertions(fixtureYamlFileName: string) {
-    RorMenu.changeTenancy('template', '/app/home#/');
-    Home.loadSampleData();
+  static runAssertions(fixtureYamlFileName: string, credentials: string) {
+    kbnApiClient.loadSampleData('ecommerce', credentials, 'template_group');
     Settings.setSettingsData(fixtureYamlFileName);
-    RorMenu.changeTenancy('administrators', '/app/home#/');
-    RorMenu.changeTenancy('template', '/app/home#/');
+    Login.initialization();
+    RorMenu.changeTenancy('template');
     Home.loadSampleDataButtonHidden();
 
     cy.log('Verify Dashboard features');
-    cy.intercept('*65024-65279.pbf').as('dashboardResolve');
-    KibanaNavigation.openPage(/dashboard/i);
+    Dashboard.openDashboard();
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
     Dashboard.editButtonNotExist();
     Dashboard.cloneButtonNotExist();
-    cy.wait('@dashboardResolve', { timeout: 30000 });
+    cy.waitForNetworkIdle('*.pbf', 3000, {
+      timeout: 30000
+    });
 
     cy.log('Verify Discover features');
     KibanaNavigation.openPage('Discover');
@@ -35,29 +39,60 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Discover.newButtonNotExist();
     Discover.saveButtonNotExist();
 
-    cy.log('Verify Canvas features');
+    cy.log('Verify discover Link sharing');
+    Tenancy.getTenancyFromUrl().then(tenancy => {
+      Discover.openShareDiscover();
+      Discover.clickCopyLinkButton('ro');
+      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+        cy.getValueFromClipboard()
+          .should('contain', 'https://localhost:5601/s/default/app/r?l=DISCOVER_APP_LOCATOR')
+          .should('contain', `&${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
+      } else {
+        cy.getValueFromClipboard().should(
+          'contain',
+          `https://localhost:5601/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${tenancy}#`
+        );
+      }
+    });
 
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.intercept('/s/default/internal/canvas/fns').as('canvasResolve');
-    } else if (semver.gte(getKibanaVersion(), '8.9.0')) {
-      cy.intercept('/s/default/internal/canvas/fns?compress=true').as('canvasResolve');
-    } else if (semver.gte(getKibanaVersion(), '7.17.15')) {
-      cy.intercept('/s/default/api/canvas/fns?compress=true').as('canvasResolve');
-    } else {
-      cy.intercept('/s/default/internal/bsearch').as('canvasResolve');
+    /*
+     * It's deprecated and not visible in a Kibana 9.0.0 https://github.com/elastic/kibana/issues/200649
+     */
+    if (semver.lt(getKibanaVersion(), '9.0.0')) {
+      cy.log('Verify Canvas features');
+
+      if (semver.gte(getKibanaVersion(), '8.16.0')) {
+        cy.intercept('/s/default/internal/canvas/fns').as('canvasResolve');
+      } else if (semver.gte(getKibanaVersion(), '8.9.0')) {
+        cy.intercept('/s/default/internal/canvas/fns?compress=true').as('canvasResolve');
+      } else if (semver.gte(getKibanaVersion(), '7.17.15')) {
+        cy.intercept('/s/default/api/canvas/fns?compress=true').as('canvasResolve');
+      } else {
+        cy.intercept('/s/default/internal/bsearch').as('canvasResolve');
+      }
+
+      KibanaNavigation.openPage('Canvas');
+      Canvas.openItem(0);
+      SubHeader.readonlyBadgeVisible();
+      SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
+      Canvas.addElementButtonNotExist();
+      Canvas.editButtonNotExist();
+      Canvas.workPadSettingsNotExist();
+      cy.wait('@canvasResolve');
     }
 
-    KibanaNavigation.openPage('Canvas');
-    Canvas.openItem(0);
-    SubHeader.readonlyBadgeVisible();
-    SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
-    Canvas.addElementButtonNotExist();
-    Canvas.editButtonNotExist();
-    Canvas.workPadSettingsNotExist();
-    cy.wait('@canvasResolve');
+    KibanaNavigation.openPage('Stack Management');
+    cy.log('Verify navigation items');
+
+    const VISIBLE_STACK_MANAGEMENT_ITEMS = semver.gte(getKibanaVersion(), '8.0.0')
+      ? ['Reporting', 'Data Views', 'Saved Objects']
+      : ['Reporting', 'Index Patterns', 'Saved Objects'];
+    cy.get('.euiSideNavItem a').should('have.length', VISIBLE_STACK_MANAGEMENT_ITEMS.length);
+    VISIBLE_STACK_MANAGEMENT_ITEMS.forEach(title => {
+      cy.get(`span[title="${title}"]`).should('be.visible');
+    });
 
     cy.log('Verify Index Pattern features');
-    KibanaNavigation.openPage('Stack Management');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       KibanaNavigation.openSubPage('Data Views');
     } else {

@@ -1,6 +1,4 @@
 readonlyrest:
-  prompt_for_basic_auth: false
-
   audit:
     enabled: true
     outputs:
@@ -40,7 +38,8 @@ readonlyrest:
       ldap_authorization:
         name: "LDAP 1"
         groups: ["group3"]
-    
+      kibana_access: admin
+
     - name: PERSONAL_GRP
       groups: [ personal_group ]
       kibana_access: rw

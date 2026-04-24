@@ -21,15 +21,44 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
-  public deleteAllSpaces(credentials: string): void {
+  public deleteAllSpaces(credentials: string, group?: string): void {
     cy.log(`Delete all spaces`);
-    this.getAllSpaces(credentials).then(spaces => {
+    this.getAllSpaces(credentials, group).then(spaces => {
       spaces
         .filter(space => space.id !== 'default')
         .forEach(space => {
-          this.deleteSpace(space.id, credentials);
+          this.deleteSpace(space.id, credentials, group);
         });
     });
+  }
+
+  public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {
+    let attempts = 0;
+
+    function poll() {
+      return cy
+        .task('checkKibanaHealth', {
+          url: baseUrl
+        })
+        .then(status => {
+          const kibana8xAndAboveSuccessStatus = status === 'available';
+          const kibana7xSuccessStatus = status === 'green';
+
+          if (kibana8xAndAboveSuccessStatus || kibana7xSuccessStatus) {
+            cy.log('✅ Kibana is healthy');
+            return;
+          }
+
+          if (attempts >= retries) {
+            throw new Error(`❌ Kibana never became healthy (last status: ${status})`);
+          }
+
+          attempts += 1;
+          return cy.wait(delay).then(poll);
+        });
+    }
+
+    return poll();
   }
 }
 

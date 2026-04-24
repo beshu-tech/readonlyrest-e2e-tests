@@ -47,4 +47,18 @@ export class Home {
   static loadSampleDataButtonHidden() {
     cy.findByRole('button', { name: /add sample ecommerce orders/i }).should('not.exist');
   }
+
+  static verifyIfCatalogueEmpty() {
+    const mainElementSelector = semver.gte(getKibanaVersion(), '8.0.0') ? 'main' : 'div[role="main"]';
+
+    cy.getByDataTestSubj('homeApp')
+      .find(mainElementSelector)
+      .should('exist')
+      .should($main => {
+        const directChildrenExpectedCount = semver.gte(getKibanaVersion(), '8.0.0') ? 2 : 1;
+
+        expect($main.children(), 'direct children count').to.have.length(directChildrenExpectedCount);
+        expect($main.find('section'), 'no section descendants').to.have.length(0);
+      });
+  }
 }

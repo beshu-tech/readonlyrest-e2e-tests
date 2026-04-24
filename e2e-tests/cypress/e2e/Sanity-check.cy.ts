@@ -4,11 +4,13 @@ import { Discover } from '../support/page-objects/Discover';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { getKibanaVersion } from '../support/helpers';
+import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
+import { TENANCY_QUERY_STRING_KEY } from '../support/types';
+import { Tenancy } from '../support/page-objects/Tenancy';
 
 describe('sanity check', () => {
   beforeEach(() => {
@@ -17,10 +19,11 @@ describe('sanity check', () => {
   });
 
   afterEach(() => {
-    esApiAdvancedClient.deleteIndex('sample_index');
+    kbnApiAdvancedClient.deleteSampleData('ecommerce', userCredentials);
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
+    cy.task('clearDownloads');
   });
 
   it('should verify that everything works', () => {
@@ -34,9 +37,15 @@ describe('sanity check', () => {
     Discover.exportToCsv();
     Reporting.openReportingPage('kibanaNavigation');
     Reporting.verifySavedReport(['admin_search']);
+    Reporting.downloadAndVerifyReportExists('admin_search');
 
     cy.log('Change tenancy, and initialize it');
-    RorMenu.changeTenancy('Infosec', '/app/management/insightsAndAlerting/reporting');
+    const finishUrl =
+      semver.gte(getKibanaVersion(), '8.19.0') && semver.lt(getKibanaVersion(), '9.0.0')
+        ? '/app/management/insightsAndAlerting/reporting/exports'
+        : '/app/management/insightsAndAlerting/reporting';
+
+    RorMenu.changeTenancy('Infosec', finishUrl);
 
     if (semver.gte(getKibanaVersion(), '8.8.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
@@ -63,22 +72,24 @@ describe('sanity check', () => {
     KibanaNavigation.openKibanaNavigation();
     KibanaNavigation.checkIfNotVisible('Stack Management');
     KibanaNavigation.checkIfNotExists('Dev Tools');
-    KibanaNavigation.checkIfRouteNotReachable('/s/default/app/management');
+    KibanaNavigation.checkIfRouteNotReachable(
+      `/s/default/app/management?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`
+    );
   });
 
   it('should check that logout functionality set nextUrl path as expected', () => {
     KibanaNavigation.openPage('Maps');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
-    Login.fillLoginPage();
+    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
 
     if (semver.gte(getKibanaVersion(), '8.7.0')) {
       Loader.loading(
-        "/app/maps/map#?_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
+        "/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
       );
     } else {
       Loader.loading(
-        "/app/maps/map#?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
+        "/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
       );
     }
 

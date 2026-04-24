@@ -14,13 +14,27 @@ if ! command -v docker &> /dev/null; then
 fi
 
 show_help() {
-  echo "Usage: ./start.sh --es <elasticsearch_version> --kbn <kibana_version> --eck <eck_version> [--ror-es <ror_es_version> (default: latest) --ror-kbn <ror_kbn_version> (default: latest) --mode <prod|dev> (default: prod)]"
+  echo "Start ECK-based ReadonlyREST environment"
+  echo ""
+  echo "Options:"
+  echo "  --es <version>           Elasticsearch version (required)"
+  echo "  --kbn <version>          Kibana version (required)"
+  echo "  --eck <version>          ECK version (required)"
+  echo "  --cluster-type <type>    Cluster type: 'base' for basic cluster, 'apm' for cluster with APM (default: base)"
+  echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
+  echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
+  echo "  --mode <mode>            Mode: 'prod' or 'dev' (default: prod)"
+  echo ""
+  echo "Examples:"
+  echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --eck 2.15.0                    # Start base cluster"
+  echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --eck 2.15.0 --cluster-type apm # Start cluster with APM"
   exit 1
 }
 
 export ES_VERSION=""
 export KBN_VERSION=""
-export ECK_VERSION="2.14.0"
+export ECK_VERSION="2.15.0"
+export CLUSTER_TYPE="base"
 export ROR_ES_VERSION="latest" 
 export ROR_KBN_VERSION="latest"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
@@ -75,28 +89,45 @@ while [[ $# -gt 0 ]]; do
         show_help
       fi
       ;;
-  --mode)
+  --cluster-type)
     if [[ -n $2 && $2 != --* ]]; then
-      case "$2" in
-        "prod")
-          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
-          export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
-          shift 2
-          ;;
-        "dev")
-          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
-          shift 2
-          ;;
-        *)
-          echo "Error: --mode: Only 'prod' and 'dev' are available modes"
-          show_help
-          ;;
-      esac
+      if [[ "$2" == "base" || "$2" == "apm" ]]; then
+        CLUSTER_TYPE="$2"
+        shift 2
+      else
+        echo "Error: --cluster-type must be 'base' or 'apm'"
+        show_help
+      fi
     else
-      echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+      echo "Error: --cluster-type requires a value (base or apm)"
       show_help
     fi
+    ;;
+  --mode)
+      if [[ -n $2 && $2 != --* ]]; then
+        case "$2" in
+          "prod")
+            export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
+            export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
+            shift 2
+            ;;
+          "dev")
+            export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+            export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+            shift 2
+            ;;
+          *)
+            echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+            show_help
+            ;;
+        esac
+      else
+        echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+        show_help
+      fi
+    ;;
+  --help|-h)
+    show_help
     ;;
   *)
     echo "Unknown option: $1"
@@ -110,35 +141,64 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
+PATCH_SCRIPT_DIR="../common/images/es-jdk-patch"
 
-
+patch_es_image_if_needed() {
+  local ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+  if ES_VERSION="$ES_VERSION" "$PATCH_SCRIPT_DIR/patch-es-jdk.sh" --check; then
+    echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image..."
+    docker build \
+      --build-arg BASE_IMAGE="$ES_IMAGE" \
+      --build-arg ES_VERSION="$ES_VERSION" \
+      -t "$ES_IMAGE" \
+      "$PATCH_SCRIPT_DIR"
+    echo "Patched ES image built successfully: $ES_IMAGE"
+    kind load docker-image "$ES_IMAGE" --name eck-ror || { echo "Failed to load patched ES image into KinD cluster."; exit 1; }
+    echo "Patched ES image loaded into KinD cluster: $ES_IMAGE"
+  fi
+}
 
 echo "CONFIGURING K8S CLUSTER ..."
-kind create cluster --name ror-eck --config kind-cluster/kind-cluster-config.yml
-docker exec ror-eck-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
-docker exec ror-eck-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
-docker exec ror-eck-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
+kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml
+docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
+docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
+docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
-# Build node-apm-app Docker image
-DOCKERFILE_DIR="../common/images/node-apm-app"
-IMAGE_NAME="node-apm-app"
-TAG="latest"
+patch_es_image_if_needed
 
-docker build -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
-echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
-# Load node-apm-app Docker image into the Kind cluster
-CLUSTER_NAME="ror-eck"
-
-kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
-echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
-docker cp kind-cluster/bootstrap-eck.sh ror-eck-control-plane:/
-docker exec ror-eck-control-plane chmod +x bootstrap-eck.sh
-docker exec ror-eck-control-plane bash -c "export ECK_VERSION=$ECK_VERSION && ./bootstrap-eck.sh"
+docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
+docker exec eck-ror-control-plane chmod +x bootstrap-eck.sh
+docker exec eck-ror-control-plane bash -c "export ECK_VERSION=$ECK_VERSION && ./bootstrap-eck.sh"
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
+echo "Cluster type: $CLUSTER_TYPE"
+
+if [[ "$CLUSTER_TYPE" == "base" ]]; then
+  echo "Starting base cluster (Elasticsearch + Kibana + ReadonlyREST)"
+elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
+  echo "Starting cluster with APM (Elasticsearch + Kibana + ReadonlyREST + APM Server + APM App)"
+
+  # Build node-apm-app Docker image for APM cluster
+  echo "Building node-apm-app Docker image for APM cluster..."
+  DOCKERFILE_DIR="../common/images/node-apm-app"
+  IMAGE_NAME="node-apm-app"
+  TAG="latest"
+
+  docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
+  echo "Docker image built successfully: $IMAGE_NAME:$TAG"
+
+  # Load node-apm-app Docker image into the Kind cluster
+  CLUSTER_NAME="eck-ror"
+
+  kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
+  echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
+else
+  echo "Error: Invalid cluster type '$CLUSTER_TYPE'. Must be 'base' or 'apm'"
+  exit 3
+fi
 
 SUBSTITUTED_DIR="kind-cluster/subst-ror"
 cleanup() {
@@ -155,26 +215,41 @@ subsitute_env_in_yaml_templates() {
   if [[ "$MAJOR_VERSION" -eq 7 && "$MINOR_VERSION" -le 16 ]]; then
     export ELATICSEARCH_USER="elasticsearch.username: kibana"
     export ELATICSEARCH_PASSWORD="elasticsearch.password: kibana"
-    export QUICK_KIBANA_USER_SECRET_KEY="default-quickstart-kibana-user"
+    export ROR_ECK_KIBANA_USER_SECRET_KEY="default-eck-ror-kibana-user"
   else
-    export QUICK_KIBANA_USER_SECRET_KEY="token"
+    export ROR_ECK_KIBANA_USER_SECRET_KEY="token"
   fi
   
-  for file in kind-cluster/ror/*.yml; do
+  echo "Processing base cluster YAML files..."
+  for file in kind-cluster/ror/base/*.yml; do
     filename=$(basename "$file")
-    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" || "$filename" == "apm.yml" || "$filename" == "node-apm-app.yml" ]]; then
+    echo "  Processing: $filename"
+    if [[ "$filename" == "es.yml" || "$filename" == "kbn.yml" ]]; then
       envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
     else
       cp "$file" "$SUBSTITUTED_DIR"
     fi
   done
 
-  docker cp "$SUBSTITUTED_DIR" ror-eck-control-plane:/ror/
+  if [[ "$CLUSTER_TYPE" == "apm" ]]; then
+    echo "Processing APM cluster YAML files..."
+    for file in kind-cluster/ror/apm/*.yml; do
+      filename=$(basename "$file")
+      echo "  Processing: $filename"
+      if [[ "$filename" == "apm.yml" || "$filename" == "node-apm-app.yml" ]]; then
+        envsubst < "$file" > "$SUBSTITUTED_DIR/$filename"
+      else
+        cp "$file" "$SUBSTITUTED_DIR"
+      fi
+    done
+  fi
+
+  docker cp "$SUBSTITUTED_DIR" eck-ror-control-plane:/ror/
 }
 
 subsitute_env_in_yaml_templates
 
-docker exec ror-eck-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl apply -f'
+docker exec eck-ror-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl apply -f'
 
 echo ""
 echo "------------------------------------------"
@@ -182,26 +257,29 @@ echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then op
 echo ""
 
 check_pods_running() {
-  pod_status=$(docker exec ror-eck-control-plane kubectl get pods | grep quickstart)
+  pod_status=$(docker exec eck-ror-control-plane kubectl get pods | grep eck-ror)
 
   all_ready=true
   while read -r line; do
     ready=$(echo "$line" | awk '{print $2}')
     status=$(echo "$line" | awk '{print $3}')
-    
-    if [[ "$status" != "Running" || "$ready" != "1/1" ]]; then
+
+    cur="${ready%/*}"
+    total="${ready#*/}"
+
+    if [[ "$status" != "Running" || "$cur" != "$total" ]]; then
       all_ready=false
     fi
   done <<< "$pod_status"
-  echo -e "$pod_status"
 
+  echo -e "$pod_status"
   $all_ready && return 0 || return 1
 }
 
 TIMEOUT_IN_SECONDS=300
 INTERVAL_IN_SECONDS=5
 
-echo "Waiting for all pods to be in Running and Ready state (1/1)..."
+echo "Waiting for all pods to be in Running and Ready state..."
 elapsed_time=0
 while ! check_pods_running; do
   sleep $INTERVAL_IN_SECONDS
@@ -212,4 +290,4 @@ while ! check_pods_running; do
     exit 1
   fi
 done
-echo "All pods are in Running and Ready (1/1) state."
+echo "All pods are in Running and Ready state."

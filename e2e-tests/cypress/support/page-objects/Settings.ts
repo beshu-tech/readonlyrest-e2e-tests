@@ -1,4 +1,3 @@
-import { userCredentials } from '../helpers';
 import { rorApiClient } from '../helpers/RorApiClient';
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
@@ -33,7 +32,7 @@ export class Settings {
     });
   }
 
-  static saveFileSettings() {
+  static clickSaveButton() {
     cy.log('Save file settings');
     cy.intercept('POST', '/pkp/api/settings').as('saveSettings');
     SecuritySettings.getIframeBody().contains('Save').click();

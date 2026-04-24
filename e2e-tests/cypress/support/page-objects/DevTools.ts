@@ -8,15 +8,18 @@ export class DevTools {
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Dev Tools').click();
 
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.get("[data-test-subj='consoleSkipTourButton']").click();
-    } else {
-      cy.get('[data-test-subj="help-close-button"]').click();
+    if (semver.lt(getKibanaVersion(), '9.2.0')) {
+      if (semver.gte(getKibanaVersion(), '8.16.0')) {
+        cy.get("[data-test-subj='consoleSkipTourButton']").click();
+      } else {
+        cy.get('[data-test-subj="help-close-button"]').click();
+      }
     }
   }
 
   static sendRequest(text: string) {
     cy.log('Send request');
+    cy.intercept({ method: 'POST', pathname: '/s/default/api/console/proxy' }).as('sendRequest');
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
       cy.get('[data-test-subj="clearConsoleInput"]').click();
       cy.get('[data-test-subj="consoleMonacoEditor"]').click().type(text);
@@ -31,11 +34,11 @@ export class DevTools {
       cy.get('.ace_scroller:nth-child(4) > .ace_content').click({ force: true });
       cy.get('.conApp__editorActionButton path').click({ force: true });
     } else {
-      cy.get('[data-test-subj=console-textarea]').clear({ force: true });
-      cy.get('[data-test-subj=console-textarea]').type(text, { force: true });
+      cy.get('[data-test-subj=console-textarea]').focus().clear({ force: true });
+      cy.get('[data-test-subj=console-textarea]').focus().type(text, { force: true });
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
-    cy.contains('Request in progress');
+    cy.wait('@sendRequest');
   }
 
   static verifyIf200Status() {
@@ -51,5 +54,23 @@ export class DevTools {
   static verifyIf403Status() {
     cy.log('verify if 403 status');
     cy.contains('403 - Forbidden').should('be.visible');
+  }
+
+  static verifyIfContainsErrorsMessage() {
+    cy.log('Verify if contains errors message');
+    cy.contains(
+      '[data-test-subj="globalToastList"]',
+      'The selected request contains errors. Please resolve them and try again.'
+    ).should('be.visible');
+  }
+
+  static verifyResponseInConsole(value: string) {
+    cy.log('verify response in console');
+
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.contains('[data-test-subj="consoleMonacoOutput"]', value);
+    } else {
+      cy.contains('[data-test-subj="response-editor"]', value);
+    }
   }
 }

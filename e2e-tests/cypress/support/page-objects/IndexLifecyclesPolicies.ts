@@ -3,7 +3,6 @@ import { KibanaNavigation } from './KibanaNavigation';
 export class IndexLifecyclesPolicies {
   static openIndexLifecyclePolicy() {
     cy.log('open index lifecycle policy page');
-    KibanaNavigation.openKibanaNavigation();
     KibanaNavigation.openPage('Stack Management');
     KibanaNavigation.openSubPage('Index Lifecycle Policies');
   }

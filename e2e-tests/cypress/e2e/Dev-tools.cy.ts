@@ -1,5 +1,7 @@
+import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { DevTools } from '../support/page-objects/DevTools';
+import { getKibanaVersion } from '../support/helpers';
 
 describe('Dev tools', () => {
   beforeEach(() => {
@@ -30,6 +32,15 @@ describe('Dev tools', () => {
     DevTools.sendRequest(
       'GET _search {enter} {{} {enter} "query": {{} BAD_JSON {enter} "match_all": {{}} {enter} } } '
     );
-    DevTools.verifyIf400Status();
+
+    if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
+      DevTools.verifyIfContainsErrorsMessage();
+    } else {
+      DevTools.verifyIf400Status();
+    }
+
+    cy.log('should verify whether .kibana index is not tweaked');
+    DevTools.sendRequest('GET .kibana');
+    DevTools.verifyResponseInConsole(`.kibana_${getKibanaVersion()}_001`);
   });
 });

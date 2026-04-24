@@ -1,25 +1,19 @@
+import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
-import { Loader } from '../support/page-objects/Loader';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Discover } from '../support/page-objects/Discover';
 import { Settings } from '../support/page-objects/Settings';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import * as semver from 'semver';
 import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
+import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 
-describe('Index Pattern Configuration for Reporting index', () => {
+describe('Reporting index', () => {
   const admin = 'admin:dev';
 
   beforeEach(() => {
     Settings.setSettingsData('reportingSettings.yaml');
-    cy.visit(Cypress.config().baseUrl);
-    cy.on('url:changed', () => {
-      sessionStorage.setItem('ror:ignoreTrialInfo', 'true');
-      localStorage.setItem('home:welcome:show', 'false');
-    });
-    Login.signIn();
-    Loader.loading();
+    Login.initialization();
   });
 
   afterEach(() => {
@@ -32,8 +26,7 @@ describe('Index Pattern Configuration for Reporting index', () => {
 
   it('should correctly match index pattern when audit index_template contains .reporting', () => {
     const indexPattern = 'xxx.reporting';
-    RorMenu.changeTenancy('Infosec', '/app/home#/');
-    KibanaNavigation.openKibanaNavigation();
+    RorMenu.changeTenancy('Infosec', `/app/home?${TENANCY_QUERY_STRING_KEY}=*#/`);
     KibanaNavigation.openPage('Stack Management');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       KibanaNavigation.openSubPage('Data Views');
@@ -43,6 +36,6 @@ describe('Index Pattern Configuration for Reporting index', () => {
     Discover.createIndexPattern(indexPattern);
     cy.contains('@timestamp').should('be.visible');
     cy.contains('acl_history').should('be.visible');
-    cy.contains(indexPattern).should('be.visible');
+    Discover.verifyIndexTitle(indexPattern);
   });
 });

@@ -7,18 +7,36 @@ if [ -z "$ROR_ACTIVATION_KEY" ]; then
   exit 1
 fi
 
-if [ $# -ne 1 ]; then
-  echo "One parameter is required: 1) KBN version"
+if [ $# -lt 1 ]; then
+  echo "At least one parameter is required: 1) KBN version [2) run type (run|open), default: run]"
   exit 1
 fi
 
 export ELECTRON_EXTRA_LAUNCH_ARGS="--disable-gpu"
 KBN_VERSION="$1"
+ENV_NAME="$2"
+RUN_TYPE="${3:-run}" # Default to "run" if not provided
+# Validate run type
+if [[ "$RUN_TYPE" != "run" && "$RUN_TYPE" != "open" ]]; then
+  echo "Run type must be 'run' or 'open'"
+  exit 1
+fi
 
-echo "Running E2E Cypress tests ..."
+# Validate ENV_NAME
+if [[ "$ENV_NAME" != "elk-ror" && "$ENV_NAME" != "eck-ror" ]]; then
+  echo "ENV_NAME must be a type 'elk-ror' or 'eck-ror'"
+  exit 1
+fi
+
+echo "Running E2E Cypress tests (mode: $RUN_TYPE) ..."
 
 yarn --frozen-lockfile install
-yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY"
+
+if [[ "$RUN_TYPE" == "open" ]]; then
+  yarn open --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY,envName=$ENV_NAME"
+else
+  yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY,envName=$ENV_NAME"
+fi
 
 if [[ $? -ne 0 ]]; then
   echo "❌ E2E tests failed :("

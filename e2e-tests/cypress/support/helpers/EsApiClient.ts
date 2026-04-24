@@ -1,3 +1,5 @@
+import Chainable = Cypress.Chainable;
+
 export class EsApiClient {
   public deleteIndexDocsByQuery(index: string): void {
     cy.esPost({
@@ -21,13 +23,21 @@ export class EsApiClient {
   public deleteIndex(index: string): void {
     cy.esDelete({
       endpoint: index,
-      credentials: Cypress.env().kibanaUserCredentials
+      credentials: Cypress.env().kibanaUserCredentials,
+      failOnStatusCode: false
     });
   }
 
   public deleteDataStream(index: string): void {
     cy.esDelete({
       endpoint: `_data_stream/${index}`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public documentsForIndex(index: string): Chainable<DocumentsForIndex> {
+    return cy.esGet({
+      endpoint: `${index}/_search`,
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
@@ -40,9 +50,34 @@ export class EsApiClient {
     });
   }
 
+  public createIndex(index: string, settings?: object, mappings?: object): void {
+    cy.esPut({
+      endpoint: index,
+      credentials: Cypress.env().kibanaUserCredentials,
+      payload: {
+        ...(settings && { settings }),
+        ...(mappings && { mappings })
+      }
+    });
+  }
+
   public indices(): Cypress.Chainable<GetIndices[]> {
     return cy.esGet({
-      endpoint: '_cat/indices?format=json',
+      endpoint: '_cat/indices?format=json&expand_wildcards=all',
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public dataStreams(): Cypress.Chainable<GetDataStreams> {
+    return cy.esGet({
+      endpoint: '_data_stream?format=json&expand_wildcards=all',
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public findIndicesByPattern(pattern: string): Cypress.Chainable<GetIndices[]> {
+    return cy.esGet({
+      endpoint: `_cat/indices/${pattern}?format=json`,
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
@@ -56,10 +91,36 @@ export class EsApiClient {
       }
     });
   }
+
+  public getIndexSettings(index: string): Cypress.Chainable<any> {
+    return cy.esGet({
+      endpoint: `${index}/_settings`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
+
+  public rolloverIndex(index): void {
+    cy.esPost({
+      endpoint: `${index}/_rollover`,
+      credentials: Cypress.env().kibanaUserCredentials
+    });
+  }
 }
 
 export const esApiClient = new EsApiClient();
 
 export interface GetIndices {
   index: string;
+  'docs.count': string;
+  health: 'green' | 'yellow' | 'red';
 }
+
+export interface GetDataStreams {
+  data_streams: {
+    name: string;
+  }[];
+}
+
+type DocumentsForIndex = {
+  hits: { hits: { _source: { currentGroup: { id: string; value: string }; kibanaIndex: string } }[] };
+};

@@ -1,9 +1,10 @@
 helpers:
   cr: &common-rules
-    kibana_access: rw
-    kibana_hide_apps: ["Enterprise Search|Overview"]
-    kibana_index: ".kibana_@{acl:current_group}"
-
+    verbosity: error
+  ckr: &common-kibana-rules
+    access: rw
+    hide_apps: ["Enterprise Search|Overview"]
+    index: ".kibana_@{acl:current_group}"
   ag: &all-groups
     groups:
       - id: admins_group
@@ -14,9 +15,7 @@ helpers:
         name: template
 
 readonlyrest:
-  response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
-  prompt_for_basic_auth: false
-
+  response_if_req_forbidden: You shall not pass!
   audit:
     enabled: true
     outputs:
@@ -28,51 +27,83 @@ readonlyrest:
     - name: "Kibana service account - user/pass"
       verbosity: error
       auth_key: kibana:kibana
-
-    - name: "APM"
+      
+    - name: 'APM'
       type: allow
       auth_key: apm:test
 
     # <-- related to ECK environment -->
-    - name: "Kibana service account - token"
+    - name: 'Kibana service account - token'
       verbosity: error
       token_authentication:
-        token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}"
+        token: 'Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}'
         username: service_account
 
-    - name: "PROBE"
+    - name: 'PROBE'
       verbosity: error
-      auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
+      auth_key: 'elastic-internal-probe:${INTERNAL_PROBE_PASS}'
 
-    - name: "ELASTIC-INTERNAL"
+    - name: 'ELASTIC-INTERNAL'
       verbosity: error
-      auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
+      auth_key: 'elastic-internal:${INTERNAL_USR_PASS}'
     # <!-- related to ECK environment -->
 
+    - name: JWT_AUTH
+      jwt_auth:
+        name: "jwt1"
+        groups_any_of: [ "administrators", "infosec", "template" ]
+      kibana:
+        access: admin
+
     - name: PERSONAL_GRP
-      groups: [Personal]
+      groups: [ Personal ]
       <<: *common-rules
-      kibana_index: ".kibana_@{user}"
+      kibana:
+        <<: *common-kibana-rules
+        index: '.kibana_@{user}'
 
     - name: ADMIN_GRP
-      groups: [admins_group]
+      groups: [ admins_group ]
       <<: *common-rules
-      kibana_access: admin
+      kibana:
+        <<: *common-kibana-rules
+        access: admin
+        metadata:
+          alert_message: "Dear @{acl:user}"
 
     - name: infosec
-      groups: [infosec_group]
-      <<: *common-rules
-      kibana_hide_apps:
-        ["Enterprise Search|Overview", "Observability", "Management"]
+      groups: [ infosec_group ]
+      kibana:
+        <<: *common-kibana-rules
+        access: admin
+        hide_apps: [ "Enterprise Search|Overview", "Management" ]
 
     - name: Template Tenancy
-      groups: [template_group]
-      <<: *common-rules
+      groups: [ template_group ]
+      kibana:
+        <<: *common-kibana-rules
 
-    - name: "ReadonlyREST Enterprise instance #1"
-      kibana_index: ".kibana_external_auth"
-      ror_kbn_auth:
-        name: "kbn1"
+    - name: "Reporting tests: user2"
+      auth_key: user2:dev
+      kibana:
+        index: ".kibana_user2"
+        access: rw
+      indices: ["invoices"]
+
+    - name: "Reporting tests: user3"
+      auth_key: user3:dev
+      kibana:
+        index: ".kibana_user3"
+        access: rw
+      indices: ["invoices"]
+
+    - name: "defined indices: user 4"
+      auth_key: user4:dev
+      verbosity: error
+      indices: [ "kibana_sample_data_*" ]
+      kibana:
+        access: rw
+        index: '.default_index'
 
   users:
     - username: admin
@@ -82,6 +113,30 @@ readonlyrest:
     - username: user1
       auth_key: user1:dev
       <<: *all-groups
+
+    - username: "*"
+      jwt_auth:
+        name: "jwt1"
+      groups:
+        - local_group:
+            id: admins_group
+            name: administrators
+          external_group_ids: ["administrators"]
+        - local_group:
+            id: infosec_group
+            name: infosec
+          external_group_ids: ["infosec"]
+        - local_group:
+            id: template_group
+            name: template
+          external_group_ids: ["template"]
+
+  jwt:
+    - name: jwt1
+      signature_key: "a-string-secret-at-least-256-bits-long"
+      group_ids_claim: group
+      user_claim: sub
+      header_name: Authorization
 
   ror_kbn:
     - name: kbn1
