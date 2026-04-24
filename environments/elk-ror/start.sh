@@ -26,7 +26,7 @@ show_help() {
   echo "  --cluster-type <type>    Cluster type: 'base' for basic cluster, 'apm' for cluster with APM (default: base)"
   echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
   echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
-  echo "  --mode <mode>            todo"
+  echo "  --mode <mode>            Image source: 'prod' for release images, 'dev' for development images (default: prod)"
   echo ""
   echo "Examples:"
   echo "  ./start.sh --es 8.11.0 --kbn 8.11.0                    # Start base cluster"

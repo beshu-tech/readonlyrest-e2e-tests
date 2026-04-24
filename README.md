@@ -14,13 +14,13 @@ Prerequisites:
 To bootstrap a Docker-based or ECK environment (ES with latest ROR + KBN with latest ROR) and execute Cypress E2E tests run:
 
 ```bash
-./main.sh --mode e2e --elk 8.15.2 --env docker
+./runner.sh --run e2e --elk 8.15.2 --env docker
 ```
 
 or 
 
 ```bash
-./main.sh --mode e2e --elk 7.17.24 --env eck
+./runner.sh --run e2e --elk 7.17.24 --env eck
 ```
 
 #### Bootstrap tests with one command
@@ -28,13 +28,13 @@ or
 You can also run cluster bootstrap test in context of a Docker-based or ECK environment:
 
 ```bash
-./main.sh --mode bootstrap --elk 8.15.2 --env docker
+./runner.sh --run bootstrap --elk 8.15.2 --env docker
 ```
 
 or 
 
 ```bash
-./main.sh --mode bootstrap --elk 7.17.24 --env eck
+./runner.sh --run bootstrap --elk 7.17.24 --env eck
 ```
 
 #### Tested environment & E2E tests separately
