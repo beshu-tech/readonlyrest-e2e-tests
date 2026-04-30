@@ -32,6 +32,22 @@ runs:
             done
 
             echo
+            echo "== kubectl pod status =="
+            kubectl get pods -A 2>/dev/null || true
+
+            echo
+            echo "== kubectl node resources =="
+            kubectl top nodes 2>/dev/null || true
+
+            echo
+            echo "== kubectl pod resources =="
+            kubectl top pods -A 2>/dev/null || true
+
+            echo
+            echo "== kubectl OOM events =="
+            kubectl get events -A --field-selector=reason=OOMKilling 2>/dev/null || true
+
+            echo
             sleep 10
           done
         ) >> /tmp/docker-memory-monitor.log 2>&1 &
