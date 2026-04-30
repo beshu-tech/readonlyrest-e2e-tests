@@ -1,0 +1,62 @@
+name: 'Docker memory monitor'
+description: 'Start or stop a background Docker memory monitor that logs host and container memory every 10s'
+
+inputs:
+  action:
+    description: '"start" or "stop"'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start monitor
+      if: inputs.action == 'start'
+      shell: bash
+      run: |
+        (
+          while true; do
+            echo "===== $(date -Is) ====="
+
+            echo "== host memory =="
+            free -h || true
+
+            echo
+            echo "== docker stats =="
+            docker stats --no-stream || true
+
+            echo
+            echo "== container OOM status =="
+            for c in $(docker ps -aq 2>/dev/null); do
+              docker inspect "$c" \
+                --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+            done
+
+            echo
+            echo "== kubectl pod status =="
+            kubectl get pods -A 2>/dev/null || true
+
+            echo
+            echo "== kubectl node resources =="
+            kubectl top nodes 2>/dev/null || true
+
+            echo
+            echo "== kubectl pod resources =="
+            kubectl top pods -A 2>/dev/null || true
+
+            echo
+            echo "== kubectl OOM events =="
+            kubectl get events -A --field-selector=reason=OOMKilling 2>/dev/null || true
+
+            echo
+            sleep 10
+          done
+        ) >> /tmp/docker-memory-monitor.log 2>&1 &
+        echo $! > /tmp/docker-memory-monitor.pid
+
+    - name: Stop monitor and dump log
+      if: inputs.action == 'stop'
+      shell: bash
+      run: |
+        kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
+        echo "=== Docker memory monitor log ==="
+        cat /tmp/docker-memory-monitor.log || true

@@ -9,10 +9,8 @@ services:
     ports:
       - "9200:9200"
       - "5005:5005"
-    deploy:
-      resources:
-        limits:
-          memory: 2G # ES heap will get 1GB
+    mem_limit: 3g
+    memswap_limit: 3g
     environment:
       - ES_VERSION=$ES_VERSION
       - cluster.name=elk-ror
@@ -26,9 +24,9 @@ services:
       - INTERNAL_PROBE_PASS=UNUSED
       - INTERNAL_USR_PASS=UNUSED
     healthcheck:
-      test: [ "CMD", "curl", "-fk", "-u", "kibana:kibana", "https://localhost:9200/_cluster/health" ]
+      test: [ "CMD", "sh", "-c", "curl -sk -u kibana:kibana 'https://localhost:9200/_cluster/health?wait_for_no_initializing_shards=true&timeout=25s' | grep -q '\"initializing_shards\":0' && curl -sk -u kibana:kibana -o /dev/null -w '%{http_code}' https://localhost:9200/.readonlyrest/_doc/1 | grep -qE '^(200|404)$' && curl -sk -u kibana:kibana -X POST -H 'Content-Type: application/json' https://localhost:9200/_cluster/allocation/explain -d '{}' -o /dev/null -w '%{http_code}' | grep -qE '^(200|400)$'" ]
       interval: 10s
-      timeout: 10s
+      timeout: 60s
       retries: 30
       start_period: 60s
     networks:
@@ -51,12 +49,11 @@ services:
     depends_on:
       es-ror:
         condition: service_healthy
+    mem_limit: 1g
+    memswap_limit: 1g
     deploy:
       mode: replicated
       replicas: 2
-      resources:
-        limits:
-          memory: 1G
     environment:
       ES_API_URL: https://es-ror:9200
       NODE_OPTIONS: "--max-old-space-size=768"
@@ -82,6 +79,8 @@ services:
         condition: service_healthy
     ports:
       - "5601:443"
+    mem_limit: 256m
+    memswap_limit: 256m
     healthcheck:
       test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:443/api/status" ]
       interval: 10s

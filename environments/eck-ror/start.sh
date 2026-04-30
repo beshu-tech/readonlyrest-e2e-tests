@@ -125,8 +125,10 @@ fi
 
 PATCH_SCRIPT_DIR="../common/images/es-jdk-patch"
 
+ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
+
 patch_es_image_if_needed() {
-  local ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
   if ES_VERSION="$ES_VERSION" "$PATCH_SCRIPT_DIR/patch-es-jdk.sh" --check; then
     echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image..."
     docker build \
@@ -135,9 +137,18 @@ patch_es_image_if_needed() {
       -t "$ES_IMAGE" \
       "$PATCH_SCRIPT_DIR"
     echo "Patched ES image built successfully: $ES_IMAGE"
-    kind load docker-image "$ES_IMAGE" --name eck-ror || { echo "Failed to load patched ES image into KinD cluster."; exit 1; }
-    echo "Patched ES image loaded into KinD cluster: $ES_IMAGE"
   fi
+}
+
+preload_images_into_kind() {
+  echo "Pre-loading ROR images into Kind cluster to avoid Docker Hub rate limits..."
+  docker pull "$ES_IMAGE" || { echo "Failed to pull ES image: $ES_IMAGE"; exit 1; }
+  kind load docker-image "$ES_IMAGE" --name eck-ror || { echo "Failed to load ES image into KinD cluster."; exit 1; }
+  echo "ES image loaded into KinD cluster: $ES_IMAGE"
+
+  docker pull "$KBN_IMAGE" || { echo "Failed to pull Kibana image: $KBN_IMAGE"; exit 1; }
+  kind load docker-image "$KBN_IMAGE" --name eck-ror || { echo "Failed to load Kibana image into KinD cluster."; exit 1; }
+  echo "Kibana image loaded into KinD cluster: $KBN_IMAGE"
 }
 
 echo "CONFIGURING K8S CLUSTER ..."
@@ -147,6 +158,7 @@ docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=26214
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
 patch_es_image_if_needed
+preload_images_into_kind
 
 
 
@@ -171,12 +183,17 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   
   docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
   echo "Docker image built successfully: $IMAGE_NAME:$TAG"
-  
+
   # Load node-apm-app Docker image into the Kind cluster
   CLUSTER_NAME="eck-ror"
-  
+
   kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
   echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
+
+  # Load busybox used by the wait-for-apm init container
+  docker pull busybox || { echo "Failed to pull busybox image."; exit 1; }
+  kind load docker-image busybox --name "$CLUSTER_NAME" || { echo "Failed to load busybox into Kind cluster."; exit 1; }
+  echo "busybox image loaded into Kind cluster"
 else
   echo "Error: Invalid cluster type '$CLUSTER_TYPE'. Must be 'base' or 'apm'"
   exit 3

@@ -87,7 +87,8 @@ export class Observability {
       checkFn: $el => {
         const value = $el.val();
         return value === 'request' || value === 'custom';
-      }
+      },
+      timeout: 60000
     });
   }
 
