@@ -9,8 +9,8 @@ services:
     ports:
       - "9200:9200"
       - "5005:5005"
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 3g
+    memswap_limit: 3g
     environment:
       - ES_VERSION=$ES_VERSION
       - cluster.name=elk-ror
