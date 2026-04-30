@@ -106,4 +106,11 @@ export class IndexManagement {
 
     cy.contains('[data-test-subj="title"]', "You don't have any data streams yet");
   }
+
+  static waitingForSectionLoadingFinish() {
+    cy.log('Waiting for section loading');
+
+    cy.get('[data-test-subj="sectionLoading"]', { timeout: 30000 }).should('be.visible');
+    cy.get('[data-test-subj="sectionLoading"]', { timeout: 30000 }).should('not.be.visible');
+  }
 }
