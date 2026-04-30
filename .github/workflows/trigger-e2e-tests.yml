@@ -36,6 +36,31 @@ jobs:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
+      - name: Start Docker memory monitor
+        run: |
+          (
+            while true; do
+              echo "===== $(date -Is) ====="
+
+              echo "== host memory =="
+              free -h || true
+
+              echo
+              echo "== docker stats =="
+              docker stats --no-stream || true
+
+              echo
+              echo "== container OOM status =="
+              for c in $(docker ps -aq 2>/dev/null); do
+                docker inspect "$c" \
+                  --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+              done
+
+              echo
+              sleep 10
+            done
+          ) &
+          echo $! > /tmp/docker-memory-monitor.pid
       - name: Run E2E tests
         uses: nick-fields/retry@v3
         with:
@@ -47,6 +72,30 @@ jobs:
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+      - name: Stop Docker memory monitor
+        if: always()
+        run: |
+          kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
+      - name: Print Docker diagnostics
+        if: always()
+        run: |
+          echo "== host memory =="
+          free -h || true
+
+          echo
+          echo "== docker stats =="
+          docker stats --no-stream || true
+
+          echo
+          echo "== containers =="
+          docker ps -a || true
+
+          echo
+          echo "== container OOM status =="
+          for c in $(docker ps -aq 2>/dev/null); do
+            docker inspect "$c" \
+              --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Error={{.State.Error}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+          done
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
@@ -80,6 +129,31 @@ jobs:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
+      - name: Start Docker memory monitor
+        run: |
+          (
+            while true; do
+              echo "===== $(date -Is) ====="
+
+              echo "== host memory =="
+              free -h || true
+
+              echo
+              echo "== docker stats =="
+              docker stats --no-stream || true
+
+              echo
+              echo "== container OOM status =="
+              for c in $(docker ps -aq 2>/dev/null); do
+                docker inspect "$c" \
+                  --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+              done
+
+              echo
+              sleep 10
+            done
+          ) &
+          echo $! > /tmp/docker-memory-monitor.pid
       - name: Run bootstrap tests
         uses: nick-fields/retry@v3
         with:
@@ -89,6 +163,30 @@ jobs:
             ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+      - name: Stop Docker memory monitor
+        if: always()
+        run: |
+          kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
+      - name: Print Docker diagnostics
+        if: always()
+        run: |
+          echo "== host memory =="
+          free -h || true
+
+          echo
+          echo "== docker stats =="
+          docker stats --no-stream || true
+
+          echo
+          echo "== containers =="
+          docker ps -a || true
+
+          echo
+          echo "== container OOM status =="
+          for c in $(docker ps -aq 2>/dev/null); do
+            docker inspect "$c" \
+              --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Error={{.State.Error}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+          done
 
   # ==========================================
   # E2E TESTS - DEVELOP BRANCH
@@ -120,6 +218,31 @@ jobs:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
+      - name: Start Docker memory monitor
+        run: |
+          (
+            while true; do
+              echo "===== $(date -Is) ====="
+
+              echo "== host memory =="
+              free -h || true
+
+              echo
+              echo "== docker stats =="
+              docker stats --no-stream || true
+
+              echo
+              echo "== container OOM status =="
+              for c in $(docker ps -aq 2>/dev/null); do
+                docker inspect "$c" \
+                  --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+              done
+
+              echo
+              sleep 10
+            done
+          ) &
+          echo $! > /tmp/docker-memory-monitor.pid
       - name: Run E2E tests
         uses: nick-fields/retry@v3
         with:
@@ -131,6 +254,30 @@ jobs:
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+      - name: Stop Docker memory monitor
+        if: always()
+        run: |
+          kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
+      - name: Print Docker diagnostics
+        if: always()
+        run: |
+          echo "== host memory =="
+          free -h || true
+
+          echo
+          echo "== docker stats =="
+          docker stats --no-stream || true
+
+          echo
+          echo "== containers =="
+          docker ps -a || true
+
+          echo
+          echo "== container OOM status =="
+          for c in $(docker ps -aq 2>/dev/null); do
+            docker inspect "$c" \
+              --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Error={{.State.Error}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+          done
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
