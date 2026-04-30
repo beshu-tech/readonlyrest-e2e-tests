@@ -46,6 +46,7 @@ jobs:
           max_attempts: 2
           timeout_minutes: 60
           retry_wait_seconds: 120
+          retry_on: any
           command: |
             ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
@@ -98,6 +99,7 @@ jobs:
         with:
           max_attempts: 3
           timeout_minutes: 30
+          retry_on: any
           command: |
             ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
@@ -148,6 +150,7 @@ jobs:
           max_attempts: 2
           timeout_minutes: 60
           retry_wait_seconds: 120
+          retry_on: any
           command: |
             ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
