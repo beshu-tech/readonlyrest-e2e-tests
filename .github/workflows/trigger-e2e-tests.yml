@@ -59,7 +59,7 @@ jobs:
               echo
               sleep 10
             done
-          ) &
+          ) >> /tmp/docker-memory-monitor.log 2>&1 &
           echo $! > /tmp/docker-memory-monitor.pid
       - name: Run E2E tests
         uses: nick-fields/retry@v3
@@ -76,26 +76,8 @@ jobs:
         if: always()
         run: |
           kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
-      - name: Print Docker diagnostics
-        if: always()
-        run: |
-          echo "== host memory =="
-          free -h || true
-
-          echo
-          echo "== docker stats =="
-          docker stats --no-stream || true
-
-          echo
-          echo "== containers =="
-          docker ps -a || true
-
-          echo
-          echo "== container OOM status =="
-          for c in $(docker ps -aq 2>/dev/null); do
-            docker inspect "$c" \
-              --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Error={{.State.Error}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
-          done
+          echo "=== Docker memory monitor log ==="
+          cat /tmp/docker-memory-monitor.log || true
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
@@ -152,7 +134,7 @@ jobs:
               echo
               sleep 10
             done
-          ) &
+          ) >> /tmp/docker-memory-monitor.log 2>&1 &
           echo $! > /tmp/docker-memory-monitor.pid
       - name: Run bootstrap tests
         uses: nick-fields/retry@v3
@@ -167,26 +149,8 @@ jobs:
         if: always()
         run: |
           kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
-      - name: Print Docker diagnostics
-        if: always()
-        run: |
-          echo "== host memory =="
-          free -h || true
-
-          echo
-          echo "== docker stats =="
-          docker stats --no-stream || true
-
-          echo
-          echo "== containers =="
-          docker ps -a || true
-
-          echo
-          echo "== container OOM status =="
-          for c in $(docker ps -aq 2>/dev/null); do
-            docker inspect "$c" \
-              --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Error={{.State.Error}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
-          done
+          echo "=== Docker memory monitor log ==="
+          cat /tmp/docker-memory-monitor.log || true
 
   # ==========================================
   # E2E TESTS - DEVELOP BRANCH
@@ -241,7 +205,7 @@ jobs:
               echo
               sleep 10
             done
-          ) &
+          ) >> /tmp/docker-memory-monitor.log 2>&1 &
           echo $! > /tmp/docker-memory-monitor.pid
       - name: Run E2E tests
         uses: nick-fields/retry@v3
@@ -258,26 +222,8 @@ jobs:
         if: always()
         run: |
           kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
-      - name: Print Docker diagnostics
-        if: always()
-        run: |
-          echo "== host memory =="
-          free -h || true
-
-          echo
-          echo "== docker stats =="
-          docker stats --no-stream || true
-
-          echo
-          echo "== containers =="
-          docker ps -a || true
-
-          echo
-          echo "== container OOM status =="
-          for c in $(docker ps -aq 2>/dev/null); do
-            docker inspect "$c" \
-              --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Error={{.State.Error}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
-          done
+          echo "=== Docker memory monitor log ==="
+          cat /tmp/docker-memory-monitor.log || true
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
