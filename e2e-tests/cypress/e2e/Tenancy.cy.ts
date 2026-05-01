@@ -150,7 +150,7 @@ function runTests({
     });
   });
 
-  it.only('should correctly switch Kibana space', () => {
+  it('should correctly switch Kibana space', () => {
     const newSpace = 'test-space';
 
     const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
