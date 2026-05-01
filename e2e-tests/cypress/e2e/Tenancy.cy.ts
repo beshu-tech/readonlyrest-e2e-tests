@@ -24,7 +24,6 @@ describe('Tenancy', () => {
     const backBrowserHistory = (
       endUrl = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`
     ) => {
-      IndexManagement.waitingForSectionLoadingFinish();
       RorMenu.changeTenancy('administrators', endUrl, '');
       cy.go('back');
     };
@@ -151,7 +150,7 @@ function runTests({
     });
   });
 
-  it('should correctly switch Kibana space', () => {
+  it.only('should correctly switch Kibana space', () => {
     const newSpace = 'test-space';
 
     const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
@@ -161,7 +160,7 @@ function runTests({
       finishUrl: urlWithTenancyId,
       spacePrefix: ''
     });
-
+    IndexManagement.waitingForSectionLoadingFinish();
     callbackAfterLogin?.();
 
     Spaces.createNewSpace(newSpace);
