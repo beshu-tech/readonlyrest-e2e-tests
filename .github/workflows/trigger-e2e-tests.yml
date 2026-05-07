@@ -36,6 +36,10 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
+      - name: Start ES connectivity monitor
+        uses: ./.github/es-connectivity-monitor
+        with:
+          action: start
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -55,6 +59,11 @@ jobs:
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
+      - name: Stop ES connectivity monitor
+        if: always()
+        uses: ./.github/es-connectivity-monitor
         with:
           action: stop
       - name: S3 Upload Videos & show logs
@@ -90,6 +99,10 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
+      - name: Start ES connectivity monitor
+        uses: ./.github/es-connectivity-monitor
+        with:
+          action: start
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -107,6 +120,11 @@ jobs:
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
+      - name: Stop ES connectivity monitor
+        if: always()
+        uses: ./.github/es-connectivity-monitor
         with:
           action: stop
 
@@ -140,6 +158,10 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
+      - name: Start ES connectivity monitor
+        uses: ./.github/es-connectivity-monitor
+        with:
+          action: start
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -159,6 +181,11 @@ jobs:
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
+      - name: Stop ES connectivity monitor
+        if: always()
+        uses: ./.github/es-connectivity-monitor
         with:
           action: stop
       - name: S3 Upload Videos & show logs

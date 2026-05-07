@@ -1,0 +1,86 @@
+name: 'ES connectivity monitor'
+description: 'Start or stop a background ES connectivity monitor that probes ES every 1s from host and from KBN container/pod'
+
+inputs:
+  action:
+    description: '"start" or "stop"'
+    required: true
+  es_url:
+    description: 'ES URL to probe from host (default: https://localhost:9200)'
+    required: false
+    default: 'https://localhost:9200'
+  es_user:
+    description: 'ES username'
+    required: false
+    default: 'kibana'
+  es_password:
+    description: 'ES password'
+    required: false
+    default: 'kibana'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start monitor
+      if: inputs.action == 'start'
+      shell: bash
+      run: |
+        (
+          while true; do
+            echo "===== $(date -Is) ====="
+
+            echo "== ES connectivity from host =="
+            curl -sk -u "${{ inputs.es_user }}:${{ inputs.es_password }}" \
+              "${{ inputs.es_url }}/_cluster/health?pretty" \
+              -o /tmp/es-health.json -w "HTTP %{http_code} in %{time_total}s\n" 2>&1 || true
+            cat /tmp/es-health.json 2>/dev/null || true
+
+            echo
+            echo "== ES connectivity from KBN Docker container =="
+            KBN_CONTAINER=$(docker ps --filter "name=kbn" --format "{{.Names}}" 2>/dev/null | head -1)
+            if [ -n "$KBN_CONTAINER" ]; then
+              echo "Container: $KBN_CONTAINER"
+              docker exec "$KBN_CONTAINER" \
+                curl -sk -u "${{ inputs.es_user }}:${{ inputs.es_password }}" \
+                https://es-ror:9200/_cluster/health?pretty \
+                -w "HTTP %{http_code} in %{time_total}s\n" 2>&1 || true
+            else
+              echo "(no kbn Docker container found)"
+            fi
+
+            echo
+            echo "== ES connectivity from KBN Kubernetes pod =="
+            KBN_POD=$(kubectl get pods -A -l "kibana.k8s.elastic.co/name" \
+              --field-selector=status.phase=Running \
+              -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' 2>/dev/null | head -1)
+            if [ -n "$KBN_POD" ]; then
+              KBN_NS="${KBN_POD%%/*}"
+              KBN_NAME="${KBN_POD##*/}"
+              echo "Pod: $KBN_POD"
+              ES_SVC=$(kubectl get svc -n "$KBN_NS" -l "elasticsearch.k8s.elastic.co/cluster-name" \
+                -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+              if [ -n "$ES_SVC" ]; then
+                kubectl exec -n "$KBN_NS" "$KBN_NAME" -- \
+                  curl -sk -u "${{ inputs.es_user }}:${{ inputs.es_password }}" \
+                  "https://${ES_SVC}:9200/_cluster/health?pretty" \
+                  -w "HTTP %{http_code} in %{time_total}s\n" 2>&1 || true
+              else
+                echo "(could not resolve ES service name)"
+              fi
+            else
+              echo "(no running kbn Kubernetes pod found)"
+            fi
+
+            echo
+            sleep 1
+          done
+        ) >> /tmp/es-connectivity-monitor.log 2>&1 &
+        echo $! > /tmp/es-connectivity-monitor.pid
+
+    - name: Stop monitor and dump log
+      if: inputs.action == 'stop'
+      shell: bash
+      run: |
+        kill "$(cat /tmp/es-connectivity-monitor.pid)" 2>/dev/null || true
+        echo "=== ES connectivity monitor log ==="
+        cat /tmp/es-connectivity-monitor.log || true
