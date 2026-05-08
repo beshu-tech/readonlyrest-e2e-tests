@@ -1,5 +1,5 @@
 name: 'ES connectivity monitor'
-description: 'Start or stop a background ES connectivity monitor that probes ES every 5s from host and from KBN container/pod'
+description: 'Start or stop a background ES connectivity monitor that probes ES every 1s from host and from KBN container/pod'
 
 inputs:
   action:
@@ -34,7 +34,7 @@ runs:
             echo "== ES health from host =="
             curl -sk -u "${{ inputs.es_user }}:${{ inputs.es_password }}" \
               "${{ inputs.es_url }}/_cluster/health?pretty" \
-              -w $'\nHTTP %{http_code} in %{time_total}s\n' 2>&1 || echo "(curl failed)"
+              -w $'\nHTTP %{http_code} in %{time_total}s\n' 2>&1 || true
 
             echo
             echo "== KBN Docker container =="
@@ -78,7 +78,7 @@ runs:
             fi
 
             echo
-            sleep 5
+            sleep 1
           done
         ) >> /tmp/es-connectivity-monitor.log 2>&1 &
         echo $! > /tmp/es-connectivity-monitor.pid
