@@ -1,5 +1,5 @@
 name: 'ES connectivity monitor'
-description: 'Start or stop a background ES connectivity monitor that probes ES every 1s from host and from KBN container/pod'
+description: 'Start or stop a background ES connectivity monitor that probes ES every 5s from host and from KBN container/pod'
 
 inputs:
   action:
@@ -26,53 +26,59 @@ runs:
       shell: bash
       run: |
         (
+          set +e
+          set +o pipefail
           while true; do
             echo "===== $(date -Is) ====="
 
-            echo "== ES connectivity from host =="
+            echo "== ES health from host =="
             curl -sk -u "${{ inputs.es_user }}:${{ inputs.es_password }}" \
               "${{ inputs.es_url }}/_cluster/health?pretty" \
-              -o /tmp/es-health.json -w "HTTP %{http_code} in %{time_total}s\n" 2>&1 || true
-            cat /tmp/es-health.json 2>/dev/null || true
+              -w $'\nHTTP %{http_code} in %{time_total}s\n' 2>&1 || echo "(curl failed)"
 
             echo
-            echo "== ES connectivity from KBN Docker container =="
+            echo "== KBN Docker container =="
             KBN_CONTAINER=$(docker ps --filter "name=kbn" --format "{{.Names}}" 2>/dev/null | head -1)
             if [ -n "$KBN_CONTAINER" ]; then
-              echo "Container: $KBN_CONTAINER"
-              docker exec "$KBN_CONTAINER" \
-                curl -sk -u "${{ inputs.es_user }}:${{ inputs.es_password }}" \
-                https://es-ror:9200/_cluster/health?pretty \
-                -w "HTTP %{http_code} in %{time_total}s\n" 2>&1 || true
+              STATUS=$(docker inspect --format '{{.State.Status}}' "$KBN_CONTAINER" 2>/dev/null)
+              echo "Container: $KBN_CONTAINER ($STATUS)"
+              # TCP connectivity test using bash built-in /dev/tcp (no curl needed in container)
+              docker exec "$KBN_CONTAINER" bash -c \
+                'timeout 2 bash -c "echo > /dev/tcp/es-ror/9200" 2>/dev/null \
+                  && echo "TCP to es-ror:9200: OK" \
+                  || echo "TCP to es-ror:9200: FAIL"' 2>&1 || echo "(exec failed)"
+              echo "-- last KBN log lines --"
+              docker logs --tail 5 "$KBN_CONTAINER" 2>&1 || true
             else
               echo "(no kbn Docker container found)"
             fi
 
             echo
-            echo "== ES connectivity from KBN Kubernetes pod =="
+            echo "== KBN Kubernetes pod =="
             KBN_POD=$(kubectl get pods -A -l "kibana.k8s.elastic.co/name" \
               --field-selector=status.phase=Running \
-              -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' 2>/dev/null | head -1)
+              -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' \
+              2>/dev/null | head -1)
             if [ -n "$KBN_POD" ]; then
               KBN_NS="${KBN_POD%%/*}"
               KBN_NAME="${KBN_POD##*/}"
               echo "Pod: $KBN_POD"
               ES_SVC=$(kubectl get svc -n "$KBN_NS" -l "elasticsearch.k8s.elastic.co/cluster-name" \
-                -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+                -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
               if [ -n "$ES_SVC" ]; then
                 kubectl exec -n "$KBN_NS" "$KBN_NAME" -- \
-                  curl -sk -u "${{ inputs.es_user }}:${{ inputs.es_password }}" \
-                  "https://${ES_SVC}:9200/_cluster/health?pretty" \
-                  -w "HTTP %{http_code} in %{time_total}s\n" 2>&1 || true
+                  bash -c "timeout 2 bash -c 'echo > /dev/tcp/${ES_SVC}/9200' 2>/dev/null \
+                    && echo 'TCP to ${ES_SVC}:9200: OK' \
+                    || echo 'TCP to ${ES_SVC}:9200: FAIL'" 2>&1 || echo "(exec failed)"
               else
                 echo "(could not resolve ES service name)"
               fi
             else
-              echo "(no running kbn Kubernetes pod found)"
+              echo "(no running kbn pod found)"
             fi
 
             echo
-            sleep 1
+            sleep 5
           done
         ) >> /tmp/es-connectivity-monitor.log 2>&1 &
         echo $! > /tmp/es-connectivity-monitor.pid
