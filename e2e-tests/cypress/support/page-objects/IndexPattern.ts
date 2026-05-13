@@ -2,7 +2,7 @@ import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
 
 export class IndexPattern {
-  static openItem(number) {
+  static openItem(number: number) {
     cy.log('Open index pattern item');
     cy.findAllByRole('row')
       .eq(number + 1)

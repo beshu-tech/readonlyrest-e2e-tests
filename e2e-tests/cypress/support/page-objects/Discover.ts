@@ -32,7 +32,11 @@ export class Discover {
   static exportToCsv() {
     cy.log('exportToCsv');
 
-    if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
+    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+      cy.getByDataTestSubj('app-menu-overflow-button').click();
+      cy.getByDataTestSubj('exportTopNavButton').click();
+      cy.getByDataTestSubj('exportMenuItem-CSV').click();
+    } else if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
       cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
       cy.get('[data-test-subj=shareTopNavButton]').click();
@@ -125,8 +129,14 @@ export class Discover {
   };
 
   static selectDataView(dataView: string) {
+    const searchUrl = semver.gte(getKibanaVersion(), '9.0.0')
+      ? '/s/default/internal/search/ese**'
+      : '/s/default/internal/bsearch?compress=true';
+
+    cy.intercept('POST', searchUrl).as('dataViewSearch');
     cy.getByDataTestSubj('discover-dataView-switch-link').click();
     cy.contains('[data-test-subj="fullText"]', dataView).click();
+    cy.wait('@dataViewSearch');
   }
 
   static verifyDocumentWithTodayRange = (row: number, indexPatternName: string) => {
@@ -152,6 +162,11 @@ export class Discover {
     const searchUrl = semver.gte(getKibanaVersion(), '9.0.0')
       ? `/s/default/internal/search/ese**`
       : `/s/default/internal/bsearch**`;
+
+    // Wait for any pending searches (e.g. from data view switch) to complete before
+    // setting up the intercept, so that @search only captures the Today-triggered request.
+    cy.waitForNetworkIdle('POST', searchUrl, 500, { timeout: 15000 });
+
     cy.intercept('POST', searchUrl).as('search');
 
     cy.get('[data-test-subj="superDatePickerToggleQuickMenuButton"]').click();
