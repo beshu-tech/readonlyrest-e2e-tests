@@ -24,12 +24,9 @@ describe('Spaces', () => {
     cy.log('Set feature visibility to hidden');
     Spaces.openEditSpace('default');
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
-    cy.get('[data-test-subj=save-space-button]').click();
-    cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
+    Spaces.saveSpaceAndConfirm();
 
     cy.log('Check if feature in space hidden');
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('exist');
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
     cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/kibana/spaces/`);
     KibanaNavigation.openHomepage();
     KibanaNavigation.openKibanaNavigation();
@@ -47,8 +44,7 @@ describe('Spaces', () => {
         cy.get('[data-test-subj=Default-editSpace]').click();
       }
       cy.get('#featureCategoryCheckbox_kibana').check();
-      cy.get('[data-test-subj=save-space-button]').click();
-      cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
+      Spaces.saveSpaceAndConfirm();
     };
 
     clearAllChanges();
