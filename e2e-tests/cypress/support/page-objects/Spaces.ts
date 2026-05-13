@@ -22,6 +22,15 @@ export class Spaces {
     });
   }
 
+  static saveSpaceAndConfirm() {
+    cy.get('[data-test-subj=save-space-button]').click();
+    cy.get('body').then($body => {
+      if ($body.find('[data-test-subj=confirmModalConfirmButton]').length > 0) {
+        cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
+      }
+    });
+  }
+
   static openEditSpace(spaceName: string) {
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
       cy.get('[data-test-subj="manageSpaces"]').click();
