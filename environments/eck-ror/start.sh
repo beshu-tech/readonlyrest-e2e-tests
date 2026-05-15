@@ -123,42 +123,11 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
-KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
-
-pull_with_dev_fallback() {
-  local image_var="$1" repo_var="$2" label="$3"
-  local image="${!image_var}"
-  echo "Pre-pulling $label image $image ..."
-  if ! docker pull "$image"; then
-    if [[ "${!repo_var}" != *"-dev" ]]; then
-      echo "Failed to pull $label image: $image"; exit 1
-    fi
-    echo "Dev image '$image' not found, falling back to prod ..."
-    printf -v "$repo_var" '%s' "${!repo_var%-dev}"
-    printf -v "$image_var" '%s' "${!repo_var}:${image#*:}"
-    docker pull "${!image_var}" || { echo "Failed to pull $label image: ${!image_var}"; exit 1; }
-  fi
-}
-
-preload_images_into_kind() {
-  echo "Pre-loading ROR images into Kind cluster to avoid Docker Hub rate limits..."
-  pull_with_dev_fallback ES_IMAGE ROR_ES_REPO "ES"
-  kind load docker-image "$ES_IMAGE" --name eck-ror || { echo "Failed to load ES image into KinD cluster."; exit 1; }
-  echo "ES image loaded into KinD cluster: $ES_IMAGE"
-
-  pull_with_dev_fallback KBN_IMAGE ROR_KBN_REPO "Kibana"
-  kind load docker-image "$KBN_IMAGE" --name eck-ror || { echo "Failed to load Kibana image into KinD cluster."; exit 1; }
-  echo "Kibana image loaded into KinD cluster: $KBN_IMAGE"
-}
-
 echo "CONFIGURING K8S CLUSTER ..."
 kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml
 docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
-
-preload_images_into_kind
 
 
 
