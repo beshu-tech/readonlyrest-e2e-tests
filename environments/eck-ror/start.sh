@@ -123,30 +123,31 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-PATCH_SCRIPT_DIR="../common/images/es-jdk-patch"
-
 ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
 KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
 
-patch_es_image_if_needed() {
-  if ES_VERSION="$ES_VERSION" "$PATCH_SCRIPT_DIR/patch-es-jdk.sh" --check; then
-    echo "ES $ES_VERSION bundles a JDK with cgroup v2 bug (JDK-8287073). Building patched image..."
-    docker build \
-      --build-arg BASE_IMAGE="$ES_IMAGE" \
-      --build-arg ES_VERSION="$ES_VERSION" \
-      -t "$ES_IMAGE" \
-      "$PATCH_SCRIPT_DIR"
-    echo "Patched ES image built successfully: $ES_IMAGE"
+pull_with_dev_fallback() {
+  local image_var="$1" repo_var="$2" label="$3"
+  local image="${!image_var}"
+  echo "Pre-pulling $label image $image ..."
+  if ! docker pull "$image"; then
+    if [[ "${!repo_var}" != *"-dev" ]]; then
+      echo "Failed to pull $label image: $image"; exit 1
+    fi
+    echo "Dev image '$image' not found, falling back to prod ..."
+    printf -v "$repo_var" '%s' "${!repo_var%-dev}"
+    printf -v "$image_var" '%s' "${!repo_var}:${image#*:}"
+    docker pull "${!image_var}" || { echo "Failed to pull $label image: ${!image_var}"; exit 1; }
   fi
 }
 
 preload_images_into_kind() {
   echo "Pre-loading ROR images into Kind cluster to avoid Docker Hub rate limits..."
-  docker pull "$ES_IMAGE" || { echo "Failed to pull ES image: $ES_IMAGE"; exit 1; }
+  pull_with_dev_fallback ES_IMAGE ROR_ES_REPO "ES"
   kind load docker-image "$ES_IMAGE" --name eck-ror || { echo "Failed to load ES image into KinD cluster."; exit 1; }
   echo "ES image loaded into KinD cluster: $ES_IMAGE"
 
-  docker pull "$KBN_IMAGE" || { echo "Failed to pull Kibana image: $KBN_IMAGE"; exit 1; }
+  pull_with_dev_fallback KBN_IMAGE ROR_KBN_REPO "Kibana"
   kind load docker-image "$KBN_IMAGE" --name eck-ror || { echo "Failed to load Kibana image into KinD cluster."; exit 1; }
   echo "Kibana image loaded into KinD cluster: $KBN_IMAGE"
 }
@@ -157,7 +158,6 @@ docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=26214
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
-patch_es_image_if_needed
 preload_images_into_kind
 
 

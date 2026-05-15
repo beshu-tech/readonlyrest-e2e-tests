@@ -116,13 +116,26 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-echo "Building JDK-patched ES base image ..."
-export ES_PATCHED_IMAGE="es-ror-patched:${ES_VERSION}"
-docker build \
-  --build-arg BASE_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}" \
-  --build-arg ES_VERSION="$ES_VERSION" \
-  -t "$ES_PATCHED_IMAGE" \
-  ../common/images/es-jdk-patch/
+pull_with_dev_fallback() {
+  local image_var="$1" repo_var="$2" label="$3"
+  local image="${!image_var}"
+  echo "Pre-pulling $label image $image ..."
+  if ! docker pull "$image"; then
+    if [[ "${!repo_var}" != *"-dev" ]]; then
+      echo "Failed to pull $label image: $image"; exit 1
+    fi
+    echo "Dev image '$image' not found, falling back to prod ..."
+    printf -v "$repo_var" '%s' "${!repo_var%-dev}"
+    printf -v "$image_var" '%s' "${!repo_var}:${image#*:}"
+    docker pull "${!image_var}" || { echo "Failed to pull $label image: ${!image_var}"; exit 1; }
+  fi
+}
+
+ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
+
+pull_with_dev_fallback ROR_ES_IMAGE ROR_ES_REPO "ES"
+pull_with_dev_fallback ROR_KBN_IMAGE ROR_KBN_REPO "Kibana"
 
 echo "Bootstrapping the docker-based environment ..."
 echo "Cluster type: $CLUSTER_TYPE"
