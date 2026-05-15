@@ -20,14 +20,18 @@ export class Home {
       KibanaNavigation.openPage('Home');
       cy.findByText(/try sample data/i).click();
 
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      if (semver.gte(getKibanaVersion(), '8.0.0') && semver.lt(getKibanaVersion(), '9.4.0')) {
         cy.findByText(/other sample data sets/i).click();
       }
     }
 
-    cy.findByRole('button', { name: /add sample ecommerce orders/i }).within(() => {
-      cy.findByText(/add data/i).click();
-    });
+    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+      cy.getByDataTestSubj('addSampleDataSetecommerce').click();
+    } else {
+      cy.findByRole('button', { name: /add sample ecommerce orders/i }).within(() => {
+        cy.findByText(/add data/i).click();
+      });
+    }
 
     cy.wait('@saveSampleData');
   }

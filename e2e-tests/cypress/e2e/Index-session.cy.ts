@@ -1,5 +1,6 @@
 /* eslint-disable no-use-before-define */
 
+import semver from 'semver';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
@@ -8,7 +9,6 @@ import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Login } from '../support/page-objects/Login';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import semver from 'semver';
 
 describe('Index Session', () => {
   beforeEach(() => {

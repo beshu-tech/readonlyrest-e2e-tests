@@ -4,6 +4,7 @@ import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Spaces } from '../support/page-objects/Spaces';
+import { ManageSpaces } from '../support/page-objects/ManageSpaces';
 
 const SPACE_NAME = 'Test space';
 
@@ -18,19 +19,14 @@ describe('Spaces', () => {
 
   it('should successfully set feature visibility for default space', () => {
     cy.log('Navigate to default space management');
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.contains('Manage spaces').should('be.visible').click({ force: true });
-    cy.contains('Default').click();
+    ManageSpaces.openSpaceViaNavSelector('Default');
 
     cy.log('Set feature visibility to hidden');
     Spaces.openEditSpace('default');
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
-    cy.get('[data-test-subj=save-space-button]').click();
-    cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
+    Spaces.saveSpaceAndConfirm();
 
     cy.log('Check if feature in space hidden');
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('exist');
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
     cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/kibana/spaces/`);
     KibanaNavigation.openHomepage();
     KibanaNavigation.openKibanaNavigation();
@@ -38,9 +34,7 @@ describe('Spaces', () => {
 
     const clearAllChanges = () => {
       cy.log('Navigate to default space management');
-      cy.get('[data-test-subj=spacesNavSelector]').click();
-      cy.contains('Manage spaces').should('be.visible').click({ force: true });
-      cy.contains('Default').click();
+      ManageSpaces.openSpaceViaNavSelector('Default');
 
       cy.log('Clear all changes');
       if (semver.gte(getKibanaVersion(), '8.16.0')) {
@@ -50,8 +44,7 @@ describe('Spaces', () => {
         cy.get('[data-test-subj=Default-editSpace]').click();
       }
       cy.get('#featureCategoryCheckbox_kibana').check();
-      cy.get('[data-test-subj=save-space-button]').click();
-      cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
+      Spaces.saveSpaceAndConfirm();
     };
 
     clearAllChanges();
@@ -66,7 +59,8 @@ describe('Spaces', () => {
 
       cy.log('Switch to newly created space');
       cy.get('[data-test-subj=spacesNavSelector]').click();
-      cy.contains('Manage spaces', { timeout: 10000 }).should('be.visible');
+      ManageSpaces.getManageButtonInNavSelector().should('be.visible');
+
       if (semver.gte(getKibanaVersion(), '8.4.0')) {
         cy.get('[data-test-subj=test-space-selectableSpaceItem]', { timeout: 10000 }).click();
       } else {
@@ -86,9 +80,7 @@ describe('Spaces', () => {
 
   it('should hide space permission tab and not permit to navigate to it', () => {
     cy.log('Navigate to default space management');
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.contains('Manage spaces').should('be.visible').click({ force: true });
-    cy.contains('Default').click();
+    ManageSpaces.openSpaceViaNavSelector('Default');
 
     Spaces.openEditSpace('default');
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
