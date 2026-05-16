@@ -23,6 +23,8 @@ jobs:
       matrix:
         version: ["9.4.1", "9.3.4", "8.19.15", "7.17.29"]
         env: [docker, eck-2.16.1, eck-3.4.0]
+    env:
+      ROR_KBN_VERSION: "1.70.0-pre7"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,7 +54,7 @@ jobs:
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
+            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
