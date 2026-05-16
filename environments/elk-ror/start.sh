@@ -116,13 +116,14 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
-echo "Building JDK-patched ES base image ..."
-export ES_PATCHED_IMAGE="es-ror-patched:${ES_VERSION}"
-docker build \
-  --build-arg BASE_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}" \
-  --build-arg ES_VERSION="$ES_VERSION" \
-  -t "$ES_PATCHED_IMAGE" \
-  ../common/images/es-jdk-patch/
+ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
+
+echo "Pre-pulling ES image $ROR_ES_IMAGE ..."
+docker pull "$ROR_ES_IMAGE" || { echo "Failed to pull ES image: $ROR_ES_IMAGE"; exit 1; }
+
+echo "Pre-pulling Kibana image $ROR_KBN_IMAGE ..."
+docker pull "$ROR_KBN_IMAGE" || { echo "Failed to pull Kibana image: $ROR_KBN_IMAGE"; exit 1; }
 
 echo "Bootstrapping the docker-based environment ..."
 echo "Cluster type: $CLUSTER_TYPE"
