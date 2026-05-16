@@ -9,7 +9,8 @@ show_help() {
   echo "  --elk <version>          ELK stack version (required)"
   echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
   echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
-  echo "  --dev                    Use development images"
+  echo "  --dev                    Use development images (both ES and KBN)"
+  echo "  --dev-kbn                Use development image for Kibana only"
   echo ""
   echo "Examples:"
   echo "  ./main.sh --env docker --elk 8.11.0                    # Run E2E tests with Docker Compose"
@@ -23,6 +24,7 @@ OPTIONAL_ECK_ARG=""
 OPTIONAL_ROR_ES_ARG=""
 OPTIONAL_ROR_KBN_ARG=""
 OPTIONAL_DEV_ARG=""
+OPTIONAL_DEV_KBN_ARG=""
 MODE="e2e"
 CLUSTER_TYPE="apm"
 
@@ -102,6 +104,10 @@ while [[ $# -gt 0 ]]; do
     OPTIONAL_DEV_ARG="--dev"
     shift
     ;;
+  --dev-kbn)
+    OPTIONAL_DEV_KBN_ARG="--dev-kbn"
+    shift
+    ;;
   *)
     echo "Unknown option: $1"
     show_help
@@ -133,7 +139,7 @@ echo -e "
 
 echo -e "Running environment...\n"
 
-time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG
+time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_DEV_ARG $OPTIONAL_DEV_KBN_ARG
 
 if [[ "$MODE" == "e2e" ]]; then
   echo -e "Running E2E tests...\n"

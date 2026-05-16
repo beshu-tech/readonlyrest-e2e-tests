@@ -54,7 +54,7 @@ jobs:
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
+            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev-kbn
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'

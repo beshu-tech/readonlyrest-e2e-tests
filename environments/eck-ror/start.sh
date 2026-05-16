@@ -23,7 +23,8 @@ show_help() {
   echo "  --cluster-type <type>    Cluster type: 'base' for basic cluster, 'apm' for cluster with APM (default: base)"
   echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
   echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
-  echo "  --dev                    Use development images"
+  echo "  --dev                    Use development images (both ES and KBN)"
+  echo "  --dev-kbn                Use development image for Kibana only"
   echo ""
   echo "Examples:"
   echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --eck 2.15.0                    # Start base cluster"
@@ -105,6 +106,10 @@ while [[ $# -gt 0 ]]; do
     ;;
   --dev)
     export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+    export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+    shift
+    ;;
+  --dev-kbn)
     export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
     shift
     ;;
