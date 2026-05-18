@@ -12,6 +12,7 @@ import { Dashboard } from '../support/page-objects/Dashboard';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Spaces } from '../support/page-objects/Spaces';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
+import { IndexManagement } from '../support/page-objects/IndexManagement';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
@@ -160,6 +161,7 @@ function runTests({
       spacePrefix: ''
     });
 
+    IndexManagement.waitingForSectionLoadingFinish();
     callbackAfterLogin?.();
 
     Spaces.createNewSpace(newSpace);
