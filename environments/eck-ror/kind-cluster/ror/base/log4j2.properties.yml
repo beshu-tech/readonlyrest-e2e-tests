@@ -6,7 +6,7 @@ data:
     # config dir). This declares only the extra loggers (no appenders / rootLogger / status), so the
     # stock config stays intact -- including ES's entitlement-logger suppression, which keeps the
     # benign x-pack-security "Not entitled" file-watcher warnings quiet.
-    logger.ror.name=tech.beshu.ror.accesscontrol
+    logger.ror.name=tech.beshu.ror
     logger.ror.level=info
 kind: ConfigMap
 metadata:
