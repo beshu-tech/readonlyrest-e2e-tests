@@ -1,4 +1,6 @@
 import { Loader } from './Loader';
+import semver from 'semver';
+import { getKibanaVersion } from '../helpers';
 
 export class RorMenu {
   static openRorMenu() {

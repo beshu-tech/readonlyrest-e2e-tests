@@ -14,6 +14,8 @@ import { Tenancy } from '../support/page-objects/Tenancy';
 
 describe('sanity check', () => {
   beforeEach(() => {
+    // Prune before the test in case a previous attempt's async CSV report landed after afterEach ran.
+    esApiAdvancedClient.pruneAllReportingIndices();
     SampleData.createSampleData('sample_index', 1);
     Login.initialization();
   });

@@ -1,15 +1,14 @@
 /* eslint-disable no-use-before-define */
 
+import semver from 'semver';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { Tenancy } from '../support/page-objects/Tenancy';
-import { Home } from '../support/page-objects/Home';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Login } from '../support/page-objects/Login';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import semver from 'semver';
 
 describe('Index Session', () => {
   beforeEach(() => {
@@ -19,14 +18,23 @@ describe('Index Session', () => {
   afterEach(() => {
     esApiClient.deleteIndex(SESSION_INDEX);
     kbnApiClient.deleteSampleData('ecommerce', userCredentials);
+    kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
   });
 
   it('should set correct tenancy when reading session without schema from legacy plugin UI', () => {
+    // Pre-load ecommerce sample data via API before visiting Discover so Kibana 9.x finds an
+    // existing data view instead of defaulting to the system "discover-observability-solution-all-logs"
+    // data view, which triggers aggressive background searches against non-existent indices and
+    // causes OOM crashes in the Electron renderer.
+    cy.on('uncaught:exception', () => false);
+
     esApiClient.addDocument(
       SESSION_INDEX,
       'e47bcdeb-42ee-4bbf-abbd-0c8ef441873f',
       LEGACY_SESSION_WITHOUT_SCHEMA_VERSION
     );
+
+    kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
 
     Login.suppressPostLoginNotices();
 
@@ -38,13 +46,21 @@ describe('Index Session', () => {
     );
 
     cy.wait('@tenancyInjector');
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 30000 }).should('be.visible');
 
     Tenancy.checkTenancyNameInBadge('template', 'rw');
 
-    Home.loadSampleData();
     KibanaNavigation.openPage('Discover');
     if (semver.gte(getKibanaVersion(), '9.0.0')) {
+      cy.intercept('POST', '/s/default/internal/search/ese**').as('dataViewSearch');
       Discover.selectDataView('Kibana Sample Data eCommerce');
+      cy.wait('@dataViewSearch');
+    } else if (semver.lt(getKibanaVersion(), '8.0.0')) {
+      // Kibana 7.x: explicitly select the ecommerce index pattern to avoid stale Discover state
+      cy.intercept('POST', '/s/default/internal/bsearch**').as('dataViewSearch');
+      cy.get('[data-test-subj="indexPattern-switch-link"]').click();
+      cy.findAllByText('kibana_sample_data_ecommerce').first().click();
+      cy.wait('@dataViewSearch');
     }
     Discover.verifyDocumentWithTodayRange(0, 'kibana_sample_data_ecommerce');
   });

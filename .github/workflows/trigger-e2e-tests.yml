@@ -35,8 +35,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["9.3.3", "9.2.8", "8.19.14", "7.17.29"]
-        env: [docker, eck-2.16.1, eck-3.1.0]
+        version: ["9.4.1", "9.3.4", "8.19.15", "7.17.29"]
+        env: [docker, eck-2.16.1, eck-3.4.0]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,6 +46,10 @@ jobs:
           node-version: '24.11.0'
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -56,16 +60,24 @@ jobs:
           max_attempts: 2
           timeout_minutes: 60
           retry_wait_seconds: 120
+          retry_on: any
           command: |
             ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}
 
   # ==========================================
   # BOOTSTRAP TESTS
@@ -81,13 +93,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["9.3.0", "9.2.0", "9.1.0", "9.0.0", "8.19.0", "8.18.0", "8.17.0", "8.16.0", "8.15.0", "8.14.0", "8.13.0", "8.12.0", "8.11.0", "8.10.1", "8.9.0", "8.8.0", "8.7.0", "8.6.0", "8.5.0", "8.4.0", "8.3.0", "8.2.0", "8.1.0", "8.0.0", "7.17.0", "7.16.0", "7.15.0", "7.14.0", "7.13.0", "7.12.0", "7.11.2", "7.10.0", "7.9.0"]
-        env: [docker, eck-3.1.0]
+        version: ["9.4.0", "9.3.0", "9.2.0", "9.1.0", "9.0.0", "8.19.0", "8.18.0", "8.17.0", "8.16.0", "8.15.0", "8.14.0", "8.13.0", "8.12.0", "8.11.0", "8.10.1", "8.9.0", "8.8.0", "8.7.0", "8.6.0", "8.5.0", "8.4.0", "8.3.0", "8.2.0", "8.1.0", "8.0.0", "7.17.0", "7.16.0", "7.15.0", "7.14.0", "7.13.0", "7.12.0", "7.11.2", "7.10.0", "7.9.0"]
+        env: [docker, eck-3.4.0]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -97,10 +113,16 @@ jobs:
         with:
           max_attempts: 3
           timeout_minutes: 30
+          retry_on: any
           command: |
             ./runner.sh --run bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
 
   # ==========================================
   # E2E TESTS - DEVELOP BRANCH
@@ -114,8 +136,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [ "9.3.3", "9.2.8", "8.19.14", "7.17.29" ]
-        env: [docker, eck-2.16.1, eck-3.1.0]
+        version: [ "9.4.1", "9.3.4", "8.19.15", "7.17.29" ]
+        env: [docker, eck-2.16.1, eck-3.4.0]
     env:
       ROR_ES_VERSION: "latest"
       ROR_KBN_VERSION: "latest"
@@ -129,6 +151,10 @@ jobs:
           node-version: '24.11.0'
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -139,6 +165,7 @@ jobs:
           max_attempts: 2
           timeout_minutes: 60
           retry_wait_seconds: 120
+          retry_on: any
           command: |
             ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
         env:
@@ -198,10 +225,16 @@ jobs:
             ./runner.sh $PARAMS
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
-
+          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}

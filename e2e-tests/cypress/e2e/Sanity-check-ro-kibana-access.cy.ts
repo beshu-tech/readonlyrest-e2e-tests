@@ -1,4 +1,3 @@
-import { Login } from '../support/page-objects/Login';
 import { RoAndRoStrictKibanaAccessAssertions } from '../support/page-objects/RoAndRoStrictKibanaAccessAssertions';
 import { Settings } from '../support/page-objects/Settings';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
