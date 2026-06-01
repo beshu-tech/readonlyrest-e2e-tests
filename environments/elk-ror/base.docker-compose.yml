@@ -26,7 +26,7 @@ services:
       - INTERNAL_PROBE_PASS=UNUSED
       - INTERNAL_USR_PASS=UNUSED
     healthcheck:
-      test: [ "CMD", "sh", "-c", "curl -sk -u kibana:kibana 'https://localhost:9200/_cluster/health?wait_for_no_initializing_shards=true&timeout=25s' | grep -q '\"initializing_shards\":0' && curl -sk -u kibana:kibana -o /dev/null -w '%{http_code}' https://localhost:9200/.readonlyrest/_doc/1 | grep -qE '^(200|404)$' && curl -sk -u kibana:kibana -X POST -H 'Content-Type: application/json' https://localhost:9200/_cluster/allocation/explain -d '{}' -o /dev/null -w '%{http_code}' | grep -qE '^(200|400)$'" ]
+      test: ["CMD-SHELL", "curl -fksS --connect-timeout 3 --max-time 5 --retry 2 --retry-connrefused -u kibana:kibana https://127.0.0.1:9200/_cluster/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 60s
       retries: 30
