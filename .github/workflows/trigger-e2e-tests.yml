@@ -192,6 +192,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   manual-e2e-tests:
+    name: "🔬 Manually invoked E2E Tests"
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
