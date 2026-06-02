@@ -9,32 +9,33 @@ Prerequisites:
 * Docker (`27.x.x` or newer) - for running ELK environment
 * [Kind](https://kind.sigs.k8s.io/) (`0.26.x` or newer) - for running ECK environment
 
-#### E2E with one command 
+#### E2E with one command
 
-To bootstrap a Docker-based or ECK environment (ES with latest ROR + KBN with latest ROR) and execute Cypress E2E tests run:
+`runner.sh` bootstraps the environment and runs Cypress E2E tests in one shot.
 
+**Docker-based environment:**
 ```bash
-./runner.sh --run e2e --elk 8.15.2 --env docker
+./runner.sh --elk 8.15.2 --env docker
 ```
 
-or 
-
+**ECK environment** (pass the ECK operator version after `eck-`):
 ```bash
-./runner.sh --run e2e --elk 7.17.24 --env eck
+./runner.sh --elk 7.17.24 --env eck-2.15.0
 ```
 
-#### Bootstrap tests with one command
+**With specific ROR versions** (default: `latest`):
+```bash
+./runner.sh --elk 9.3.0 --env docker --ror-es 1.69.0 --ror-kbn 1.69.0
+```
 
-You can also run cluster bootstrap test in context of a Docker-based or ECK environment:
+**With dev images** (default: `prod`):
+```bash
+./runner.sh --elk 9.3.0 --env docker --ror-es 1.69.0-pre1 --ror-kbn 1.69.0-pre1 --mode dev
+```
 
+To only bootstrap the environment without running tests (useful for debugging):
 ```bash
 ./runner.sh --run bootstrap --elk 8.15.2 --env docker
-```
-
-or 
-
-```bash
-./runner.sh --run bootstrap --elk 7.17.24 --env eck
 ```
 
 #### Tested environment & E2E tests separately
