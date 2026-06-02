@@ -3,12 +3,20 @@ name: End-to-end test workflow
 on:
   workflow_dispatch:
     inputs:
+      elk_version:
+        description: 'ELK version to test (e.g., 9.4.1)'
+        required: true
+        type: string
+      env:
+        description: 'Environment type (e.g., docker, eck-3.4.0)'
+        required: true
+        type: string
       ror_es_version:
-        description: 'ReadOnlyREST Elasticsearch Version (at least one version required)'
+        description: 'ReadonlyREST Elasticsearch Version (e.g., 1.69.1)'
         required: false
         type: string
       ror_kbn_version:
-        description: 'ReadOnlyREST Kibana Version (at least one version required)'
+        description: 'ReadonlyREST Kibana Version (e.g., 1.69.1)'
         required: false
         type: string
       mode:
@@ -171,6 +179,11 @@ jobs:
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
       - name: S3 Upload Videos & show logs
         if: failure()
         uses: ./.github/upload-videos
@@ -181,19 +194,7 @@ jobs:
   manual-e2e-tests:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ["9.3.3", "9.2.8", "8.19.14", "7.17.29"]
-        env: [docker, eck-2.16.1, eck-3.1.0]
     steps:
-      - name: Validate inputs
-        run: |
-          if [ -z "${{ github.event.inputs.ror_es_version }}" ] && [ -z "${{ github.event.inputs.ror_kbn_version }}" ]; then
-            echo "ERROR: At least one of 'ror_es_version' or 'ror_kbn_version' must be provided!"
-            exit 1
-          fi
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -205,6 +206,11 @@ jobs:
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
 
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
+
       - name: Run E2E tests
         uses: nick-fields/retry@v3
         with:
@@ -212,7 +218,7 @@ jobs:
           timeout_minutes: 60
           retry_wait_seconds: 120
           command: |
-            PARAMS="--run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}"
+            PARAMS="--run e2e --env ${{ github.event.inputs.env }} --elk ${{ github.event.inputs.elk_version }}"
             if [ -n "${{ github.event.inputs.ror_es_version }}" ]; then
               PARAMS="$PARAMS --ror-es ${{ github.event.inputs.ror_es_version }}"
             fi
