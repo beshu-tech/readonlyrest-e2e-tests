@@ -215,7 +215,7 @@ jobs:
       - name: Run E2E tests
         uses: nick-fields/retry@v3
         with:
-          max_attempts: 2
+          max_attempts: 1
           timeout_minutes: 60
           retry_wait_seconds: 120
           command: |
