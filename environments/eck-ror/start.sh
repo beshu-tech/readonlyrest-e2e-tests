@@ -104,27 +104,27 @@ while [[ $# -gt 0 ]]; do
     fi
     ;;
   --mode)
-      if [[ -n $2 && $2 != --* ]]; then
-        case "$2" in
-          "prod")
-            export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
-            export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
-            shift 2
-            ;;
-          "dev")
-            export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-            export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
-            shift 2
-            ;;
-          *)
-            echo "Error: --mode: Only 'prod' and 'dev' are available modes"
-            show_help
-            ;;
-        esac
-      else
-        echo "Error: --mode: Only 'prod' and 'dev' are available modes"
-        show_help
-      fi
+    if [[ -n $2 && $2 != --* ]]; then
+      case "$2" in
+        "prod")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
+          shift 2
+          ;;
+        "dev")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+          shift 2
+          ;;
+        *)
+          echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+          show_help
+          ;;
+      esac
+    else
+      echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+      show_help
+    fi
     ;;
   --help|-h)
     show_help

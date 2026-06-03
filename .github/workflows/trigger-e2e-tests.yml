@@ -219,20 +219,19 @@ jobs:
           timeout_minutes: 60
           retry_wait_seconds: 120
           command: |
-            PARAMS="--run e2e --env ${{ github.event.inputs.env }} --elk ${{ github.event.inputs.elk_version }}"
-            if [ -n "${{ github.event.inputs.ror_es_version }}" ]; then
-              PARAMS="$PARAMS --ror-es ${{ github.event.inputs.ror_es_version }}"
-            fi
-            if [ -n "${{ github.event.inputs.ror_kbn_version }}" ]; then
-              PARAMS="$PARAMS --ror-kbn ${{ github.event.inputs.ror_kbn_version }}"
-            fi
-            if [ -n "${{ github.event.inputs.mode }}" ]; then
-              PARAMS="$PARAMS --mode ${{ github.event.inputs.mode }}"
-            fi
-            ./runner.sh $PARAMS
+            PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
+            [ -n "$ROR_ES_VERSION" ] && PARAMS+=(--ror-es "$ROR_ES_VERSION")
+            [ -n "$ROR_KBN_VERSION" ] && PARAMS+=(--ror-kbn "$ROR_KBN_VERSION")
+            [ -n "$MODE" ] && PARAMS+=(--mode "$MODE")
+            ./runner.sh "${PARAMS[@]}"
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+          ENV: ${{ github.event.inputs.env }}
+          ELK_VERSION: ${{ github.event.inputs.elk_version }}
+          ROR_ES_VERSION: ${{ github.event.inputs.ror_es_version }}
+          ROR_KBN_VERSION: ${{ github.event.inputs.ror_kbn_version }}
+          MODE: ${{ github.event.inputs.mode }}
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor

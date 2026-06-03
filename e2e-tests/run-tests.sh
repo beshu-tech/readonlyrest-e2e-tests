@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 NVM_SCRIPT="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
 if [ -s "$NVM_SCRIPT" ]; then
   source "$NVM_SCRIPT"
-  nvm install 2>/dev/null || true
+  nvm install
   nvm use
 else
   REQUIRED_NODE="24.11.0"
