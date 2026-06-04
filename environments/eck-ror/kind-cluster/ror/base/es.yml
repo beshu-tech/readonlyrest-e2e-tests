@@ -42,7 +42,7 @@ spec:
                   mountPath: /usr/share/elasticsearch/config/readonlyrest.yml
                   subPath: readonlyrest.yml
                 - name: config-log4j2
-                  mountPath: /usr/share/elasticsearch/config/log4j2.properties
+                  mountPath: /usr/share/elasticsearch/config/ror/log4j2.properties
                   subPath: log4j2.properties
 
           volumes:
