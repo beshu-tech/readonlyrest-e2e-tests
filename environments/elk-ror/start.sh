@@ -26,7 +26,7 @@ show_help() {
   echo "  --cluster-type <type>    Cluster type: 'base' for basic cluster, 'apm' for cluster with APM (default: base)"
   echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
   echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
-  echo "  --dev                    Use development images"
+  echo "  --mode <mode>            Image source: 'prod' for release images, 'dev' for development images (default: prod)"
   echo ""
   echo "Examples:"
   echo "  ./start.sh --es 8.11.0 --kbn 8.11.0                    # Start base cluster"
@@ -96,10 +96,28 @@ while [[ $# -gt 0 ]]; do
       show_help
     fi
     ;;
-  --dev)
-    export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-    export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
-    shift
+  --mode)
+    if [[ -n $2 && $2 != --* ]]; then
+      case "$2" in
+        "prod")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
+          shift 2
+          ;;
+        "dev")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+          shift 2
+          ;;
+        *)
+          echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+          show_help
+          ;;
+      esac
+    else
+      echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+      show_help
+    fi
     ;;
   --help|-h)
     show_help

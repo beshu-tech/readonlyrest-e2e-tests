@@ -2,6 +2,28 @@ name: End-to-end test workflow
 
 on:
   workflow_dispatch:
+    inputs:
+      elk_version:
+        description: 'ELK version to test (e.g., 9.4.1)'
+        required: true
+        type: string
+      env:
+        description: 'Environment type (e.g., docker, eck-3.4.0)'
+        required: true
+        type: string
+      ror_es_version:
+        description: 'ReadonlyREST Elasticsearch Version (e.g., 1.69.1)'
+        required: false
+        type: string
+      ror_kbn_version:
+        description: 'ReadonlyREST Kibana Version (e.g., 1.69.1)'
+        required: false
+        type: string
+      mode:
+        description: 'Repository source for ROR plugin docker image (e.g., prod, dev)'
+        required: false
+        default: 'prod'
+        type: string
   schedule:
     - cron: '0 0 * * *'
   pull_request:
@@ -48,7 +70,7 @@ jobs:
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
+            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
@@ -101,7 +123,7 @@ jobs:
           timeout_minutes: 30
           retry_on: any
           command: |
-            ./main.sh --mode bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
+            ./runner.sh --run bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
       - name: Stop Docker memory monitor
@@ -127,6 +149,7 @@ jobs:
     env:
       ROR_ES_VERSION: "latest"
       ROR_KBN_VERSION: "latest"
+      MODE: 'dev'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -152,10 +175,63 @@ jobs:
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./main.sh --mode e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --dev
+            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
+      - name: S3 Upload Videos & show logs
+        if: failure()
+        uses: ./.github/upload-videos
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  manual-e2e-tests:
+    name: "🔬 Manually invoked E2E Tests"
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '24.11.0'
+
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
+
+      - name: Run E2E tests
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 1
+          timeout_minutes: 60
+          retry_wait_seconds: 120
+          command: |
+            PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
+            [ -n "$ROR_ES_VERSION" ] && PARAMS+=(--ror-es "$ROR_ES_VERSION")
+            [ -n "$ROR_KBN_VERSION" ] && PARAMS+=(--ror-kbn "$ROR_KBN_VERSION")
+            [ -n "$MODE" ] && PARAMS+=(--mode "$MODE")
+            ./runner.sh "${PARAMS[@]}"
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+          ENV: ${{ github.event.inputs.env }}
+          ELK_VERSION: ${{ github.event.inputs.elk_version }}
+          ROR_ES_VERSION: ${{ github.event.inputs.ror_es_version }}
+          ROR_KBN_VERSION: ${{ github.event.inputs.ror_kbn_version }}
+          MODE: ${{ github.event.inputs.mode }}
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor

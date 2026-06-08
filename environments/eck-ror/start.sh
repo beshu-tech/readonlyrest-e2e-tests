@@ -23,7 +23,7 @@ show_help() {
   echo "  --cluster-type <type>    Cluster type: 'base' for basic cluster, 'apm' for cluster with APM (default: base)"
   echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
   echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
-  echo "  --dev                    Use development images"
+  echo "  --mode <mode>            Mode: 'prod' or 'dev' (default: prod)"
   echo ""
   echo "Examples:"
   echo "  ./start.sh --es 8.11.0 --kbn 8.11.0 --eck 2.15.0                    # Start base cluster"
@@ -103,10 +103,28 @@ while [[ $# -gt 0 ]]; do
       show_help
     fi
     ;;
-  --dev)
-    export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-    export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
-    shift
+  --mode)
+    if [[ -n $2 && $2 != --* ]]; then
+      case "$2" in
+        "prod")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
+          shift 2
+          ;;
+        "dev")
+          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
+          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+          shift 2
+          ;;
+        *)
+          echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+          show_help
+          ;;
+      esac
+    else
+      echo "Error: --mode: Only 'prod' and 'dev' are available modes"
+      show_help
+    fi
     ;;
   --help|-h)
     show_help
@@ -143,13 +161,13 @@ if [[ "$CLUSTER_TYPE" == "base" ]]; then
   echo "Starting base cluster (Elasticsearch + Kibana + ReadonlyREST)"
 elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   echo "Starting cluster with APM (Elasticsearch + Kibana + ReadonlyREST + APM Server + APM App)"
-  
+
   # Build node-apm-app Docker image for APM cluster
   echo "Building node-apm-app Docker image for APM cluster..."
   DOCKERFILE_DIR="../common/images/node-apm-app"
   IMAGE_NAME="node-apm-app"
   TAG="latest"
-  
+
   docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
   echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
@@ -198,7 +216,7 @@ subsitute_env_in_yaml_templates() {
       cp "$file" "$SUBSTITUTED_DIR"
     fi
   done
-  
+
   if [[ "$CLUSTER_TYPE" == "apm" ]]; then
     echo "Processing APM cluster YAML files..."
     for file in kind-cluster/ror/apm/*.yml; do
@@ -232,7 +250,7 @@ check_pods_running() {
     ready=$(echo "$line" | awk '{print $2}')
     status=$(echo "$line" | awk '{print $3}')
 
-    cur="${ready%/*}"   
+    cur="${ready%/*}"
     total="${ready#*/}"
 
     if [[ "$status" != "Running" || "$cur" != "$total" ]]; then

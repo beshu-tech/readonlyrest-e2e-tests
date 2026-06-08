@@ -2,6 +2,21 @@
 
 cd "$(dirname "$0")"
 
+NVM_SCRIPT="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+if [ -s "$NVM_SCRIPT" ]; then
+  source "$NVM_SCRIPT"
+  nvm install
+  nvm use
+else
+  REQUIRED_NODE="24.11.0"
+  CURRENT_NODE="$(node --version 2>/dev/null | sed 's/v//')"
+  if ! node --version &>/dev/null || ! printf '%s\n%s' "$REQUIRED_NODE" "$CURRENT_NODE" | sort -V -C; then
+    echo "Node.js >=$REQUIRED_NODE is required but found: ${CURRENT_NODE:-none}"
+    echo "Install nvm (https://github.com/nvm-sh/nvm) or install Node.js $REQUIRED_NODE manually"
+    exit 1
+  fi
+fi
+
 if [ -z "$ROR_ACTIVATION_KEY" ]; then
   echo "ROR_ACTIVATION_KEY env is not set (see https://github.com/beshu-tech/readonlyrest-e2e-tests/blob/master/README.md#troubleshooting to figure out how to obtain the key and set it)"
   exit 1
@@ -12,6 +27,7 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
+export ELECTRON_EXTRA_LAUNCH_ARGS="--disable-gpu"
 KBN_VERSION="$1"
 ENV_NAME="$2"
 RUN_TYPE="${3:-run}" # Default to "run" if not provided
