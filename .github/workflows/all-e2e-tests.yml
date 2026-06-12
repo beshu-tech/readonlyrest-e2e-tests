@@ -26,9 +26,11 @@ jobs:
         env: [docker, eck-2.16.1, eck-3.4.0]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.11.0'
       - name: Clean up disk space
@@ -42,7 +44,7 @@ jobs:
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
       - name: Run E2E tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
           timeout_minutes: 60
@@ -85,7 +87,9 @@ jobs:
         env: [docker, eck-3.4.0]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Start Docker memory monitor
@@ -97,7 +101,7 @@ jobs:
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
       - name: Run bootstrap tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 3
           timeout_minutes: 30
@@ -132,9 +136,11 @@ jobs:
       MODE: 'dev'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.11.0'
       - name: Clean up disk space
@@ -148,7 +154,7 @@ jobs:
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
       - name: Run E2E tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
           timeout_minutes: 60
