@@ -26,7 +26,7 @@ services:
       - INTERNAL_PROBE_PASS=UNUSED
       - INTERNAL_USR_PASS=UNUSED
     healthcheck:
-      test: ["CMD-SHELL", "curl -fksS --connect-timeout 3 --max-time 5 --retry 2 --retry-connrefused -u kibana:kibana https://127.0.0.1:9200/_cluster/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fksS --connect-timeout 3 --max-time 5 --retry 2 -u kibana:kibana https://127.0.0.1:9200/_cluster/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 60s
       retries: 30
