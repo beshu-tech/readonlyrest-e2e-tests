@@ -1,0 +1,84 @@
+name: Targeted E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      elk_version:
+        description: 'ELK version to test (e.g., 9.4.1)'
+        required: true
+        type: string
+      env:
+        description: 'Environment type (e.g., docker, eck-3.4.0)'
+        required: true
+        type: string
+      ror_es_version:
+        description: 'ReadonlyREST Elasticsearch Version (e.g., 1.69.1)'
+        required: false
+        type: string
+      ror_kbn_version:
+        description: 'ReadonlyREST Kibana Version (e.g., 1.69.1)'
+        required: false
+        type: string
+      mode:
+        description: 'Repository source for ROR plugin docker image (e.g., prod, dev)'
+        required: false
+        default: 'prod'
+        type: string
+
+jobs:
+  e2e-tests:
+    name: "🔬 E2E Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.11.0'
+
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
+
+      - name: Run E2E tests
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
+        with:
+          max_attempts: 1
+          timeout_minutes: 60
+          retry_wait_seconds: 120
+          command: |
+            PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
+            [ -n "$ROR_ES_VERSION" ] && PARAMS+=(--ror-es "$ROR_ES_VERSION")
+            [ -n "$ROR_KBN_VERSION" ] && PARAMS+=(--ror-kbn "$ROR_KBN_VERSION")
+            [ -n "$MODE" ] && PARAMS+=(--mode "$MODE")
+            ./runner.sh "${PARAMS[@]}"
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+          ENV: ${{ github.event.inputs.env }}
+          ELK_VERSION: ${{ github.event.inputs.elk_version }}
+          ROR_ES_VERSION: ${{ github.event.inputs.ror_es_version }}
+          ROR_KBN_VERSION: ${{ github.event.inputs.ror_kbn_version }}
+          MODE: ${{ github.event.inputs.mode }}
+
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
+
+      - name: S3 Upload Videos & show logs
+        if: failure()
+        uses: ./.github/upload-videos
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}
