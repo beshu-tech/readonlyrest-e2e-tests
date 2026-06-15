@@ -64,7 +64,11 @@ services:
       interval: 10s
       timeout: 10s
       retries: 30
-      start_period: 60s
+      # Two Kibana replicas + ES + APM boot concurrently. On CPU-small CI agents
+      # (e.g. the 2-vCPU Azure host) a replica needs >60s to reach /api/status, so
+      # `docker compose up --wait` was tearing the stack down before tests ran.
+      # start_period only extends the startup grace; it's free on a fast boot.
+      start_period: 180s
     networks:
       - es-ror-network
     ulimits:
