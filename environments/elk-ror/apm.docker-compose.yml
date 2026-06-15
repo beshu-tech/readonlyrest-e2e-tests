@@ -15,8 +15,8 @@ services:
         condition: service_healthy
     networks:
       - es-ror-network
-    mem_limit: 1g
-    memswap_limit: 1g
+    mem_limit: 640m
+    memswap_limit: 640m
     healthcheck:
       test: [ "CMD", "curl", "-k", "--fail", "https://localhost:8200" ]
       interval: 10s
