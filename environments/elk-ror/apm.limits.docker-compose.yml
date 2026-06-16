@@ -1,0 +1,11 @@
+# Resource-limit overlay for the APM services. Applied on top of apm.docker-compose.yml by start.sh
+# when APPLY_RESOURCE_LIMITS=true (default). See base.limits.docker-compose.yml for why it can be
+# opted out of (Docker-in-Docker on cgroup v2 / threaded-mode memory controller).
+services:
+  apm-server:
+    mem_limit: 640m
+    memswap_limit: 640m
+
+  node-apm-app:
+    mem_limit: 128m
+    memswap_limit: 128m

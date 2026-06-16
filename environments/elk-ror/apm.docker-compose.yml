@@ -15,8 +15,6 @@ services:
         condition: service_healthy
     networks:
       - es-ror-network
-    mem_limit: 640m
-    memswap_limit: 640m
     healthcheck:
       test: [ "CMD", "curl", "-k", "--fail", "https://localhost:8200" ]
       interval: 10s
@@ -40,8 +38,6 @@ services:
       - ./certs:/example-app/certs:z
     networks:
       - es-ror-network
-    mem_limit: 128m
-    memswap_limit: 128m
     healthcheck:
       test: [ "CMD", "curl", "-k", "--http1.1", "--fail", "https://apm-server:8200" ]
       interval: 10s

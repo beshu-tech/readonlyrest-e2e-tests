@@ -1,0 +1,19 @@
+# Resource-limit overlay for the base cluster, kept separate so it can be opted out of.
+# Applied on top of base.docker-compose.yml by start.sh when APPLY_RESOURCE_LIMITS=true (default).
+# Needed on small CI agents (e.g. the ~7.9 GB Azure host) where docker runs on the host directly.
+# It is intentionally NOT applied when the e2e flow runs inside a Docker-in-Docker container on a
+# cgroup v2 host: there BuildKit puts /sys/fs/cgroup/docker into "threaded" mode, and a threaded
+# cgroup can't enable the memory (domain) controller, so a mem_limit makes the container fail to
+# start. Heaps are pinned in base.docker-compose.yml, so dropping the limits there is safe.
+services:
+  es-ror:
+    mem_limit: 2g
+    memswap_limit: 2g
+
+  kbn-ror:
+    mem_limit: 1g
+    memswap_limit: 1g
+
+  kbn-proxy:
+    mem_limit: 256m
+    memswap_limit: 256m
