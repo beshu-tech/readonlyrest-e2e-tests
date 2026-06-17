@@ -146,11 +146,12 @@ docker pull "$ROR_KBN_IMAGE" || { echo "Failed to pull Kibana image: $ROR_KBN_IM
 echo "Bootstrapping the docker-based environment ..."
 echo "Cluster type: $CLUSTER_TYPE"
 
-# Resource limits live in separate *.limits.docker-compose.yml overlays so they can be opted out of.
-# Applied by default; set APPLY_RESOURCE_LIMITS=false to skip them (e.g. when running inside a
-# Docker-in-Docker container on a cgroup v2 host, where a threaded /sys/fs/cgroup/docker can't enable
-# the memory controller and a mem_limit would prevent containers from starting).
-APPLY_RESOURCE_LIMITS="${APPLY_RESOURCE_LIMITS:-true}"
+# Resource limits live in separate *.limits.docker-compose.yml overlays so they're opt-in.
+# Disabled by default — safe for Docker-in-Docker on a cgroup v2 host, where a threaded
+# /sys/fs/cgroup/docker can't enable the memory controller and a mem_limit would prevent containers
+# from starting. Set APPLY_RESOURCE_LIMITS=true to apply them; needed on small host-docker agents
+# (e.g. the ~7.9 GB Azure host) to avoid OOM.
+APPLY_RESOURCE_LIMITS="${APPLY_RESOURCE_LIMITS:-false}"
 
 # Set compose files based on cluster type
 if [[ "$CLUSTER_TYPE" == "base" ]]; then
