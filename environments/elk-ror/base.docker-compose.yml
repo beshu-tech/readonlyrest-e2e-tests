@@ -11,8 +11,6 @@ services:
     ports:
       - "9200:9200"
       - "5005:5005"
-    mem_limit: 3g
-    memswap_limit: 3g
     environment:
       - ES_VERSION=$ES_VERSION
       - cluster.name=elk-ror
@@ -20,7 +18,7 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       # for a sake of debugging and profiling
-      - "ES_JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dcom.readonlyrest.settings.loading.attempts.count=0 -Dcom.readonlyrest.settings.loading.delay=0s -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=9010 -Djava.rmi.server.hostname=127.0.0.1"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dcom.readonlyrest.settings.loading.attempts.count=0 -Dcom.readonlyrest.settings.loading.delay=0s -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=9010 -Djava.rmi.server.hostname=127.0.0.1"
       # for a sake of ROR settings marked as "<-- related to ECK environment -->"
       - KIBANA_SERVICE_ACCOUNT_TOKEN=UNUSED
       - INTERNAL_PROBE_PASS=UNUSED
@@ -51,8 +49,6 @@ services:
     depends_on:
       es-ror:
         condition: service_healthy
-    mem_limit: 1g
-    memswap_limit: 1g
     deploy:
       mode: replicated
       replicas: 2
@@ -64,7 +60,11 @@ services:
       interval: 10s
       timeout: 10s
       retries: 30
-      start_period: 60s
+      # Two Kibana replicas + ES + APM boot concurrently. On CPU-small CI agents
+      # (e.g. the 2-vCPU Azure host) a replica needs >60s to reach /api/status, so
+      # `docker compose up --wait` was tearing the stack down before tests ran.
+      # start_period only extends the startup grace; it's free on a fast boot.
+      start_period: 180s
     networks:
       - es-ror-network
     ulimits:
@@ -81,8 +81,6 @@ services:
         condition: service_healthy
     ports:
       - "5601:443"
-    mem_limit: 256m
-    memswap_limit: 256m
     healthcheck:
       test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:443/api/status" ]
       interval: 10s

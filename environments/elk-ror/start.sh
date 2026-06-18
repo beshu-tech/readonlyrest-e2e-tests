@@ -146,14 +146,24 @@ docker pull "$ROR_KBN_IMAGE" || { echo "Failed to pull Kibana image: $ROR_KBN_IM
 echo "Bootstrapping the docker-based environment ..."
 echo "Cluster type: $CLUSTER_TYPE"
 
+# Resource limits live in separate *.limits.docker-compose.yml overlays so they're opt-in.
+# Disabled by default — safe for Docker-in-Docker on a cgroup v2 host, where a threaded
+# /sys/fs/cgroup/docker can't enable the memory controller and a mem_limit would prevent containers
+# from starting. Set APPLY_RESOURCE_LIMITS=true to apply them; needed on small host-docker agents
+# (e.g. the ~7.9 GB Azure host) to avoid OOM.
+APPLY_RESOURCE_LIMITS="${APPLY_RESOURCE_LIMITS:-false}"
+
 # Set compose files based on cluster type
 if [[ "$CLUSTER_TYPE" == "base" ]]; then
   DOCKER_COMPOSE_FILES="-f base.docker-compose.yml"
+  [[ "$APPLY_RESOURCE_LIMITS" == "true" ]] && DOCKER_COMPOSE_FILES="$DOCKER_COMPOSE_FILES -f base.limits.docker-compose.yml"
   echo "Starting base cluster (Elasticsearch + Kibana + ReadonlyREST)"
 elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   DOCKER_COMPOSE_FILES="-f base.docker-compose.yml -f apm.docker-compose.yml"
+  [[ "$APPLY_RESOURCE_LIMITS" == "true" ]] && DOCKER_COMPOSE_FILES="$DOCKER_COMPOSE_FILES -f base.limits.docker-compose.yml -f apm.limits.docker-compose.yml"
   echo "Starting cluster with APM (Elasticsearch + Kibana + ReadonlyREST + APM Server + APM App)"
 fi
+echo "Resource limits: $([[ "$APPLY_RESOURCE_LIMITS" == "true" ]] && echo "applied" || echo "disabled (APPLY_RESOURCE_LIMITS=$APPLY_RESOURCE_LIMITS)")"
 
 if ! docker compose $DOCKER_COMPOSE_FILES config > /dev/null; then
   echo "Cannot validate docker compose configuration."
