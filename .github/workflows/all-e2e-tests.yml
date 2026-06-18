@@ -7,6 +7,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+env:
+  # These runs use docker directly on the GitHub-hosted runner (host docker, not nested), so the
+  # compose *.limits.docker-compose.yml overlays apply cleanly and protect the ~16 GB runner from OOM.
+  # start.sh leaves resource limits off by default (safe for the ROR KBN Docker-in-Docker flow);
+  # opt in here. (eck-env runs don't use docker-compose limits, so this is a no-op for them.)
+  APPLY_RESOURCE_LIMITS: "true"
+
 jobs:
   # ==========================================
   # E2E TESTS - MASTER BRANCH
