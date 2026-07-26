@@ -1,4 +1,4 @@
-import { TENANCY_QUERY_STRING_KEY } from '../../../../shared/constants/queryStringKeys';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
 
 export class Tenancy {
   public static encryptedTenancyWithTemplateGroup =

@@ -9,7 +9,7 @@ import { Discover } from './Discover';
 import { Canvas } from './Canvas';
 import { IndexPattern } from './IndexPattern';
 import { getKibanaVersion } from '../helpers';
-import { TENANCY_QUERY_STRING_KEY } from '../../../../shared/constants/queryStringKeys';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
 import { Tenancy } from './Tenancy';
 import { kbnApiClient } from '../helpers/KbnApiClient';
 import { Login } from './Login';
