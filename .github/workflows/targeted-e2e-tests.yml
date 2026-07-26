@@ -27,9 +27,11 @@ on:
 
 env:
   # Runs use docker directly on the GitHub-hosted runner (host docker, not nested), so the compose
-  # *.limits.docker-compose.yml overlays apply cleanly and protect the runner from OOM. start.sh
-  # leaves resource limits off by default (safe for the ROR KBN Docker-in-Docker flow); opt in here.
-  APPLY_RESOURCE_LIMITS: "true"
+  # *.limits.docker-compose.yml overlays apply cleanly. start.sh leaves resource limits off by
+  # default (safe for the ROR KBN Docker-in-Docker flow); `auto` lets it decide from MemTotal, the
+  # same 12 GB threshold ci/e2e-tests-lib.sh uses in the ROR ES repo. Forcing them on capped es-ror
+  # at 2g against a 1g heap, which ran at 97-99% of the cap and got OOM-killed on 7.17.29/docker.
+  APPLY_RESOURCE_LIMITS: "auto"
 
 jobs:
   e2e-tests:
@@ -81,8 +83,11 @@ jobs:
         with:
           action: stop
 
+      # Never fail the job on the artifact upload: this step only runs when the tests already
+      # failed, and a credential problem here would replace that diagnosis with its own.
       - name: S3 Upload Videos & show logs
         if: failure()
+        continue-on-error: true
         uses: ./.github/upload-videos
         with:
           access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}

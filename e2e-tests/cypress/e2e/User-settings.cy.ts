@@ -6,6 +6,24 @@ import { getKibanaVersion } from '../support/helpers';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Loader } from '../support/page-objects/Loader';
 
+// Kibana 8.x lazily loads plugin chunks (securitySolution, observability, enterpriseSearch) during
+// the theme reload below. When those chunks fail, Kibana's plugin lifecycle throws "executing a
+// cancelled action" as an unhandled rejection. Neither failure is related to what these tests verify.
+//
+// Registered with `Cypress.on` at spec scope rather than `cy.on` inside the test: `cy.on` listeners
+// are torn down when the test body ends, so a rejection arriving during the `afterEach` below went
+// unhandled and failed the hook — which skips the rest of the suite. Spec scope covers hooks too,
+// and still keeps the suppression out of every other spec.
+Cypress.on('uncaught:exception', err => {
+  if (
+    err.message.includes('ChunkLoadError') ||
+    err.message.includes('Loading chunk') ||
+    err.message.includes('executing a cancelled action')
+  ) {
+    return false;
+  }
+});
+
 describe('User settings', () => {
   beforeEach(() => {
     Login.initialization();
@@ -16,20 +34,6 @@ describe('User settings', () => {
   });
 
   it('should verify user settings change', () => {
-    // Kibana 8.x lazily loads plugin chunks (securitySolution, observability, enterpriseSearch)
-    // during the reload below. When those chunks fail, Kibana's plugin lifecycle throws
-    // "executing a cancelled action" as an unhandled rejection. Neither failure is related to
-    // what this test verifies.
-    cy.on('uncaught:exception', err => {
-      if (
-        err.message.includes('ChunkLoadError') ||
-        err.message.includes('Loading chunk') ||
-        err.message.includes('executing a cancelled action')
-      ) {
-        return false;
-      }
-    });
-
     cy.log('Change theme');
     UserSettings.open();
 

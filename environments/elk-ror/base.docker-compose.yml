@@ -1,6 +1,10 @@
 services:
 
   es-ror:
+    # Without this a single OOM kill ends the run: the container exits 137, nothing brings it back,
+    # and every remaining spec fails against a dead cluster. Restarting the same container keeps the
+    # writable layer (there is no volume here), so indices and ROR settings survive the bounce.
+    restart: always
     build:
       context: .
       dockerfile: images/es/Dockerfile

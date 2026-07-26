@@ -9,10 +9,16 @@ on:
 
 env:
   # These runs use docker directly on the GitHub-hosted runner (host docker, not nested), so the
-  # compose *.limits.docker-compose.yml overlays apply cleanly and protect the ~16 GB runner from OOM.
-  # start.sh leaves resource limits off by default (safe for the ROR KBN Docker-in-Docker flow);
-  # opt in here. (eck-env runs don't use docker-compose limits, so this is a no-op for them.)
-  APPLY_RESOURCE_LIMITS: "true"
+  # compose *.limits.docker-compose.yml overlays apply cleanly. start.sh leaves resource limits off
+  # by default (safe for the ROR KBN Docker-in-Docker flow); `auto` lets it decide from MemTotal,
+  # the same 12 GB threshold ci/e2e-tests-lib.sh uses in the ROR ES repo.
+  #
+  # This was hardcoded to "true", which put es-ror under a 2g cap on a 16 GB runner. It sat at
+  # 97-99% of that cap for entire runs and on 7.17.29/docker it was OOM-killed four minutes in and
+  # never came back, failing 18 consecutive specs. GitHub-hosted runners resolve to false here;
+  # small self-hosted agents still get the limits they need.
+  # (eck-env runs don't use docker-compose limits, so this is a no-op for them.)
+  APPLY_RESOURCE_LIMITS: "auto"
 
 jobs:
   # ==========================================
@@ -77,8 +83,11 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: stop
+      # Never fail the job on the artifact upload: this step only runs when the tests already
+      # failed, and a credential problem here would replace that diagnosis with its own.
       - name: S3 Upload Videos & show logs
         if: failure()
+        continue-on-error: true
         uses: ./.github/upload-videos
         with:
           access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -248,9 +257,16 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: stop
+      # Credentials go through `with:`, not `env:` — the composite action sets
+      # AWS_ACCESS_KEY_ID from `inputs.access_key_id`, so an env-only form is overwritten with the
+      # empty default and every upload dies on "Unable to locate credentials".
+      # Never fail the job on the artifact upload: this step only runs when the tests already
+      # failed, and a credential problem here would replace that diagnosis with its own.
       - name: S3 Upload Videos & show logs
         if: failure()
+        continue-on-error: true
         uses: ./.github/upload-videos
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}

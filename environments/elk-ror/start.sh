@@ -151,7 +151,25 @@ echo "Cluster type: $CLUSTER_TYPE"
 # /sys/fs/cgroup/docker can't enable the memory controller and a mem_limit would prevent containers
 # from starting. Set APPLY_RESOURCE_LIMITS=true to apply them; needed on small host-docker agents
 # (e.g. the ~7.9 GB Azure host) to avoid OOM.
+#
+# `auto` picks per host size, mirroring ci/e2e-tests-lib.sh in the ROR ES repo. The limits are a
+# floor, not a ceiling: es-ror gets mem_limit 2g against a 1g heap, and Lucene mmap + direct buffers
+# + metaspace push its cgroup usage to 97-99% on any full suite run. On a host with memory to spare
+# that headroom is pure downside — a single GC spike gets es-ror OOM-killed (exit 137) and, since it
+# has no restart policy, it stays dead and every remaining spec fails. So only squeeze when the host
+# genuinely cannot fit the stack unconstrained.
 APPLY_RESOURCE_LIMITS="${APPLY_RESOURCE_LIMITS:-false}"
+
+if [[ "$APPLY_RESOURCE_LIMITS" == "auto" ]]; then
+  HOST_MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+  if [[ "${HOST_MEM_KB:-0}" -gt 0 && "$HOST_MEM_KB" -lt 12000000 ]]; then
+    APPLY_RESOURCE_LIMITS="true"
+    echo "Resource limits: auto -> true (host has ${HOST_MEM_KB} kB, below the 12 GB threshold)"
+  else
+    APPLY_RESOURCE_LIMITS="false"
+    echo "Resource limits: auto -> false (host has ${HOST_MEM_KB} kB, at or above the 12 GB threshold)"
+  fi
+fi
 
 # Set compose files based on cluster type
 if [[ "$CLUSTER_TYPE" == "base" ]]; then
