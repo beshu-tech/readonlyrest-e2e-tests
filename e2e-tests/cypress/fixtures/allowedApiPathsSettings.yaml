@@ -1,60 +1,73 @@
 readonlyrest:
-    ssl:
-        enable: true
-        keystore_file: '/etc/elasticsearch/ror-keystore.jks'
-        keystore_pass: readonlyrest
-        key_pass: readonlyrest
-    access_control_rules:
-        - name: 'Kibana service account - user/pass'
-          verbosity: error
-          auth_key: kibana:kibana
 
-        # api_only user restricted to a single exact Kibana API path.
-        - name: API_ONLY_RESTRICTED
-          auth_key: api_only_restricted_user:dev
-          kibana:
-              access: api_only
-              index: '.kibana_api_restricted'
-              allowed_api_paths:
-                  - http_method: GET
-                    http_path: '^/api/spaces/space$'
+  access_control_rules:
+      
+    - name: "Kibana service account - user/pass"
+      verbosity: error
+      auth_key: kibana:kibana
+      
+    # <-- related to ECK environment -->
+    - name: "Kibana service account - token"
+      verbosity: error
+      token_authentication:
+        token: "Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}" 
+        username: service_account
 
-        # api_only user restricted via regexp — allows all /api/spaces/* paths.
-        - name: API_ONLY_RESTRICTED_REGEXP
-          auth_key: api_only_restricted_regexp_user:dev
-          kibana:
-              access: api_only
-              index: '.kibana_api_restricted'
-              allowed_api_paths:
-                  - http_method: GET
-                    http_path: '^/api/spaces.*$'
+    - name: "PROBE"
+      verbosity: error
+      auth_key: "elastic-internal-probe:${INTERNAL_PROBE_PASS}"
 
-        # api_only user restricted to a space-aware path — only /s/default/api/spaces/space.
-        - name: API_ONLY_SPACE_RESTRICTED
-          auth_key: api_only_space_restricted_user:dev
-          kibana:
-              access: api_only
-              index: '.kibana_api_restricted'
-              allowed_api_paths:
-                  - http_method: GET
-                    http_path: '^/s/default/api/spaces/space$'
+    - name: "ELASTIC-INTERNAL"
+      verbosity: error
+      auth_key: "elastic-internal:${INTERNAL_USR_PASS}"
+    # <!-- related to ECK environment -->
+    
+    # api_only user restricted to a single exact Kibana API path.
+    - name: API_ONLY_RESTRICTED
+      auth_key: api_only_restricted_user:dev
+      kibana:
+          access: api_only
+          index: '.kibana_api_restricted'
+          allowed_api_paths:
+              - http_method: GET
+                http_path: '^/api/spaces/space$'
 
-        # api_only user restricted to Kibana internal API paths (/internal/*).
-        - name: API_ONLY_INTERNAL_RESTRICTED
-          auth_key: api_only_internal_user:dev
-          kibana:
-              access: api_only
-              index: '.kibana_api_restricted'
-              allowed_api_paths:
-                  - http_method: GET
-                    http_path: '^/internal/spaces/get_all.*$'
+    # api_only user restricted via regexp — allows all /api/spaces/* paths.
+    - name: API_ONLY_RESTRICTED_REGEXP
+      auth_key: api_only_restricted_regexp_user:dev
+      kibana:
+          access: api_only
+          index: '.kibana_api_restricted'
+          allowed_api_paths:
+              - http_method: GET
+                http_path: '^/api/spaces.*$'
 
-        # api_only user restricted to ReadonlyREST public API paths (/api/ror/*).
-        - name: API_ONLY_ROR_RESTRICTED
-          auth_key: api_only_ror_user:dev
-          kibana:
-              access: api_only
-              index: '.kibana_api_restricted'
-              allowed_api_paths:
-                  - http_method: GET
-                    http_path: '^/api/ror/user/tenants$'
+    # api_only user restricted to a space-aware path — only /s/default/api/spaces/space.
+    - name: API_ONLY_SPACE_RESTRICTED
+      auth_key: api_only_space_restricted_user:dev
+      kibana:
+          access: api_only
+          index: '.kibana_api_restricted'
+          allowed_api_paths:
+              - http_method: GET
+                http_path: '^/s/default/api/spaces/space$'
+
+    # api_only user restricted to Kibana internal API paths (/internal/*).
+    - name: API_ONLY_INTERNAL_RESTRICTED
+      auth_key: api_only_internal_user:dev
+      kibana:
+          access: api_only
+          index: '.kibana_api_restricted'
+          allowed_api_paths:
+              - http_method: GET
+                http_path: '^/internal/spaces/get_all.*$'
+
+    # api_only user restricted to ReadonlyREST public API paths (/api/ror/*).
+    - name: API_ONLY_ROR_RESTRICTED
+      auth_key: api_only_ror_user:dev
+      kibana:
+          access: api_only
+          index: '.kibana_api_restricted'
+          allowed_api_paths:
+              - http_method: GET
+                http_path: '^/api/ror/user/tenants$'
