@@ -16,18 +16,25 @@ env:
 
 jobs:
   # ==========================================
-  # E2E TESTS - MASTER BRANCH
+  # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
   # ==========================================
   # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
-  # plugins still pass the suite", so a spec may only land on master once the plugin change it
-  # exercises has been released — specs synced from ROR KBN `develop` belong on `develop` until then.
-  master-e2e-tests:
-    name: "🔬 Master E2E Tests"
+  # plugins still pass the suite".
+  #
+  # Selection is base-driven: this covers master itself and every PR targeting master, so a PR is
+  # tested exactly the way its target branch is tested and a green PR cannot turn the nightly red
+  # after merge. The corollary is that a spec may only land on master once the plugin change it
+  # exercises has been released — specs synced from ROR KBN `develop` belong on `develop` until then,
+  # and a PR to master that fails only on such specs is reporting that correctly.
+  #
+  # Keep the matrix in sync with ELK_VERSIONS in prepare-dev-images.
+  prod-e2e-tests:
+    name: "🔬 E2E Tests (released plugins)"
     if: >
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/master' ||
-      (github.base_ref == 'master' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
+      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -81,6 +88,8 @@ jobs:
   # ==========================================
   # BOOTSTRAP TESTS
   # ==========================================
+  # Gates on prod-e2e-tests, which covers every trigger in this job's `if` (master itself, and PRs
+  # targeting master). Bootstrap uses released images (no --mode), as it did before.
   master-bootstrap-tests:
     name: "🚀 Bootstrap Tests"
     if: >
@@ -88,7 +97,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/master' ||
       (github.base_ref == 'master' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
-    needs: master-e2e-tests
+    needs: prod-e2e-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -127,11 +136,11 @@ jobs:
           action: stop
 
   # ==========================================
-  # DEV IMAGE PREPARATION - DEVELOP BRANCH
+  # DEV IMAGE PREPARATION - DEVELOP AND NON-MASTER PRs
   # ==========================================
-  # Builds branch-matched dev images of BOTH plugins before the develop suite runs, the same way the
-  # ROR ES and ROR KBN repos do it for their own e2e jobs (ci/e2e-tests-lib.sh there). Without this
-  # the develop suite ran against the mutable `<version>-ror-latest` dev tag, which is neither
+  # Builds branch-matched dev images of BOTH plugins before dev-e2e-tests runs, the same way the ROR
+  # ES and ROR KBN repos do it for their own e2e jobs (ci/e2e-tests-lib.sh there). Without this the
+  # develop suite ran against the mutable `<version>-ror-latest` dev tag, which is neither
   # branch-matched nor stable for the duration of a run.
   #
   # One job, not one per matrix cell: both pre-build endpoints accept a version LIST, so the whole
@@ -139,11 +148,17 @@ jobs:
   #
   # `target_branch` is passed verbatim; both pipelines fall back to `develop` when the branch does
   # not exist on their side, so an e2e-only branch name is always safe.
+  # PRs targeting master are excluded — those are the prod-e2e-tests path. Everything else that is
+  # not master (develop, and PRs targeting develop or any other branch) lands here.
+  #
+  # Fork PRs are excluded too: the dispatch needs ES_REPO_AZURE_PAT / KBN_REPO_GH_TOKEN, which GitHub
+  # does not expose to workflows triggered from a fork. Fork PRs therefore get no e2e coverage —
+  # unchanged from before, when they were excluded from the master job for the same reason.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
     if: >
-      github.ref == 'refs/heads/develop' ||
-      (github.base_ref == 'develop' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'pull_request' && github.base_ref != 'master' && github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
     # Ceiling for the two polls in ci/prebuild-images-lib.sh (ES 45 min, KBN 30 min), which only run
     # long when the pre-build pipelines actually rebuild; the unchanged-sources path is a cheap retag.
@@ -159,8 +174,9 @@ jobs:
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          # Single source of truth for the develop matrix: emitted as JSON for `fromJSON` below and
+          # Single source of truth for the dev-e2e-tests matrix: emitted as JSON for `fromJSON` and
           # passed as a space-separated list to the dispatchers, so the two can never drift.
+          # Mirrors the prod-e2e-tests matrix — keep both in sync.
           ELK_VERSIONS: "9.4.4 9.3.8 8.19.19 7.17.29"
           # PR runs must build from the PR head, not the merge ref.
           TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
@@ -181,11 +197,12 @@ jobs:
           wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
 
   # ==========================================
-  # E2E TESTS - DEVELOP BRANCH
+  # E2E TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
   # ==========================================
-  # Runs against the per-run dev images produced by prepare-dev-images.
-  develop-e2e-tests:
-    name: "🧪 Develop E2E Tests"
+  # Every non-fork pull request and every push to develop, against the per-run, branch-matched dev
+  # images produced by prepare-dev-images. Skipped automatically when that job is skipped.
+  dev-e2e-tests:
+    name: "🧪 E2E Tests (pre-build plugins)"
     needs: prepare-dev-images
     runs-on: ubuntu-latest
     strategy:
