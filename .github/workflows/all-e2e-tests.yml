@@ -18,6 +18,9 @@ jobs:
   # ==========================================
   # E2E TESTS - MASTER BRANCH
   # ==========================================
+  # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
+  # plugins still pass the suite", so a spec may only land on master once the plugin change it
+  # exercises has been released — specs synced from ROR KBN `develop` belong on `develop` until then.
   master-e2e-tests:
     name: "🔬 Master E2E Tests"
     if: >
@@ -58,7 +61,7 @@ jobs:
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
+            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --mode prod
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
@@ -124,23 +127,74 @@ jobs:
           action: stop
 
   # ==========================================
-  # E2E TESTS - DEVELOP BRANCH
+  # DEV IMAGE PREPARATION - DEVELOP BRANCH
   # ==========================================
-  develop-e2e-tests:
-    name: "🧪 Develop E2E Tests"
+  # Builds branch-matched dev images of BOTH plugins before the develop suite runs, the same way the
+  # ROR ES and ROR KBN repos do it for their own e2e jobs (ci/e2e-tests-lib.sh there). Without this
+  # the develop suite ran against the mutable `<version>-ror-latest` dev tag, which is neither
+  # branch-matched nor stable for the duration of a run.
+  #
+  # One job, not one per matrix cell: both pre-build endpoints accept a version LIST, so the whole
+  # matrix costs two dispatches, and the image wait is paid once instead of twelve times.
+  #
+  # `target_branch` is passed verbatim; both pipelines fall back to `develop` when the branch does
+  # not exist on their side, so an e2e-only branch name is always safe.
+  prepare-dev-images:
+    name: "🏗️ Prepare dev images"
     if: >
       github.ref == 'refs/heads/develop' ||
       (github.base_ref == 'develop' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
     runs-on: ubuntu-latest
+    # Ceiling for the two polls in ci/prebuild-images-lib.sh (ES 45 min, KBN 30 min), which only run
+    # long when the pre-build pipelines actually rebuild; the unchanged-sources path is a cheap retag.
+    timeout-minutes: 90
+    outputs:
+      run_tag: ${{ steps.prepare.outputs.run_tag }}
+      versions: ${{ steps.prepare.outputs.versions }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Dispatch and await ROR plugin pre-builds
+        id: prepare
+        env:
+          # Single source of truth for the develop matrix: emitted as JSON for `fromJSON` below and
+          # passed as a space-separated list to the dispatchers, so the two can never drift.
+          ELK_VERSIONS: "9.4.4 9.3.8 8.19.19 7.17.29"
+          # PR runs must build from the PR head, not the merge ref.
+          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          ES_REPO_AZURE_PAT: ${{ secrets.ES_REPO_AZURE_PAT }}
+          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
+        run: |
+          set -euo pipefail
+          . ci/prebuild-images-lib.sh
+
+          # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
+          RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
+          {
+            echo "run_tag=$RUN_TAG"
+            echo "versions=$(printf '%s\n' $ELK_VERSIONS | jq -Rcn '[inputs]')"
+          } >> "$GITHUB_OUTPUT"
+
+          dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
+          wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
+
+  # ==========================================
+  # E2E TESTS - DEVELOP BRANCH
+  # ==========================================
+  # Runs against the per-run dev images produced by prepare-dev-images.
+  develop-e2e-tests:
+    name: "🧪 Develop E2E Tests"
+    needs: prepare-dev-images
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ["9.4.4", "9.3.8", "8.19.19", "7.17.29"]
+        version: ${{ fromJSON(needs.prepare-dev-images.outputs.versions) }}
         env: [docker, eck-2.16.1, eck-3.4.1]
     env:
-      ROR_ES_VERSION: "latest"
-      ROR_KBN_VERSION: "latest"
-      MODE: 'dev'
+      ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -168,7 +222,7 @@ jobs:
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
+            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_IMAGE_TAG }} --ror-kbn ${{ env.ROR_IMAGE_TAG }} --mode dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
