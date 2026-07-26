@@ -16,7 +16,7 @@ describe('hidden apps', () => {
   });
 
   context('Stack Management navigation', () => {
-    // hiddenSpaceManagementSettings.yaml hides the "Space Management" sub-page 
+    // hiddenSpaceManagementSettings.yaml hides the "Space Management" sub-page
     // and most other apps, leaving Stack Management with only the Reporting,
     // Data Views (Index Patterns on 7.x), and Saved Objects sub-pages visible.
     it('shows only the allowlisted Stack Management sub-pages when most apps are hidden', () => {
