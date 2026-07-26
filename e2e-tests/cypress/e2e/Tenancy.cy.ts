@@ -5,14 +5,14 @@ import { RorMenu } from '../support/page-objects/RorMenu';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Loader } from '../support/page-objects/Loader';
 import { Discover } from '../support/page-objects/Discover';
-import { Home } from '../support/page-objects/Home';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Dashboard } from '../support/page-objects/Dashboard';
+import { IndexManagement } from '../support/page-objects/IndexManagement';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Spaces } from '../support/page-objects/Spaces';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
-import { IndexManagement } from '../support/page-objects/IndexManagement';
+import { UserSettings } from '../support/page-objects/UserSettings';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
@@ -25,6 +25,7 @@ describe('Tenancy', () => {
       endUrl = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`
     ) => {
       RorMenu.changeTenancy('administrators', endUrl, '');
+      IndexManagement.waitUntilLoaded();
       cy.go('back');
     };
 
@@ -41,8 +42,60 @@ describe('Tenancy', () => {
       });
     };
 
+    beforeEach(() => {
+      cy.clearCookies();
+      cy.clearLocalStorage();
+    });
+
     // eslint-disable-next-line no-use-before-define
     runTests({ callbackBeforeLogin: openAnotherTabs });
+  });
+
+  it('should not apply stale remembered tenancy to a new user session after logout', () => {
+    const homeUrlWithInfosecTenancy = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
+
+    Login.initialization({
+      visitedUrl: homeUrlWithInfosecTenancy,
+      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
+      spacePrefix: ''
+    });
+
+    RorMenu.openRorMenu();
+    UserSettings.openViaMenuIcon();
+    UserSettings.changeUserSettingsValue('remember-group-after-logout-settings', 'enabled');
+    RorMenu.openRorMenu();
+    RorMenu.pressLogoutButton();
+
+    cy.url().should('include', `nextUrl=`);
+    cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
+
+    Login.fillLoginPageWith('kibana', 'kibana');
+    Loader.loading();
+    RorMenu.openRorMenu();
+    RorMenu.verifyNoTenantAvailable();
+  });
+
+  it('should redirect to page-not-found instead of carrying stale tenancy to a saved-object page after logout', () => {
+    const dashboardsUrlWithInfosecTenancy = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
+
+    Login.initialization({
+      visitedUrl: dashboardsUrlWithInfosecTenancy,
+      finishUrl: `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=*`,
+      spacePrefix: ''
+    });
+
+    RorMenu.openRorMenu();
+    UserSettings.openViaMenuIcon();
+    UserSettings.changeUserSettingsValue('remember-group-after-logout-settings', 'enabled');
+    RorMenu.openRorMenu();
+    RorMenu.pressLogoutButton();
+
+    cy.url().should('include', `nextUrl=`);
+    cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
+
+    Login.fillLoginPageWith('kibana', 'kibana');
+    Loader.loading(`/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
+    cy.url().should('include', '/app/page-not-found');
   });
 });
 
@@ -92,8 +145,14 @@ function runTests({
     });
 
     callbackAfterLogin?.();
-    Home.loadSampleData();
+    kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
+    cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
     KibanaNavigation.openPage('Discover');
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');
+    } else {
+      cy.get('[data-test-subj="indexPattern-switch-link"]', { timeout: 30000 }).should('exist');
+    }
     Discover.openShareDiscover();
     Discover.clickCopyLinkButton('admin');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
@@ -142,7 +201,7 @@ function runTests({
   });
 
   it('should redirect to page not found when tenancy is not available', () => {
-    const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
+    const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
     Login.initialization({
       visitedUrl: urlWithTenancyId,
       finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`,
@@ -161,7 +220,6 @@ function runTests({
       spacePrefix: ''
     });
 
-    IndexManagement.waitingForSectionLoadingFinish();
     callbackAfterLogin?.();
 
     Spaces.createNewSpace(newSpace);

@@ -46,7 +46,7 @@ Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
 Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }, ...args) =>
   uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
     'kbn-xsrf': 'true',
-    ...(currentGroupHeader ? { 'x-ror-current-group': currentGroupHeader } : {})
+    ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {})
   })
 );
 
@@ -96,7 +96,7 @@ Cypress.Commands.add(
   ({ method, endpoint, credentials, payload, currentGroupHeader, impersonating, failOnStatusCode, headers }) => {
     const customHeaders: { [key: string]: string } = { 'kbn-xsrf': 'true', ...headers };
     if (currentGroupHeader) {
-      customHeaders['x-ror-current-group'] = currentGroupHeader;
+      customHeaders['x-ror-tenancy-id'] = currentGroupHeader;
     }
 
     if (impersonating) {
@@ -211,7 +211,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
     err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
-    err.message.includes('Loading chunk') // kibana 9.3.2
+    err.message.includes("Cannot read properties of undefined (reading 'id')") || // kibana 9.x Discover throws when opening with no data views in the tenant
+    err.message.includes('endpoint is ignored by ReadonlyREST plugin') // unsupportedEndpointsFilter.ts intercepts Kibana security endpoints with 501; some callers lack try-catch
   ) {
     return false;
   }

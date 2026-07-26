@@ -7,7 +7,6 @@ export class Login {
   }
 
   static suppressPostLoginNotices() {
-    cy.setCookie('rorIgnoreActivationKeyInfo', 'true');
     cy.on('url:changed', () => {
       sessionStorage.setItem('ror:ignoreKeyExpirationInfo', 'true');
       localStorage.setItem('home:welcome:show', 'false');

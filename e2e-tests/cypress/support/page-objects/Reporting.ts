@@ -77,18 +77,35 @@ export class Reporting {
     );
   }
 
-  static verifyAllDataStreamsSegmentsCount(index: string, numberOfSegments: number) {
-    esApiAdvancedClient.getAllReportingDataStreamSegments(index).then(dataStreams => {
-      expect(dataStreams.length).to.equal(numberOfSegments);
-      const sortedStreams = [...dataStreams].sort((a, b) => a.index.localeCompare(b.index));
+  static verifyAllDataStreamsSegmentsCount(index: string, numberOfSegments: number, timeout = 30000) {
+    // Segment creation after a rollover is async, so poll instead of asserting on
+    // a single snapshot that could catch an intermediate state.
+    const startTime = Date.now();
 
-      sortedStreams.forEach(
-        (dataStream, index) =>
-          expect(
-            dataStream.index.endsWith(`00000${index + 1}`),
-            `Expected index "${dataStream.index}" to end with "00000${index + 1}"`
-          ).to.be.true
-      );
-    });
+    const check = (): Cypress.Chainable<void> =>
+      esApiAdvancedClient.getAllReportingDataStreamSegments(index).then(dataStreams => {
+        if (dataStreams.length !== numberOfSegments && Date.now() - startTime < timeout) {
+          cy.log(`Reporting segments for ${index}: ${dataStreams.length}/${numberOfSegments}, waiting...`);
+          return cy.wait(1000).then(check);
+        }
+
+        // Name the assertion so a timeout (rather than a genuine miscount) is obvious in CI.
+        const timedOut = Date.now() - startTime >= timeout;
+        const label = timedOut
+          ? `data stream segments for ${index} (timed out after ${timeout / 1000}s)`
+          : `data stream segments for ${index}`;
+        expect(dataStreams.length, label).to.equal(numberOfSegments);
+        const sortedStreams = [...dataStreams].sort((a, b) => a.index.localeCompare(b.index));
+
+        sortedStreams.forEach(
+          (dataStream, segmentIndex) =>
+            expect(
+              dataStream.index.endsWith(`00000${segmentIndex + 1}`),
+              `Expected index "${dataStream.index}" to end with "00000${segmentIndex + 1}"`
+            ).to.be.true
+        );
+      });
+
+    return cy.wrap(null).then(check);
   }
 }

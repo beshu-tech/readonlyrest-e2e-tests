@@ -24,7 +24,7 @@ export class Spaces {
 
   static saveSpaceAndConfirm() {
     cy.get('[data-test-subj=save-space-button]').click();
-    cy.get('body').then($body => {
+    cy.get('body').then(($body) => {
       if ($body.find('[data-test-subj=confirmModalConfirmButton]').length > 0) {
         cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
       }
@@ -42,9 +42,7 @@ export class Spaces {
 
   static createNewSpace(spaceName: string) {
     cy.log('Create new space');
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.get('[data-test-subj=manageSpaces]').click({ force: true });
-    cy.get('[data-test-subj=createSpace]').click();
+    Spaces.navigateToCreateSpacePage();
     cy.get('[data-test-subj=addSpaceName]').type(spaceName);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
 
@@ -55,6 +53,24 @@ export class Spaces {
 
     cy.get('[data-test-subj=save-space-button]').click();
     cy.contains(`Space '${spaceName}' was saved.`);
+  }
+
+  static navigateToCreateSpacePage() {
+    cy.get('[data-test-subj=spacesNavSelector]').click();
+    cy.get('[data-test-subj=manageSpaces]').click({ force: true });
+    cy.get('[data-test-subj=createSpace]').click();
+  }
+
+  static openSolutionViewDropdown() {
+    cy.get('[data-test-subj=solutionViewSelect]').click();
+  }
+
+  static verifySolutionViewSecurityOptionIsHidden() {
+    cy.get('[data-test-subj=solutionViewSecurityOption]').should('not.be.visible');
+  }
+
+  static verifySolutionViewOptionsAreVisible(...testSubjs: string[]) {
+    testSubjs.forEach(subj => cy.get(`[data-test-subj="${subj}"]`).should('be.visible'));
   }
 
   static openSpace(spaceName: string) {

@@ -9,8 +9,8 @@ import { Discover } from './Discover';
 import { Canvas } from './Canvas';
 import { IndexPattern } from './IndexPattern';
 import { getKibanaVersion } from '../helpers';
+import { TENANCY_QUERY_STRING_KEY } from '../../../../shared/constants/queryStringKeys';
 import { Tenancy } from './Tenancy';
-import { TENANCY_QUERY_STRING_KEY } from '../types';
 import { kbnApiClient } from '../helpers/KbnApiClient';
 import { Login } from './Login';
 
@@ -23,7 +23,21 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Home.loadSampleDataButtonHidden();
 
     cy.log('Verify Dashboard features');
-    Dashboard.openDashboard();
+    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+      cy.intercept('GET', '/s/default/app/dashboards**').as('dashboardsApp');
+      Tenancy.getTenancyFromUrl().then(tenancy => {
+        cy.visit(`/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
+      });
+      cy.wait('@dashboardsApp', { timeout: 30000 }).its('response.statusCode').should('eq', 200);
+    } else if (semver.gte(getKibanaVersion(), '8.7.0')) {
+      cy.intercept('POST', /\/content_management\/rpc\/search/).as('dashboardsSearch');
+      Tenancy.getTenancyFromUrl().then(tenancy => {
+        cy.visit(`/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
+      });
+      cy.wait('@dashboardsSearch', { timeout: 30000 }).its('response.statusCode').should('eq', 200);
+    } else {
+      Dashboard.openDashboard();
+    }
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
     Dashboard.editButtonNotExist();
@@ -31,6 +45,12 @@ export class RoAndRoStrictKibanaAccessAssertions {
     cy.waitForNetworkIdle('*.pbf', 3000, {
       timeout: 30000
     });
+
+    cy.log('Verify Lens panel renders without error');
+    cy.get('[data-test-subj="embeddableError"]').should('not.exist');
+    if (semver.gte(getKibanaVersion(), '7.10.0')) {
+      cy.get('[data-test-subj="lnsVisualizationContainer"]').should('exist');
+    }
 
     cy.log('Verify Discover features');
     KibanaNavigation.openPage('Discover');

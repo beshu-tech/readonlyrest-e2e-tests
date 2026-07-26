@@ -22,11 +22,13 @@ export class Discover {
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
-    cy.contains('was saved', { timeout: 10000 }).should('exist');
+    Discover.verifySearchSaved();
+  }
 
-    cy.findByRole('navigation', {
-      name: /breadcrumb/i
-    }).findByText(reportName);
+  static verifySearchSaved() {
+    cy.log('verifySearchSaved');
+    cy.contains('was saved', { timeout: 10000 }).should('exist');
+    cy.url().should('include', '/view/');
   }
 
   static exportToCsv() {

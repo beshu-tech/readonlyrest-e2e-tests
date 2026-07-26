@@ -16,15 +16,32 @@ describe('User settings', () => {
   });
 
   it('should verify user settings change', () => {
+    // Kibana 8.x lazily loads plugin chunks (securitySolution, observability, enterpriseSearch)
+    // during the reload below. When those chunks fail, Kibana's plugin lifecycle throws
+    // "executing a cancelled action" as an unhandled rejection. Neither failure is related to
+    // what this test verifies.
+    cy.on('uncaught:exception', err => {
+      if (
+        err.message.includes('ChunkLoadError') ||
+        err.message.includes('Loading chunk') ||
+        err.message.includes('executing a cancelled action')
+      ) {
+        return false;
+      }
+    });
+
     cy.log('Change theme');
     UserSettings.open();
-    SecuritySettings.getIframeBody().find('[data-test-subj="dark"]').click({ force: true });
-    SecuritySettings.getIframeBody().find('button').contains('Reload page').click({ force: true });
+
+    // Register the intercept before triggering any reload so we don't miss the CSS request
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
       cy.intercept('**/*legacy_dark_theme.min.css').as('darkMode');
     } else {
       cy.intercept('**/*dark.css').as('darkMode');
     }
+
+    SecuritySettings.getIframeBody().find('[data-test-subj="dark"]').click({ force: true });
+    SecuritySettings.getIframeBody().find('button').contains('Reload page').click({ force: true });
 
     cy.reload();
 

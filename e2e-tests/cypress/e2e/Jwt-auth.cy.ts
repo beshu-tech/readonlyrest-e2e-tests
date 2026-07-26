@@ -1,6 +1,5 @@
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { getIframeBody } from '../support/helpers/iframe';
-import { Login } from '../support/page-objects/Login';
 
 describe('JWT authentication', () => {
   const embeddedServerUrl = 'https://localhost:8080';
@@ -15,7 +14,6 @@ describe('JWT authentication', () => {
   });
 
   it('should load Kibana via JWT auth, bypass login and show the correct tenancy', () => {
-    Login.suppressPostLoginNotices();
     cy.visit(embeddedServerUrl);
 
     getIframeBody('iframe').then(iframeBody => {

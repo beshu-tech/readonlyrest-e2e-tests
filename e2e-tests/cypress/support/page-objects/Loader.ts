@@ -1,4 +1,4 @@
-import { TENANCY_QUERY_STRING_KEY } from '../types';
+import { TENANCY_QUERY_STRING_KEY } from '../../../../shared/constants/queryStringKeys';
 
 export class Loader {
   public static loading(finishUrl?: string, spacePrefix?: string) {
