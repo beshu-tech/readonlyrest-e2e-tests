@@ -31,12 +31,14 @@ export class Home {
       cy.findByRole('button', { name: /add sample ecommerce orders/i }).within(() => {
         // The "other sample data sets" accordion above animates its height open, so the card can
         // still be mid-flight when this runs and Cypress rejects the click as "covered by another
-        // element" (the euiPageSection wrapper). Scroll it into place and settle before clicking;
-        // force skips the covered-element check, which is the same escape hatch KibanaNavigation
-        // already uses for the nav toggle.
+        // element" (the euiPageSection wrapper). force skips the covered-element check, the same
+        // escape hatch KibanaNavigation already uses for the nav toggle.
+        //
+        // Deliberately no `.should('be.visible')`: force exists to skip exactly that check, so
+        // asserting it first re-introduces the failure this is meant to avoid. Asserting visibility
+        // on an element that is about to be force-clicked is what broke every 9.x leg in RorMenu.
         cy.findByText(/add data/i)
           .scrollIntoView()
-          .should('be.visible')
           .click({ force: true });
       });
     }

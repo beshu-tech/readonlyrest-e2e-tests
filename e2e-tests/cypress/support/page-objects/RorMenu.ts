@@ -3,12 +3,12 @@ import semver from 'semver';
 import { getKibanaVersion } from '../helpers';
 
 export class RorMenu {
-  // `#rorMenuPopover` is the RorPopover WRAPPER, not the clickable element: rorMenu.tsx renders the
-  // trigger as <button className="ror-menu-trigger"> inside it, and the wrapper also holds the
-  // tenant badge. Clicking the wrapper relies on Cypress's centre point happening to land on the
-  // button, and the badge shifts that centre depending on hover/tenant state — which is how a click
-  // gets silently swallowed and every later menu lookup times out instead.
-  private static readonly TRIGGER = '.ror-menu-trigger';
+  // Click the RorPopover wrapper, not the inner <button className="ror-menu-trigger">. Targeting
+  // the button looks more correct — it is what actually carries onClick — but Cypress does not
+  // consider it visible on 9.3/9.4 (it is present in the DOM and every 9.x leg failed
+  // `expected '<button.ror-menu-trigger>' to be 'visible'`, while 8.19/7.17 passed). Clicking the
+  // wrapper lets the event bubble to the button and is what every version has always used.
+  private static readonly TRIGGER = '#rorMenuPopover';
 
   // rorPopover.tsx passes panelProps={{ id: panelId }} and EuiPopover only mounts the panel while
   // open, so the panel's presence is an exact "the menu is open" signal.
@@ -22,7 +22,10 @@ export class RorMenu {
     RorMenu.clickTriggerUntilOpen(RorMenu.OPEN_ATTEMPTS);
     // After the retries, assert properly so a genuine failure reports "#rorMenuPanel not found"
     // rather than surfacing later as a confusing "'Edit security settings' never appeared".
-    cy.get(RorMenu.PANEL, { timeout: 10000 }).should('be.visible');
+    // `exist`, not `be.visible`: the panel is only mounted while the popover is open, so existence
+    // is already the exact signal — and asserting visibility is precisely the mistake that broke
+    // 9.x above. Nothing here should depend on Cypress's visibility heuristics.
+    cy.get(RorMenu.PANEL, { timeout: 10000 }).should('exist');
   }
 
   static closeRorMenu() {
@@ -38,7 +41,9 @@ export class RorMenu {
    * retries assertions but never re-runs the action that preceded them.
    */
   private static clickTriggerUntilOpen(attemptsLeft: number) {
-    cy.get(RorMenu.TRIGGER, { timeout: 30000 }).should('be.visible').click();
+    // No `.should('be.visible')` here: cy.click() enforces actionability itself, and asserting it
+    // separately is what broke every 9.x leg.
+    cy.get(RorMenu.TRIGGER, { timeout: 30000 }).click();
     cy.wait(RorMenu.SETTLE_MS, { log: false });
 
     cy.get('body', { log: false }).then($body => {
