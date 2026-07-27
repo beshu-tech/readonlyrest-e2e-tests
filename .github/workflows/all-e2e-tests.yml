@@ -196,7 +196,10 @@ jobs:
           ELK_VERSIONS: "9.4.4 9.3.8 8.19.19 7.17.29"
           # PR runs must build from the PR head, not the merge ref.
           TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          ES_REPO_AZURE_PAT: ${{ secrets.ES_REPO_AZURE_PAT }}
+          # Both pre-builds are GitHub Actions workflows now — the ES side was ported off Azure
+          # DevOps, so ES_REPO_AZURE_PAT is no longer used. ES_REPO_GH_TOKEN needs `actions: write`
+          # on sscarduzio/elasticsearch-readonlyrest-plugin, same shape as the KBN token.
+          ES_REPO_GH_TOKEN: ${{ secrets.ES_REPO_GH_TOKEN }}
           KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
         run: |
           set -euo pipefail

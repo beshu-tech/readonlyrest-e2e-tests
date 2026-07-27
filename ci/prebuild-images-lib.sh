@@ -24,9 +24,8 @@
 # layer is genuinely shared, and it is where the subtle details live (JSON escaping of
 # attacker-controlled branch names, poll timeouts, skip-optimization semantics).
 #
-# Required tooling is needed only at call time, not at source time: `gh` for the KBN dispatch,
-# `curl` + `jq` for the ES dispatch, `docker` for the polls. A consumer that never calls a given
-# function never needs its tools.
+# Required tooling is needed only at call time, not at source time: `gh` for either dispatch,
+# `docker` for the polls. A consumer that never calls a given function never needs its tools.
 #
 # Nothing here relies on the caller running under `set -e`: every step returns a non-zero status and
 # composite helpers propagate it explicitly with `|| return $?`.
@@ -41,24 +40,36 @@ _ROR_PREBUILD_IMAGES_LIB_SOURCED=1
 # Overridable via the environment so a fork or a dry run can point elsewhere; the defaults are the
 # real ones and are what every consumer uses.
 
-# ROR KBN pre-builds: a GitHub Actions workflow dispatched with the `gh` CLI.
+# Both plugins publish pre-builds from a manually-dispatchable GitHub Actions workflow, driven here
+# with the `gh` CLI. The ES side used to be an Azure DevOps pipeline hit over the REST API; it was
+# ported to Actions and .azure/ was deleted, so the Azure coordinates are gone with it.
 ROR_KBN_GH_REPO="${ROR_KBN_GH_REPO:-sscarduzio/readonlyrest_kbn}"
 ROR_KBN_PUBLISH_WORKFLOW="${ROR_KBN_PUBLISH_WORKFLOW:-publish-pre-builds.yml}"
 
-# ROR ES pre-builds: an Azure DevOps pipeline dispatched over the REST API (.azure/publish-pre-builds.yml
-# in the ES repo, definitionId=7). Hardcoded by convention — only the auth token is a secret. The
-# project name is URL-encoded because it contains spaces.
-ROR_ES_AZURE_ORG="${ROR_ES_AZURE_ORG:-beshu-tech}"
-ROR_ES_AZURE_PROJECT="${ROR_ES_AZURE_PROJECT:-ReadonlyREST%20for%20Elasticsearch}"
-ROR_ES_AZURE_PIPELINE_ID="${ROR_ES_AZURE_PIPELINE_ID:-7}"
+ROR_ES_GH_REPO="${ROR_ES_GH_REPO:-sscarduzio/elasticsearch-readonlyrest-plugin}"
+ROR_ES_PUBLISH_WORKFLOW="${ROR_ES_PUBLISH_WORKFLOW:-publish-pre-builds.yml}"
+
+# Which ref the workflow is READ from. The workflow only needs to exist on this ref; which branch's
+# sources actually get built is the separate target-branch input. Both are pinned to develop because
+# that is where both repos keep the current pre-build workflow, and it matches the escape hatch the
+# workflows document: dispatch from develop, build any branch.
+#
+# Pinning matters because `gh workflow run` otherwise resolves against each repo's DEFAULT branch,
+# and those differ — ROR KBN defaults to develop (so it happened to be right by accident), ROR ES
+# defaults to master (where the workflow does not exist, so an unpinned dispatch 404s). Spelling
+# both out means the destination no longer depends on a per-repo setting nobody looks at.
+#
+# Set either to empty to fall back to gh's default-branch behaviour.
+ROR_ES_PUBLISH_WORKFLOW_REF="${ROR_ES_PUBLISH_WORKFLOW_REF-develop}"
+ROR_KBN_PUBLISH_WORKFLOW_REF="${ROR_KBN_PUBLISH_WORKFLOW_REF-develop}"
 
 ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-beshultd/elasticsearch-readonlyrest-dev}"
 ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-beshultd/kibana-readonlyrest-dev}"
 
-# Default poll ceilings. ES gets the longer one: several dispatches can land on the same Azure
-# pipeline definition at once and queue behind each other if the org has fewer free parallel jobs
-# than legs — even on the cheap retag path, where each run still pays agent startup, checkout and
-# Gradle cache restore.
+# Default poll ceilings. ES gets the longer one: it builds the plugin with Gradle across every
+# requested version, and concurrent dispatches queue behind each other when the runner pool is
+# busier than the matrix is wide — even on the cheap retag path, where each run still pays runner
+# startup, checkout and Gradle cache restore.
 ROR_ES_WAIT_TIMEOUT_SECONDS="${ROR_ES_WAIT_TIMEOUT_SECONDS:-$((45 * 60))}"
 ROR_KBN_WAIT_TIMEOUT_SECONDS="${ROR_KBN_WAIT_TIMEOUT_SECONDS:-$((30 * 60))}"
 ROR_PREBUILD_POLL_INTERVAL_SECONDS="${ROR_PREBUILD_POLL_INTERVAL_SECONDS:-30}"
@@ -113,6 +124,44 @@ normalize_elk_versions() {
 # per version because their pipelines are per-version; a matrix consumer should instead pass every
 # version in one call and dispatch twice per run rather than 2×N times.
 
+# Shared mechanics for both dispatches. The two plugin workflows differ only in coordinates, token
+# and input KEY names, so the varying `-f key=value` pairs are passed through as trailing args and
+# each caller keeps its own names visible at the call site.
+#
+# No JSON is assembled here any more. The Azure REST body had to be built with `jq --arg` because
+# TARGET_BRANCH is chosen by whoever opened the PR and git-check-ref-format(1) permits `"` in a ref
+# name, so a printf-interpolated body could close templateParameters and inject sibling top-level
+# keys. `gh workflow run -f` passes each value as a single argv entry and gh does the encoding, so
+# that whole class of injection is gone rather than merely defended against.
+#
+# Usage: _dispatch_prebuild_workflow <label> <repo> <workflow> <ref> <token> <-f pairs...>
+_dispatch_prebuild_workflow() {
+  local LABEL=$1 REPO=$2 WORKFLOW=$3 REF=$4 TOKEN=$5
+  shift 5
+
+  local REF_ARGS=()
+  [ -n "$REF" ] && REF_ARGS=(--ref "$REF")
+
+  if ! GH_TOKEN="$TOKEN" gh workflow run "$WORKFLOW" -R "$REPO" "${REF_ARGS[@]}" "$@"; then
+    echo "ERROR: Failed to dispatch the $LABEL pre-build workflow ($WORKFLOW in $REPO)"
+    echo "       If this is a 'workflow not found', check the workflow exists on ref '${REF:-<default branch>}'."
+    return 3
+  fi
+  echo ">>> Dispatch sent"
+}
+
+# Guards a dispatch token. Empty is the ordinary "secret not configured" case; the `$('*` shape
+# catches a CI variable that was never interpolated and arrived as literal expression text, which
+# otherwise surfaces much later as a confusing 401.
+# Usage: _require_dispatch_token <env var name> <label>
+_require_dispatch_token() {
+  local NAME=$1 LABEL=$2 VALUE=${!1:-}
+  if [ -z "$VALUE" ] || [[ "$VALUE" == '$('* ]]; then
+    echo "ERROR: $NAME is not set or was not resolved (required to dispatch the $LABEL pre-build workflow)"
+    return 2
+  fi
+}
+
 # Usage: dispatch_kbn_prebuild_image <kbn versions> <target branch> <run tag> [force rebuild]
 dispatch_kbn_prebuild_image() {
   if [ "$#" -lt 3 ]; then
@@ -126,25 +175,18 @@ dispatch_kbn_prebuild_image() {
   RUN_TAG=$3
   FORCE_REBUILD=${4:-false}
 
-  # The `$('*` check catches an Azure DevOps variable that was never resolved and arrived as the
-  # literal expression text, which otherwise fails much later with a confusing 401.
-  if [ -z "${KBN_REPO_GH_TOKEN:-}" ] || [[ "${KBN_REPO_GH_TOKEN}" == '$('* ]]; then
-    echo "ERROR: KBN_REPO_GH_TOKEN is not set or was not resolved (required to dispatch the ROR KBN pre-build workflow)"
-    return 2
-  fi
+  _require_dispatch_token KBN_REPO_GH_TOKEN "ROR KBN" || return $?
 
   echo ""
-  echo ">>> Dispatching ROR KBN pre-build: versions=$KBN_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH"
-  if ! GH_TOKEN="$KBN_REPO_GH_TOKEN" gh workflow run "$ROR_KBN_PUBLISH_WORKFLOW" \
-        -R "$ROR_KBN_GH_REPO" \
-        -f "kbn_versions=$KBN_VERSIONS" \
-        -f "target_branch=$TARGET_BRANCH" \
-        -f "tag=$RUN_TAG" \
-        -f "force_rebuild=$FORCE_REBUILD"; then
-    echo "ERROR: Failed to dispatch the ROR KBN pre-build workflow"
-    return 3
-  fi
-  echo ">>> Dispatch sent"
+  echo ">>> Dispatching ROR KBN pre-build: versions=$KBN_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${ROR_KBN_PUBLISH_WORKFLOW_REF:+ (workflow ref: $ROR_KBN_PUBLISH_WORKFLOW_REF)}"
+
+  # snake_case keys — note these differ from the ES workflow's camelCase ones below.
+  _dispatch_prebuild_workflow "ROR KBN" \
+    "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$ROR_KBN_PUBLISH_WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" \
+    -f "kbn_versions=$KBN_VERSIONS" \
+    -f "target_branch=$TARGET_BRANCH" \
+    -f "tag=$RUN_TAG" \
+    -f "force_rebuild=$FORCE_REBUILD"
 }
 
 # Usage: dispatch_es_prebuild_image <es versions> <target branch> <run tag> [force rebuild]
@@ -160,50 +202,20 @@ dispatch_es_prebuild_image() {
   RUN_TAG=$3
   FORCE_REBUILD=${4:-false}
 
-  if [ -z "${ES_REPO_AZURE_PAT:-}" ] || [[ "${ES_REPO_AZURE_PAT}" == '$('* ]]; then
-    echo "ERROR: ES_REPO_AZURE_PAT is not set or was not resolved (required to dispatch the ES pre-build pipeline)"
-    return 2
-  fi
-
-  local API_URL="https://dev.azure.com/${ROR_ES_AZURE_ORG}/${ROR_ES_AZURE_PROJECT}/_apis/pipelines/${ROR_ES_AZURE_PIPELINE_ID}/runs?api-version=7.1"
-
-  # Build the request body with jq, NOT printf: TARGET_BRANCH is chosen by whoever opened the PR,
-  # and git-check-ref-format(1) allows `"` in a ref name. A printf-interpolated body would let a
-  # branch name close the templateParameters object and inject sibling top-level keys — e.g.
-  # resources.repositories.self.refName, which pins the ref the Azure pipeline executes from.
-  # jq --arg does the JSON escaping, so the value can only ever land as a string.
-  local BODY
-  BODY=$(jq -nc \
-    --arg esVersions "$ES_VERSIONS" \
-    --arg targetBranch "$TARGET_BRANCH" \
-    --arg tag "$RUN_TAG" \
-    --arg forceRebuild "$FORCE_REBUILD" \
-    '{templateParameters: {esVersions: $esVersions, targetBranch: $targetBranch, tag: $tag, forceRebuild: $forceRebuild}}') || return 3
-
-  # `base64 | tr -d '\n'` rather than `base64 -w0`: the latter is GNU-only and dies on BSD/macOS,
-  # which matters the first time someone debugs this from a laptop.
-  local AUTH
-  AUTH=$(printf ':%s' "$ES_REPO_AZURE_PAT" | base64 | tr -d '\n')
+  _require_dispatch_token ES_REPO_GH_TOKEN "ROR ES" || return $?
 
   echo ""
-  echo ">>> Dispatching ROR ES pre-build: versions=$ES_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH"
-  local RESPONSE_FILE HTTP_STATUS
-  RESPONSE_FILE=$(mktemp)
-  HTTP_STATUS=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" \
-    -X POST \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Basic $AUTH" \
-    "$API_URL" \
-    -d "$BODY")
+  echo ">>> Dispatching ROR ES pre-build: versions=$ES_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${ROR_ES_PUBLISH_WORKFLOW_REF:+ (workflow ref: $ROR_ES_PUBLISH_WORKFLOW_REF)}"
 
-  if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-    echo "ERROR: Failed to dispatch ES pre-build pipeline (HTTP $HTTP_STATUS)"
-    cat "$RESPONSE_FILE"
-    rm -f "$RESPONSE_FILE"
-    return 3
-  fi
-  rm -f "$RESPONSE_FILE"
-  echo ">>> Dispatch sent (HTTP $HTTP_STATUS)"
+  # camelCase keys — the Actions port kept the Azure templateParameters names verbatim, so these do
+  # NOT match the KBN workflow's snake_case ones. Getting them wrong is silent: workflow_dispatch
+  # ignores unknown inputs and the run builds the wrong thing.
+  _dispatch_prebuild_workflow "ROR ES" \
+    "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$ROR_ES_PUBLISH_WORKFLOW_REF" "$ES_REPO_GH_TOKEN" \
+    -f "esVersions=$ES_VERSIONS" \
+    -f "targetBranch=$TARGET_BRANCH" \
+    -f "tag=$RUN_TAG" \
+    -f "forceRebuild=$FORCE_REBUILD"
 }
 
 # Dispatch both plugins in one go. For consumers that build neither plugin themselves (the e2e repo).
@@ -234,7 +246,7 @@ wait_for_prebuild_image() {
     es)
       IMAGE=$(ror_es_dev_image "$VERSION" "$RUN_TAG")
       TIMEOUT=${TIMEOUT:-$ROR_ES_WAIT_TIMEOUT_SECONDS}
-      WHERE="the publish-pre-builds pipeline run in the ROR ES repo"
+      WHERE="the '$ROR_ES_PUBLISH_WORKFLOW' run in $ROR_ES_GH_REPO"
       ;;
     kbn)
       IMAGE=$(ror_kbn_dev_image "$VERSION" "$RUN_TAG")
