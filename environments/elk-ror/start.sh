@@ -164,11 +164,10 @@ if [[ "$APPLY_RESOURCE_LIMITS" == "auto" ]]; then
   HOST_MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
   if [[ "${HOST_MEM_KB:-0}" -gt 0 && "$HOST_MEM_KB" -lt 12000000 ]]; then
     APPLY_RESOURCE_LIMITS="true"
-    echo "Resource limits: auto -> true (host has ${HOST_MEM_KB} kB, below the 12 GB threshold)"
   else
     APPLY_RESOURCE_LIMITS="false"
-    echo "Resource limits: auto -> false (host has ${HOST_MEM_KB} kB, at or above the 12 GB threshold)"
   fi
+  APPLY_RESOURCE_LIMITS_REASON=" (auto: host has ${HOST_MEM_KB} kB, threshold is 12 GB)"
 fi
 
 # Set compose files based on cluster type
@@ -181,7 +180,7 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   [[ "$APPLY_RESOURCE_LIMITS" == "true" ]] && DOCKER_COMPOSE_FILES="$DOCKER_COMPOSE_FILES -f base.limits.docker-compose.yml -f apm.limits.docker-compose.yml"
   echo "Starting cluster with APM (Elasticsearch + Kibana + ReadonlyREST + APM Server + APM App)"
 fi
-echo "Resource limits: $([[ "$APPLY_RESOURCE_LIMITS" == "true" ]] && echo "applied" || echo "disabled (APPLY_RESOURCE_LIMITS=$APPLY_RESOURCE_LIMITS)")"
+echo "Resource limits: $([[ "$APPLY_RESOURCE_LIMITS" == "true" ]] && echo "applied" || echo "disabled")${APPLY_RESOURCE_LIMITS_REASON:-}"
 
 if ! docker compose $DOCKER_COMPOSE_FILES config > /dev/null; then
   echo "Cannot validate docker compose configuration."
@@ -195,6 +194,18 @@ handle_docker_compose_error() {
 
 trap 'handle_docker_compose_error' ERR
 
-docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate --wait
+# Bound the startup wait, mirroring TIMEOUT_IN_SECONDS in environments/eck-ror/start.sh. Bare
+# `--wait` blocks forever, so until now the only backstop was the 60-minute retry-action budget in
+# CI: a stack that never came up burned the whole hour and reported a generic "Timeout of 3600000ms
+# hit" with no logs. With the timeout the ERR trap fires instead, dumping elk-ror.log.
+#
+# 600s is ~4x the observed startup (1:35-2:26 across CI runs, build included). The theoretical
+# worst case is larger — the healthchecks chain serially through depends_on and allow ~20 min
+# between them — but a stack that slow has already failed in practice, and failing at 10 minutes
+# with logs beats hanging for 60 without them.
+TIMEOUT_IN_SECONDS=600
+
+docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate \
+  --wait --wait-timeout $TIMEOUT_IN_SECONDS
 
 echo "The environment is ready"

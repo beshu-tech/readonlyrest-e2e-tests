@@ -1,6 +1,8 @@
 services:
 
   apm-server:
+    # Symmetrical with the eck environment, where Kubernetes restarts every pod by default.
+    restart: always
     build:
       context: .
       dockerfile: images/apm/Dockerfile
@@ -22,6 +24,9 @@ services:
       retries: 3
 
   node-apm-app:
+    # Generates the APM traffic Observability.cy.ts polls for, so a silent death here surfaces as a
+    # data-never-arrives timeout rather than an obvious crash. Symmetrical with eck.
+    restart: always
     build:
       context: ../common/images/node-apm-app/
       dockerfile: Dockerfile

@@ -77,6 +77,10 @@ services:
         hard: -1
 
   kbn-proxy:
+    # Every spec reaches Kibana through this proxy on :5601, so it has the largest blast radius of
+    # any container here — if it dies the whole suite dies with it. Kept symmetrical with the eck
+    # environment, where Kubernetes restarts every pod by default (restartPolicy: Always).
+    restart: always
     build:
       context: .
       dockerfile: images/kbn/Proxy-Dockerfile
