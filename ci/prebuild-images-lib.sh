@@ -150,10 +150,13 @@ _dispatch_prebuild_workflow() {
 
   if ! GH_TOKEN="$TOKEN" gh workflow run "$WORKFLOW" -R "$REPO" "${REF_ARGS[@]}" "$@"; then
     echo "ERROR: Failed to dispatch the $LABEL pre-build workflow ($WORKFLOW in $REPO)"
-    echo "       On 'workflow not found on the default branch': --ref does not help. GitHub only"
-    echo "       registers a workflow_dispatch workflow once the file is on the repo's DEFAULT"
-    echo "       branch, and gh resolves it by name against that set before applying --ref. Merge"
-    echo "       $WORKFLOW to the default branch of $REPO first; after that any ref can be dispatched."
+    echo "       Both common failures point at the DEFAULT branch of $REPO, not at ref '${REF:-<default>}':"
+    echo "       * 404 'workflow not found on the default branch' — GitHub only registers a"
+    echo "         workflow_dispatch workflow once the file is on the default branch, and gh resolves"
+    echo "         it by name against that set before applying --ref. Merge $WORKFLOW there first."
+    echo "       * 422 'Unexpected inputs provided' — the input names above do not match the"
+    echo "         default-branch copy of the workflow. Compare them against its workflow_dispatch"
+    echo "         inputs (the listed keys are the ones it does not recognise) and update the caller."
     return 3
   fi
   echo ">>> Dispatch sent"
@@ -213,7 +216,7 @@ dispatch_kbn_prebuild_image() {
   echo ""
   echo ">>> Dispatching ROR KBN pre-build: versions=$KBN_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
 
-  # snake_case keys — note these differ from the ES workflow's camelCase ones below.
+  # Same naming rule as ES below: these must match the DEFAULT-branch copy of the workflow.
   _dispatch_prebuild_workflow "ROR KBN" \
     "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" \
     -f "kbn_versions=$KBN_VERSIONS" \
@@ -244,15 +247,18 @@ dispatch_es_prebuild_image() {
   echo ""
   echo ">>> Dispatching ROR ES pre-build: versions=$ES_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
 
-  # camelCase keys — the Actions port kept the Azure templateParameters names verbatim, so these do
-  # NOT match the KBN workflow's snake_case ones. Getting them wrong is silent: workflow_dispatch
-  # ignores unknown inputs and the run builds the wrong thing.
+  # These must match the input names in the copy of the workflow on the plugin repo's DEFAULT
+  # branch, which is what GitHub validates a dispatch against — not the copy on WORKFLOW_REF, even
+  # when --ref points elsewhere. A mismatch is a hard 422 "Unexpected inputs provided" listing the
+  # offending keys, so it fails loudly rather than silently building the wrong thing.
+  # (The Actions port briefly carried Azure's camelCase templateParameters names; the merged version
+  # normalised them to snake_case, matching KBN.)
   _dispatch_prebuild_workflow "ROR ES" \
     "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ES_REPO_GH_TOKEN" \
-    -f "esVersions=$ES_VERSIONS" \
-    -f "targetBranch=$TARGET_BRANCH" \
+    -f "es_versions=$ES_VERSIONS" \
+    -f "target_branch=$TARGET_BRANCH" \
     -f "tag=$RUN_TAG" \
-    -f "forceRebuild=$FORCE_REBUILD"
+    -f "force_rebuild=$FORCE_REBUILD"
 }
 
 # Dispatch both plugins in one go. For consumers that build neither plugin themselves (the e2e repo).
