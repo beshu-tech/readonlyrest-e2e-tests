@@ -29,7 +29,15 @@ export class Home {
       cy.getByDataTestSubj('addSampleDataSetecommerce').click();
     } else {
       cy.findByRole('button', { name: /add sample ecommerce orders/i }).within(() => {
-        cy.findByText(/add data/i).click();
+        // The "other sample data sets" accordion above animates its height open, so the card can
+        // still be mid-flight when this runs and Cypress rejects the click as "covered by another
+        // element" (the euiPageSection wrapper). Scroll it into place and settle before clicking;
+        // force skips the covered-element check, which is the same escape hatch KibanaNavigation
+        // already uses for the nav toggle.
+        cy.findByText(/add data/i)
+          .scrollIntoView()
+          .should('be.visible')
+          .click({ force: true });
       });
     }
 

@@ -6,9 +6,16 @@ import { getKibanaVersion } from '../support/helpers';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Loader } from '../support/page-objects/Loader';
 
-// Kibana 8.x lazily loads plugin chunks (securitySolution, observability, enterpriseSearch) during
-// the theme reload below. When those chunks fail, Kibana's plugin lifecycle throws "executing a
-// cancelled action" as an unhandled rejection. Neither failure is related to what these tests verify.
+// Unhandled rejections Kibana itself emits while re-bootstrapping after the theme reload below.
+// None of them are related to what these tests verify (that switching the theme loads the dark CSS
+// and that the remember-group setting survives logout):
+//
+//  - ChunkLoadError / Loading chunk: 8.x lazily loads plugin chunks (securitySolution,
+//    observability, enterpriseSearch) during the reload and some fail to arrive.
+//  - executing a cancelled action: a plugin store flushes a queue whose actions were cancelled by
+//    the in-flight remount.
+//  - t.toUpperCase is not a function: thrown from core.entry.js's own `notifications` service
+//    during bootstrap — Kibana core, not ROR, and it fires ~20x per reload on some versions.
 //
 // Registered with `Cypress.on` at spec scope rather than `cy.on` inside the test: `cy.on` listeners
 // are torn down when the test body ends, so a rejection arriving during the `afterEach` below went
@@ -18,7 +25,8 @@ Cypress.on('uncaught:exception', err => {
   if (
     err.message.includes('ChunkLoadError') ||
     err.message.includes('Loading chunk') ||
-    err.message.includes('executing a cancelled action')
+    err.message.includes('executing a cancelled action') ||
+    err.message.includes('toUpperCase is not a function')
   ) {
     return false;
   }
