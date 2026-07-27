@@ -50,6 +50,11 @@ describe('User settings', () => {
     cy.reload();
 
     cy.wait('@darkMode');
+
+    // The dark-theme CSS lands long before Kibana has finished mounting. Without this the test ends
+    // mid-bootstrap and teardown races the half-built app, which fails the afterEach below with
+    // "executing a cancelled action" and skips the rest of the suite.
+    Loader.settled();
   });
 
   it('should verify remember group after logout enabled', () => {
