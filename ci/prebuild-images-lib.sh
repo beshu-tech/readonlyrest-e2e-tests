@@ -49,19 +49,25 @@ ROR_KBN_PUBLISH_WORKFLOW="${ROR_KBN_PUBLISH_WORKFLOW:-publish-pre-builds.yml}"
 ROR_ES_GH_REPO="${ROR_ES_GH_REPO:-sscarduzio/elasticsearch-readonlyrest-plugin}"
 ROR_ES_PUBLISH_WORKFLOW="${ROR_ES_PUBLISH_WORKFLOW:-publish-pre-builds.yml}"
 
-# Which ref the workflow is READ from. The workflow only needs to exist on this ref; which branch's
-# sources actually get built is the separate target-branch input. Both are pinned to develop because
-# that is where both repos keep the current pre-build workflow, and it matches the escape hatch the
-# workflows document: dispatch from develop, build any branch.
+# Which ref the workflow YAML is READ from. This is not the same thing as which sources get built —
+# that is the separate target-branch input. Reading from the target branch matters when the workflow
+# itself is being changed on that branch: otherwise you dispatch develop's copy and silently test
+# the wrong pipeline.
 #
-# Pinning matters because `gh workflow run` otherwise resolves against each repo's DEFAULT branch,
-# and those differ — ROR KBN defaults to develop (so it happened to be right by accident), ROR ES
-# defaults to master (where the workflow does not exist, so an unpinned dispatch 404s). Spelling
-# both out means the destination no longer depends on a per-repo setting nobody looks at.
+# "auto" (the default) prefers the target branch when it exists in the plugin repo and falls back to
+# ...FALLBACK_REF otherwise, mirroring how both workflows treat their own target-branch input. Set to
+# a literal ref to pin, or to empty to let gh use the repo's default branch.
 #
-# Set either to empty to fall back to gh's default-branch behaviour.
-ROR_ES_PUBLISH_WORKFLOW_REF="${ROR_ES_PUBLISH_WORKFLOW_REF-develop}"
-ROR_KBN_PUBLISH_WORKFLOW_REF="${ROR_KBN_PUBLISH_WORKFLOW_REF-develop}"
+# HARD CONSTRAINT this cannot work around: GitHub only makes a workflow_dispatch workflow
+# dispatchable once the file is present on the repo's DEFAULT branch — `gh workflow run` resolves the
+# workflow by name against that registered set before it ever looks at --ref. A workflow living only
+# on a feature branch 404s no matter what ref is chosen here. The two repos' defaults differ (ROR KBN
+# is develop, ROR ES is master), so a file merged only to develop is dispatchable in one and not the
+# other.
+ROR_ES_PUBLISH_WORKFLOW_REF="${ROR_ES_PUBLISH_WORKFLOW_REF-auto}"
+ROR_KBN_PUBLISH_WORKFLOW_REF="${ROR_KBN_PUBLISH_WORKFLOW_REF-auto}"
+ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
+ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
 
 ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-beshultd/elasticsearch-readonlyrest-dev}"
 ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-beshultd/kibana-readonlyrest-dev}"
@@ -144,10 +150,33 @@ _dispatch_prebuild_workflow() {
 
   if ! GH_TOKEN="$TOKEN" gh workflow run "$WORKFLOW" -R "$REPO" "${REF_ARGS[@]}" "$@"; then
     echo "ERROR: Failed to dispatch the $LABEL pre-build workflow ($WORKFLOW in $REPO)"
-    echo "       If this is a 'workflow not found', check the workflow exists on ref '${REF:-<default branch>}'."
+    echo "       On 'workflow not found on the default branch': --ref does not help. GitHub only"
+    echo "       registers a workflow_dispatch workflow once the file is on the repo's DEFAULT"
+    echo "       branch, and gh resolves it by name against that set before applying --ref. Merge"
+    echo "       $WORKFLOW to the default branch of $REPO first; after that any ref can be dispatched."
     return 3
   fi
   echo ">>> Dispatch sent"
+}
+
+# Resolves the "auto" workflow-ref policy: use the preferred ref when it exists in the plugin repo,
+# otherwise the fallback. A non-"auto" setting is returned verbatim (including empty, which means
+# "let gh pick the default branch"). Never fails the dispatch — an API hiccup degrades to the
+# fallback rather than blocking the run.
+# Usage: _resolve_workflow_ref <setting> <repo> <token> <preferred ref> <fallback ref>
+_resolve_workflow_ref() {
+  local SETTING=$1 REPO=$2 TOKEN=$3 PREFERRED=$4 FALLBACK=$5
+
+  if [ "$SETTING" != "auto" ]; then
+    echo "$SETTING"
+    return 0
+  fi
+
+  if [ -n "$PREFERRED" ] && GH_TOKEN="$TOKEN" gh api "repos/$REPO/branches/$PREFERRED" >/dev/null 2>&1; then
+    echo "$PREFERRED"
+  else
+    echo "$FALLBACK"
+  fi
 }
 
 # Guards a dispatch token. Empty is the ordinary "secret not configured" case; the `$('*` shape
@@ -177,12 +206,16 @@ dispatch_kbn_prebuild_image() {
 
   _require_dispatch_token KBN_REPO_GH_TOKEN "ROR KBN" || return $?
 
+  local WORKFLOW_REF
+  WORKFLOW_REF=$(_resolve_workflow_ref "$ROR_KBN_PUBLISH_WORKFLOW_REF" "$ROR_KBN_GH_REPO" \
+    "$KBN_REPO_GH_TOKEN" "$TARGET_BRANCH" "$ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF")
+
   echo ""
-  echo ">>> Dispatching ROR KBN pre-build: versions=$KBN_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${ROR_KBN_PUBLISH_WORKFLOW_REF:+ (workflow ref: $ROR_KBN_PUBLISH_WORKFLOW_REF)}"
+  echo ">>> Dispatching ROR KBN pre-build: versions=$KBN_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
 
   # snake_case keys — note these differ from the ES workflow's camelCase ones below.
   _dispatch_prebuild_workflow "ROR KBN" \
-    "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$ROR_KBN_PUBLISH_WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" \
+    "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" \
     -f "kbn_versions=$KBN_VERSIONS" \
     -f "target_branch=$TARGET_BRANCH" \
     -f "tag=$RUN_TAG" \
@@ -204,14 +237,18 @@ dispatch_es_prebuild_image() {
 
   _require_dispatch_token ES_REPO_GH_TOKEN "ROR ES" || return $?
 
+  local WORKFLOW_REF
+  WORKFLOW_REF=$(_resolve_workflow_ref "$ROR_ES_PUBLISH_WORKFLOW_REF" "$ROR_ES_GH_REPO" \
+    "$ES_REPO_GH_TOKEN" "$TARGET_BRANCH" "$ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF")
+
   echo ""
-  echo ">>> Dispatching ROR ES pre-build: versions=$ES_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${ROR_ES_PUBLISH_WORKFLOW_REF:+ (workflow ref: $ROR_ES_PUBLISH_WORKFLOW_REF)}"
+  echo ">>> Dispatching ROR ES pre-build: versions=$ES_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
 
   # camelCase keys — the Actions port kept the Azure templateParameters names verbatim, so these do
   # NOT match the KBN workflow's snake_case ones. Getting them wrong is silent: workflow_dispatch
   # ignores unknown inputs and the run builds the wrong thing.
   _dispatch_prebuild_workflow "ROR ES" \
-    "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$ROR_ES_PUBLISH_WORKFLOW_REF" "$ES_REPO_GH_TOKEN" \
+    "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ES_REPO_GH_TOKEN" \
     -f "esVersions=$ES_VERSIONS" \
     -f "targetBranch=$TARGET_BRANCH" \
     -f "tag=$RUN_TAG" \
