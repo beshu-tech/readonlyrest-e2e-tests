@@ -66,11 +66,18 @@ jobs:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
+      #
+      # 35 minutes, not 60: a healthy full suite is 16-33 min (measured across the matrix). The
+      # failure mode this guards against is an attempt where the stack comes up fine and then wedges
+      # — Kibana stays alive and healthy but stops serving, specs go from ~20s to 4-16 min each, and
+      # the attempt runs out the clock. At 60 min that burns an hour before the retry starts and
+      # pushes jobs to 85-95 min; at 35 the wedged attempt is cut loose early and the retry (which
+      # usually passes) gets a full budget of its own.
       - name: Run E2E tests
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          timeout_minutes: 60
+          timeout_minutes: 35
           retry_wait_seconds: 120
           retry_on: any
           command: |
@@ -240,11 +247,12 @@ jobs:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
+      # See the prod job above for why the budget is 35 minutes rather than 60.
       - name: Run E2E tests
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          timeout_minutes: 60
+          timeout_minutes: 35
           retry_wait_seconds: 120
           retry_on: any
           command: |

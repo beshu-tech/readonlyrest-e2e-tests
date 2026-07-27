@@ -26,9 +26,14 @@ runs:
 
             echo
             echo "== container OOM status =="
+            # RestartCount / StartedAt / Health matter as much as OOMKilled here. A container that
+            # bounces between two 10s samples looks identical to one that never moved if you only
+            # print Status, and the failure mode we keep hitting is a container that stays "running"
+            # and "healthy" while it has stopped serving traffic — the healthcheck runs inside the
+            # container against localhost, so a wedged-but-listening process still reports healthy.
             for c in $(docker ps -aq 2>/dev/null); do
               docker inspect "$c" \
-                --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+                --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} RestartCount={{.RestartCount}} StartedAt={{.State.StartedAt}} Health={{if .State.Health}}{{.State.Health.Status}}/{{.State.Health.FailingStreak}}{{else}}none{{end}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
             done
 
             echo
@@ -46,6 +51,13 @@ runs:
             echo
             echo "== kubectl OOM events =="
             kubectl get events -A --field-selector=reason=OOMKilling 2>/dev/null || true
+
+            # The eck environment wedges the same way the docker one does, and reason=OOMKilling
+            # alone never showed anything for it. Warnings cover the restarts, probe failures and
+            # evictions that would explain a pod that is Running but not serving.
+            echo
+            echo "== kubectl warning events =="
+            kubectl get events -A --field-selector=type=Warning 2>/dev/null | tail -40 || true
 
             echo
             sleep 10
