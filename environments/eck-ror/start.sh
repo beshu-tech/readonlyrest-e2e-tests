@@ -235,7 +235,58 @@ subsitute_env_in_yaml_templates() {
 
 subsitute_env_in_yaml_templates
 
-docker exec eck-ror-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl apply -f'
+# node-apm-app mounts two secrets the ECK operator generates while reconciling the ApmServer and its
+# Kibana association — eck-ror-apm-kibana-ca (volume) and eck-ror-apm-token (secretKeyRef). Nothing
+# in this repo creates them. Applying every manifest in one shot schedules the pod before those
+# secrets exist, so the kubelet cannot mount the volume:
+#
+#   FailedMount  MountVolume.SetUp failed for volume "apm-cert-volume":
+#                secret "eck-ror-apm-kibana-ca" not found
+#
+# The kubelet retries, so this usually resolves inside the readiness budget and the run goes green
+# with the errors buried in the event log — they were present in runs nobody flagged. When the
+# operator is slow it does not resolve, node-apm-app sits at Init:0/1, apm-server blocks behind its
+# wait-for-apm init container, and the 300s wait below expires having never started Cypress.
+#
+# So hold node-apm-app back until its prerequisites exist, rather than racing them.
+apply_manifests_except_node_apm_app() {
+  docker exec eck-ror-control-plane bash -c '
+    cd "/ror/'"$(basename "$SUBSTITUTED_DIR")"'" || exit 1
+    for f in *.yml; do
+      [ "$f" = "node-apm-app.yml" ] && continue
+      kubectl apply -f "$f" || exit 1
+    done
+  '
+}
+
+# Polls rather than using `kubectl wait --for=create`: that flag needs a recent kubectl, and the one
+# baked into the kind node image varies with the ECK/Kubernetes version across the eck-* matrix legs.
+wait_for_secret() {
+  local name=$1 timeout=${2:-180} waited=0
+  echo "Waiting for operator-generated secret '$name' (timeout: ${timeout}s) ..."
+  until docker exec eck-ror-control-plane kubectl get secret "$name" >/dev/null 2>&1; do
+    if [ "$waited" -ge "$timeout" ]; then
+      echo "ERROR: secret '$name' did not appear after ${timeout}s."
+      echo "       The ECK operator never finished reconciling the ApmServer / Kibana association."
+      docker exec eck-ror-control-plane kubectl get pods 2>/dev/null || true
+      docker exec eck-ror-control-plane kubectl get events --sort-by=.lastTimestamp 2>/dev/null | tail -20 || true
+      return 1
+    fi
+    sleep 5
+    waited=$((waited + 5))
+  done
+  echo "Secret '$name' is available (after ${waited}s)."
+}
+
+apply_manifests_except_node_apm_app
+
+if [[ "$CLUSTER_TYPE" == "apm" ]]; then
+  wait_for_secret "eck-ror-apm-kibana-ca"
+  wait_for_secret "eck-ror-apm-token"
+  echo "Applying node-apm-app.yml now that its secrets exist ..."
+  docker exec eck-ror-control-plane \
+    kubectl apply -f "/ror/$(basename "$SUBSTITUTED_DIR")/node-apm-app.yml"
+fi
 
 echo ""
 echo "------------------------------------------"
