@@ -27,15 +27,52 @@ export class Loader {
     cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('be.visible');
   }
 
-  private static start() {
-    cy.log('loading start');
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('exist');
+  private static readonly SPLASH_TEXT = 'Loading Elastic';
+  private static readonly SPLASH_POLL_MS = 500;
+  private static readonly SPLASH_MAX_POLLS = 60; // ~30s
+
+  /**
+   * Gives the "Loading Elastic" splash a bounded chance to appear, but does NOT fail if it is
+   * missed.
+   *
+   * The splash is transient. On a fast load — or a navigation that does not trigger a full reload —
+   * it can come and go between Cypress's retries, or never render at all. Asserting that it EXISTS
+   * then fails after 80s on a page that is loading perfectly well, and
+   * "Timed out retrying after 80000ms: Expected to find content: 'Loading Elastic' but never did"
+   * has been the single most common failure in this suite. A reachability probe confirmed Kibana was
+   * answering in ~20ms throughout one such failure, so the app was fine and only the assertion was
+   * wrong.
+   *
+   * Skipping the wait entirely would be wrong too: it exists so finish() cannot evaluate against the
+   * page we are navigating AWAY from. But of finish()'s three checks only the URL match actually
+   * discriminates the old page from the new one, so the splash is a weak guard — not worth a hard
+   * failure. Waiting for it when it shows, and falling through to the end-state assertions when it
+   * does not, keeps the guard's value without its failure mode.
+   */
+  private static start(pollsLeft: number = Loader.SPLASH_MAX_POLLS) {
+    if (pollsLeft === Loader.SPLASH_MAX_POLLS) {
+      cy.log('loading start');
+    }
+
+    cy.get('body', { log: false }).then($body => {
+      if ($body.text().includes(Loader.SPLASH_TEXT)) {
+        return;
+      }
+      if (pollsLeft <= 1) {
+        cy.log('loading start: splash never observed — falling through to the end-state checks');
+        return;
+      }
+      cy.wait(Loader.SPLASH_POLL_MS, { log: false });
+      Loader.start(pollsLeft - 1);
+    });
   }
 
   private static finish(finishUrl = `/app/home?${TENANCY_QUERY_STRING_KEY}=*`, spacePrefix = '/s/default') {
     cy.log('loading finish');
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
+    cy.contains(Loader.SPLASH_TEXT, { timeout: 80000 }).should('not.exist');
     cy.urlShouldMatch(`${spacePrefix}${finishUrl}`);
-    cy.get('[data-test-subj=globalLoadingIndicator-hidden]').should('be.visible');
+    // Explicit 80s rather than the 20s defaultCommandTimeout: start() may now fall through before
+    // the page has begun rendering, so this assertion has to carry the patience start() used to.
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('be.visible');
   }
 }
