@@ -8,16 +8,6 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  # These runs use docker directly on the GitHub-hosted runner (host docker, not nested), so the
-  # compose *.limits.docker-compose.yml overlays apply cleanly. start.sh leaves resource limits off
-  # by default (safe for the ROR KBN Docker-in-Docker flow); `auto` lets it decide from MemTotal,
-  # the same 12 GB threshold ci/e2e-tests-lib.sh uses in the ROR ES repo.
-  #
-  # This was hardcoded to "true", which put es-ror under a 2g cap on a 16 GB runner. It sat at
-  # 97-99% of that cap for entire runs and on 7.17.29/docker it was OOM-killed four minutes in and
-  # never came back, failing 18 consecutive specs. GitHub-hosted runners resolve to false here;
-  # small self-hosted agents still get the limits they need.
-  # (eck-env runs don't use docker-compose limits, so this is a no-op for them.)
   APPLY_RESOURCE_LIMITS: "auto"
 
 jobs:

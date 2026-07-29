@@ -149,26 +149,33 @@ echo "Cluster type: $CLUSTER_TYPE"
 # Resource limits live in separate *.limits.docker-compose.yml overlays so they're opt-in.
 # Disabled by default — safe for Docker-in-Docker on a cgroup v2 host, where a threaded
 # /sys/fs/cgroup/docker can't enable the memory controller and a mem_limit would prevent containers
-# from starting. Set APPLY_RESOURCE_LIMITS=true to apply them; needed on small host-docker agents
-# (e.g. the ~7.9 GB Azure host) to avoid OOM.
+# from starting. Set APPLY_RESOURCE_LIMITS=true to apply them; needed on small host-docker agents to avoid OOM.
 #
-# `auto` picks per host size, mirroring ci/e2e-tests-lib.sh in the ROR ES repo. The limits are a
-# floor, not a ceiling: es-ror gets mem_limit 2g against a 1g heap, and Lucene mmap + direct buffers
-# + metaspace push its cgroup usage to 97-99% on any full suite run. On a host with memory to spare
-# that headroom is pure downside — a single GC spike gets es-ror OOM-killed (exit 137) and, since it
-# has no restart policy, it stays dead and every remaining spec fails. So only squeeze when the host
-# genuinely cannot fit the stack unconstrained.
+# Accepts true, false or auto. `auto` applies them only when the host has less than 12 GB RAM.
 APPLY_RESOURCE_LIMITS="${APPLY_RESOURCE_LIMITS:-false}"
 
-if [[ "$APPLY_RESOURCE_LIMITS" == "auto" ]]; then
-  HOST_MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
-  if [[ "${HOST_MEM_KB:-0}" -gt 0 && "$HOST_MEM_KB" -lt 12000000 ]]; then
+AUTO_LIMITS_MEM_THRESHOLD_KB=12000000
+
+# Resolves APPLY_RESOURCE_LIMITS=auto to true or false, and records why in
+# APPLY_RESOURCE_LIMITS_REASON. Leaves an explicit true/false untouched.
+resolve_auto_resource_limits() {
+  [[ "$APPLY_RESOURCE_LIMITS" == "auto" ]] || return 0
+
+  local mem_kb
+  mem_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+
+  # mem_kb is 0 where there is no /proc/meminfo (macOS); treat that as "cannot tell" and leave the
+  # limits off, matching the default.
+  if [[ "$mem_kb" -gt 0 && "$mem_kb" -lt "$AUTO_LIMITS_MEM_THRESHOLD_KB" ]]; then
     APPLY_RESOURCE_LIMITS="true"
   else
     APPLY_RESOURCE_LIMITS="false"
   fi
-  APPLY_RESOURCE_LIMITS_REASON=" (auto: host has ${HOST_MEM_KB} kB, threshold is 12 GB)"
-fi
+
+  APPLY_RESOURCE_LIMITS_REASON=" (auto: host has ${mem_kb} kB, threshold is ${AUTO_LIMITS_MEM_THRESHOLD_KB} kB)"
+}
+
+resolve_auto_resource_limits
 
 # Set compose files based on cluster type
 if [[ "$CLUSTER_TYPE" == "base" ]]; then
