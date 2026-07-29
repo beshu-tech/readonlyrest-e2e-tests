@@ -249,9 +249,12 @@ subsitute_env_in_yaml_templates
 # wait-for-apm init container, and the 300s wait below expires having never started Cypress.
 #
 # So hold node-apm-app back until its prerequisites exist, rather than racing them.
+# The manifests land at /ror/*.yml, NOT /ror/<subst-dir>/: `docker cp <dir> container:/ror/` copies
+# the CONTENTS of <dir> into a newly created /ror when /ror does not already exist. That is why the
+# original one-liner used a relative `cd ror` and applied each entry `ls` returned.
 apply_manifests_except_node_apm_app() {
   docker exec eck-ror-control-plane bash -c '
-    cd "/ror/'"$(basename "$SUBSTITUTED_DIR")"'" || exit 1
+    cd /ror || exit 1
     for f in *.yml; do
       [ "$f" = "node-apm-app.yml" ] && continue
       kubectl apply -f "$f" || exit 1
@@ -284,8 +287,7 @@ if [[ "$CLUSTER_TYPE" == "apm" ]]; then
   wait_for_secret "eck-ror-apm-kibana-ca"
   wait_for_secret "eck-ror-apm-token"
   echo "Applying node-apm-app.yml now that its secrets exist ..."
-  docker exec eck-ror-control-plane \
-    kubectl apply -f "/ror/$(basename "$SUBSTITUTED_DIR")/node-apm-app.yml"
+  docker exec eck-ror-control-plane kubectl apply -f /ror/node-apm-app.yml
 fi
 
 echo ""
