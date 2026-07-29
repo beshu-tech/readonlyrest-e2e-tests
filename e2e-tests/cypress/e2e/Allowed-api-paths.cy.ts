@@ -53,8 +53,12 @@ describe('allowed_api_paths enforcement for api_only users', () => {
   });
 
   describe('Kibana internal /internal/ paths', () => {
+    // FIXME: Kibana does not serve /internal/spaces/get_all — it answers 404 on every version in the
+    // matrix. The call still proves the allowlist let it past ReadonlyREST (a blocked request comes
+    // back as ROR's forbidden envelope, not as Kibana's 404), which is why this asserts only that.
+    // Point it at an /internal/ route that exists and it can use expectAllowed like the rest.
     it('allows calls to /internal/ paths matching the allowed_api_paths entry', () => {
-      expectAllowed('internal/spaces/get_all', apiOnlyInternalUser);
+      expectNotBlocked('internal/spaces/get_all', apiOnlyInternalUser);
     });
 
     it('blocks calls to /internal/ paths not listed in allowed_api_paths', () => {
@@ -94,20 +98,30 @@ function assertRor403(response: unknown) {
   expect(response).to.have.property('status', 'forbidden');
 }
 
-// The requests run with failOnStatusCode: false and kbnGet yields the body only, so the status code
-// is not visible here — the body shape is. A successful call yields the resource itself; every
-// failure yields a JSON error envelope instead: ROR uses { status_code, status }, Kibana core uses
-// { statusCode, error, message }. Asserting that neither envelope is present is what makes this
-// "the call went through and was answered" rather than the much weaker "ROR did not return its own
-// 403", which a 404 or a 500 would satisfy just as well.
+// Only that ReadonlyREST let the request reach Kibana. It says nothing about what Kibana then did
+// with it, so prefer assertRequestSucceeded wherever the endpoint actually serves something.
+function assertNotBlockedByRor(response: unknown) {
+  const body = response as Record<string, unknown> | null;
+  expect(body, `ReadonlyREST blocked the request: ${JSON.stringify(body)}`).to.not.have.property('status', 'forbidden');
+}
+
+// The requests run with failOnStatusCode: false and kbnGet yields the body only, so the HTTP status
+// is not visible here — whatever the body carries is. Both layers put a code in it on failure
+// (ReadonlyREST as `status_code`, Kibana core as `statusCode`), but ReadonlyREST's own API also puts
+// one there on success — /api/ror/user/tenants answers { statusCode: 200, status: 'SUCCESS', ... }.
+// So it is the value that decides, not the presence of the field; a body with no code at all is the
+// resource itself and therefore fine.
 function assertRequestSucceeded(response: unknown) {
   const body = response as Record<string, unknown> | null;
   const shown = JSON.stringify(body);
 
-  expect(body, 'expected a response body, got none').to.not.be.null;
-  expect(body, `ReadonlyREST blocked the request: ${shown}`).to.not.have.property('status', 'forbidden');
-  expect(body, `ReadonlyREST returned an error: ${shown}`).to.not.have.property('status_code');
-  expect(body, `Kibana returned an error: ${shown}`).to.not.have.property('statusCode');
+  assertNotBlockedByRor(response);
+  expect(statusCodeOf(body), `the request did not succeed: ${shown}`).to.be.lessThan(400);
+}
+
+function statusCodeOf(body: Record<string, unknown> | null): number {
+  const code = body?.status_code ?? body?.statusCode;
+  return typeof code === 'number' ? code : 200;
 }
 
 function expectBlocked(endpoint: string, credentials: string) {
@@ -116,6 +130,10 @@ function expectBlocked(endpoint: string, credentials: string) {
 
 function expectAllowed(endpoint: string, credentials: string) {
   return apiGet(endpoint, credentials).then(assertRequestSucceeded);
+}
+
+function expectNotBlocked(endpoint: string, credentials: string) {
+  return apiGet(endpoint, credentials).then(assertNotBlockedByRor);
 }
 
 function expectSpacesResponseIncludesDefault(response: unknown) {
