@@ -1,5 +1,6 @@
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { getIframeBody } from '../support/helpers/iframe';
+import { Login } from '../support/page-objects/Login';
 
 describe('JWT authentication', () => {
   const embeddedServerUrl = 'https://localhost:8080';
@@ -14,6 +15,10 @@ describe('JWT authentication', () => {
   });
 
   it('should load Kibana via JWT auth, bypass login and show the correct tenancy', () => {
+    // This spec never goes through Login.initialization(), so the notice suppression it normally
+    // performs has to be done by hand — otherwise the activation-key banner can cover the tenancy
+    // badge inside the iframe.
+    Login.suppressPostLoginNotices();
     cy.visit(embeddedServerUrl);
 
     getIframeBody('iframe').then(iframeBody => {

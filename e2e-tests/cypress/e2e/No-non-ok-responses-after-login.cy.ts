@@ -13,18 +13,31 @@ const ENDPOINTS_IGNORED_BY_ROR = [
   '/api/exception_lists/items/_find' // Elastic Endpoint Security (X-Pack) — not supported by ROR
 ];
 
+// A route handler makes Cypress proxy and buffer every matching response. Matching '**' would put
+// all of Kibana's JS bundles through it, which is slow enough to skew the very page load being
+// measured and heavy enough to risk exhausting the Electron renderer. These three prefixes cover
+// the API surface ROR sits in front of — including everything in ENDPOINTS_IGNORED_BY_ROR — and
+// leave static assets alone.
+const WATCHED_PATHS = ['**/api/**', '**/internal/**', '**/pkp/**'];
+
 describe('No unexpected non-ok responses after login', () => {
   it('should not produce non-ok HTTP responses when loading Kibana after login', () => {
     const nonOkResponses: Array<{ url: string; status: number }> = [];
 
-    cy.intercept('**', req => {
-      req.on('response', res => {
-        const isLocalRequest = new URL(req.url).hostname === 'localhost';
-        if (isLocalRequest && res.statusCode >= 400 && !ENDPOINTS_IGNORED_BY_ROR.some(endpoint => req.url.includes(endpoint))) {
-          nonOkResponses.push({ url: req.url, status: res.statusCode });
-        }
-      });
-    });
+    // Handler written inline so `req` and `res` are typed by cy.intercept's own signature —
+    // CyHttpMessages is exported from cypress/types/net-stubbing rather than declared globally, so
+    // there is no name to annotate a hoisted handler with.
+    WATCHED_PATHS.forEach(path =>
+      cy.intercept(path, req =>
+        req.on('response', res => {
+          const isLocalRequest = new URL(req.url).hostname === 'localhost';
+          const isIgnored = ENDPOINTS_IGNORED_BY_ROR.some(endpoint => req.url.includes(endpoint));
+          if (isLocalRequest && res.statusCode >= 400 && !isIgnored) {
+            nonOkResponses.push({ url: req.url, status: res.statusCode });
+          }
+        })
+      )
+    );
 
     Login.initialization();
 

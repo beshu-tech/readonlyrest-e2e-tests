@@ -23,7 +23,6 @@ jobs:
     if: >
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
       (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
     strategy:
@@ -79,15 +78,14 @@ jobs:
   # ==========================================
   # BOOTSTRAP TESTS
   # ==========================================
-  # Gates on prod-e2e-tests, which covers every trigger in this job's `if` (master itself, and PRs
-  # targeting master). Bootstrap uses released images (no --mode), as it did before.
+  # Same condition as prod-e2e-tests, which this gates on — kept identical so the two cannot drift.
+  # Bootstrap uses released images (no --mode), as it did before.
   master-bootstrap-tests:
     name: "🚀 Bootstrap Tests"
     if: >
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/master' ||
-      (github.base_ref == 'master' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
+      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
     needs: prod-e2e-tests
     runs-on: ubuntu-latest
     strategy:
@@ -127,17 +125,20 @@ jobs:
           action: stop
 
   # ==========================================
-  # DEV IMAGE PREPARATION - DEVELOP AND NON-MASTER PRs
+  # DEV IMAGE PREPARATION - NON-MASTER PRs
   # ==========================================
   # Builds branch-matched dev images of both plugins for dev-e2e-tests, tagged per run. One dispatch
   # per plugin covers the whole matrix, since both pre-build workflows accept a version list.
   # `target_branch` is passed verbatim; both fall back to `develop` if the branch is not there.
   # Fork PRs are excluded: the dispatch needs secrets GitHub does not expose to them.
+  #
+  # PRs only. This workflow has no `push` trigger, so a merge into develop runs nothing — the
+  # branch-matched images are exercised on the PR, before the merge.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
     if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'pull_request' && github.base_ref != 'master' && github.event.pull_request.head.repo.fork == false)
+      github.event_name == 'pull_request' && github.base_ref != 'master' &&
+      github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     timeout-minutes: 90
     outputs:
@@ -174,7 +175,7 @@ jobs:
   # ==========================================
   # E2E TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
   # ==========================================
-  # Every non-fork pull request and every push to develop, against the per-run, branch-matched dev
+  # Every non-fork pull request that does not target master, against the per-run, branch-matched dev
   # images produced by prepare-dev-images. Skipped automatically when that job is skipped.
   dev-e2e-tests:
     name: "🧪 E2E Tests (pre-build plugins)"

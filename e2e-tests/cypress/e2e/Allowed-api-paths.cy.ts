@@ -94,9 +94,20 @@ function assertRor403(response: unknown) {
   expect(response).to.have.property('status', 'forbidden');
 }
 
-function assertNotRor403(response: unknown) {
-  const body = response as Record<string, unknown>;
-  expect(body.status).not.to.equal('forbidden');
+// The requests run with failOnStatusCode: false and kbnGet yields the body only, so the status code
+// is not visible here — the body shape is. A successful call yields the resource itself; every
+// failure yields a JSON error envelope instead: ROR uses { status_code, status }, Kibana core uses
+// { statusCode, error, message }. Asserting that neither envelope is present is what makes this
+// "the call went through and was answered" rather than the much weaker "ROR did not return its own
+// 403", which a 404 or a 500 would satisfy just as well.
+function assertRequestSucceeded(response: unknown) {
+  const body = response as Record<string, unknown> | null;
+  const shown = JSON.stringify(body);
+
+  expect(body, 'expected a response body, got none').to.not.be.null;
+  expect(body, `ReadonlyREST blocked the request: ${shown}`).to.not.have.property('status', 'forbidden');
+  expect(body, `ReadonlyREST returned an error: ${shown}`).to.not.have.property('status_code');
+  expect(body, `Kibana returned an error: ${shown}`).to.not.have.property('statusCode');
 }
 
 function expectBlocked(endpoint: string, credentials: string) {
@@ -104,7 +115,7 @@ function expectBlocked(endpoint: string, credentials: string) {
 }
 
 function expectAllowed(endpoint: string, credentials: string) {
-  return apiGet(endpoint, credentials).then(assertNotRor403);
+  return apiGet(endpoint, credentials).then(assertRequestSucceeded);
 }
 
 function expectSpacesResponseIncludesDefault(response: unknown) {
