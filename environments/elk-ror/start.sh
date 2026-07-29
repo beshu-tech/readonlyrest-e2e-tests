@@ -203,10 +203,6 @@ trap 'handle_docker_compose_error' ERR
 
 # Bound the startup wait, mirroring TIMEOUT_IN_SECONDS in environments/eck-ror/start.sh. Bare
 # `--wait` blocks forever; with a timeout the ERR trap fires instead and dumps elk-ror.log.
-#
-# 600s is several times the normal startup, which takes a couple of minutes including the build.
-# The healthchecks chain serially through depends_on and could in theory take longer, but a stack
-# that slow is not going to pass the suite anyway.
 TIMEOUT_IN_SECONDS=600
 
 docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate \

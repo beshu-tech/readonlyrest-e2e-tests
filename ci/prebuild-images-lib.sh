@@ -1,69 +1,38 @@
-# Shared helpers for dispatching and awaiting ROR plugin pre-build Docker images.
+# Helpers for producing ROR plugin dev images: trigger the pre-build workflow in a plugin repo, then
+# wait for the image it publishes to appear in the registry.
 #
-# Sourced — do not execute directly.
+# Sourced, not executed.
 #
-# This file is the single home of the cross-repo pre-build contract. Three repos consume it:
+# Needs `gh` to dispatch and `docker` to poll, each only when the matching function is called.
 #
-#   readonlyrest-e2e-tests  (this repo)  dispatches BOTH plugins, waits for both, runs ./runner.sh
-#   elasticsearch-readonly… (ROR ES)     dispatches KBN, builds ES itself, waits for KBN
-#   readonlyrest_kbn        (ROR KBN)    dispatches ES,  builds KBN itself, waits for ES
-#
-# The plugin repos already clone this repo to run the Cypress suite, so they can source this file
-# from that clone:
-#
-#   . "$E2E_DIR/ci/prebuild-images-lib.sh"
-#
-# — provided the clone is hoisted to the start of their flow (today they clone at step 4, after the
-# dispatch at step 1). Function names and argument orders below deliberately match the copies that
-# currently live in those repos, so adopting this file is a delete-and-source with no call-site
-# changes.
-#
-# What deliberately stays in the consuming repos: building their own plugin image
-# (publish_ror_prebuild_plugin / publish_kbn_prebuild_image), cloning this repo, invoking
-# ./runner.sh, and uploading Cypress artifacts. Those are repo-specific; only the dispatch/poll
-# layer is genuinely shared, and it is where the subtle details live (JSON escaping of
-# attacker-controlled branch names, poll timeouts, skip-optimization semantics).
-#
-# Required tooling is needed only at call time, not at source time: `gh` for either dispatch,
-# `docker` for the polls. A consumer that never calls a given function never needs its tools.
-#
-# Nothing here relies on the caller running under `set -e`: every step returns a non-zero status and
-# composite helpers propagate it explicitly with `|| return $?`.
+# Nothing relies on the caller using `set -e`: every function returns non-zero on failure, and the
+# ones that call others pass that status on with `|| return $?`.
 
-# Guard against double-sourcing (a consumer may source this from more than one script).
+# Do nothing if this file was already sourced.
 if [ -n "${_ROR_PREBUILD_IMAGES_LIB_SOURCED:-}" ]; then
   return 0 2>/dev/null || true
 fi
 _ROR_PREBUILD_IMAGES_LIB_SOURCED=1
 
 # --- Coordinates -------------------------------------------------------------------------------
-# Overridable via the environment so a fork or a dry run can point elsewhere; the defaults are the
-# real ones and are what every consumer uses.
+# Every value below can be overridden from the environment; the defaults are the real ones.
 
-# Both plugins publish pre-builds from a manually-dispatchable GitHub Actions workflow, driven here
-# with the `gh` CLI. The ES side used to be an Azure DevOps pipeline hit over the REST API; it was
-# ported to Actions and .azure/ was deleted, so the Azure coordinates are gone with it.
+# Each plugin publishes its pre-build images from a manually-triggered GitHub Actions workflow.
 ROR_KBN_GH_REPO="${ROR_KBN_GH_REPO:-sscarduzio/readonlyrest_kbn}"
 ROR_KBN_PUBLISH_WORKFLOW="${ROR_KBN_PUBLISH_WORKFLOW:-publish-pre-builds.yml}"
 
 ROR_ES_GH_REPO="${ROR_ES_GH_REPO:-sscarduzio/elasticsearch-readonlyrest-plugin}"
 ROR_ES_PUBLISH_WORKFLOW="${ROR_ES_PUBLISH_WORKFLOW:-publish-pre-builds.yml}"
 
-# Which ref the workflow YAML is READ from. This is not the same thing as which sources get built —
-# that is the separate target-branch input. Reading from the target branch matters when the workflow
-# itself is being changed on that branch: otherwise you dispatch develop's copy and silently test
-# the wrong pipeline.
+# Which ref the workflow file itself is read from. That is a different thing from which sources get
+# built, which is the target branch passed to the workflow as an input. It matters when the workflow
+# is being changed on a branch, so that the branch's own copy runs.
 #
-# "auto" (the default) prefers the target branch when it exists in the plugin repo and falls back to
-# ...FALLBACK_REF otherwise, mirroring how both workflows treat their own target-branch input. Set to
-# a literal ref to pin, or to empty to let gh use the repo's default branch.
+# "auto" uses the target branch when it exists in the plugin repo, otherwise the fallback ref below.
+# Set a literal ref to pin one, or empty to let gh use the repo's default branch.
 #
-# HARD CONSTRAINT this cannot work around: GitHub only makes a workflow_dispatch workflow
-# dispatchable once the file is present on the repo's DEFAULT branch — `gh workflow run` resolves the
-# workflow by name against that registered set before it ever looks at --ref. A workflow living only
-# on a feature branch 404s no matter what ref is chosen here. The two repos' defaults differ (ROR KBN
-# is develop, ROR ES is master), so a file merged only to develop is dispatchable in one and not the
-# other.
+# This cannot make an unregistered workflow dispatchable: GitHub only allows dispatching a workflow
+# whose file is on the repo's default branch, and gh looks it up there before applying --ref.
 ROR_ES_PUBLISH_WORKFLOW_REF="${ROR_ES_PUBLISH_WORKFLOW_REF-auto}"
 ROR_KBN_PUBLISH_WORKFLOW_REF="${ROR_KBN_PUBLISH_WORKFLOW_REF-auto}"
 ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
@@ -72,18 +41,15 @@ ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF:-
 ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-beshultd/elasticsearch-readonlyrest-dev}"
 ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-beshultd/kibana-readonlyrest-dev}"
 
-# Default poll ceilings. ES gets the longer one: it builds the plugin with Gradle across every
-# requested version, and concurrent dispatches queue behind each other when the runner pool is
-# busier than the matrix is wide — even on the cheap retag path, where each run still pays runner
-# startup, checkout and Gradle cache restore.
+# How long to wait for a published image before giving up. ES gets the longer limit because its
+# build takes longer than the Kibana one.
 ROR_ES_WAIT_TIMEOUT_SECONDS="${ROR_ES_WAIT_TIMEOUT_SECONDS:-$((45 * 60))}"
 ROR_KBN_WAIT_TIMEOUT_SECONDS="${ROR_KBN_WAIT_TIMEOUT_SECONDS:-$((30 * 60))}"
 ROR_PREBUILD_POLL_INTERVAL_SECONDS="${ROR_PREBUILD_POLL_INTERVAL_SECONDS:-30}"
 
 # --- Image reference helpers -------------------------------------------------------------------
 
-# Fully-qualified dev image refs. Every consumer builds these strings today; centralising them means
-# a registry move is a one-line change here instead of a hunt across three repos.
+# Full image reference for a dev image, given a stack version and a tag.
 ror_es_dev_image() { echo "${ROR_ES_DEV_IMAGE_REPO}:${1}-ror-${2}"; }
 ror_kbn_dev_image() { echo "${ROR_KBN_DEV_IMAGE_REPO}:${1}-ror-${2}"; }
 
@@ -92,9 +58,8 @@ docker_image_exists() {
   docker manifest inspect "$1" >/dev/null 2>&1
 }
 
-# Normalise a space- or comma-separated version list into space-separated tokens, and reject
-# anything that is not X.Y.Z[-qualifier]. Both dispatch endpoints accept either separator, so
-# consumers may pass "9.4.4" or "9.4.4,9.3.8" or "9.4.4 9.3.8 8.19.19".
+# Turns a space- or comma-separated version list into space-separated tokens, and rejects anything
+# that is not X.Y.Z or X.Y.Z-qualifier.
 normalize_elk_versions() {
   if [ "$#" -lt 1 ] || [ -z "${1// /}" ]; then
     echo "ERROR: no ELK versions given" >&2
@@ -117,28 +82,19 @@ normalize_elk_versions() {
 
 # --- Dispatch ----------------------------------------------------------------------------------
 #
-# Both dispatchers are non-blocking and both are safe to call unconditionally, even when the
-# canonical image already exists: the per-run alias tag is only guaranteed to exist because we
-# dispatched, and the pipelines' skip optimization turns a "no source changes" dispatch into a cheap
-# registry-side retag.
+# Dispatching only queues the workflow and returns; use the wait helpers below to block on the
+# result.
 #
-# `target_branch` may name a branch that does not exist in the target repo (e.g. a plugin-only or
-# e2e-only feature branch). Both pipelines fall back to `develop` in that case, so passing the
-# current branch verbatim is always safe.
+# It is safe to dispatch even when the image already exists. The workflow skips the build when the
+# sources have not changed and only re-tags the image it already published.
 #
-# Both endpoints accept a space- or comma-separated version LIST. The plugin repos call these once
-# per version because their pipelines are per-version; a matrix consumer should instead pass every
-# version in one call and dispatch twice per run rather than 2×N times.
+# The target branch does not have to exist in the plugin repo — the workflow falls back to `develop`
+# — so the current branch name can always be passed as it is.
+#
+# Versions may be passed as a list, so one dispatch can cover several versions.
 
-# Shared mechanics for both dispatches. The two plugin workflows differ only in coordinates, token
-# and input KEY names, so the varying `-f key=value` pairs are passed through as trailing args and
-# each caller keeps its own names visible at the call site.
-#
-# No JSON is assembled here any more. The Azure REST body had to be built with `jq --arg` because
-# TARGET_BRANCH is chosen by whoever opened the PR and git-check-ref-format(1) permits `"` in a ref
-# name, so a printf-interpolated body could close templateParameters and inject sibling top-level
-# keys. `gh workflow run -f` passes each value as a single argv entry and gh does the encoding, so
-# that whole class of injection is gone rather than merely defended against.
+# Runs `gh workflow run` for one plugin. The plugins differ only in repo, workflow, token and input
+# names, so the caller supplies the `-f key=value` pairs.
 #
 # Usage: _dispatch_prebuild_workflow <label> <repo> <workflow> <ref> <token> <-f pairs...>
 _dispatch_prebuild_workflow() {
@@ -162,10 +118,9 @@ _dispatch_prebuild_workflow() {
   echo ">>> Dispatch sent"
 }
 
-# Resolves the "auto" workflow-ref policy: use the preferred ref when it exists in the plugin repo,
-# otherwise the fallback. A non-"auto" setting is returned verbatim (including empty, which means
-# "let gh pick the default branch"). Never fails the dispatch — an API hiccup degrades to the
-# fallback rather than blocking the run.
+# Applies the "auto" setting: use the preferred ref if it exists in the repo, otherwise the fallback.
+# Any other setting is returned unchanged, including empty. Never fails — if the lookup does not
+# work, the fallback is used rather than blocking the dispatch.
 # Usage: _resolve_workflow_ref <setting> <repo> <token> <preferred ref> <fallback ref>
 _resolve_workflow_ref() {
   local SETTING=$1 REPO=$2 TOKEN=$3 PREFERRED=$4 FALLBACK=$5
@@ -182,9 +137,9 @@ _resolve_workflow_ref() {
   fi
 }
 
-# Guards a dispatch token. Empty is the ordinary "secret not configured" case; the `$('*` shape
-# catches a CI variable that was never interpolated and arrived as literal expression text, which
-# otherwise surfaces much later as a confusing 401.
+# Checks that a dispatch token is usable. Empty means the secret is not configured; a value starting
+# with `$(` means a CI variable was never expanded and arrived as literal text, which would otherwise
+# fail later as an unexplained 401.
 # Usage: _require_dispatch_token <env var name> <label>
 _require_dispatch_token() {
   local NAME=$1 LABEL=$2 VALUE=${!1:-}
@@ -216,7 +171,7 @@ dispatch_kbn_prebuild_image() {
   echo ""
   echo ">>> Dispatching ROR KBN pre-build: versions=$KBN_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
 
-  # Same naming rule as ES below: these must match the DEFAULT-branch copy of the workflow.
+  # Same naming rule as ES below: these must match the workflow's inputs on its default branch.
   _dispatch_prebuild_workflow "ROR KBN" \
     "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" \
     -f "kbn_versions=$KBN_VERSIONS" \
@@ -247,12 +202,9 @@ dispatch_es_prebuild_image() {
   echo ""
   echo ">>> Dispatching ROR ES pre-build: versions=$ES_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
 
-  # These must match the input names in the copy of the workflow on the plugin repo's DEFAULT
-  # branch, which is what GitHub validates a dispatch against — not the copy on WORKFLOW_REF, even
-  # when --ref points elsewhere. A mismatch is a hard 422 "Unexpected inputs provided" listing the
-  # offending keys, so it fails loudly rather than silently building the wrong thing.
-  # (The Actions port briefly carried Azure's camelCase templateParameters names; the merged version
-  # normalised them to snake_case, matching KBN.)
+  # These names must match the workflow's inputs on the repo's default branch. GitHub validates a
+  # dispatch against that copy, not against the one on WORKFLOW_REF. A mismatch fails with 422
+  # "Unexpected inputs provided", listing the names it did not recognise.
   _dispatch_prebuild_workflow "ROR ES" \
     "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ES_REPO_GH_TOKEN" \
     -f "es_versions=$ES_VERSIONS" \
@@ -261,7 +213,7 @@ dispatch_es_prebuild_image() {
     -f "force_rebuild=$FORCE_REBUILD"
 }
 
-# Dispatch both plugins in one go. For consumers that build neither plugin themselves (the e2e repo).
+# Dispatches both plugins with the same arguments.
 # Usage: dispatch_prebuild_images <versions> <target branch> <run tag> [force rebuild]
 dispatch_prebuild_images() {
   if [ "$#" -lt 3 ]; then
@@ -275,8 +227,8 @@ dispatch_prebuild_images() {
 
 # --- Wait --------------------------------------------------------------------------------------
 
-# Poll Docker Hub until a per-run image tag appears. Returns quickly when sources are unchanged (the
-# pipelines' skip path only does a cheap retag).
+# Polls the registry until the image for one plugin, version and tag exists. Returns quickly when
+# the workflow only had to re-tag an existing image.
 # Usage: wait_for_prebuild_image <es|kbn> <version> <run tag> [timeout seconds]
 wait_for_prebuild_image() {
   if [ "$#" -lt 3 ]; then
@@ -318,13 +270,13 @@ wait_for_prebuild_image() {
   echo ">>> Dev image is now available: $IMAGE"
 }
 
-# Back-compat wrappers: same names and signatures as the copies currently in the plugin repos, so
-# adopting this lib there needs no call-site changes.
+# Wrappers for waiting on a single plugin.
+# Usage: wait_for_<es|kbn>_prebuild_image <version> <run tag>
 wait_for_es_prebuild_image() { wait_for_prebuild_image es "$1" "$2"; }
 wait_for_kbn_prebuild_image() { wait_for_prebuild_image kbn "$1" "$2"; }
 
-# Wait for both plugins across every version. Waits ES-first: it is the slower side, and by the time
-# it lands the KBN images are almost always already there, so the second pass is usually a no-op.
+# Waits for both plugins, for every version. ES is waited on first because it is the slower build,
+# by which time the Kibana images are usually already there.
 # Usage: wait_for_prebuild_images <versions> <run tag>
 wait_for_prebuild_images() {
   if [ "$#" -ne 2 ]; then

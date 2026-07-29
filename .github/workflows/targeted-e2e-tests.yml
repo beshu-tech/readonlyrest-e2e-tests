@@ -78,8 +78,6 @@ jobs:
         with:
           action: stop
 
-      # Never fail the job on the artifact upload: this step only runs when the tests already
-      # failed, and a credential problem here would replace that diagnosis with its own.
       - name: S3 Upload Videos & show logs
         if: failure()
         continue-on-error: true

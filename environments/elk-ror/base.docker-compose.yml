@@ -1,9 +1,6 @@
 services:
 
   es-ror:
-    # Without this a single OOM kill ends the run: the container exits 137, nothing brings it back,
-    # and every remaining spec fails against a dead cluster. Restarting the same container keeps the
-    # writable layer (there is no volume here), so indices and ROR settings survive the bounce.
     restart: always
     build:
       context: .
@@ -77,9 +74,6 @@ services:
         hard: -1
 
   kbn-proxy:
-    # Every spec reaches Kibana through this proxy on :5601, so it has the largest blast radius of
-    # any container here — if it dies the whole suite dies with it. Kept symmetrical with the eck
-    # environment, where Kubernetes restarts every pod by default (restartPolicy: Always).
     restart: always
     build:
       context: .

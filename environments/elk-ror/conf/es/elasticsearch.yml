@@ -2,18 +2,10 @@ cluster.name: ror-cluster
 node.name: ror-es01
 network.host: 0.0.0.0
 
-# This cluster is a single node that lives for one test run, holds a handful of tiny indices, and is
-# deleted afterwards — it never needs the disk headroom the watermarks protect. But the watermarks
-# still fire, because they measure the CI HOST's filesystem, which the run's own image pulls push
-# past 90%. Above the high watermark the allocator refuses to allocate the new primaries Kibana and
-# ROR create at boot: the cluster goes RED ("reconcile-desired-balance"), every
-# .readonlyrest_kbn_sessions search 503s with no_shard_available_action_exception, and Kibana dies
-# with "Unable to complete saved object migrations for the [.kibana*] index".
-#
-# Observed on the ROR KBN self-hosted runners: gh-ror-kbn-6 started a run with 100 GB free (87% used)
-# and the run's own footprint took it to 51 GB (93.7%) before Kibana finished booting. Reclaiming
-# host disk does not fix this — `docker system/image/volume/builder prune` freed 0 B there, because
-# the baseline usage is not Docker's.
+# Disk watermarks measure the host filesystem, which on a CI agent is often already near full for
+# reasons unrelated to this cluster, and freeing space does not reliably help. Above the high
+# watermark Elasticsearch stops allocating shards, so the indices Kibana and ROR create at startup
+# never come up: the cluster goes RED and Kibana fails its saved-object migration.
 cluster.routing.allocation.disk.threshold_enabled: false
 
 xpack.security.enabled: true
