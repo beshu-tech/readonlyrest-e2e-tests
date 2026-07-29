@@ -17,12 +17,6 @@ jobs:
   # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
   # plugins still pass the suite".
   #
-  # Selection is base-driven: this covers master itself and every PR targeting master, so a PR is
-  # tested exactly the way its target branch is tested and a green PR cannot turn the nightly red
-  # after merge. The corollary is that a spec may only land on master once the plugin change it
-  # exercises has been released — specs synced from ROR KBN `develop` belong on `develop` until then,
-  # and a PR to master that fails only on such specs is reporting that correctly.
-  #
   # Keep the matrix in sync with ELK_VERSIONS in prepare-dev-images.
   prod-e2e-tests:
     name: "🔬 E2E Tests (released plugins)"
@@ -56,13 +50,6 @@ jobs:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
-      #
-      # 35 minutes, not 60: a healthy full suite is 16-33 min (measured across the matrix). The
-      # failure mode this guards against is an attempt where the stack comes up fine and then wedges
-      # — Kibana stays alive and healthy but stops serving, specs go from ~20s to 4-16 min each, and
-      # the attempt runs out the clock. At 60 min that burns an hour before the retry starts and
-      # pushes jobs to 85-95 min; at 35 the wedged attempt is cut loose early and the retry (which
-      # usually passes) gets a full budget of its own.
       - name: Run E2E tests
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
@@ -80,8 +67,6 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: stop
-      # Never fail the job on the artifact upload: this step only runs when the tests already
-      # failed, and a credential problem here would replace that diagnosis with its own.
       - name: S3 Upload Videos & show logs
         if: failure()
         continue-on-error: true
@@ -144,30 +129,24 @@ jobs:
   # ==========================================
   # DEV IMAGE PREPARATION - DEVELOP AND NON-MASTER PRs
   # ==========================================
-  # Builds branch-matched dev images of BOTH plugins before dev-e2e-tests runs, the same way the ROR
-  # ES and ROR KBN repos do it for their own e2e jobs (ci/e2e-tests-lib.sh there). Without this the
-  # develop suite ran against the mutable `<version>-ror-latest` dev tag, which is neither
-  # branch-matched nor stable for the duration of a run.
+  # Builds branch-matched dev images of both plugins before dev-e2e-tests runs, tagged per run so a
+  # suite cannot pick up images a later run replaced.
   #
-  # One job, not one per matrix cell: both pre-build endpoints accept a version LIST, so the whole
-  # matrix costs two dispatches, and the image wait is paid once instead of twelve times.
+  # One job, not one per matrix cell: both pre-build workflows accept a version LIST, so the whole
+  # matrix costs two dispatches and the image wait is paid once.
   #
   # `target_branch` is passed verbatim; both pipelines fall back to `develop` when the branch does
-  # not exist on their side, so an e2e-only branch name is always safe.
-  # PRs targeting master are excluded — those are the prod-e2e-tests path. Everything else that is
-  # not master (develop, and PRs targeting develop or any other branch) lands here.
+  # not exist on their side, so an e2e-only branch name is safe.
   #
-  # Fork PRs are excluded too: the dispatch needs ES_REPO_AZURE_PAT / KBN_REPO_GH_TOKEN, which GitHub
-  # does not expose to workflows triggered from a fork. Fork PRs therefore get no e2e coverage —
-  # unchanged from before, when they were excluded from the master job for the same reason.
+  # Covers develop and PRs targeting anything but master; PRs targeting master go to prod-e2e-tests.
+  # Fork PRs are excluded because the dispatch needs secrets GitHub does not expose to them, so they
+  # get no e2e coverage.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
       (github.event_name == 'pull_request' && github.base_ref != 'master' && github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
-    # Ceiling for the two polls in ci/prebuild-images-lib.sh (ES 45 min, KBN 30 min), which only run
-    # long when the pre-build pipelines actually rebuild; the unchanged-sources path is a cheap retag.
     timeout-minutes: 90
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
@@ -180,15 +159,10 @@ jobs:
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          # Single source of truth for the dev-e2e-tests matrix: emitted as JSON for `fromJSON` and
-          # passed as a space-separated list to the dispatchers, so the two can never drift.
           # Mirrors the prod-e2e-tests matrix — keep both in sync.
           ELK_VERSIONS: "9.4.4 9.3.8 8.19.19 7.17.29"
           # PR runs must build from the PR head, not the merge ref.
           TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          # Both pre-builds are GitHub Actions workflows now — the ES side was ported off Azure
-          # DevOps, so ES_REPO_AZURE_PAT is no longer used. ES_REPO_GH_TOKEN needs `actions: write`
-          # on sscarduzio/elasticsearch-readonlyrest-plugin, same shape as the KBN token.
           ES_REPO_GH_TOKEN: ${{ secrets.ES_REPO_GH_TOKEN }}
           KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
         run: |
@@ -240,7 +214,6 @@ jobs:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
       # These errors are typically temporary and resolve with a simple retry.
-      # See the prod job above for why the budget is 35 minutes rather than 60.
       - name: Run E2E tests
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
@@ -258,11 +231,6 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: stop
-      # Credentials go through `with:`, not `env:` — the composite action sets
-      # AWS_ACCESS_KEY_ID from `inputs.access_key_id`, so an env-only form is overwritten with the
-      # empty default and every upload dies on "Unable to locate credentials".
-      # Never fail the job on the artifact upload: this step only runs when the tests already
-      # failed, and a credential problem here would replace that diagnosis with its own.
       - name: S3 Upload Videos & show logs
         if: failure()
         continue-on-error: true

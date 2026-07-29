@@ -38,13 +38,10 @@ export class Observability {
     });
   }
 
-  // These polls wait for APM data to travel node-apm-app -> apm-server -> Elasticsearch -> the APM
-  // UI, re-clicking refresh each interval. On a loaded CI runner that pipeline regularly overran the
-  // old 20s ceiling (7.17 legs failed on `.euiLink` at 20s and on headerFilterTransactionType at
-  // 60s). Raising a poll ceiling is close to free: the loop exits the moment the data lands, so a
-  // higher limit costs nothing on the happy path and only buys patience on a slow one. It is
-  // mitigation rather than a cure — the real fix is gating on the documents existing in ES instead
-  // of on the UI rendering them.
+  // Waits for APM data to travel node-apm-app -> apm-server -> Elasticsearch -> the APM UI,
+  // re-clicking refresh each interval. The timeouts are generous because that pipeline is slow on a
+  // loaded CI runner, and a poll costs nothing when data arrives early — the loop exits as soon as
+  // checkFn passes.
   static waitWithRefreshButtonClick({
     targetSelector,
     checkFn,

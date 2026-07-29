@@ -23,14 +23,13 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Home.loadSampleDataButtonHidden();
 
     cy.log('Verify Dashboard features');
-    // The 9.x threshold here is 9.3.0, not the 9.4.0 this was synced from ROR KBN with: on 9.3.8 the
-    // dashboards listing never issues `POST /content_management/rpc/search`, so the branch below
-    // times out after 30s on every environment and every retry. 8.19.19 still issues it (50+ calls
-    // per run) and passes, and 9.4.4 passes on this branch, so the change landed somewhere in
-    // (8.19.19, 9.3.8]. This repo's e2e matrix has no 9.0-9.2 leg to narrow it further, so those
-    // versions are deliberately left on the branch below rather than silently moved.
-    // ROR KBN only e2e-tests 9.4.4 / 8.19.19 / 7.17.29, so 9.3.x has no coverage upstream and this
-    // divergence needs reporting there before the next sync overwrites it.
+    // From 9.3 the dashboards listing no longer issues `POST /content_management/rpc/search`, so the
+    // 8.7+ branch below would wait for a request that never comes. 8.19 still issues it. The exact
+    // release is unknown — this repo has no 9.0-9.2 e2e leg — so those versions stay on the branch
+    // below rather than being moved on a guess.
+    //
+    // ROR KBN, where this file is synced from, tests only 9.4 / 8.19 / 7.17 and so has no 9.3
+    // coverage. This threshold is a local divergence and a sync will overwrite it.
     if (semver.gte(getKibanaVersion(), '9.3.0')) {
       cy.intercept('GET', '/s/default/app/dashboards**').as('dashboardsApp');
       Tenancy.getTenancyFromUrl().then(tenancy => {

@@ -3,11 +3,9 @@ import semver from 'semver';
 import { getKibanaVersion } from '../helpers';
 
 export class RorMenu {
-  // Click the RorPopover wrapper, not the inner <button className="ror-menu-trigger">. Targeting
-  // the button looks more correct — it is what actually carries onClick — but Cypress does not
-  // consider it visible on 9.3/9.4 (it is present in the DOM and every 9.x leg failed
-  // `expected '<button.ror-menu-trigger>' to be 'visible'`, while 8.19/7.17 passed). Clicking the
-  // wrapper lets the event bubble to the button and is what every version has always used.
+  // The RorPopover wrapper, not the inner <button className="ror-menu-trigger"> that carries the
+  // onClick. Cypress does not consider that button visible on Kibana 9.x, so clicking it fails
+  // actionability there; clicking the wrapper lets the event bubble and works on every version.
   private static readonly TRIGGER = '#rorMenuPopover';
 
   // rorPopover.tsx passes panelProps={{ id: panelId }} and EuiPopover only mounts the panel while
@@ -20,11 +18,9 @@ export class RorMenu {
   static openRorMenu() {
     cy.log('open ROR menu');
     RorMenu.clickTriggerUntilOpen(RorMenu.OPEN_ATTEMPTS);
-    // After the retries, assert properly so a genuine failure reports "#rorMenuPanel not found"
-    // rather than surfacing later as a confusing "'Edit security settings' never appeared".
-    // `exist`, not `be.visible`: the panel is only mounted while the popover is open, so existence
-    // is already the exact signal — and asserting visibility is precisely the mistake that broke
-    // 9.x above. Nothing here should depend on Cypress's visibility heuristics.
+    // Assert after the retries so a real failure reports "#rorMenuPanel not found" instead of a
+    // later, more confusing "'Edit security settings' never appeared". `exist`, not `be.visible`:
+    // the panel is only mounted while the popover is open, so existence is the exact signal.
     cy.get(RorMenu.PANEL, { timeout: 10000 }).should('exist');
   }
 
@@ -35,14 +31,15 @@ export class RorMenu {
   }
 
   /**
-   * Clicks the trigger and re-clicks if the popover did not open. Cypress cannot catch a failed
-   * assertion, so the panel is polled from the DOM directly after a short settle — that leaves us
-   * free to retry the click, which `cy.get(...).should(...)` alone can never do because Cypress
-   * retries assertions but never re-runs the action that preceded them.
+   * Clicks the trigger and re-clicks if the popover did not open.
+   *
+   * The panel is polled from the DOM rather than asserted on, because Cypress cannot catch a failed
+   * assertion. `cy.get(...).should(...)` retries the assertion but never re-runs the click before
+   * it, so a swallowed click can only be recovered by driving the retry ourselves.
    */
   private static clickTriggerUntilOpen(attemptsLeft: number) {
-    // No `.should('be.visible')` here: cy.click() enforces actionability itself, and asserting it
-    // separately is what broke every 9.x leg.
+    // No `.should('be.visible')`: cy.click() enforces actionability itself, and asserting
+    // visibility separately fails on Kibana 9.x.
     cy.get(RorMenu.TRIGGER, { timeout: 30000 }).click();
     cy.wait(RorMenu.SETTLE_MS, { log: false });
 
@@ -55,9 +52,9 @@ export class RorMenu {
     });
   }
 
-  // Every caller opens the menu immediately before this, so the lookup is scoped to the panel:
-  // an unscoped cy.contains() would happily retry for 20s against a closed menu and then report
-  // "'Edit security settings' never appeared", hiding the fact that the click never landed.
+  // Every caller opens the menu immediately before this, so the lookup is scoped to the panel. An
+  // unscoped cy.contains() would retry for 20s against a closed menu and report the item as
+  // missing, hiding the fact that the menu never opened.
   static openEditSecuritySettings() {
     cy.intercept('GET', '/pkp/api/settings').as('getSettings');
     cy.get(RorMenu.PANEL).contains('Edit security settings').click({ force: true });

@@ -29,14 +29,10 @@ export class Home {
       cy.getByDataTestSubj('addSampleDataSetecommerce').click();
     } else {
       cy.findByRole('button', { name: /add sample ecommerce orders/i }).within(() => {
-        // The "other sample data sets" accordion above animates its height open, so the card can
-        // still be mid-flight when this runs and Cypress rejects the click as "covered by another
-        // element" (the euiPageSection wrapper). force skips the covered-element check, the same
-        // escape hatch KibanaNavigation already uses for the nav toggle.
-        //
-        // Deliberately no `.should('be.visible')`: force exists to skip exactly that check, so
-        // asserting it first re-introduces the failure this is meant to avoid. Asserting visibility
-        // on an element that is about to be force-clicked is what broke every 9.x leg in RorMenu.
+        // The "other sample data sets" accordion above animates open, so the card can still be
+        // moving when this runs and Cypress rejects the click as covered by the euiPageSection
+        // wrapper. force skips that check. No `.should('be.visible')` first — that would re-apply
+        // the check force is here to skip.
         cy.findByText(/add data/i)
           .scrollIntoView()
           .click({ force: true });

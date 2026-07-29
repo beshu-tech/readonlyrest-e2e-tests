@@ -14,13 +14,13 @@ import { Loader } from '../support/page-objects/Loader';
 //    observability, enterpriseSearch) during the reload and some fail to arrive.
 //  - executing a cancelled action: a plugin store flushes a queue whose actions were cancelled by
 //    the in-flight remount.
-//  - t.toUpperCase is not a function: thrown from core.entry.js's own `notifications` service
-//    during bootstrap — Kibana core, not ROR, and it fires ~20x per reload on some versions.
+//  - t.toUpperCase is not a function: thrown by Kibana core's own notifications service during
+//    bootstrap, not by ROR.
 //
-// Registered with `Cypress.on` at spec scope rather than `cy.on` inside the test: `cy.on` listeners
-// are torn down when the test body ends, so a rejection arriving during the `afterEach` below went
-// unhandled and failed the hook — which skips the rest of the suite. Spec scope covers hooks too,
-// and still keeps the suppression out of every other spec.
+// Registered with `Cypress.on` at spec scope, not `cy.on` inside a test: `cy.on` listeners are torn
+// down when the test body ends, so a rejection arriving during the `afterEach` below would fail the
+// hook and skip the rest of the suite. Spec scope covers hooks while keeping the suppression out of
+// every other spec.
 Cypress.on('uncaught:exception', err => {
   if (
     err.message.includes('ChunkLoadError') ||
@@ -59,9 +59,8 @@ describe('User settings', () => {
 
     cy.wait('@darkMode');
 
-    // The dark-theme CSS lands long before Kibana has finished mounting. Without this the test ends
-    // mid-bootstrap and teardown races the half-built app, which fails the afterEach below with
-    // "executing a cancelled action" and skips the rest of the suite.
+    // The dark-theme CSS lands long before Kibana finishes mounting. Ending the test here would
+    // leave teardown racing a half-built app.
     Loader.settled();
   });
 

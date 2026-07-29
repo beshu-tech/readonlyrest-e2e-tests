@@ -236,22 +236,13 @@ subsitute_env_in_yaml_templates() {
 subsitute_env_in_yaml_templates
 
 # node-apm-app mounts two secrets the ECK operator generates while reconciling the ApmServer and its
-# Kibana association — eck-ror-apm-kibana-ca (volume) and eck-ror-apm-token (secretKeyRef). Nothing
-# in this repo creates them. Applying every manifest in one shot schedules the pod before those
-# secrets exist, so the kubelet cannot mount the volume:
-#
-#   FailedMount  MountVolume.SetUp failed for volume "apm-cert-volume":
-#                secret "eck-ror-apm-kibana-ca" not found
-#
-# The kubelet retries, so this usually resolves inside the readiness budget and the run goes green
-# with the errors buried in the event log — they were present in runs nobody flagged. When the
-# operator is slow it does not resolve, node-apm-app sits at Init:0/1, apm-server blocks behind its
-# wait-for-apm init container, and the 300s wait below expires having never started Cypress.
-#
-# So hold node-apm-app back until its prerequisites exist, rather than racing them.
-# The manifests land at /ror/*.yml, NOT /ror/<subst-dir>/: `docker cp <dir> container:/ror/` copies
-# the CONTENTS of <dir> into a newly created /ror when /ror does not already exist. That is why the
-# original one-liner used a relative `cd ror` and applied each entry `ls` returned.
+# Kibana association: eck-ror-apm-kibana-ca (volume) and eck-ror-apm-token (secretKeyRef). Nothing in
+# this repo creates them, so applying every manifest at once schedules the pod before they exist and
+# the kubelet cannot mount the volume. The kubelet retries, but when the operator is slow the pod
+# stays at Init:0/1, apm-server blocks behind its wait-for-apm init container, and the readiness wait
+# below expires. Hold node-apm-app back until its secrets exist instead.
+# The manifests land at /ror/*.yml, not /ror/<subst-dir>/: `docker cp <dir> container:/ror/` copies
+# the contents of <dir> into a newly created /ror when /ror does not already exist.
 apply_manifests_except_node_apm_app() {
   docker exec eck-ror-control-plane bash -c '
     cd /ror || exit 1

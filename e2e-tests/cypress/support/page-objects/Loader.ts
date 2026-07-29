@@ -12,14 +12,13 @@ export class Loader {
   }
 
   /**
-   * Waits for Kibana to finish bootstrapping, without first requiring the "Loading Elastic" splash
-   * to be observed the way `loading()` does — after a `cy.reload()` the splash may already be gone
-   * by the time the assertion runs, so waiting for its *appearance* is itself a race.
+   * Waits for Kibana to finish bootstrapping, without requiring the "Loading Elastic" splash to be
+   * observed first.
    *
    * Use this to end a test that reloaded the page. A test that finishes while Kibana is still
-   * mounting leaves plugin stores mid-initialisation, and Cypress's teardown then fires listeners
-   * the half-built app has registered — which surfaces as "Error: executing a cancelled action"
-   * attributed to whatever hook happened to be running.
+   * mounting leaves plugin stores half-initialised, and Cypress teardown then fires listeners the
+   * half-built app registered, failing whichever hook is running with "executing a cancelled
+   * action".
    */
   public static settled() {
     cy.log('loading settled');
@@ -32,22 +31,16 @@ export class Loader {
   private static readonly SPLASH_MAX_POLLS = 60; // ~30s
 
   /**
-   * Gives the "Loading Elastic" splash a bounded chance to appear, but does NOT fail if it is
+   * Gives the "Loading Elastic" splash a bounded chance to appear, but does not fail if it is
    * missed.
    *
-   * The splash is transient. On a fast load — or a navigation that does not trigger a full reload —
-   * it can come and go between Cypress's retries, or never render at all. Asserting that it EXISTS
-   * then fails after 80s on a page that is loading perfectly well, and
-   * "Timed out retrying after 80000ms: Expected to find content: 'Loading Elastic' but never did"
-   * has been the single most common failure in this suite. A reachability probe confirmed Kibana was
-   * answering in ~20ms throughout one such failure, so the app was fine and only the assertion was
-   * wrong.
+   * The splash is transient: on a fast load, or a navigation that does not fully reload the page, it
+   * can come and go between Cypress retries or never render at all. Asserting that it exists would
+   * fail on a page that is loading correctly.
    *
-   * Skipping the wait entirely would be wrong too: it exists so finish() cannot evaluate against the
-   * page we are navigating AWAY from. But of finish()'s three checks only the URL match actually
-   * discriminates the old page from the new one, so the splash is a weak guard — not worth a hard
-   * failure. Waiting for it when it shows, and falling through to the end-state assertions when it
-   * does not, keeps the guard's value without its failure mode.
+   * It is still worth waiting for, because it keeps finish() from evaluating against the page we are
+   * navigating away from. But only finish()'s URL check really distinguishes the old page from the
+   * new one, so the splash is a weak guard and not worth failing on.
    */
   private static start(pollsLeft: number = Loader.SPLASH_MAX_POLLS) {
     if (pollsLeft === Loader.SPLASH_MAX_POLLS) {
@@ -71,8 +64,8 @@ export class Loader {
     cy.log('loading finish');
     cy.contains(Loader.SPLASH_TEXT, { timeout: 80000 }).should('not.exist');
     cy.urlShouldMatch(`${spacePrefix}${finishUrl}`);
-    // Explicit 80s rather than the 20s defaultCommandTimeout: start() may now fall through before
-    // the page has begun rendering, so this assertion has to carry the patience start() used to.
+    // Explicit 80s rather than the 20s defaultCommandTimeout: start() can fall through before the
+    // page has begun rendering, so this assertion carries the wait.
     cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('be.visible');
   }
 }

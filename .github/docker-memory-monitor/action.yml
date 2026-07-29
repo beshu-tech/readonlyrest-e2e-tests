@@ -26,31 +26,23 @@ runs:
 
             echo
             echo "== container OOM status =="
-            # RestartCount / StartedAt / Health matter as much as OOMKilled here. A container that
-            # bounces between two 10s samples looks identical to one that never moved if you only
-            # print Status, and the failure mode we keep hitting is a container that stays "running"
-            # and "healthy" while it has stopped serving traffic — the healthcheck runs inside the
-            # container against localhost, so a wedged-but-listening process still reports healthy.
+            # Status alone hides two cases: a container that restarted between samples, and one that
+            # reports healthy but no longer serves (the healthcheck runs inside the container,
+            # against localhost).
             for c in $(docker ps -aq 2>/dev/null); do
               docker inspect "$c" \
                 --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} RestartCount={{.RestartCount}} StartedAt={{.State.StartedAt}} Health={{if .State.Health}}{{.State.Health.Status}}/{{.State.Health.FailingStreak}}{{else}}none{{end}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
             done
 
-            # The recurring failure is a stack that stays Running/Ready/healthy while it serves
-            # nothing: specs go from ~20s to 4-16 min, cy.task('httpCall') hits its 20s ceiling and
-            # 'Loading Elastic' never appears. Every state field we sample says "fine" throughout,
-            # because a wedged-but-listening process still passes an in-container healthcheck and
-            # still reports 1/1 Ready. These probes ask the only question that distinguishes the two
-            # — can something outside actually get a response, and how fast — and cost ~2 lines per
-            # sample. Same URLs work for both environments; the eck env exposes the same ports.
+            # Whether the stack still answers from outside, and how fast. Container state and pod
+            # readiness both stay green when a process is listening but no longer serving, so this is
+            # the only sample that tells the two apart. Same URLs in both environments.
             echo
             echo "== service reachability (http_code / total_time_s) =="
             for svc in "kibana https://localhost:5601/api/status" "es https://localhost:9200/_cluster/health"; do
               name="${svc%% *}"; url="${svc#* }"
               printf '%s ' "$name"
-              # `|| true` only: -w still emits its line when curl fails (http_code=000 for a refused
-              # connection or a --max-time abort), so an extra fallback echo would just print a
-              # second, contradictory-looking line for the same probe.
+              # -w still prints its line when curl fails (http_code=000), so no fallback echo.
               curl -sk -o /dev/null -u kibana:kibana \
                    --max-time 10 \
                    -w 'http_code=%{http_code} total_time=%{time_total} connect_time=%{time_connect}\n' \
@@ -73,17 +65,11 @@ runs:
             echo "== kubectl OOM events =="
             kubectl get events -A --field-selector=reason=OOMKilling 2>/dev/null || true
 
-            # The eck environment wedges the same way the docker one does, and reason=OOMKilling
-            # alone never showed anything for it. Warnings cover the restarts, probe failures and
-            # evictions that would explain a pod that is Running but not serving.
+            # Restarts, probe failures and evictions, which reason=OOMKilling above does not cover.
             #
-            # lastTimestamp is printed explicitly and the list is sorted by it. The default output
-            # shows only a relative AGE, and because this loop re-dumps the whole event list every
-            # 10s, the SAME startup events reappear in every sample and read as ongoing trouble. That
-            # is not hypothetical: it made a 35-minute wedge look like Elasticsearch flapping its
-            # readiness probe, when the pod was in fact 1/1 Ready with 0 restarts for all 140 samples
-            # and the events were 29-34 minutes stale — i.e. from bootstrap. Absolute timestamps make
-            # stale-vs-live decidable instead of a judgement call.
+            # Printed with lastTimestamp rather than the default relative AGE: this loop re-dumps the
+            # whole event list every 10s, so without an absolute timestamp old startup events are
+            # indistinguishable from live ones.
             echo
             echo "== kubectl warning events (newest last, absolute timestamps) =="
             kubectl get events -A --field-selector=type=Warning \
