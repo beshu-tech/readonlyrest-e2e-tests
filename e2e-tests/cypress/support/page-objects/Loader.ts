@@ -1,3 +1,4 @@
+import { recurse } from 'cypress-recurse';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
 
 export class Loader {
@@ -42,21 +43,25 @@ export class Loader {
    * navigating away from. But only finish()'s URL check really distinguishes the old page from the
    * new one, so the splash is a weak guard and not worth failing on.
    */
-  private static start(pollsLeft: number = Loader.SPLASH_MAX_POLLS) {
-    if (pollsLeft === Loader.SPLASH_MAX_POLLS) {
-      cy.log('loading start');
-    }
+  private static start() {
+    cy.log('loading start');
 
-    cy.get('body', { log: false }).then($body => {
-      if ($body.text().includes(Loader.SPLASH_TEXT)) {
-        return;
+    recurse(
+      () => cy.get('body', { log: false }),
+      $body => $body.text().includes(Loader.SPLASH_TEXT),
+      {
+        limit: Loader.SPLASH_MAX_POLLS,
+        delay: Loader.SPLASH_POLL_MS,
+        timeout: Loader.SPLASH_MAX_POLLS * Loader.SPLASH_POLL_MS,
+        // Missing the splash is not a failure — see above.
+        doNotFail: true,
+        yield: 'value',
+        log: false
       }
-      if (pollsLeft <= 1) {
+    ).then($body => {
+      if (!$body.text().includes(Loader.SPLASH_TEXT)) {
         cy.log('loading start: splash never observed — falling through to the end-state checks');
-        return;
       }
-      cy.wait(Loader.SPLASH_POLL_MS, { log: false });
-      Loader.start(pollsLeft - 1);
     });
   }
 

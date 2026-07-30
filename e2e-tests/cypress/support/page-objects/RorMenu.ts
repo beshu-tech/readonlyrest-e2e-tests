@@ -1,6 +1,5 @@
+import { recurse } from 'cypress-recurse';
 import { Loader } from './Loader';
-import semver from 'semver';
-import { getKibanaVersion } from '../helpers';
 
 export class RorMenu {
   // The RorPopover wrapper, not the inner <button className="ror-menu-trigger"> that carries the
@@ -17,7 +16,7 @@ export class RorMenu {
 
   static openRorMenu() {
     cy.log('open ROR menu');
-    RorMenu.clickTriggerUntilOpen(RorMenu.OPEN_ATTEMPTS);
+    RorMenu.clickTriggerUntilOpen();
     // Assert after the retries so a real failure reports "#rorMenuPanel not found" instead of a
     // later, more confusing "'Edit security settings' never appeared". `exist`, not `be.visible`:
     // the panel is only mounted while the popover is open, so existence is the exact signal.
@@ -33,23 +32,33 @@ export class RorMenu {
   /**
    * Clicks the trigger and re-clicks if the popover did not open.
    *
-   * The panel is polled from the DOM rather than asserted on, because Cypress cannot catch a failed
-   * assertion. `cy.get(...).should(...)` retries the assertion but never re-runs the click before
-   * it, so a swallowed click can only be recovered by driving the retry ourselves.
+   * The panel is polled from the DOM rather than asserted on, because `cy.get(...).should(...)`
+   * retries the assertion but never re-runs the click before it, so a swallowed click can only be
+   * recovered by driving the retry ourselves.
    */
-  private static clickTriggerUntilOpen(attemptsLeft: number) {
-    // No `.should('be.visible')`: cy.click() enforces actionability itself, and asserting
-    // visibility separately fails on Kibana 9.x.
-    cy.get(RorMenu.TRIGGER, { timeout: 30000 }).click();
-    cy.wait(RorMenu.SETTLE_MS, { log: false });
-
-    cy.get('body', { log: false }).then($body => {
-      if ($body.find(RorMenu.PANEL).length > 0 || attemptsLeft <= 1) {
-        return;
+  private static clickTriggerUntilOpen() {
+    recurse(
+      () =>
+        // No `.should('be.visible')`: cy.click() enforces actionability itself, and asserting
+        // visibility separately fails on Kibana 9.x. The settle wait belongs here rather than in
+        // `delay` so the panel gets a chance to mount before the first check, not only between
+        // attempts.
+        cy
+          .get(RorMenu.TRIGGER, { timeout: 30000 })
+          .click()
+          .then(() => cy.wait(RorMenu.SETTLE_MS, { log: false }))
+          .then(() => cy.get('body', { log: false })),
+      $body => $body.find(RorMenu.PANEL).length > 0,
+      {
+        limit: RorMenu.OPEN_ATTEMPTS,
+        delay: 0,
+        timeout: 120000,
+        // openRorMenu() asserts on the panel immediately after, so failing here would only replace
+        // that message with a less specific one.
+        doNotFail: true,
+        log: false
       }
-      cy.log(`ROR menu did not open — re-clicking (${attemptsLeft - 1} attempt(s) left)`);
-      RorMenu.clickTriggerUntilOpen(attemptsLeft - 1);
-    });
+    );
   }
 
   // Every caller opens the menu immediately before this, so the lookup is scoped to the panel. An

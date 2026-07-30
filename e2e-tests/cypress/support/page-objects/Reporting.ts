@@ -1,4 +1,5 @@
 import * as semver from 'semver';
+import { recurse } from 'cypress-recurse';
 import { RorMenu } from './RorMenu';
 import { StackManagement } from './StackManagement';
 import { getKibanaVersion } from '../helpers';
@@ -80,33 +81,25 @@ export class Reporting {
   static verifyAllDataStreamsSegmentsCount(index: string, numberOfSegments: number, timeout = 30000) {
     // Segment creation after a rollover is async, so poll instead of asserting on
     // a single snapshot that could catch an intermediate state.
-    const startTime = Date.now();
+    return recurse(
+      () => esApiAdvancedClient.getAllReportingDataStreamSegments(index),
+      dataStreams => dataStreams.length === numberOfSegments,
+      {
+        timeout,
+        delay: 1000,
+        log: dataStreams => cy.log(`Reporting segments for ${index}: ${dataStreams.length}/${numberOfSegments}`),
+        error: `Expected ${numberOfSegments} data stream segment(s) for ${index}`
+      }
+    ).then(dataStreams => {
+      const sortedStreams = [...dataStreams].sort((a, b) => a.index.localeCompare(b.index));
 
-    const check = (): Cypress.Chainable<void> =>
-      esApiAdvancedClient.getAllReportingDataStreamSegments(index).then(dataStreams => {
-        const timedOut = Date.now() - startTime >= timeout;
-
-        if (dataStreams.length !== numberOfSegments && !timedOut) {
-          cy.log(`Reporting segments for ${index}: ${dataStreams.length}/${numberOfSegments}, waiting...`);
-          return cy.wait(1000).then(check);
-        }
-
-        // Name the assertion so a timeout (rather than a genuine miscount) is obvious in CI.
-        const label = timedOut
-          ? `data stream segments for ${index} (timed out after ${timeout / 1000}s)`
-          : `data stream segments for ${index}`;
-        expect(dataStreams.length, label).to.equal(numberOfSegments);
-        const sortedStreams = [...dataStreams].sort((a, b) => a.index.localeCompare(b.index));
-
-        sortedStreams.forEach(
-          (dataStream, segmentIndex) =>
-            expect(
-              dataStream.index.endsWith(`00000${segmentIndex + 1}`),
-              `Expected index "${dataStream.index}" to end with "00000${segmentIndex + 1}"`
-            ).to.be.true
-        );
-      });
-
-    return cy.wrap(null).then(check);
+      sortedStreams.forEach(
+        (dataStream, segmentIndex) =>
+          expect(
+            dataStream.index.endsWith(`00000${segmentIndex + 1}`),
+            `Expected index "${dataStream.index}" to end with "00000${segmentIndex + 1}"`
+          ).to.be.true
+      );
+    });
   }
 }
