@@ -24,7 +24,7 @@ export class Spaces {
 
   static saveSpaceAndConfirm() {
     cy.get('[data-test-subj=save-space-button]').click();
-    cy.get('body').then(($body) => {
+    cy.get('body').then($body => {
       if ($body.find('[data-test-subj=confirmModalConfirmButton]').length > 0) {
         cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
       }

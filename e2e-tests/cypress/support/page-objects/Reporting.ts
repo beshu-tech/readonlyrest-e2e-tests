@@ -84,13 +84,14 @@ export class Reporting {
 
     const check = (): Cypress.Chainable<void> =>
       esApiAdvancedClient.getAllReportingDataStreamSegments(index).then(dataStreams => {
-        if (dataStreams.length !== numberOfSegments && Date.now() - startTime < timeout) {
+        const timedOut = Date.now() - startTime >= timeout;
+
+        if (dataStreams.length !== numberOfSegments && !timedOut) {
           cy.log(`Reporting segments for ${index}: ${dataStreams.length}/${numberOfSegments}, waiting...`);
           return cy.wait(1000).then(check);
         }
 
         // Name the assertion so a timeout (rather than a genuine miscount) is obvious in CI.
-        const timedOut = Date.now() - startTime >= timeout;
         const label = timedOut
           ? `data stream segments for ${index} (timed out after ${timeout / 1000}s)`
           : `data stream segments for ${index}`;
