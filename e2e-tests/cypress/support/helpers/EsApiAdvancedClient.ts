@@ -1,5 +1,5 @@
 import * as semver from 'semver';
-import type { GetIndices } from './EsApiClient';
+import { recurse } from 'cypress-recurse';
 import { EsApiClient } from './EsApiClient';
 import { getKibanaVersion } from './index';
 
@@ -7,15 +7,20 @@ export class EsApiAdvancedClient extends EsApiClient {
   public pruneAllReportingIndices(): void {
     cy.log('Pruning all reporting indices...');
 
-    if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
-      this.dataStreams().then(result => {
-        result.data_streams
-          .filter(dataStream => dataStream.name.startsWith('.kibana-reporting-'))
-          .forEach(reportingDataStream => {
-            this.deleteDataStream(reportingDataStream.name);
-          });
-      });
-    } else {
+    // Reporting has used data streams (.kibana-reporting-*, backed by hidden
+    // .ds-* indices) since 8.15; drop them in every version so stale docs from a
+    // prior run can't satisfy waitForReportingSegmentsDocsCount before the current
+    // export lands. No-op when none exist.
+    this.dataStreams().then(result => {
+      result.data_streams
+        .filter(dataStream => dataStream.name.startsWith('.kibana-reporting-'))
+        .forEach(reportingDataStream => {
+          this.deleteDataStream(reportingDataStream.name);
+        });
+    });
+
+    // Pre-8.19 also has the legacy .reporting* indices; purge their docs too.
+    if (!semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
       this.indices().then(result => {
         result
           .filter(index => index.index.startsWith('.reporting'))
@@ -41,43 +46,58 @@ export class EsApiAdvancedClient extends EsApiClient {
     );
   }
 
+  // exportToCsv returns when the report is QUEUED, not written. Poll the segments'
+  // combined docs.count (refresh-visible) until the report doc shows up, so a
+  // following rollover doesn't race the write and land the report in the wrong segment.
+  public waitForReportingSegmentsDocsCount(
+    indexName: string,
+    expectedDocs: number,
+    timeout = 30000,
+    interval = 1000
+  ): Cypress.Chainable<number> {
+    return recurse(
+      () =>
+        this.getAllReportingDataStreamSegments(indexName).then(segments =>
+          segments.reduce((sum, seg) => sum + Number.parseInt(seg['docs.count'] ?? '0', 10), 0)
+        ),
+      total => total >= expectedDocs,
+      {
+        timeout,
+        delay: interval,
+        log: total => cy.log(`Reporting segments for ${indexName}: docs ${total}/${expectedDocs}`),
+        error: `Timeout waiting for ${expectedDocs} report docs in ${indexName} segments`
+      }
+    );
+  }
+
   public waitForDocsCount(
     indexName: string,
     expectedCount = 0,
     timeout = 10000,
     interval = 1000
-  ): Cypress.Chainable<GetIndices[]> {
-    const startTime = Date.now();
+  ): Cypress.Chainable<number> {
     cy.log(`Waiting for index ${indexName} to have ${expectedCount} documents...`);
 
-    const checkCount = (): Cypress.Chainable<GetIndices[]> =>
-      this.findIndicesByPattern(indexName).then(result => {
-        const foundIndex = result.find(({ index }) => index === indexName);
-        if (!foundIndex) {
-          throw new Error(`Index ${indexName} not found`);
-        }
-
-        const currentCount = Number.parseInt(foundIndex['docs.count'], 10);
-        cy.log(`Index: ${indexName}, Current docs.count: ${currentCount}, Expected: ${expectedCount}`);
-
-        // Success case
-        if (currentCount === expectedCount) {
-          return;
-        }
-
-        // Timeout case
-        const elapsed = Date.now() - startTime;
-        if (elapsed >= timeout) {
-          throw new Error(
-            `Timeout waiting for docs.count to be ${expectedCount} (current: ${currentCount}) after ${timeout / 1000}s`
-          );
-        }
-
-        // Continue polling
-        cy.wait(interval).then(checkCount);
-      });
-
-    return cy.wrap(null).then(checkCount);
+    return recurse(
+      () =>
+        this.findIndicesByPattern(indexName).then(result => {
+          const foundIndex = result.find(({ index }) => index === indexName);
+          // Thrown from the polled command rather than the predicate, so it fails the test outright
+          // instead of being retried: a missing index will not appear by waiting.
+          if (!foundIndex) {
+            throw new Error(`Index ${indexName} not found`);
+          }
+          return Number.parseInt(foundIndex['docs.count'], 10);
+        }),
+      currentCount => currentCount === expectedCount,
+      {
+        timeout,
+        delay: interval,
+        log: currentCount =>
+          cy.log(`Index: ${indexName}, Current docs.count: ${currentCount}, Expected: ${expectedCount}`),
+        error: `Timeout waiting for docs.count of ${indexName} to be ${expectedCount}`
+      }
+    );
   }
 
   public deleteIndicesByPattern(pattern: string): void {

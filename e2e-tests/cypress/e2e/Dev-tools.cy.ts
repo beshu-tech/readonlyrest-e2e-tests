@@ -10,10 +10,8 @@ describe('Dev tools', () => {
   });
 
   it('should check dev tools', () => {
-    cy.log('should verify POST _bulk request forbidden with 403 status');
-    DevTools.sendRequest(
-      'POST /xx-enrich-iis/_bulk {enter} {{} "index" : {{} {}} {}} {enter} {{} "index" : {{} {}} {}}'
-    );
+    cy.log('should verify POST _doc write request forbidden with 403 status');
+    DevTools.sendRequest('POST /xx-enrich-iis/_doc {enter} {{} "field": "value" {}}');
     DevTools.verifyIf403Status();
 
     cy.log('should verify GET /_index_template successful with 403 status');

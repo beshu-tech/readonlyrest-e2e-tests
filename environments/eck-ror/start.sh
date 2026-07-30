@@ -235,7 +235,51 @@ subsitute_env_in_yaml_templates() {
 
 subsitute_env_in_yaml_templates
 
-docker exec eck-ror-control-plane bash -c 'cd ror && ls | xargs -n 1 kubectl apply -f'
+# node-apm-app mounts two secrets the ECK operator generates while reconciling the ApmServer and its
+# Kibana association: eck-ror-apm-kibana-ca (volume) and eck-ror-apm-token (secretKeyRef). Nothing in
+# this repo creates them, so applying every manifest at once schedules the pod before they exist and
+# the kubelet cannot mount the volume. The kubelet retries, but when the operator is slow the pod
+# stays at Init:0/1, apm-server blocks behind its wait-for-apm init container, and the readiness wait
+# below expires. Hold node-apm-app back until its secrets exist instead.
+# The manifests land at /ror/*.yml, not /ror/<subst-dir>/: `docker cp <dir> container:/ror/` copies
+# the contents of <dir> into a newly created /ror when /ror does not already exist.
+apply_manifests_except_node_apm_app() {
+  docker exec eck-ror-control-plane bash -c '
+    cd /ror || exit 1
+    for f in *.yml; do
+      [ "$f" = "node-apm-app.yml" ] && continue
+      kubectl apply -f "$f" || exit 1
+    done
+  '
+}
+
+# Polls rather than using `kubectl wait --for=create`: that flag needs a recent kubectl, and the one
+# baked into the kind node image varies with the ECK/Kubernetes version across the eck-* matrix legs.
+wait_for_secret() {
+  local name=$1 timeout=${2:-180} waited=0
+  echo "Waiting for operator-generated secret '$name' (timeout: ${timeout}s) ..."
+  until docker exec eck-ror-control-plane kubectl get secret "$name" >/dev/null 2>&1; do
+    if [ "$waited" -ge "$timeout" ]; then
+      echo "ERROR: secret '$name' did not appear after ${timeout}s."
+      echo "       The ECK operator never finished reconciling the ApmServer / Kibana association."
+      docker exec eck-ror-control-plane kubectl get pods 2>/dev/null || true
+      docker exec eck-ror-control-plane kubectl get events --sort-by=.lastTimestamp 2>/dev/null | tail -20 || true
+      return 1
+    fi
+    sleep 5
+    waited=$((waited + 5))
+  done
+  echo "Secret '$name' is available (after ${waited}s)."
+}
+
+apply_manifests_except_node_apm_app
+
+if [[ "$CLUSTER_TYPE" == "apm" ]]; then
+  wait_for_secret "eck-ror-apm-kibana-ca"
+  wait_for_secret "eck-ror-apm-token"
+  echo "Applying node-apm-app.yml now that its secrets exist ..."
+  docker exec eck-ror-control-plane kubectl apply -f /ror/node-apm-app.yml
+fi
 
 echo ""
 echo "------------------------------------------"

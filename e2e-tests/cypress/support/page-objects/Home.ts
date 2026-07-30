@@ -29,7 +29,13 @@ export class Home {
       cy.getByDataTestSubj('addSampleDataSetecommerce').click();
     } else {
       cy.findByRole('button', { name: /add sample ecommerce orders/i }).within(() => {
-        cy.findByText(/add data/i).click();
+        // The "other sample data sets" accordion above animates open, so the card can still be
+        // moving when this runs and Cypress rejects the click as covered by the euiPageSection
+        // wrapper. force skips that check. No `.should('be.visible')` first — that would re-apply
+        // the check force is here to skip.
+        cy.findByText(/add data/i)
+          .scrollIntoView()
+          .click({ force: true });
       });
     }
 

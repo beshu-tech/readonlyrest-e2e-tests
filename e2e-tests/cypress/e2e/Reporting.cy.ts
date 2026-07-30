@@ -61,9 +61,13 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         Discover.openDataViewPage();
         Discover.saveReport(newFormatReportingName);
         Discover.exportToCsv();
+        // Let the first report land before rolling over (see waitForReportingSegmentsDocsCount).
+        esApiAdvancedClient.waitForReportingSegmentsDocsCount(index, 1);
         esApiClient.rolloverIndex(newFormatReportingIndex);
         Reporting.verifyAllDataStreamsSegmentsCount(index, 2);
         Discover.exportToCsv();
+        // Let the second report land before asserting all three are listed.
+        esApiAdvancedClient.waitForReportingSegmentsDocsCount(index, 2);
         Reporting.openReportingPage('kibanaNavigation');
         Reporting.verifySavedReport([newFormatReportingName, newFormatReportingName, oldFormatReportingName]);
       });

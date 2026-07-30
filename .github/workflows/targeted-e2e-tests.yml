@@ -80,6 +80,7 @@ jobs:
 
       - name: S3 Upload Videos & show logs
         if: failure()
+        continue-on-error: true
         uses: ./.github/upload-videos
         with:
           access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}

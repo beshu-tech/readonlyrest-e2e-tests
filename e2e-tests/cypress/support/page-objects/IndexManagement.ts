@@ -2,6 +2,16 @@ import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
 
 export class IndexManagement {
+  static waitUntilLoaded() {
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.get('[data-test-subj="indicesSearch"]').should('be.visible');
+    } else {
+      cy.get('input[aria-label="This is a search bar. As you type, the results lower in the page will automatically filter."]').should(
+        'be.visible'
+      );
+    }
+  }
+
   static IncludeHiddenIndices() {
     cy.log('Include hidden indices');
 
@@ -97,16 +107,13 @@ export class IndexManagement {
 
   static openDataStreams() {
     cy.log('Open Data Streams');
+
     cy.get('[data-test-subj="data_streamsTab"]').click();
   }
 
   static verifyDataStreamsEmptyPage() {
     cy.log('Verify data streams empty page');
+
     cy.contains('[data-test-subj="title"]', "You don't have any data streams yet");
-  }
-  
-  static waitingForSectionLoadingFinish() {
-    cy.log('Waiting for section loading');
-    cy.get('[data-test-subj="sectionLoading"]', { timeout: 30000 }).should('not.exist');
   }
 }

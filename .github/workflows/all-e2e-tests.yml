@@ -4,6 +4,10 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: '0 0 * * *'
+  # Only the two long-lived branches. Feature branches are covered by their pull request, and
+  # listing them here would run everything twice for every push to an open PR.
+  push:
+    branches: [master, develop]
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -12,15 +16,19 @@ env:
 
 jobs:
   # ==========================================
-  # E2E TESTS - MASTER BRANCH
+  # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
   # ==========================================
-  master-e2e-tests:
-    name: "🔬 Master E2E Tests"
+  # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
+  # plugins still pass the suite": master itself, PRs targeting it, and the nightly schedule.
+  #
+  # Keep the matrix in sync with ELK_VERSIONS in prepare-dev-images.
+  prod-e2e-tests:
+    name: "🔬 E2E Tests (released plugins)"
     if: >
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/master' ||
-      (github.base_ref == 'master' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
+      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -50,11 +58,11 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          timeout_minutes: 60
+          timeout_minutes: 35
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }}
+            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --mode prod
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
@@ -65,6 +73,7 @@ jobs:
           action: stop
       - name: S3 Upload Videos & show logs
         if: failure()
+        continue-on-error: true
         uses: ./.github/upload-videos
         with:
           access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -74,14 +83,16 @@ jobs:
   # ==========================================
   # BOOTSTRAP TESTS
   # ==========================================
+  # Same condition as prod-e2e-tests, which this gates on — kept identical so the two cannot drift.
+  # Bootstrap uses released images (no --mode), as it did before.
   master-bootstrap-tests:
     name: "🚀 Bootstrap Tests"
     if: >
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/master' ||
-      (github.base_ref == 'master' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
-    needs: master-e2e-tests
+      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
+    needs: prod-e2e-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -120,23 +131,69 @@ jobs:
           action: stop
 
   # ==========================================
-  # E2E TESTS - DEVELOP BRANCH
+  # DEV IMAGE PREPARATION - DEVELOP AND NON-MASTER PRs
   # ==========================================
-  develop-e2e-tests:
-    name: "🧪 Develop E2E Tests"
+  # Builds branch-matched dev images of both plugins for dev-e2e-tests, tagged per run. One dispatch
+  # per plugin covers the whole matrix, since both pre-build workflows accept a version list.
+  # `target_branch` is passed verbatim; both fall back to `develop` if the branch is not there.
+  # Fork PRs are excluded: the dispatch needs secrets GitHub does not expose to them.
+  prepare-dev-images:
+    name: "🏗️ Prepare dev images"
     if: >
-      github.ref == 'refs/heads/develop' ||
-      (github.base_ref == 'develop' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false))
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'pull_request' && github.base_ref != 'master' && github.event.pull_request.head.repo.fork == false)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      run_tag: ${{ steps.prepare.outputs.run_tag }}
+      versions: ${{ steps.prepare.outputs.versions }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Dispatch and await ROR plugin pre-builds
+        id: prepare
+        env:
+          # Mirrors the prod-e2e-tests matrix — keep both in sync.
+          ELK_VERSIONS: "9.4.4 9.3.8 8.19.19 7.17.29"
+          # On a PR, head_ref is the source branch — the plugins must be built from the PR head, not
+          # from the merge ref github.ref points at. On a push, head_ref is empty and ref_name is
+          # the branch that was pushed (develop).
+          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          ES_REPO_GH_TOKEN: ${{ secrets.ES_REPO_GH_TOKEN }}
+          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
+        run: |
+          set -euo pipefail
+          . ci/prebuild-images-lib.sh
+
+          # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
+          RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
+          {
+            echo "run_tag=$RUN_TAG"
+            echo "versions=$(printf '%s\n' $ELK_VERSIONS | jq -Rcn '[inputs]')"
+          } >> "$GITHUB_OUTPUT"
+
+          dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
+          wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
+
+  # ==========================================
+  # E2E TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
+  # ==========================================
+  # Every push to develop and every non-fork pull request that does not target master, against the
+  # per-run, branch-matched dev images produced by prepare-dev-images. Skipped automatically when
+  # that job is skipped.
+  dev-e2e-tests:
+    name: "🧪 E2E Tests (pre-build plugins)"
+    needs: prepare-dev-images
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ["9.4.4", "9.3.8", "8.19.19", "7.17.29"]
+        version: ${{ fromJSON(needs.prepare-dev-images.outputs.versions) }}
         env: [docker, eck-2.16.1, eck-3.4.1]
     env:
-      ROR_ES_VERSION: "latest"
-      ROR_KBN_VERSION: "latest"
-      MODE: 'dev'
+      ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -160,11 +217,11 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          timeout_minutes: 60
+          timeout_minutes: 35
           retry_wait_seconds: 120
           retry_on: any
           command: |
-            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
+            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_IMAGE_TAG }} --ror-kbn ${{ env.ROR_IMAGE_TAG }} --mode dev
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
 
@@ -175,7 +232,9 @@ jobs:
           action: stop
       - name: S3 Upload Videos & show logs
         if: failure()
+        continue-on-error: true
         uses: ./.github/upload-videos
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}

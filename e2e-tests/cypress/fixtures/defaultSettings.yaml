@@ -5,6 +5,7 @@ helpers:
     access: rw
     hide_apps: ["Enterprise Search|Overview"]
     index: ".kibana_@{acl:current_group}"
+
   ag: &all-groups
     groups:
       - id: admins_group

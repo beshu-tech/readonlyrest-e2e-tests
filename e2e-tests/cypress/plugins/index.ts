@@ -158,11 +158,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       return new Promise((resolve, reject) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         embeddedServer = (https.createServer as any)(sslOptions, (_req: any, res: any) => {
-          const jwt = generateJwt({
-            sub: 'admin',
-            group: ['administrators', 'infosec', 'template'],
-            iat: Math.floor(Date.now() / 1000)
-          });
+          const jwt = generateJwt({ sub: 'admin', group: ['administrators', 'infosec', 'template'], iat: Math.floor(Date.now() / 1000) });
           const htmlWithJwt = html.toString().replace(/jwt=[^&"#\s]+/, `jwt=${jwt}`);
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(htmlWithJwt);
@@ -216,6 +212,31 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       }
 
       return null;
+    }
+  });
+
+  // Discard the video for specs that finished with all tests passing.
+  // Combined with `videoCompression: false` in cypress.config.ts, this keeps
+  // failure-debug videos available while avoiding writing GBs of green-run
+  // videos to disk and uploading them as artifacts.
+  on('after:spec', async (_spec, results) => {
+    if (!results || !results.video) return;
+    // Keep the video if the spec had ANY failure. Prefer the stable
+    // `results.stats.failures` counter — in Cypress 14 the per-attempt
+    // `tests[].attempts[].state` field is no longer reliably populated, so the
+    // old `attempts[].state === 'failed'` check returned false even for failed
+    // specs and the failure video was wrongly deleted before upload.
+    const failures =
+      (results.stats && results.stats.failures > 0) ||
+      (results.tests || []).some((t) =>
+        t.state === 'failed' ||
+        (t.attempts || []).some((a) => a.state === 'failed')
+      );
+    if (failures) return;
+    try {
+      await fs.promises.unlink(results.video);
+    } catch {
+      // best-effort cleanup; don't fail the run if the file is already gone
     }
   });
 };

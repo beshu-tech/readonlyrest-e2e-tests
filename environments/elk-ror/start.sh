@@ -201,6 +201,11 @@ handle_docker_compose_error() {
 
 trap 'handle_docker_compose_error' ERR
 
-docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate --wait
+# Bound the startup wait, mirroring TIMEOUT_IN_SECONDS in environments/eck-ror/start.sh. Bare
+# `--wait` blocks forever; with a timeout the ERR trap fires instead and dumps elk-ror.log.
+TIMEOUT_IN_SECONDS=600
+
+docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate \
+  --wait --wait-timeout $TIMEOUT_IN_SECONDS
 
 echo "The environment is ready"

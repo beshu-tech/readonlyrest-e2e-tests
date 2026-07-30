@@ -22,30 +22,60 @@ runs:
 
             echo
             echo "== docker stats =="
-            docker stats --no-stream || true
+            timeout 10 docker stats --no-stream || true
 
             echo
             echo "== container OOM status =="
-            for c in $(docker ps -aq 2>/dev/null); do
-              docker inspect "$c" \
-                --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}'
+            # Status alone hides two cases: a container that restarted between samples, and one that
+            # reports healthy but no longer serves (the healthcheck runs inside the container,
+            # against localhost).
+            for c in $(timeout 10 docker ps -aq 2>/dev/null); do
+              timeout 10 docker inspect "$c" \
+                --format 'Name={{.Name}} Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} RestartCount={{.RestartCount}} StartedAt={{.State.StartedAt}} Health={{if .State.Health}}{{.State.Health.Status}}/{{.State.Health.FailingStreak}}{{else}}none{{end}} Memory={{.HostConfig.Memory}} MemorySwap={{.HostConfig.MemorySwap}}' || true
+            done
+
+            # Whether the stack still answers from outside, and how fast. Container state and pod
+            # readiness both stay green when a process is listening but no longer serving, so this is
+            # the only sample that tells the two apart. Same URLs in both environments.
+            echo
+            echo "== service reachability (http_code / total_time_s) =="
+            for svc in "kibana https://localhost:5601/api/status" "es https://localhost:9200/_cluster/health"; do
+              name="${svc%% *}"; url="${svc#* }"
+              printf '%s ' "$name"
+              # -w still prints its line when curl fails (http_code=000), so no fallback echo.
+              curl -sk -o /dev/null -u kibana:kibana \
+                   --max-time 10 \
+                   -w 'http_code=%{http_code} total_time=%{time_total} connect_time=%{time_connect}\n' \
+                   "$url" 2>/dev/null || true
             done
 
             echo
             echo "== kubectl pod status =="
-            kubectl get pods -A 2>/dev/null || true
+            kubectl --request-timeout=10s get pods -A 2>/dev/null || true
 
             echo
             echo "== kubectl node resources =="
-            kubectl top nodes 2>/dev/null || true
+            kubectl --request-timeout=10s top nodes 2>/dev/null || true
 
             echo
             echo "== kubectl pod resources =="
-            kubectl top pods -A 2>/dev/null || true
+            kubectl --request-timeout=10s top pods -A 2>/dev/null || true
 
             echo
             echo "== kubectl OOM events =="
-            kubectl get events -A --field-selector=reason=OOMKilling 2>/dev/null || true
+            kubectl --request-timeout=10s get events -A --field-selector=reason=OOMKilling 2>/dev/null || true
+
+            # Restarts, probe failures and evictions, which reason=OOMKilling above does not cover.
+            #
+            # Printed with lastTimestamp rather than the default relative AGE: this loop re-dumps the
+            # whole event list every 10s, so without an absolute timestamp old startup events are
+            # indistinguishable from live ones.
+            echo
+            echo "== kubectl warning events (newest last, absolute timestamps) =="
+            kubectl --request-timeout=10s get events -A --field-selector=type=Warning \
+              --sort-by=.lastTimestamp \
+              -o custom-columns='LAST:.lastTimestamp,COUNT:.count,NS:.metadata.namespace,REASON:.reason,OBJECT:.involvedObject.name,MESSAGE:.message' \
+              2>/dev/null | tail -25 || true
 
             echo
             sleep 10

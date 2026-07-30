@@ -1,4 +1,5 @@
 import * as semver from 'semver';
+import { recurse } from 'cypress-recurse';
 import { RorMenu } from './RorMenu';
 import { StackManagement } from './StackManagement';
 import { getKibanaVersion } from '../helpers';
@@ -77,16 +78,26 @@ export class Reporting {
     );
   }
 
-  static verifyAllDataStreamsSegmentsCount(index: string, numberOfSegments: number) {
-    esApiAdvancedClient.getAllReportingDataStreamSegments(index).then(dataStreams => {
-      expect(dataStreams.length).to.equal(numberOfSegments);
+  static verifyAllDataStreamsSegmentsCount(index: string, numberOfSegments: number, timeout = 30000) {
+    // Segment creation after a rollover is async, so poll instead of asserting on
+    // a single snapshot that could catch an intermediate state.
+    return recurse(
+      () => esApiAdvancedClient.getAllReportingDataStreamSegments(index),
+      dataStreams => dataStreams.length === numberOfSegments,
+      {
+        timeout,
+        delay: 1000,
+        log: dataStreams => cy.log(`Reporting segments for ${index}: ${dataStreams.length}/${numberOfSegments}`),
+        error: `Expected ${numberOfSegments} data stream segment(s) for ${index}`
+      }
+    ).then(dataStreams => {
       const sortedStreams = [...dataStreams].sort((a, b) => a.index.localeCompare(b.index));
 
       sortedStreams.forEach(
-        (dataStream, index) =>
+        (dataStream, segmentIndex) =>
           expect(
-            dataStream.index.endsWith(`00000${index + 1}`),
-            `Expected index "${dataStream.index}" to end with "00000${index + 1}"`
+            dataStream.index.endsWith(`00000${segmentIndex + 1}`),
+            `Expected index "${dataStream.index}" to end with "00000${segmentIndex + 1}"`
           ).to.be.true
       );
     });

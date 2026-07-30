@@ -1,4 +1,5 @@
 import * as semver from 'semver';
+import { recurse } from 'cypress-recurse';
 import { getKibanaVersion } from '../helpers';
 
 export class Observability {
@@ -38,47 +39,43 @@ export class Observability {
     });
   }
 
+  // Waits for APM data to travel node-apm-app -> apm-server -> Elasticsearch -> the APM UI,
+  // re-clicking refresh each interval. The timeouts are generous because that pipeline is slow on a
+  // loaded CI runner, and a poll costs nothing when data arrives early — the loop exits as soon as
+  // checkFn passes.
   static waitWithRefreshButtonClick({
     targetSelector,
     checkFn,
-    timeout = 20000,
+    timeout = 60000,
     interval = 1000
   }: {
     targetSelector: string;
     checkFn: (selector: JQuery<HTMLElement>) => boolean;
     timeout?: number;
     interval?: number;
-  }): Cypress.Chainable<void> {
-    const start = Date.now();
-
+  }): Cypress.Chainable<JQuery<HTMLElement>> {
     const refreshButtonSelector = semver.gte(getKibanaVersion(), '8.0.0')
       ? '[data-test-subj="querySubmitButton"]'
       : '[data-test-subj="superDatePickerApplyTimeButton"]';
 
-    function poll(): Cypress.Chainable<void> {
-      const elapsed = Date.now() - start;
-
-      if (elapsed > timeout) {
-        throw new Error(`Timed out after ${timeout}ms waiting for condition on ${targetSelector}`);
+    return recurse(
+      () =>
+        cy
+          .get(refreshButtonSelector, { log: false })
+          .click({ force: true, log: false })
+          .then(() => cy.wait(interval, { log: false }))
+          .then(() => Cypress.$(targetSelector) as JQuery<HTMLElement>),
+      checkFn,
+      {
+        // The interval wait sits inside the polled commands, after the refresh click — the data has
+        // to arrive before the check, not between attempts — so `delay` would only add a second one.
+        delay: 0,
+        limit: Math.ceil(timeout / interval) + 1,
+        timeout,
+        log: false,
+        error: `Timed out after ${timeout}ms waiting for condition on ${targetSelector}`
       }
-
-      return cy
-        .get(refreshButtonSelector, { log: false })
-        .click({ force: true, log: false })
-        .then(() => cy.wait(interval, { log: false }))
-        .then(() => {
-          const $els = Cypress.$(targetSelector) as JQuery<HTMLElement>;
-          const ok = checkFn($els);
-
-          if (ok) {
-            return;
-          }
-
-          return poll();
-        });
-    }
-
-    return poll();
+    );
   }
 
   static waitForApmData() {
@@ -88,7 +85,8 @@ export class Observability {
         const value = $el.val();
         return value === 'request' || value === 'custom';
       },
-      timeout: 60000
+      // The first APM assertion of the spec, so it also absorbs the initial ingest ramp-up.
+      timeout: 120000
     });
   }
 

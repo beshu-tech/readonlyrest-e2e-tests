@@ -2,6 +2,15 @@ cluster.name: ror-cluster
 node.name: ror-es01
 network.host: 0.0.0.0
 
+# Absolute free-space thresholds rather than the default percentages. Watermarks measure the host
+# filesystem, which on a CI agent is often already near full for reasons unrelated to this cluster;
+# above the high watermark Elasticsearch stops allocating shards, so the indices Kibana and ROR
+# create at startup never come up and the cluster goes RED. Set low enough that they only bite on a
+# genuinely full disk, while still logging "low disk watermark exceeded" before anything breaks.
+cluster.routing.allocation.disk.watermark.low: 2gb
+cluster.routing.allocation.disk.watermark.high: 1gb
+cluster.routing.allocation.disk.watermark.flood_stage: 512mb
+
 xpack.security.enabled: true
 xpack.security.http.ssl.enabled: true
 xpack.security.http.ssl.key: elasticsearch.key

@@ -1,6 +1,7 @@
 services:
 
   apm-server:
+    restart: always
     build:
       context: .
       dockerfile: images/apm/Dockerfile
@@ -22,6 +23,7 @@ services:
       retries: 3
 
   node-apm-app:
+    restart: always
     build:
       context: ../common/images/node-apm-app/
       dockerfile: Dockerfile

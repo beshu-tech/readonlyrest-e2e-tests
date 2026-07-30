@@ -1,6 +1,7 @@
 services:
 
   es-ror:
+    restart: always
     build:
       context: .
       dockerfile: images/es/Dockerfile
@@ -73,6 +74,7 @@ services:
         hard: -1
 
   kbn-proxy:
+    restart: always
     build:
       context: .
       dockerfile: images/kbn/Proxy-Dockerfile
