@@ -25,6 +25,9 @@ on:
         default: 'prod'
         type: string
 
+env:
+  APPLY_RESOURCE_LIMITS: "auto"
+
 jobs:
   e2e-tests:
     name: "🔬 E2E Tests"

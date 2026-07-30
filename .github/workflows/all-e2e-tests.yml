@@ -7,6 +7,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+env:
+  APPLY_RESOURCE_LIMITS: "auto"
+
 jobs:
   # ==========================================
   # E2E TESTS - MASTER BRANCH
