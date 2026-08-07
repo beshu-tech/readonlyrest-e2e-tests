@@ -10,7 +10,8 @@ import { Login } from '../support/page-objects/Login';
 // they belong to Kibana's native security or cloud layers, which ROR replaces or does not support.
 const ENDPOINTS_IGNORED_BY_ROR = [
   '/internal/cloud_connect/cluster_details', // cloud cluster metadata — not available in non-Elastic-Cloud deployments
-  '/api/exception_lists/items/_find' // Elastic Endpoint Security (X-Pack) — not supported by ROR
+  '/api/exception_lists/items/_find', // Elastic Endpoint Security (X-Pack) — not supported by ROR
+  '/internal/user_storage/' // Kibana 9.5+ per-user storage, backed by Kibana's native user profiles — replaced by ROR
 ];
 
 // A route handler makes Cypress proxy and buffer every matching response. Matching '**' would put
