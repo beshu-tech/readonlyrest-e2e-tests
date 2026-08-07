@@ -169,9 +169,14 @@ export class Discover {
 
     cy.intercept('POST', searchUrl).as('search');
 
-    cy.get('[data-test-subj="superDatePickerToggleQuickMenuButton"]').click();
-    cy.get('[data-test-subj="superDatePickerCommonlyUsed_Today"]').click();
-
+    if (semver.gte(getKibanaVersion(), '9.5.0')) {
+      cy.getByDataTestSubj('dateRangePickerControlButton').click();
+      cy.getByDataTestSubj('dateRangePickerPresetItem-Today').click();
+    } else {
+      cy.getByDataTestSubj('superDatePickerToggleQuickMenuButton').click();
+      cy.getByDataTestSubj('superDatePickerCommonlyUsed_Today').click();
+    }
+    
     cy.wait('@search');
   };
 
