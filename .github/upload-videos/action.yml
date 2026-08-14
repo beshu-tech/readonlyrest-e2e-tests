@@ -28,16 +28,18 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # The upload itself is .github/scripts/upload-cypress-artifacts-to-s3.sh, a verbatim copy of
-    # ci/upload-cypress-artifacts-to-s3.sh in the ROR ES repo (with its ci/s3-uploader.sh helper) so
-    # the two stay diffable. It signs its own PUTs with curl instead of using the AWS CLI, which is
-    # what killed the previous implementation: CLI v2.23+ streams PutObject as `aws-chunked` with a
-    # trailing CRC32, and the endpoint answers `InvalidArgument: Failed to decode AWS chunked
-    # transfer encoding`. Everything repo-specific stays here, in the env mapping below.
+    # .github/scripts/upload-cypress-artifacts-to-s3.sh sends the files. It is a copy of
+    # ci/upload-cypress-artifacts-to-s3.sh in the ROR ES repo. Its helper, s3-uploader.sh, is also a
+    # copy. Do not change the two copies, so that you can compare them with the originals.
+    # The script signs each PUT with curl. It does not use the AWS CLI, which broke the earlier
+    # version of this step: CLI v2.23 and subsequent versions send the body in `aws-chunked` format
+    # with a CRC32 at the end. Our S3 endpoint cannot read that format. It replies:
+    #   InvalidArgument: Failed to decode AWS chunked transfer encoding
+    # The values that are different in this repository stay below, in the env block.
     - name: Upload Cypress artifacts to S3
       shell: bash
       env:
-        # The scripts read one env family, ROR_<STORE>_STORE_*, per the ES repo's convention.
+        # The scripts read the ROR_<STORE>_STORE_* variables. This is the ROR ES repo convention.
         ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID: ${{ inputs.access_key_id }}
         ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET: ${{ inputs.secret_access_key }}
         ROR_E2E_REPORTS_STORE_BUCKET: ${{ inputs.bucket }}
@@ -45,7 +47,7 @@ runs:
         ROR_E2E_REPORTS_STORE_ENDPOINT_URL: ${{ inputs.endpoint_url }}
         ROR_E2E_REPORTS_STORE_PATH_PREFIX: ror/e2e_reports/build_${{ github.run_id }}
         RESULTS_DIR: ${{ inputs.results_dir }}
-        # Keeps the pre-existing key layout: <prefix>/<env>/<version>/<videos|screenshots>/<file>.
+        # This keeps the old key layout: <prefix>/<env>/<version>/<videos|screenshots>/<file>.
         S3_SUBFOLDER: ${{ matrix.env }}/${{ matrix.version }}
       run: |
         echo "::add-mask::${ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID}"
