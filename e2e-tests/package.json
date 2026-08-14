@@ -10,6 +10,7 @@
     "run": "ELECTRON_ENABLE_LOGGING=1 ELECTRON_EXTRA_LAUNCH_ARGS='--ignore-gpu-blocklist' ./node_modules/.bin/cypress run"
   },
   "license": "Beshu Limited, All rights reserved",
+  "packageManager": "yarn@1.22.22",
   "dependencies": {
     "@testing-library/cypress": "^10.0.3",
     "cypress": "14.5.4",
