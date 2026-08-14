@@ -65,7 +65,6 @@ jobs:
           action: stop
       - name: S3 Upload Videos & show logs
         if: failure()
-        # The job already failed. If this upload also fails, do not fail the job again.
         continue-on-error: true
         uses: ./.github/upload-videos
         with:
@@ -177,7 +176,6 @@ jobs:
           action: stop
       - name: S3 Upload Videos & show logs
         if: failure()
-        # The job already failed. If this upload also fails, do not fail the job again.
         continue-on-error: true
         uses: ./.github/upload-videos
         with:
