@@ -80,6 +80,8 @@ jobs:
 
       - name: S3 Upload Videos & show logs
         if: failure()
+        # A failed post-mortem upload must not add a second red X to an already-red job.
+        continue-on-error: true
         uses: ./.github/upload-videos
         with:
           access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
