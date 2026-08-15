@@ -1,5 +1,5 @@
 name: 'Upload Videos'
-description: 'Upload videos to S3 bucket'
+description: 'Upload Cypress failure artifacts (videos, screenshots) to an S3 bucket'
 
 inputs:
   region:
@@ -20,18 +20,26 @@ inputs:
   secret_access_key:
     description: 'AWS secret access key'
     required: true
+  results_dir:
+    description: 'Cypress results directory to upload (videos/ and screenshots/ live here)'
+    required: false
+    default: 'results'
 
 runs:
   using: 'composite'
   steps:
-    - name: Upload videos to S3
+    - name: Upload Cypress artifacts to S3
       shell: bash
       env:
-        AWS_ACCESS_KEY_ID: ${{ inputs.access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.secret_access_key }}
-        AWS_ENDPOINT_URL: ${{ inputs.endpoint_url }}
+        ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID: ${{ inputs.access_key_id }}
+        ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET: ${{ inputs.secret_access_key }}
+        ROR_E2E_REPORTS_STORE_BUCKET: ${{ inputs.bucket }}
+        ROR_E2E_REPORTS_STORE_REGION: ${{ inputs.region }}
+        ROR_E2E_REPORTS_STORE_ENDPOINT_URL: ${{ inputs.endpoint_url }}
+        ROR_E2E_REPORTS_STORE_PATH_PREFIX: ror/e2e_reports/build_${{ github.run_id }}
+        RESULTS_DIR: ${{ inputs.results_dir }}
+        S3_SUBFOLDER: ${{ matrix.env }}/${{ matrix.version }}
       run: |
-        echo "::add-mask::${AWS_ACCESS_KEY_ID}"
-        echo "::add-mask::${AWS_SECRET_ACCESS_KEY}"
-        aws configure set region ${{ inputs.region }}
-        aws s3 cp results/videos/ s3://${{ inputs.bucket }}/ror/e2e_reports/build_${{ github.run_id }}/${{ matrix.env }}/${{ matrix.version }}/ --recursive
+        echo "::add-mask::${ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID}"
+        echo "::add-mask::${ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET}"
+        "$GITHUB_ACTION_PATH/../scripts/upload-cypress-artifacts-to-s3.sh" "$RESULTS_DIR" "$S3_SUBFOLDER"
