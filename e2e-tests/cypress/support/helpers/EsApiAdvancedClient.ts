@@ -1,7 +1,5 @@
-import * as semver from 'semver';
 import { recurse } from 'cypress-recurse';
 import { EsApiClient } from './EsApiClient';
-import { getKibanaVersion } from './index';
 
 export class EsApiAdvancedClient extends EsApiClient {
   public pruneAllReportingIndices(): void {
@@ -19,17 +17,17 @@ export class EsApiAdvancedClient extends EsApiClient {
         });
     });
 
-    // Pre-8.19 also has the legacy .reporting* indices; purge their docs too.
-    if (!semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
-      this.indices().then(result => {
-        result
-          .filter(index => index.index.startsWith('.reporting'))
-          .forEach(reportingIndex => {
-            this.deleteIndexDocsByQuery(reportingIndex.index);
-            this.refreshIndex(reportingIndex.index);
-          });
-      });
-    }
+    // The legacy .reporting* indices hold reports too, in every version: the reporting page lists
+    // what it finds in both places, and a test writes an old-format doc to prove it. Purge their
+    // docs as well, or a report the page still shows outlives the test that made it.
+    this.indices().then(result => {
+      result
+        .filter(index => index.index.startsWith('.reporting'))
+        .forEach(reportingIndex => {
+          this.deleteIndexDocsByQuery(reportingIndex.index);
+          this.refreshIndex(reportingIndex.index);
+        });
+    });
 
     cy.log('Pruning all reporting indices - DONE!');
   }
