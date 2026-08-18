@@ -16,7 +16,7 @@ env:
 
 jobs:
   # ==========================================
-  # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
+  # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES 
   # ==========================================
   # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
   # plugins still pass the suite": master itself, PRs targeting it, and the nightly schedule.
