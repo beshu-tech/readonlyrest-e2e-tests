@@ -38,6 +38,24 @@ jobs:
         with:
           persist-credentials: false
 
+      # Authenticates the docker CLI before any step pulls an image. Docker Hub counts anonymous
+      # pulls against one limit for each IP address, and the GitHub runners share their addresses
+      # with every other customer. This job pulls the two ROR images and the stack images.
+      #
+      # A read-only token is enough, because no job in this repository pushes an image.
+      #
+      # The login writes the credentials to ~/.docker/config.json, and each later step of the job
+      # reads that file. The variables that the script exports stay in this step. No step needs
+      # them, because this repository does not use testcontainers.
+      #
+      # all-e2e-tests.yml has the same step. A YAML anchor cannot cross files, so the two copies
+      # must stay the same.
+      - name: Authenticate Docker
+        env:
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+        run: source ci/docker-hub-auth.sh
+
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:

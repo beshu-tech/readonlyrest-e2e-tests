@@ -1,0 +1,159 @@
+#!/bin/bash
+# Authenticates Docker for a CI job. This script is the only place that does it. Every job that
+# pulls or pushes a Docker Hub image uses it.
+#
+# Docker Hub counts anonymous pulls against one limit for each IP address, and all agents share
+# that limit. A busy CI window then fails with "toomanyrequests: You have reached your
+# unauthenticated pull rate limit". The failure also stops jobs that did not cause it.
+#
+# THREE COPIES
+# Three ROR repositories share this file, and the copies must stay identical:
+#   elasticsearch-readonlyrest-plugin   ci/docker-hub-auth.sh
+#   readonlyrest_kbn                    scripts/docker-hub-auth.sh
+#   readonlyrest-e2e-tests              ci/docker-hub-auth.sh
+# Make each change in all three. `diff` between them must print nothing.
+#
+# HOW TO USE IT
+# Source the script. Do not run it. The caller shell needs the variables that the script exports.
+#
+#   source ci/docker-hub-auth.sh
+#
+# TWO CLIENTS
+# The script authenticates both Docker clients from the same credentials:
+#   - the docker CLI, with a login (pull, push, manifest inspect, buildx, compose)
+#   - testcontainers, with the DOCKER_AUTH_CONFIG variable
+# Both halves are necessary. The docker CLI does not read DOCKER_AUTH_CONFIG, so a job that only
+# exports that variable makes anonymous pulls from the CLI.
+#
+# CREDENTIALS
+# The script uses the first pair that the job supplies:
+#   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD   push account
+#   DOCKER_HUB_USER      / DOCKER_HUB_RO_TOKEN        read-only token
+# A job gets the read-only token when it does not supply the push pair. The workflow thus controls
+# the permissions, and this script keeps one code path. The ROR ES and ROR e2e-tests repositories
+# supply the read-only pair. The ROR KBN repository supplies the push pair everywhere, because all
+# of its jobs that use this script also push.
+#
+# FAILURE
+# The script never falls back to anonymous pulls when the job supplied credentials. If it cannot
+# use them, it stops the job. An expired token thus fails at once, in the job that owns it. It
+# does not become a rate-limit failure in a different job one hour later.
+#
+# To stop the job, the script exits the caller shell. It does not depend on `set -e` in the step,
+# because a step without errexit would ignore the status and continue with anonymous pulls.
+#
+# DOCKER_AUTH_REQUIRED applies to one case only: the job supplied no credentials at all.
+#   true (default)   The script stops the job. Any value other than "false" has this effect, so
+#                    an empty value or a typing error also stops the job.
+#   false            The script continues, and its pulls are anonymous. Only the test jobs of the
+#                    ROR ES repository set this value, because a pull request from a fork of that
+#                    repository gets no secrets and must still run its tests. No job in the ROR KBN
+#                    or ROR e2e-tests repository sets it. A fork cannot reach the jobs of those two
+#                    repositories.
+#
+# TWO LIMITS
+# 1. This script cannot authenticate the job `container:` image. The runner pulls that image
+#    before step 1 starts. The `credentials:` block on each container does that instead. Do not
+#    add code for the container image here.
+# 2. Docker CLI 27, which the toolchains image contains, ignores DOCKER_AUTH_CONFIG. This is why
+#    the login is necessary. A later CLI reads the variable and gives it priority over the login.
+#    That priority is safe here, because both halves use the same credentials. It is not safe if
+#    you add a second login with different credentials. Use this script instead.
+
+# $1 is a value, and $2 is the name of its variable. An Azure variable with no value expands to
+# the literal text "$(NAME)", so the script rejects that text also.
+_ror_docker_auth_isset() {
+  [ -n "$1" ] && [ "$1" != "\$($2)" ]
+}
+
+# The job supplied no credentials. DOCKER_AUTH_REQUIRED decides if the job continues, and the
+# job stops by default.
+_ror_docker_auth_no_credentials() {
+  echo "[CI] Docker authentication is OFF. Cause: $1"
+  # Compare against "false", not "true", so that an unset variable stops the job. Azure boolean
+  # parameters expand as True or False, so make the case uniform first (as ci/ci-lib.sh does).
+  if [ "$(echo "${DOCKER_AUTH_REQUIRED:-true}" | tr '[:upper:]' '[:lower:]')" != "false" ]; then
+    # ::error:: puts an annotation on the job, as the inline logins did before.
+    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
+    echo "[CI] DOCKER_AUTH_REQUIRED is not false, so the job stops here." >&2
+    return 1
+  fi
+  echo "[CI] The job continues. Its pulls are anonymous, and Docker Hub limits their rate."
+  return 0
+}
+
+# The job supplied credentials, but the script cannot use them. The job always stops here.
+# DOCKER_AUTH_REQUIRED does not apply, because an anonymous pull must never hide a broken login.
+_ror_docker_auth_failed() {
+  echo "[CI] Docker authentication FAILED. Cause: $1" >&2
+  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error::Docker authentication failed: $1"
+  return 1
+}
+
+_ror_docker_auth() {
+  local user token role auth
+
+  if _ror_docker_auth_isset "${DOCKER_REGISTRY_USER:-}" DOCKER_REGISTRY_USER \
+     && _ror_docker_auth_isset "${DOCKER_REGISTRY_PASSWORD:-}" DOCKER_REGISTRY_PASSWORD; then
+    user=$DOCKER_REGISTRY_USER; token=$DOCKER_REGISTRY_PASSWORD; role="push"
+  elif _ror_docker_auth_isset "${DOCKER_HUB_USER:-}" DOCKER_HUB_USER \
+     && _ror_docker_auth_isset "${DOCKER_HUB_RO_TOKEN:-}" DOCKER_HUB_RO_TOKEN; then
+    user=$DOCKER_HUB_USER; token=$DOCKER_HUB_RO_TOKEN; role="read-only"
+  else
+    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and PASSWORD, or DOCKER_HUB_USER and RO_TOKEN)"
+    return $?
+  fi
+
+  # Set DOCKER_AUTH_CONFIG here only. When the script finds no credentials, the variable must stay
+  # unset, and it must not become empty. testcontainers reads the value as JSON if the value is not
+  # null, and an empty value causes a parse error.
+  auth=$(printf '%s:%s' "$user" "$token" | base64 -w0)
+  export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}}}"
+
+  # Hide the value from the log, because it contains base64(user:token). Each CI system has its own
+  # command for this. On GitHub Actions, the Azure command prints the secret instead of hiding it.
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    echo "::add-mask::$auth"
+    echo "::add-mask::$DOCKER_AUTH_CONFIG"
+  else
+    echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]$DOCKER_AUTH_CONFIG"
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    _ror_docker_auth_failed "the docker CLI is not in the PATH, so the script cannot log it in"
+    return $?
+  fi
+
+  # Discard the standard output. It holds only "Login Succeeded" and a warning about the credential
+  # store. Keep the error output, because it shows the cause of a failure. Neither one holds the
+  # token.
+  if ! printf '%s' "$token" | docker login -u "$user" --password-stdin >/dev/null; then
+    _ror_docker_auth_failed "the docker login failed for the user '$user'"
+    return $?
+  fi
+
+  echo "[CI] Docker authentication is ON. User '$user', $role credentials. The docker CLI and testcontainers use them."
+  return 0
+}
+
+# The script is sourced, so `return` gives the status to the caller shell. That stops the step
+# under `set -e`, which the GitHub Actions bash shell sets. It does not stop a caller without
+# errexit, and the Azure `script:` steps have none: they would go on to pull anonymously. So exit
+# also. An interactive shell is the one exception, where exit would close the terminal.
+
+# Stop the trace of commands while this file runs. Some callers set the xtrace option. The trace of
+# the login command would then put the token in the log.
+_ror_docker_auth_xtrace=0
+case $- in *x*) _ror_docker_auth_xtrace=1; set +x ;; esac
+
+if ! _ror_docker_auth; then
+  case $- in
+    *i*) return 1 ;;
+    *)   exit 1 ;;
+  esac
+fi
+
+if [ "$_ror_docker_auth_xtrace" = 1 ]; then set -x; fi
+# `unset` gives this file the status 0. Do not end the file with a test. A test gives the status 1
+# when the trace was off, and a caller with `set -e` then stops.
+unset _ror_docker_auth_xtrace
