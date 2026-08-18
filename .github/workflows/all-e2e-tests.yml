@@ -40,18 +40,6 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      # Authenticates the docker CLI before any step pulls an image. Docker Hub counts anonymous
-      # pulls against one limit for each IP address, and the GitHub runners share their addresses
-      # with every other customer. Every leg of every matrix here pulls the two ROR images and
-      # the stack images, and the bootstrap matrix alone has 70 legs.
-      #
-      # A read-only token is enough, because no job in this repository pushes an image.
-      #
-      # The login writes the credentials to ~/.docker/config.json, and each later step of the job
-      # reads that file. The variables that the script exports stay in this step. No step needs
-      # them, because this repository does not use testcontainers.
-      #
-      # The jobs below repeat this step through the *docker_auth alias. Change it here only.
       - &docker_auth
         name: Authenticate Docker
         env:
