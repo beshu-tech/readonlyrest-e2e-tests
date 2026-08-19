@@ -48,9 +48,10 @@ ROR_ES_WAIT_TIMEOUT_SECONDS="${ROR_ES_WAIT_TIMEOUT_SECONDS:-$((45 * 60))}"
 ROR_KBN_WAIT_TIMEOUT_SECONDS="${ROR_KBN_WAIT_TIMEOUT_SECONDS:-$((30 * 60))}"
 
 # Every poll costs one registry manifest request, and Docker Hub counts those against the pull rate
-# limit. The job authenticates first, with ci/docker-hub-auth.sh, so the limit that applies is the
-# one of the ROR account (200 per 6h) and not the one of the runner address (100 per 6h), which all
-# GitHub customers share. Eight images at this interval stay well inside the account limit.
+# limit. The job authenticates first, with .github/scripts/docker-hub-auth.sh, so the limit that
+# applies is the one of the ROR account (200 per 6h) and not the one of the runner address (100 per
+# 6h), which all GitHub customers share. Eight images at this interval stay well inside the account
+# limit.
 ROR_PREBUILD_POLL_INTERVAL_SECONDS="${ROR_PREBUILD_POLL_INTERVAL_SECONDS:-60}"
 
 # Grace period after the plugin run reports success, before concluding that the run finished without
