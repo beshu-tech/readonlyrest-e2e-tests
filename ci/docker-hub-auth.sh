@@ -6,13 +6,6 @@
 # that limit. A busy CI window then fails with "toomanyrequests: You have reached your
 # unauthenticated pull rate limit". The failure also stops jobs that did not cause it.
 #
-# THREE COPIES
-# Three ROR repositories share this file, and the copies must stay identical:
-#   elasticsearch-readonlyrest-plugin   ci/docker-hub-auth.sh
-#   readonlyrest_kbn                    scripts/docker-hub-auth.sh
-#   readonlyrest-e2e-tests              ci/docker-hub-auth.sh
-# Make each change in all three. `diff` between them must print nothing.
-#
 # HOW TO USE IT
 # Source the script. Do not run it. The caller shell needs the variables that the script exports.
 #
@@ -30,9 +23,7 @@
 #   DOCKER_REGISTRY_USER / DOCKER_REGISTRY_PASSWORD   push account
 #   DOCKER_HUB_USER      / DOCKER_HUB_RO_TOKEN        read-only token
 # A job gets the read-only token when it does not supply the push pair. The workflow thus controls
-# the permissions, and this script keeps one code path. The ROR ES and ROR e2e-tests repositories
-# supply the read-only pair. The ROR KBN repository supplies the push pair everywhere, because all
-# of its jobs that use this script also push.
+# the permissions, and this script keeps one code path.
 #
 # FAILURE
 # The script never falls back to anonymous pulls when the job supplied credentials. If it cannot
@@ -45,11 +36,9 @@
 # DOCKER_AUTH_REQUIRED applies to one case only: the job supplied no credentials at all.
 #   true (default)   The script stops the job. Any value other than "false" has this effect, so
 #                    an empty value or a typing error also stops the job.
-#   false            The script continues, and its pulls are anonymous. Only the test jobs of the
-#                    ROR ES repository set this value, because a pull request from a fork of that
-#                    repository gets no secrets and must still run its tests. No job in the ROR KBN
-#                    or ROR e2e-tests repository sets it. A fork cannot reach the jobs of those two
-#                    repositories.
+#   false            The script continues, and its pulls are anonymous. Only the test jobs set
+#                    this value. A pull request from a fork gets no secrets, but its tests must
+#                    still run.
 #
 # TWO LIMITS
 # 1. This script cannot authenticate the job `container:` image. The runner pulls that image
