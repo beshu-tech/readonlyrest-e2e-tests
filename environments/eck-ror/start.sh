@@ -147,7 +147,27 @@ docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=26214
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
 
+# The ES and the KBN custom resources name the two ROR images, so the kubelet in the Kind nodes pulls
+# them. That kubelet has a containerd of its own, and it does not read the docker config of the host.
+# Its pulls are anonymous, and Docker Hub limits them by IP address, even after the job logs in.
+#
+# Pull on the host instead, where the job is authenticated, and put the images into the nodes with
+# `kind load`. containerd then finds them, and it asks the registry for nothing. The APM cluster does
+# the same for busybox below.
+#
+# The load works only if the tag equals the tag the pod asks for. The two names below are therefore
+# the one definition: es.yml and kbn.yml hold `image: ${ROR_ES_IMAGE}` and `image: ${ROR_KBN_IMAGE}`,
+# and envsubst puts these values there. They must stay exported for that.
+export ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+export ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
 
+echo "PRE-PULLING $ROR_ES_IMAGE ..."
+docker pull "$ROR_ES_IMAGE" || { echo "Failed to pull ES image: $ROR_ES_IMAGE"; exit 1; }
+kind load docker-image "$ROR_ES_IMAGE" --name eck-ror || { echo "Failed to load $ROR_ES_IMAGE into the Kind cluster."; exit 1; }
+
+echo "PRE-PULLING $ROR_KBN_IMAGE ..."
+docker pull "$ROR_KBN_IMAGE" || { echo "Failed to pull Kibana image: $ROR_KBN_IMAGE"; exit 1; }
+kind load docker-image "$ROR_KBN_IMAGE" --name eck-ror || { echo "Failed to load $ROR_KBN_IMAGE into the Kind cluster."; exit 1; }
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
 docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
