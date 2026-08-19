@@ -3,17 +3,17 @@ description: 'Upload Cypress failure artifacts (videos, screenshots) to an S3 bu
 
 inputs:
   region:
-    description: 'AWS region'
+    description: 'S3 region (the DGP gateway ignores it, but SigV4 must sign with something)'
     required: true
-    default: 'eu-west-1'
   bucket:
     description: 'S3 bucket name'
     required: true
-    default: 'beshu'
   endpoint_url:
     description: 'S3 endpoint URL'
-    required: false
-    default: ''
+    required: true
+  path_prefix:
+    description: 'Key prefix for the e2e reports store'
+    required: true
   access_key_id:
     description: 'AWS access key ID'
     required: true
@@ -31,15 +31,15 @@ runs:
     - name: Upload Cypress artifacts to S3
       shell: bash
       env:
-        ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID: ${{ inputs.access_key_id }}
-        ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET: ${{ inputs.secret_access_key }}
-        ROR_E2E_REPORTS_STORE_BUCKET: ${{ inputs.bucket }}
-        ROR_E2E_REPORTS_STORE_REGION: ${{ inputs.region }}
-        ROR_E2E_REPORTS_STORE_ENDPOINT_URL: ${{ inputs.endpoint_url }}
-        ROR_E2E_REPORTS_STORE_PATH_PREFIX: ror/e2e_reports/build_${{ github.run_id }}
+        ROR_S3_ACCESS_KEY_ID: ${{ inputs.access_key_id }}
+        ROR_S3_SECRET_ACCESS_KEY: ${{ inputs.secret_access_key }}
+        ROR_S3_BUCKET: ${{ inputs.bucket }}
+        ROR_S3_REGION: ${{ inputs.region }}
+        ROR_S3_ENDPOINT_URL: ${{ inputs.endpoint_url }}
+        ROR_S3_PATH_E2E_REPORTS: ${{ inputs.path_prefix }}/build_${{ github.run_id }}
         RESULTS_DIR: ${{ inputs.results_dir }}
         S3_SUBFOLDER: ${{ matrix.env }}/${{ matrix.version }}
       run: |
-        echo "::add-mask::${ROR_E2E_REPORTS_STORE_ACCESS_KEY_ID}"
-        echo "::add-mask::${ROR_E2E_REPORTS_STORE_ACCESS_KEY_SECRET}"
+        echo "::add-mask::${ROR_S3_ACCESS_KEY_ID}"
+        echo "::add-mask::${ROR_S3_SECRET_ACCESS_KEY}"
         "$GITHUB_ACTION_PATH/../scripts/upload-cypress-artifacts-to-s3.sh" "$RESULTS_DIR" "$S3_SUBFOLDER"
