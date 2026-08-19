@@ -1,5 +1,5 @@
-# Helpers for producing ROR plugin dev images: trigger the pre-build workflow in a plugin repo, then
-# wait for the image it publishes to appear in the registry.
+# Helpers for producing ROR plugin dev images: trigger the pre-build workflow in a plugin repo, wait
+# for that run to finish, then check that the images it published are in the registry.
 #
 # Sourced, not executed.
 #
@@ -42,21 +42,30 @@ ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF:-
 ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-beshultd/elasticsearch-readonlyrest-dev}"
 ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-beshultd/kibana-readonlyrest-dev}"
 
-# How long to wait for a published image before giving up. ES gets the longer limit because its
-# build takes longer than the Kibana one.
+# How long to wait for a pre-build run to finish before giving up. ES gets the longer limit because
+# its build takes longer than the Kibana one.
 ROR_ES_WAIT_TIMEOUT_SECONDS="${ROR_ES_WAIT_TIMEOUT_SECONDS:-$((45 * 60))}"
 ROR_KBN_WAIT_TIMEOUT_SECONDS="${ROR_KBN_WAIT_TIMEOUT_SECONDS:-$((30 * 60))}"
 
-# Every poll costs one registry manifest request, and Docker Hub counts those against the pull rate
-# limit. The job authenticates first, with .github/scripts/docker-hub-auth.sh, so the limit that
-# applies is the one of the ROR account (200 per 6h) and not the one of the runner address (100 per
-# 6h), which all GitHub customers share. Eight images at this interval stay well inside the account
-# limit.
-ROR_PREBUILD_POLL_INTERVAL_SECONDS="${ROR_PREBUILD_POLL_INTERVAL_SECONDS:-60}"
+# How often to ask GitHub if the pre-build run has finished. This wait lasts for the whole build, and
+# it costs no Docker Hub pulls. GitHub allows 1000 API requests per hour for one repository, and a
+# 45-minute wait at this interval uses 135 of them.
+ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS="${ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS:-20}"
 
-# Grace period after the plugin run reports success, before concluding that the run finished without
-# publishing the tag we asked for. Covers the gap between the push and the tag being readable.
-ROR_PREBUILD_POST_SUCCESS_GRACE_SECONDS="${ROR_PREBUILD_POST_SUCCESS_GRACE_SECONDS:-120}"
+# How many times to ask the registry for one tag after the run has succeeded, and how long to wait
+# between two attempts.
+#
+# Every attempt costs one pull: `docker manifest inspect` sends a GET, and Docker Hub counts a GET
+# against the pull rate limit. The job logs in first, with .github/scripts/docker-hub-auth.sh, so the
+# pulls count against the ROR account (200 per 6h), not against the runner address (100 per 6h) that
+# all GitHub customers share.
+#
+# The pre-build run pushes every tag before it reports success, so the first attempt normally finds
+# the image. Four versions of two plugins therefore cost 8 pulls, or 24 if every image needs all
+# three attempts. The later attempts cover only the short gap between the push and the tag becoming
+# readable.
+ROR_PREBUILD_IMAGE_CHECK_ATTEMPTS="${ROR_PREBUILD_IMAGE_CHECK_ATTEMPTS:-3}"
+ROR_PREBUILD_IMAGE_CHECK_INTERVAL_SECONDS="${ROR_PREBUILD_IMAGE_CHECK_INTERVAL_SECONDS:-30}"
 
 # --- Image reference helpers -------------------------------------------------------------------
 
@@ -75,8 +84,8 @@ ROR_PREBUILD_LAST_PROBE_ERROR=""
 #       resolve
 #
 # Telling 1 and 2 apart is the whole point. Both look like "not published yet" to a plain
-# `docker manifest inspect >/dev/null 2>&1`, so a throttled or unauthorised probe silently spins for
-# the entire timeout and then blames the plugin workflow for something that happened here.
+# `docker manifest inspect >/dev/null 2>&1`, so a throttled or unauthorised probe blames the plugin
+# workflow for something that happened here.
 _probe_dev_image() {
   local IMAGE=$1 OUTPUT STATUS=0
 
@@ -157,9 +166,10 @@ _iso8601_minutes_ago() {
 # Dispatching does not tell us which run it created, so the run has to be found afterwards: the
 # newest one of that workflow created since we asked. Echoes "<run id> <run url>".
 #
-# Best-effort — a failure here only costs the fast-fail in the wait loop, so it is never fatal. The
+# The wait follows the run found here, and it asks the registry only after that run succeeds. A
+# dispatch that cannot find its run is therefore a failed dispatch, and the caller stops. The
 # `--limit 20` window and the timestamp filter can both miss under heavy concurrency in the plugin
-# repo; that is the same trade-off.
+# repo; the attempts below make that rare.
 # Usage: _locate_prebuild_run <repo> <workflow> <token> <created-since ISO8601>
 _locate_prebuild_run() {
   local REPO=$1 WORKFLOW=$2 TOKEN=$3 SINCE=$4 ATTEMPT RUN
@@ -170,7 +180,7 @@ _locate_prebuild_run() {
   # The sleep comes first on purpose. GitHub takes a moment to register a dispatched run, and the
   # window is backdated, so asking immediately can return somebody else's slightly older run of the
   # same workflow and latch onto it. Waiting first makes our run — the newest — the one `last` picks.
-  for ATTEMPT in 1 2 3 4 5 6; do
+  for ATTEMPT in 1 2 3 4 5 6 7 8 9 10 11 12; do
     sleep 5
     RUN=$(GH_TOKEN="$TOKEN" gh run list -R "$REPO" --workflow "$WORKFLOW" --limit 20 \
       --json databaseId,url,createdAt 2>/dev/null |
@@ -202,7 +212,8 @@ _prebuild_run_state() {
 }
 
 # Set by _dispatch_prebuild_workflow so the plugin-specific wrappers below can stash the run they
-# just started. Empty when the run could not be identified.
+# just started. A dispatch that returns 0 always sets them; a dispatch that cannot identify its run
+# fails instead.
 _ROR_LAST_DISPATCH_RUN_ID=""
 _ROR_LAST_DISPATCH_RUN_URL=""
 
@@ -239,14 +250,21 @@ _dispatch_prebuild_workflow() {
   _ROR_LAST_DISPATCH_RUN_URL=""
 
   local RUN
-  if RUN=$(_locate_prebuild_run "$REPO" "$WORKFLOW" "$TOKEN" "$SINCE"); then
-    _ROR_LAST_DISPATCH_RUN_ID=${RUN%% *}
-    _ROR_LAST_DISPATCH_RUN_URL=${RUN#* }
-    echo ">>> $LABEL run: $_ROR_LAST_DISPATCH_RUN_URL"
-  else
-    echo ">>> Could not identify the $LABEL run that was just started."
-    echo "    The wait below still works; it just cannot stop early if that run fails."
+  if ! RUN=$(_locate_prebuild_run "$REPO" "$WORKFLOW" "$TOKEN" "$SINCE"); then
+    echo "ERROR: the $LABEL pre-build started, but its run could not be found in $REPO."
+    echo "       The wait follows that run, so there is nothing to wait for. The job stops here. It"
+    echo "       does not poll the registry instead: that spends the Docker Hub pull budget and still"
+    echo "       cannot show a failed build."
+    echo "       The run itself continues, and this failure does not affect it. Re-run this job."
+    echo "       Two causes are likely if this repeats: the token cannot list the runs of $REPO"
+    echo "       ('gh run list' needs the actions:read scope), or '$WORKFLOW' runs so often that ours"
+    echo "       is not in the 20 most recent."
+    return 4
   fi
+
+  _ROR_LAST_DISPATCH_RUN_ID=${RUN%% *}
+  _ROR_LAST_DISPATCH_RUN_URL=${RUN#* }
+  echo ">>> $LABEL run: $_ROR_LAST_DISPATCH_RUN_URL"
 }
 
 # Applies the "auto" setting: use the preferred ref if it exists in the repo, otherwise the fallback.
@@ -310,8 +328,8 @@ dispatch_kbn_prebuild_image() {
     -f "tag=$RUN_TAG" \
     -f "force_rebuild=$FORCE_REBUILD" || return $?
 
-  # Read by wait_for_prebuild_image, so a build that fails in two minutes does not cost the wait its
-  # whole timeout.
+  # Read by wait_for_plugin_prebuild_images: the run it names is the one the wait follows, so a build
+  # that fails in two minutes does not cost the wait its whole timeout.
   ROR_KBN_PREBUILD_RUN_ID=$_ROR_LAST_DISPATCH_RUN_ID
   ROR_KBN_PREBUILD_RUN_URL=$_ROR_LAST_DISPATCH_RUN_URL
 }
@@ -348,8 +366,8 @@ dispatch_es_prebuild_image() {
     -f "tag=$RUN_TAG" \
     -f "force_rebuild=$FORCE_REBUILD" || return $?
 
-  # Read by wait_for_prebuild_image, so a build that fails in two minutes does not cost the wait its
-  # whole timeout.
+  # Read by wait_for_plugin_prebuild_images: the run it names is the one the wait follows, so a build
+  # that fails in two minutes does not cost the wait its whole timeout.
   ROR_ES_PREBUILD_RUN_ID=$_ROR_LAST_DISPATCH_RUN_ID
   ROR_ES_PREBUILD_RUN_URL=$_ROR_LAST_DISPATCH_RUN_URL
 }
@@ -367,121 +385,204 @@ dispatch_prebuild_images() {
 }
 
 # --- Wait --------------------------------------------------------------------------------------
+#
+# The wait has two steps:
+#   1. Follow the pre-build run until it finishes. GitHub answers these requests, and Docker Hub
+#      does not count them.
+#   2. Ask the registry for each tag that the run published. One dispatch covers every version, and
+#      the run pushes all of them before it reports success, so one attempt for each image is
+#      normally enough.
+#
+# The wait therefore asks the registry once for each image, and not once a minute for the whole
+# build. For four versions of two plugins that is about 8 pulls in place of about 90.
 
-# Polls the registry until the image for one plugin, version and tag exists. Returns quickly when
-# the workflow only had to re-tag an existing image.
+# Follows one pre-build run until it finishes. Returns:
+#   0 - the run succeeded
+#   4 - the run did not finish within the timeout
+#   6 - the run finished without succeeding
 #
-# Three ways this ends other than success, each reported as itself rather than as a bare timeout:
-#   * the plugin run finished without succeeding      -> stop now, print its URL
-#   * the run succeeded but the tag never appeared    -> the tag we asked for is not the tag it
-#                                                        published; stop after a short grace period
-#   * the registry could not be queried at all        -> print what the probe actually said
+# A state that cannot be read counts as "still running": a single failed API call must not end a
+# healthy wait.
 #
-# Usage: wait_for_prebuild_image <es|kbn> <version> <run tag> [timeout seconds]
-wait_for_prebuild_image() {
-  if [ "$#" -lt 3 ]; then
-    echo "Usage: wait_for_prebuild_image <es|kbn> <version> <run tag> [timeout seconds]"
+# Usage: _wait_for_prebuild_run <label> <repo> <token> <run id> <run url> <timeout seconds>
+_wait_for_prebuild_run() {
+  local LABEL=$1 REPO=$2 TOKEN=$3 RUN_ID=$4 RUN_URL=$5 TIMEOUT=$6
+  local WAITED=0 UNREADABLE=0 STATE
+
+  echo ""
+  echo ">>> Waiting for the $LABEL pre-build run to finish (timeout: $((TIMEOUT / 60)) min)${RUN_URL:+: $RUN_URL}"
+
+  while true; do
+    STATE=$(_prebuild_run_state "$REPO" "$TOKEN" "$RUN_ID")
+    case "$STATE" in
+      success)
+        echo ">>> The $LABEL pre-build run succeeded after $((WAITED / 60)) min."
+        return 0
+        ;;
+      running) ;;
+      unknown)
+        UNREADABLE=$((UNREADABLE + 1))
+        # Once is enough; repeating it every 20 seconds would bury the rest of the log.
+        if [ "$UNREADABLE" -eq 1 ]; then
+          echo "WARNING: the state of the $LABEL run could not be read. The wait continues, but if the"
+          echo "         token or the run id is wrong, the wait can only end with the timeout."
+        fi
+        ;;
+      *)
+        echo "ERROR: the $LABEL pre-build run finished with '$STATE', so its images will never be published."
+        echo "       Run: ${RUN_URL:-<unknown>}"
+        return 6
+        ;;
+    esac
+
+    if [ "$WAITED" -ge "$TIMEOUT" ]; then
+      echo "ERROR: the $LABEL pre-build run did not finish within $((WAITED / 60)) min."
+      if [ "$UNREADABLE" -gt 0 ]; then
+        echo "       $UNREADABLE state requests failed, so the run may have finished. The cause is then"
+        echo "       this job, and not the build."
+      fi
+      echo "       Run: ${RUN_URL:-<unknown>}"
+      return 4
+    fi
+
+    sleep "$ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS"
+    WAITED=$((WAITED + ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS))
+  done
+}
+
+# Asks the registry for one tag, up to ATTEMPTS times, INTERVAL seconds apart. Every attempt costs
+# one pull from the Docker Hub rate limit. Returns:
+#   0 - the tag is there
+#   1 - the registry answered, and the tag is not there
+#   2 - the registry could not be queried
+#
+# Usage: _verify_dev_image <image> <attempts> <interval seconds>
+_verify_dev_image() {
+  local IMAGE=$1 ATTEMPTS=$2 INTERVAL=$3 ATTEMPT=1 STATUS
+
+  while true; do
+    STATUS=0
+    _probe_dev_image "$IMAGE" || STATUS=$?
+
+    if [ "$STATUS" -eq 0 ]; then
+      echo ">>> Found $IMAGE"
+      return 0
+    fi
+
+    if [ "$ATTEMPT" -ge "$ATTEMPTS" ]; then
+      return "$STATUS"
+    fi
+
+    if [ "$STATUS" -eq 2 ]; then
+      echo ">>> The registry could not be queried for $IMAGE (attempt $ATTEMPT of $ATTEMPTS). It said:"
+      echo "    $ROR_PREBUILD_LAST_PROBE_ERROR"
+    else
+      echo ">>> $IMAGE is not there yet (attempt $ATTEMPT of $ATTEMPTS)."
+    fi
+
+    sleep "$INTERVAL"
+    ATTEMPT=$((ATTEMPT + 1))
+  done
+}
+
+# Waits for one plugin: first for its run, then for the images of every version.
+#
+# The run must be known, so the dispatch must happen in the same shell. There is no registry-only
+# mode: the registry alone cannot show a failed build, and it spends Docker Hub pulls to learn what
+# one GitHub request gives for free.
+#
+# Returns 0, or one of:
+#   1 - wrong arguments          4 - the run did not finish in time
+#   2 - unknown plugin           5 - the run succeeded, and an image is not in the registry
+#   3 - no run to follow         6 - the run failed
+#                                7 - the registry could not be queried
+#
+# Usage: wait_for_plugin_prebuild_images <es|kbn> <versions> <run tag>
+wait_for_plugin_prebuild_images() {
+  if [ "$#" -ne 3 ]; then
+    echo "Usage: wait_for_plugin_prebuild_images <es|kbn> <versions> <run tag>"
     return 1
   fi
 
-  local PLUGIN=$1 VERSION=$2 RUN_TAG=$3 TIMEOUT=${4:-} IMAGE WHERE RUN_ID RUN_URL RUN_REPO RUN_TOKEN
+  local PLUGIN=$1 RUN_TAG=$3 VERSIONS
+  VERSIONS=$(normalize_elk_versions "$2") || return $?
+
+  local LABEL WHERE TIMEOUT RUN_ID RUN_URL RUN_REPO RUN_TOKEN
   case "$PLUGIN" in
     es)
-      IMAGE=$(ror_es_dev_image "$VERSION" "$RUN_TAG")
-      TIMEOUT=${TIMEOUT:-$ROR_ES_WAIT_TIMEOUT_SECONDS}
+      LABEL="ROR ES"
       WHERE="the '$ROR_ES_PUBLISH_WORKFLOW' run in $ROR_ES_GH_REPO"
+      TIMEOUT=$ROR_ES_WAIT_TIMEOUT_SECONDS
       RUN_ID=${ROR_ES_PREBUILD_RUN_ID:-}
       RUN_URL=${ROR_ES_PREBUILD_RUN_URL:-}
       RUN_REPO=$ROR_ES_GH_REPO
       RUN_TOKEN=${ES_REPO_GH_TOKEN:-}
       ;;
     kbn)
-      IMAGE=$(ror_kbn_dev_image "$VERSION" "$RUN_TAG")
-      TIMEOUT=${TIMEOUT:-$ROR_KBN_WAIT_TIMEOUT_SECONDS}
+      LABEL="ROR KBN"
       WHERE="the '$ROR_KBN_PUBLISH_WORKFLOW' run in $ROR_KBN_GH_REPO"
+      TIMEOUT=$ROR_KBN_WAIT_TIMEOUT_SECONDS
       RUN_ID=${ROR_KBN_PREBUILD_RUN_ID:-}
       RUN_URL=${ROR_KBN_PREBUILD_RUN_URL:-}
       RUN_REPO=$ROR_KBN_GH_REPO
       RUN_TOKEN=${KBN_REPO_GH_TOKEN:-}
       ;;
     *)
-      echo "ERROR: wait_for_prebuild_image: plugin must be 'es' or 'kbn', got '$PLUGIN'"
+      echo "ERROR: wait_for_plugin_prebuild_images: plugin must be 'es' or 'kbn', got '$PLUGIN'"
       return 2
       ;;
   esac
 
-  local WAITED=0 PROBE_STATUS PROBE_ERRORS=0 SUCCEEDED_AT="" RUN_STATE
+  if [ -z "$RUN_ID" ]; then
+    echo "ERROR: there is no $LABEL pre-build run to follow. Dispatch the pre-build from this same"
+    echo "       shell, or name an existing run in the ROR_*_PREBUILD_RUN_ID variables above."
+    return 3
+  fi
+
+  _wait_for_prebuild_run "$LABEL" "$RUN_REPO" "$RUN_TOKEN" "$RUN_ID" "$RUN_URL" "$TIMEOUT" || return $?
+
+  local ATTEMPTS=$ROR_PREBUILD_IMAGE_CHECK_ATTEMPTS
+  local INTERVAL=$ROR_PREBUILD_IMAGE_CHECK_INTERVAL_SECONDS
+
   echo ""
-  echo ">>> Polling for $IMAGE (timeout: $((TIMEOUT / 60)) min)${RUN_URL:+, run: $RUN_URL}"
+  echo ">>> Checking the registry for the $LABEL images of: $VERSIONS"
 
-  while true; do
-    PROBE_STATUS=0
-    _probe_dev_image "$IMAGE" || PROBE_STATUS=$?
+  local VERSION IMAGE STATUS
+  for VERSION in $VERSIONS; do
+    case "$PLUGIN" in
+      es) IMAGE=$(ror_es_dev_image "$VERSION" "$RUN_TAG") ;;
+      kbn) IMAGE=$(ror_kbn_dev_image "$VERSION" "$RUN_TAG") ;;
+    esac
 
-    if [ "$PROBE_STATUS" -eq 0 ]; then
-      echo ">>> Dev image is now available: $IMAGE"
-      return 0
+    STATUS=0
+    _verify_dev_image "$IMAGE" "$ATTEMPTS" "$INTERVAL" || STATUS=$?
+    [ "$STATUS" -eq 0 ] && continue
+
+    if [ "$STATUS" -eq 2 ]; then
+      echo "ERROR: the registry could not be queried for $IMAGE, so nobody knows if it is there."
+      echo "       The last answer from docker was:"
+      echo "       $ROR_PREBUILD_LAST_PROBE_ERROR"
+      echo "       A rate limit and a broken login both look like a missing image. The wait stops"
+      echo "       here, rather than continue on an answer it cannot trust."
+      return 7
     fi
 
-    if [ "$PROBE_STATUS" -eq 2 ]; then
-      PROBE_ERRORS=$((PROBE_ERRORS + 1))
-      # Once per image is enough; repeating it every minute would bury the rest of the log.
-      if [ "$PROBE_ERRORS" -eq 1 ]; then
-        echo "WARNING: the registry could not be queried for $IMAGE. Still polling, but if this is a"
-        echo "         rate limit the wait cannot succeed. Docker reported:"
-        echo "         $ROR_PREBUILD_LAST_PROBE_ERROR"
-      fi
-    fi
-
-    if [ -n "$RUN_ID" ]; then
-      RUN_STATE=$(_prebuild_run_state "$RUN_REPO" "$RUN_TOKEN" "$RUN_ID")
-      case "$RUN_STATE" in
-        success)
-          # The run is done, so either the image is being pushed right now or it never will be.
-          if [ -z "$SUCCEEDED_AT" ]; then
-            SUCCEEDED_AT=$WAITED
-          elif [ "$((WAITED - SUCCEEDED_AT))" -ge "$ROR_PREBUILD_POST_SUCCESS_GRACE_SECONDS" ]; then
-            echo "ERROR: $WHERE succeeded, but $IMAGE is still not in the registry ${ROR_PREBUILD_POST_SUCCESS_GRACE_SECONDS}s later."
-            echo "       The run published a different tag than the one being waited for — compare"
-            echo "       the tag it wrote against '$RUN_TAG' and the repo against the ROR_*_DEV_IMAGE_REPO"
-            echo "       defaults in this file."
-            echo "       Run: ${RUN_URL:-<unknown>}"
-            return 5
-          fi
-          ;;
-        running | unknown) ;;
-        *)
-          echo "ERROR: $WHERE finished with '$RUN_STATE'; $IMAGE will never be published."
-          echo "       Run: ${RUN_URL:-<unknown>}"
-          return 6
-          ;;
-      esac
-    fi
-
-    if [ "$WAITED" -ge "$TIMEOUT" ]; then
-      echo "ERROR: Timed out after $((WAITED / 60)) min waiting for $IMAGE"
-      if [ "$PROBE_ERRORS" -gt 0 ]; then
-        echo "       $PROBE_ERRORS of the registry probes failed outright, the last one with:"
-        echo "       $ROR_PREBUILD_LAST_PROBE_ERROR"
-        echo "       That, not the plugin build, may be what this timeout is really about."
-      else
-        echo "       Check $WHERE.${RUN_URL:+ Run: $RUN_URL}"
-      fi
-      return 4
-    fi
-
-    sleep "$ROR_PREBUILD_POLL_INTERVAL_SECONDS"
-    WAITED=$((WAITED + ROR_PREBUILD_POLL_INTERVAL_SECONDS))
+    echo "ERROR: $WHERE succeeded, but $IMAGE is not in the registry."
+    echo "       The run published a tag that is different from the one this job asked for. Compare"
+    echo "       the tag it wrote against '$RUN_TAG', and the repo against the ROR_*_DEV_IMAGE_REPO"
+    echo "       defaults in this file."
+    echo "       Run: ${RUN_URL:-<unknown>}"
+    return 5
   done
 }
 
 # Wrappers for waiting on a single plugin.
-# Usage: wait_for_<es|kbn>_prebuild_image <version> <run tag>
-wait_for_es_prebuild_image() { wait_for_prebuild_image es "$1" "$2"; }
-wait_for_kbn_prebuild_image() { wait_for_prebuild_image kbn "$1" "$2"; }
+# Usage: wait_for_<es|kbn>_prebuild_images <versions> <run tag>
+wait_for_es_prebuild_images() { wait_for_plugin_prebuild_images es "$1" "$2"; }
+wait_for_kbn_prebuild_images() { wait_for_plugin_prebuild_images kbn "$1" "$2"; }
 
-# Waits for both plugins, for every version. ES is waited on first because it is the slower build,
-# by which time the Kibana images are usually already there.
+# Waits for both plugins, for every version. ES comes first because its build is the slower one. The
+# Kibana run has usually finished by then.
 # Usage: wait_for_prebuild_images <versions> <run tag>
 wait_for_prebuild_images() {
   if [ "$#" -ne 2 ]; then
@@ -489,13 +590,6 @@ wait_for_prebuild_images() {
     return 1
   fi
 
-  local VERSIONS RUN_TAG=$2 VERSION
-  VERSIONS=$(normalize_elk_versions "$1") || return $?
-
-  for VERSION in $VERSIONS; do
-    wait_for_prebuild_image es "$VERSION" "$RUN_TAG" || return $?
-  done
-  for VERSION in $VERSIONS; do
-    wait_for_prebuild_image kbn "$VERSION" "$RUN_TAG" || return $?
-  done
+  wait_for_plugin_prebuild_images es "$1" "$2" || return $?
+  wait_for_plugin_prebuild_images kbn "$1" "$2" || return $?
 }
