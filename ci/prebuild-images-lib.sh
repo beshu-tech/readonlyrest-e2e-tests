@@ -8,6 +8,35 @@
 #
 # Nothing relies on the caller using `set -e`: every function returns non-zero on failure, and the
 # ones that call others pass that status on with `|| return $?`.
+#
+# CONTRACT FOR CALLERS IN OTHER REPOS
+# The ROR ES repo and the ROR KBN repo clone this repo when they run, source this file, and call it
+# from two different jobs. What follows is what the two sides owe each other, and it is the only
+# part a caller may depend on. The steps inside these functions are not part of it. They change here,
+# and a caller must not copy them into its own documentation.
+#
+# A caller supplies:
+#   * one dispatch, for the whole version list, from a job of its own:
+#     dispatch_<es|kbn>_prebuild_image <versions> <target branch> <run tag>.
+#   * the run the dispatch identified. It leaves the run in ROR_<ES|KBN>_PREBUILD_RUN_ID and
+#     ROR_<ES|KBN>_PREBUILD_RUN_URL. The waiting jobs are other processes on other machines, so the
+#     caller carries both values to them, usually as job outputs.
+#   * a GitHub token for the plugin repo, in ES_REPO_GH_TOKEN or KBN_REPO_GH_TOKEN. It must be able
+#     to dispatch a workflow and to read the runs of that repo.
+#   * an authenticated docker CLI in every waiting job. Each repo has its own docker-hub-auth.sh.
+#   * ROR_<ES|KBN>_WAIT_TIMEOUT_SECONDS, when one run builds several versions and thus takes longer
+#     than the default for one.
+#
+# In return:
+#   * wait_for_<es|kbn>_prebuild_images returns 0 only when every image it was asked for is in the
+#     registry and can be pulled by tag.
+#   * it stops as soon as the pre-build run fails, and it names that run.
+#   * it reports a failure by its cause, and never as a bare timeout. The causes are the return
+#     codes listed on wait_for_plugin_prebuild_images.
+#   * it costs few Docker Hub pulls, and none of them while the build runs.
+#
+# One consequence reaches into the caller's own design: the wait ends when the RUN ends, and not when
+# one image appears. A caller with one job per version starts them all at about the same time.
 
 # Do nothing if this file was already sourced.
 if [ -n "${_ROR_PREBUILD_IMAGES_LIB_SOURCED:-}" ]; then
@@ -580,6 +609,14 @@ wait_for_plugin_prebuild_images() {
 # Usage: wait_for_<es|kbn>_prebuild_images <versions> <run tag>
 wait_for_es_prebuild_images() { wait_for_plugin_prebuild_images es "$1" "$2"; }
 wait_for_kbn_prebuild_images() { wait_for_plugin_prebuild_images kbn "$1" "$2"; }
+
+# Transitional aliases for the singular names this file had before the wait was rewritten. The ROR ES
+# and ROR KBN repos clone this file when they run, and they fall back to `develop`, so a branch of
+# theirs that predates the rewrite breaks as soon as this lands. One version is a valid list of one,
+# so both forms behave the same. Delete these two lines after both repos call the new names
+# (RORDEV-2183).
+wait_for_es_prebuild_image() { wait_for_plugin_prebuild_images es "$1" "$2"; }
+wait_for_kbn_prebuild_image() { wait_for_plugin_prebuild_images kbn "$1" "$2"; }
 
 # Waits for both plugins, for every version. ES comes first because its build is the slower one. The
 # Kibana run has usually finished by then.

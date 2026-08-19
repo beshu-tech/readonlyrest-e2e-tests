@@ -96,7 +96,10 @@ _ror_docker_auth() {
   # Set DOCKER_AUTH_CONFIG here only. When the script finds no credentials, the variable must stay
   # unset, and it must not become empty. testcontainers reads the value as JSON if the value is not
   # null, and an empty value causes a parse error.
-  auth=$(printf '%s:%s' "$user" "$token" | base64 -w0)
+  #
+  # `base64 -w0` gives one line, but -w is GNU only, and the BSD base64 of macOS refuses it. This
+  # file also runs by hand, on a developer machine, so `tr` removes the line breaks instead.
+  auth=$(printf '%s:%s' "$user" "$token" | base64 | tr -d '\n')
   export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}}}"
 
   # Hide the value from the log, because it contains base64(user:token), and give it to the later
@@ -104,7 +107,7 @@ _ror_docker_auth() {
   # process, so the export above dies with the step that sourced this file. A job that sources the
   # file in a step of its own therefore needs the write to GITHUB_ENV, or testcontainers in a later
   # step reads no value and pulls anonymously while the log says authentication is ON. The value
-  # holds no newline, because base64 -w0 emits one line, so the NAME=value form is enough here.
+  # holds no newline, because `tr` removed them, so the NAME=value form is enough here.
   #
   # Outside GitHub Actions (a developer running this by hand) both commands are skipped. The export
   # still stands, so the shell that sourced the file is authenticated.
