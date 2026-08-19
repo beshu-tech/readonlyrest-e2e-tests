@@ -64,7 +64,7 @@ jobs:
           command: |
             ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --mode prod
         env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
       - name: Stop Docker memory monitor
         if: always()
@@ -76,9 +76,12 @@ jobs:
         continue-on-error: true
         uses: ./.github/upload-videos
         with:
-          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}
+          access_key_id: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          bucket: ${{ vars.ROR_S3_BUCKET }}
+          region: ${{ vars.ROR_S3_REGION }}
+          path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
 
   # ==========================================
   # BOOTSTRAP TESTS
@@ -123,7 +126,7 @@ jobs:
           command: |
             ./runner.sh --run bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
         env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
@@ -161,8 +164,8 @@ jobs:
           # from the merge ref github.ref points at. On a push, head_ref is empty and ref_name is
           # the branch that was pushed (develop).
           TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-          ES_REPO_GH_TOKEN: ${{ secrets.ES_REPO_GH_TOKEN }}
-          KBN_REPO_GH_TOKEN: ${{ secrets.KBN_REPO_GH_TOKEN }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+
         run: |
           set -euo pipefail
           . ci/prebuild-images-lib.sh
@@ -223,7 +226,7 @@ jobs:
           command: |
             ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_IMAGE_TAG }} --ror-kbn ${{ env.ROR_IMAGE_TAG }} --mode dev
         env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
 
       - name: Stop Docker memory monitor
         if: always()
@@ -235,6 +238,9 @@ jobs:
         continue-on-error: true
         uses: ./.github/upload-videos
         with:
-          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}
+          access_key_id: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          bucket: ${{ vars.ROR_S3_BUCKET }}
+          region: ${{ vars.ROR_S3_REGION }}
+          path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}

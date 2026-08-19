@@ -64,7 +64,7 @@ jobs:
             [ -n "$MODE" ] && PARAMS+=(--mode "$MODE")
             ./runner.sh "${PARAMS[@]}"
         env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_KBN_LICENSE }}
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
           ENV: ${{ github.event.inputs.env }}
           ELK_VERSION: ${{ github.event.inputs.elk_version }}
@@ -84,6 +84,9 @@ jobs:
         continue-on-error: true
         uses: ./.github/upload-videos
         with:
-          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          endpoint_url: ${{ secrets.AWS_ENDPOINT_URL }}
+          access_key_id: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
+          endpoint_url: ${{ vars.ROR_S3_ENDPOINT_URL }}
+          bucket: ${{ vars.ROR_S3_BUCKET }}
+          region: ${{ vars.ROR_S3_REGION }}
+          path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
