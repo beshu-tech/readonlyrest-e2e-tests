@@ -247,20 +247,62 @@ _locate_prebuild_run() {
   return 1
 }
 
-# The run's outcome as one word: `running`, `success`, another conclusion (`failure`, `cancelled`,
-# `timed_out`, ...), or `unknown` when it cannot be read. Never fails, so a flaky API call degrades
-# to "keep waiting" rather than aborting a healthy wait.
+# Where _prebuild_run_state leaves its two answers: the state, and whatever a failed read said. The
+# second one lets the wait name the real reason, the same way ROR_PREBUILD_LAST_PROBE_ERROR does for
+# the registry.
+ROR_PREBUILD_RUN_STATE=""
+ROR_PREBUILD_LAST_RUN_READ_ERROR=""
+
+# Reads what `gh` printed when it could not read a run, and says whether asking again can help.
+# Echoes `unknown` (ask again) or `denied` (nothing here will change).
+#
+# A rate limit is tested first, because GitHub sends that as 403 as well, and a rate limit does pass.
+# Anything unrecognised is `unknown`: only a message we know means "never" may end a wait.
+# Usage: _prebuild_read_failure_state <what gh printed>
+_prebuild_read_failure_state() {
+  case "$1" in
+    *"rate limit"* | *"secondary rate"* | *"abuse detection"*) echo unknown ;;
+    *"HTTP 401"* | *"HTTP 403"* | *"HTTP 404"* | *"Bad credentials"* | *"Resource not accessible"* | \
+      *"Could not resolve to a Repository"* | *"not found"* | *"Not Found"*) echo denied ;;
+    *) echo unknown ;;
+  esac
+}
+
+# The run's outcome, left in ROR_PREBUILD_RUN_STATE as one word: `running`, `success`, another
+# conclusion (`failure`, `cancelled`, `timed_out`, ...), `unknown` when the read failed and asking
+# again may help, or `denied` when it failed for a reason that no amount of waiting fixes.
+#
+# It writes to a variable rather than echoing, because the caller needs the failure text as well, and
+# a command substitution would run this in a subshell, where the text would die with it.
+#
+# Telling `unknown` and `denied` apart is the whole point, and it is the same distinction
+# _probe_dev_image makes for the registry. A token that cannot read the runs of the plugin repo
+# answers the same way every 20 seconds, so treating that as "still running" spends the whole
+# timeout to report a secret that was wrong before the job started.
+#
+# Never fails: the state is the answer.
 # Usage: _prebuild_run_state <repo> <token> <run id>
 _prebuild_run_state() {
-  local REPO=$1 TOKEN=$2 RUN_ID=$3 JSON STATE
+  local REPO=$1 TOKEN=$2 RUN_ID=$3 JSON ERR_FILE STATUS=0
 
-  JSON=$(GH_TOKEN="$TOKEN" gh run view "$RUN_ID" -R "$REPO" --json status,conclusion 2>/dev/null) || {
-    echo unknown
+  # gh writes the reason to stderr, and the JSON to stdout, so the two are kept apart. Merging them
+  # would put any notice of gh into the text that jq reads.
+  ERR_FILE=$(mktemp)
+  JSON=$(GH_TOKEN="$TOKEN" gh run view "$RUN_ID" -R "$REPO" --json status,conclusion 2>"$ERR_FILE") || STATUS=$?
+
+  if [ "$STATUS" -ne 0 ]; then
+    ROR_PREBUILD_LAST_RUN_READ_ERROR=$(cat "$ERR_FILE")
+    rm -f "$ERR_FILE"
+    ROR_PREBUILD_RUN_STATE=$(_prebuild_read_failure_state "$ROR_PREBUILD_LAST_RUN_READ_ERROR")
     return 0
-  }
-  STATE=$(echo "$JSON" | jq -r 'if .status != "completed" then "running" else (.conclusion // "unknown") end' 2>/dev/null) ||
-    STATE=unknown
-  echo "${STATE:-unknown}"
+  fi
+  rm -f "$ERR_FILE"
+  ROR_PREBUILD_LAST_RUN_READ_ERROR=""
+
+  ROR_PREBUILD_RUN_STATE=$(echo "$JSON" |
+    jq -r 'if .status != "completed" then "running" else (.conclusion // "unknown") end' 2>/dev/null) ||
+    ROR_PREBUILD_RUN_STATE=unknown
+  [ -n "$ROR_PREBUILD_RUN_STATE" ] || ROR_PREBUILD_RUN_STATE=unknown
 }
 
 # Set by _dispatch_prebuild_workflow so the plugin-specific wrappers below can stash the run they
@@ -468,32 +510,56 @@ dispatch_prebuild_images() {
 #   0 - the run succeeded
 #   4 - the run did not finish within the timeout
 #   6 - the run finished without succeeding
+#   8 - the run cannot be read, and asking again will not change that
 #
-# A state that cannot be read counts as "still running": a single failed API call must not end a
-# healthy wait.
+# A state that cannot be read counts as "still running", because a single failed API call must not
+# end a healthy wait. A state that is refused does not: see the `denied` branch below.
 #
 # Usage: _wait_for_prebuild_run <label> <repo> <token> <run id> <run url> <timeout seconds>
 _wait_for_prebuild_run() {
   local LABEL=$1 REPO=$2 TOKEN=$3 RUN_ID=$4 RUN_URL=$5 TIMEOUT=$6
-  local WAITED=0 UNREADABLE=0 STATE
+  local WAITED=0 UNREADABLE=0 DENIED=0 STATE
 
   echo ""
   echo ">>> Waiting for the $LABEL pre-build run to finish (timeout: $((TIMEOUT / 60)) min)${RUN_URL:+: $RUN_URL}"
 
   while true; do
-    STATE=$(_prebuild_run_state "$REPO" "$TOKEN" "$RUN_ID")
+    # Not `STATE=$(...)`: the state comes back in a variable, so that the text of a failed read
+    # survives with it.
+    _prebuild_run_state "$REPO" "$TOKEN" "$RUN_ID"
+    STATE=$ROR_PREBUILD_RUN_STATE
     case "$STATE" in
       success)
         echo ">>> The $LABEL pre-build run succeeded after $((WAITED / 60)) min."
         return 0
         ;;
-      running) ;;
+      running) DENIED=0 ;;
       unknown)
         UNREADABLE=$((UNREADABLE + 1))
         # Once is enough; repeating it every 20 seconds would bury the rest of the log.
         if [ "$UNREADABLE" -eq 1 ]; then
-          echo "WARNING: the state of the $LABEL run could not be read. The wait continues, but if the"
-          echo "         token or the run id is wrong, the wait can only end with the timeout."
+          echo "WARNING: the state of the $LABEL run could not be read. The wait continues, because"
+          echo "         this answer can change. A rate limit reads this way, and so does a network"
+          echo "         error."
+        fi
+        ;;
+      denied)
+        DENIED=$((DENIED + 1))
+        # The second refusal in a row ends the wait. The first one does not: GitHub answers 404 for a
+        # run it has not finished registering, and one bad answer during an incident must not fail a
+        # build that is running well.
+        if [ "$DENIED" -lt 2 ]; then
+          echo "WARNING: reading the state of the $LABEL run was refused. Asking once more."
+        else
+          echo "ERROR: the $LABEL pre-build run cannot be read, and asking again will not change that."
+          echo "       The last answer from gh was:"
+          echo "       $ROR_PREBUILD_LAST_RUN_READ_ERROR"
+          echo "       The token for $REPO must be able to read the runs of that repo ('actions:read'),"
+          echo "       and run $RUN_ID must exist there. The wait stops here rather than spend the whole"
+          echo "       $((TIMEOUT / 60)) min to say the same thing: without the run there is nothing to"
+          echo "       follow, and the registry cannot show a failed build."
+          echo "       Run: ${RUN_URL:-<unknown>}"
+          return 8
         fi
         ;;
       *)
@@ -506,8 +572,9 @@ _wait_for_prebuild_run() {
     if [ "$WAITED" -ge "$TIMEOUT" ]; then
       echo "ERROR: the $LABEL pre-build run did not finish within $((WAITED / 60)) min."
       if [ "$UNREADABLE" -gt 0 ]; then
-        echo "       $UNREADABLE state requests failed, so the run may have finished. The cause is then"
-        echo "       this job, and not the build."
+        echo "       $UNREADABLE state requests failed, so the run may have finished. GitHub did not"
+        echo "       refuse them, so look for a rate limit on the token, or for a network fault."
+        echo "       The last one said: $ROR_PREBUILD_LAST_RUN_READ_ERROR"
       fi
       echo "       Run: ${RUN_URL:-<unknown>}"
       return 4
@@ -560,10 +627,11 @@ _verify_dev_image() {
 # one GitHub request gives for free.
 #
 # Returns 0, or one of:
-#   1 - wrong arguments          4 - the run did not finish in time
-#   2 - unknown plugin           5 - the run succeeded, and an image is not in the registry
-#   3 - no run to follow         6 - the run failed
-#                                7 - the registry could not be queried
+#   1 - wrong arguments          5 - the run succeeded, and an image is not in the registry
+#   2 - unknown plugin           6 - the run failed
+#   3 - no run to follow         7 - the registry could not be queried
+#   4 - the run did not finish   8 - the run could not be read: the token or the run id is wrong
+#       in time
 #
 # Usage: wait_for_plugin_prebuild_images <es|kbn> <versions> <run tag>
 wait_for_plugin_prebuild_images() {

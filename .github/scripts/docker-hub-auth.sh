@@ -82,11 +82,11 @@ _ror_docker_auth_failed() {
 _ror_docker_auth() {
   local user token role auth
 
-  if _ror_docker_auth_isset "${DOCKER_REGISTRY_USER:-}" DOCKER_REGISTRY_USER \
-     && _ror_docker_auth_isset "${DOCKER_REGISTRY_PASSWORD:-}" DOCKER_REGISTRY_PASSWORD; then
+  if _ror_docker_auth_isset "${DOCKER_REGISTRY_USER:-}" \
+     && _ror_docker_auth_isset "${DOCKER_REGISTRY_PASSWORD:-}"; then
     user=$DOCKER_REGISTRY_USER; token=$DOCKER_REGISTRY_PASSWORD; role="push"
-  elif _ror_docker_auth_isset "${DOCKER_HUB_USER:-}" DOCKER_HUB_USER \
-     && _ror_docker_auth_isset "${DOCKER_HUB_RO_TOKEN:-}" DOCKER_HUB_RO_TOKEN; then
+  elif _ror_docker_auth_isset "${DOCKER_HUB_USER:-}" \
+     && _ror_docker_auth_isset "${DOCKER_HUB_RO_TOKEN:-}"; then
     user=$DOCKER_HUB_USER; token=$DOCKER_HUB_RO_TOKEN; role="read-only"
   else
     _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and DOCKER_REGISTRY_PASSWORD, or DOCKER_HUB_USER and DOCKER_HUB_RO_TOKEN)"
@@ -102,19 +102,14 @@ _ror_docker_auth() {
   auth=$(printf '%s:%s' "$user" "$token" | base64 | tr -d '\n')
   export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$auth\"}}}"
 
-  # Hide the value from the log, because it contains base64(user:token), and give it to the later
-  # steps of the job. These are two commands, not one. ::add-mask:: only hides: a step is its own
-  # process, so the export above dies with the step that sourced this file. A job that sources the
-  # file in a step of its own therefore needs the write to GITHUB_ENV, or testcontainers in a later
-  # step reads no value and pulls anonymously while the log says authentication is ON. The value
-  # holds no newline, because `tr` removed them, so the NAME=value form is enough here.
+  # Hide the value from the log first, because it contains base64(user:token). Mask before anything
+  # can print it, and thus before the login below.
   #
-  # Outside GitHub Actions (a developer running this by hand) both commands are skipped. The export
-  # still stands, so the shell that sourced the file is authenticated.
+  # Outside GitHub Actions (a developer running this by hand) this is skipped. The export above still
+  # stands, so the shell that sourced the file is authenticated.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
     echo "::add-mask::$auth"
     echo "::add-mask::$DOCKER_AUTH_CONFIG"
-    echo "DOCKER_AUTH_CONFIG=$DOCKER_AUTH_CONFIG" >> "$GITHUB_ENV"
   fi
 
   if ! command -v docker >/dev/null 2>&1; then
@@ -128,6 +123,21 @@ _ror_docker_auth() {
   if ! printf '%s' "$token" | docker login -u "$user" --password-stdin >/dev/null; then
     _ror_docker_auth_failed "the docker login failed for the user '$user'"
     return $?
+  fi
+
+  # Give the value to the later steps of the job, and only now. A step is its own process, so the
+  # export above dies with the step that sourced this file. A job that sources the file in a step of
+  # its own therefore needs this write, or testcontainers in a later step reads no value and pulls
+  # anonymously while the log says authentication is ON.
+  #
+  # This comes after the login on purpose. The script stops the caller shell when the login fails,
+  # but a step with `continue-on-error: true` lets the job go on, and GITHUB_ENV outlives the step.
+  # Writing before the login would hand the later steps credentials that are known bad. No job here
+  # sets that option today. With this order, "the variable is set" means "the login succeeded".
+  #
+  # The value holds no newline, because `tr` removed them, so the NAME=value form is enough here.
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    echo "DOCKER_AUTH_CONFIG=$DOCKER_AUTH_CONFIG" >> "$GITHUB_ENV"
   fi
 
   echo "[CI] Docker authentication is ON. User '$user', $role credentials. The docker CLI and testcontainers use them."
