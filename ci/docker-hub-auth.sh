@@ -100,7 +100,7 @@ _ror_docker_auth() {
      && _ror_docker_auth_isset "${DOCKER_HUB_RO_TOKEN:-}" DOCKER_HUB_RO_TOKEN; then
     user=$DOCKER_HUB_USER; token=$DOCKER_HUB_RO_TOKEN; role="read-only"
   else
-    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and PASSWORD, or DOCKER_HUB_USER and RO_TOKEN)"
+    _ror_docker_auth_no_credentials "the job supplied no credentials (DOCKER_REGISTRY_USER and DOCKER_REGISTRY_PASSWORD, or DOCKER_HUB_USER and DOCKER_HUB_RO_TOKEN)"
     return $?
   fi
 

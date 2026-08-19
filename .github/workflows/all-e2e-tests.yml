@@ -43,8 +43,8 @@ jobs:
       - &docker_auth
         name: Authenticate Docker
         env:
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
         run: source ci/docker-hub-auth.sh
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
