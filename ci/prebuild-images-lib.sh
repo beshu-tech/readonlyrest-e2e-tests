@@ -26,6 +26,11 @@
 #   * an authenticated docker CLI in every waiting job. Each repo has its own docker-hub-auth.sh.
 #   * ROR_<ES|KBN>_WAIT_TIMEOUT_SECONDS, when one run builds several versions and thus takes longer
 #     than the default for one.
+#   * a title on the pre-build run, which the plugin repo owns:
+#         run-name: ROR <ES|KBN> pre-build ${{ inputs.tag }}
+#     A dispatch is not told which run it created, so the search after it matches this title. Without
+#     the line, two dispatches in the same minute cannot be told apart, and this repo refuses to guess
+#     between them.
 #
 # In return:
 #   * wait_for_<es|kbn>_prebuild_images returns 0 only when every image it was asked for is in the
@@ -192,30 +197,48 @@ _iso8601_minutes_ago() {
     date -u -r "$EPOCH" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null
 }
 
-# Dispatching does not tell us which run it created, so the run has to be found afterwards: the
-# newest one of that workflow created since we asked. Echoes "<run id> <run url>".
+# One look for the run that carries a given title, among the runs of one workflow that started since
+# we asked. Echoes "<run id> <run url>", or nothing when there is no such run yet — which is also what
+# a failed request or a failed parse gives, and the caller retries either way.
 #
-# The wait follows the run found here, and it asks the registry only after that run succeeds. A
-# dispatch that cannot find its run is therefore a failed dispatch, and the caller stops. The
-# `--limit 20` window and the timestamp filter can both miss under heavy concurrency in the plugin
-# repo; the attempts below make that rare.
-# Usage: _locate_prebuild_run <repo> <workflow> <token> <created-since ISO8601>
-_locate_prebuild_run() {
-  local REPO=$1 WORKFLOW=$2 TOKEN=$3 SINCE=$4 ATTEMPT RUN
+# Comparing the timestamps as strings is exact: gh and `date` above both emit YYYY-MM-DDTHH:MM:SSZ,
+# which sorts lexicographically.
+# Usage: _prebuild_run_by_title <repo> <workflow> <token> <created-since ISO8601> <title>
+_prebuild_run_by_title() {
+  local REPO=$1 WORKFLOW=$2 TOKEN=$3 SINCE=$4 TITLE=$5
+  GH_TOKEN="$TOKEN" gh run list -R "$REPO" --workflow "$WORKFLOW" --limit 20 \
+    --json databaseId,url,createdAt,displayTitle 2>/dev/null |
+    jq -r --arg since "$SINCE" --arg title "$TITLE" \
+      '[.[] | select(.createdAt >= $since and .displayTitle == $title)]
+       | sort_by(.createdAt) | last // empty | "\(.databaseId) \(.url)"' 2>/dev/null || true
+}
 
-  # Comparing the timestamps as strings is exact: gh and `date` above both emit
-  # YYYY-MM-DDTHH:MM:SSZ, which sorts lexicographically.
-  #
-  # The sleep comes first on purpose. GitHub takes a moment to register a dispatched run, and the
-  # window is backdated, so asking immediately can return somebody else's slightly older run of the
-  # same workflow and latch onto it. Waiting first makes our run — the newest — the one `last` picks.
+# Dispatching does not tell us which run it created, so the run has to be found afterwards. The wait
+# then follows that run and reports what it did, so the wrong run is worse than no run: the job would
+# wait for somebody else's build and then blame its own tag.
+#
+# The title is what makes the choice exact. The pre-build workflow sets
+#
+#   run-name: ROR <ES|KBN> pre-build ${{ inputs.tag }}
+#
+# and the tag holds the run id and the attempt, so the title belongs to one dispatch only. Time alone
+# cannot do this: two dispatches four seconds apart both fall in the window, and "the newest" then
+# gives the second one to both jobs.
+#
+# A run with no title is nobody's run here. The workflow file on that ref has no run-name line, and
+# this file cannot tell that run from any other; it fails instead. So the run-name line must be on
+# every ref this dispatches to BEFORE this file reaches them.
+#
+# Echoes "<run id> <run url>".
+# Usage: _locate_prebuild_run <repo> <workflow> <token> <created-since ISO8601> <expected title>
+_locate_prebuild_run() {
+  local REPO=$1 WORKFLOW=$2 TOKEN=$3 SINCE=$4 TITLE=$5 ATTEMPT RUN
+
+  # The sleep comes first on purpose. GitHub takes a moment to register a dispatched run, so asking
+  # immediately finds nothing.
   for ATTEMPT in 1 2 3 4 5 6 7 8 9 10 11 12; do
     sleep 5
-    RUN=$(GH_TOKEN="$TOKEN" gh run list -R "$REPO" --workflow "$WORKFLOW" --limit 20 \
-      --json databaseId,url,createdAt 2>/dev/null |
-      jq -r --arg since "$SINCE" \
-        '[.[] | select(.createdAt >= $since)] | sort_by(.createdAt) | last // empty
-         | "\(.databaseId) \(.url)"' 2>/dev/null) || RUN=""
+    RUN=$(_prebuild_run_by_title "$REPO" "$WORKFLOW" "$TOKEN" "$SINCE" "$TITLE")
     if [ -n "$RUN" ]; then
       echo "$RUN"
       return 0
@@ -249,10 +272,23 @@ _ROR_LAST_DISPATCH_RUN_URL=""
 # Runs `gh workflow run` for one plugin. The plugins differ only in repo, workflow, token and input
 # names, so the caller supplies the `-f key=value` pairs.
 #
-# Usage: _dispatch_prebuild_workflow <label> <repo> <workflow> <ref> <token> <-f pairs...>
+# The run tag names the title that the run carries, so the search after the dispatch can be exact.
+# This is the only place that builds that title, and the run-name line in both pre-build workflows
+# must produce the same text.
+#
+# Usage: _dispatch_prebuild_workflow <label> <repo> <workflow> <ref> <token> <run tag> <-f pairs...>
 _dispatch_prebuild_workflow() {
-  local LABEL=$1 REPO=$2 WORKFLOW=$3 REF=$4 TOKEN=$5
-  shift 5
+  local LABEL=$1 REPO=$2 WORKFLOW=$3 REF=$4 TOKEN=$5 RUN_TAG=$6
+  shift 6
+
+  # Checked before the dispatch: without a tag there is no title, the run cannot be recognised, and a
+  # build would start that nobody can follow.
+  if [ -z "$RUN_TAG" ]; then
+    echo "ERROR: the $LABEL pre-build needs a run tag. The tag names the images, and the run carries"
+    echo "       it as its title, which is how the dispatch finds the run it created."
+    return 1
+  fi
+  local TITLE="$LABEL pre-build $RUN_TAG"
 
   local REF_ARGS=()
   [ -n "$REF" ] && REF_ARGS=(--ref "$REF")
@@ -279,15 +315,18 @@ _dispatch_prebuild_workflow() {
   _ROR_LAST_DISPATCH_RUN_URL=""
 
   local RUN
-  if ! RUN=$(_locate_prebuild_run "$REPO" "$WORKFLOW" "$TOKEN" "$SINCE"); then
+  if ! RUN=$(_locate_prebuild_run "$REPO" "$WORKFLOW" "$TOKEN" "$SINCE" "$TITLE"); then
     echo "ERROR: the $LABEL pre-build started, but its run could not be found in $REPO."
     echo "       The wait follows that run, so there is nothing to wait for. The job stops here. It"
     echo "       does not poll the registry instead: that spends the Docker Hub pull budget and still"
     echo "       cannot show a failed build."
     echo "       The run itself continues, and this failure does not affect it. Re-run this job."
-    echo "       Two causes are likely if this repeats: the token cannot list the runs of $REPO"
-    echo "       ('gh run list' needs the actions:read scope), or '$WORKFLOW' runs so often that ours"
-    echo "       is not in the 20 most recent."
+    echo "       The run is found by its title, '$TITLE'. Three causes are likely:"
+    echo "       * '$WORKFLOW' on ref '${REF:-<default>}' has no 'run-name:' line, so its runs carry"
+    echo "         the workflow name and none of them can be told from another. Add to that file:"
+    echo "             run-name: $LABEL pre-build \${{ inputs.tag }}"
+    echo "       * the token cannot list the runs of $REPO ('gh run list' needs actions:read)."
+    echo "       * '$WORKFLOW' runs so often that ours is not in the 20 most recent."
     return 4
   fi
 
@@ -351,7 +390,7 @@ dispatch_kbn_prebuild_image() {
 
   # Same naming rule as ES below: these must match the workflow's inputs on its default branch.
   _dispatch_prebuild_workflow "ROR KBN" \
-    "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" \
+    "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" "$RUN_TAG" \
     -f "kbn_versions=$KBN_VERSIONS" \
     -f "target_branch=$TARGET_BRANCH" \
     -f "tag=$RUN_TAG" \
@@ -389,7 +428,7 @@ dispatch_es_prebuild_image() {
   # dispatch against that copy, not against the one on WORKFLOW_REF. A mismatch fails with 422
   # "Unexpected inputs provided", listing the names it did not recognise.
   _dispatch_prebuild_workflow "ROR ES" \
-    "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ES_REPO_GH_TOKEN" \
+    "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ES_REPO_GH_TOKEN" "$RUN_TAG" \
     -f "es_versions=$ES_VERSIONS" \
     -f "target_branch=$TARGET_BRANCH" \
     -f "tag=$RUN_TAG" \
@@ -597,9 +636,11 @@ wait_for_plugin_prebuild_images() {
     fi
 
     echo "ERROR: $WHERE succeeded, but $IMAGE is not in the registry."
-    echo "       The run published a tag that is different from the one this job asked for. Compare"
-    echo "       the tag it wrote against '$RUN_TAG', and the repo against the ROR_*_DEV_IMAGE_REPO"
-    echo "       defaults in this file."
+    echo "       Open the run below and compare the tags it wrote against '$RUN_TAG', and the repo it"
+    echo "       pushed to against the ROR_*_DEV_IMAGE_REPO defaults in this file."
+    echo "       Check first that the run is the one this job dispatched. The title of a run names its"
+    echo "       tag, so a title that does not hold '$RUN_TAG' means the job followed another run, and"
+    echo "       the workflow file on that branch has no 'run-name:' line."
     echo "       Run: ${RUN_URL:-<unknown>}"
     return 5
   done
