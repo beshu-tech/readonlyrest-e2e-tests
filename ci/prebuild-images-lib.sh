@@ -21,13 +21,15 @@
 #   * the run the dispatch identified. It leaves the run in ROR_<ES|KBN>_PREBUILD_RUN_ID and
 #     ROR_<ES|KBN>_PREBUILD_RUN_URL. The waiting jobs are other processes on other machines, so the
 #     caller carries both values to them, usually as job outputs.
-#   * a GitHub token for the plugin repo, in ES_REPO_GH_TOKEN or KBN_REPO_GH_TOKEN. It must be able
-#     to dispatch a workflow and to read the runs of that repo.
+#   * a GitHub token for the plugin repo, in ROR_GH_TOKEN. The token must dispatch a workflow and
+#     read the runs of that repo. Both callers use this name, for the dispatch and for the wait.
 #   * an authenticated docker CLI in every waiting job. Each repo has its own docker-hub-auth.sh.
 #   * ROR_<ES|KBN>_WAIT_TIMEOUT_SECONDS, when one run builds several versions and thus takes longer
 #     than the default for one.
 #   * a title on the pre-build run, which the plugin repo owns:
-#         run-name: ROR <ES|KBN> pre-build ${{ inputs.tag }}
+#         run-name: ROR <ES|KBN> pre-build ${{ inputs.tag || inputs.<es|kbn>_versions }}
+#     The caller must supply the text that a run with a tag shows. The expression can differ. The
+#     fallback above names a dispatch that sends no tag, and no search looks for such a title.
 #     A dispatch is not told which run it created, so the search after it matches this title. Without
 #     the line, two dispatches in the same minute cannot be told apart, and this repo refuses to guess
 #     between them.
@@ -219,11 +221,13 @@ _prebuild_run_by_title() {
 #
 # The title is what makes the choice exact. The pre-build workflow sets
 #
-#   run-name: ROR <ES|KBN> pre-build ${{ inputs.tag }}
+#   run-name: ROR <ES|KBN> pre-build ${{ inputs.tag || inputs.<es|kbn>_versions }}
 #
-# and the tag holds the run id and the attempt, so the title belongs to one dispatch only. Time alone
-# cannot do this: two dispatches four seconds apart both fall in the window, and "the newest" then
-# gives the second one to both jobs.
+# and the tag holds the run id and the attempt, so the title belongs to one dispatch only. A dispatch
+# from here always sends a tag. So the search below always looks for the title that the tag makes.
+# The fallback applies only to a dispatch that sends no tag, and no search looks for that title.
+# Time alone cannot do this: two dispatches four seconds apart both fall in the window, and "the
+# newest" then gives the second one to both jobs.
 #
 # A run with no title is nobody's run here. The workflow file on that ref has no run-name line, and
 # this file cannot tell that run from any other; it fails instead. So the run-name line must be on
