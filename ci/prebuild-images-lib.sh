@@ -421,18 +421,18 @@ dispatch_kbn_prebuild_image() {
   RUN_TAG=$3
   FORCE_REBUILD=${4:-false}
 
-  _require_dispatch_token KBN_REPO_GH_TOKEN "ROR KBN" || return $?
+  _require_dispatch_token ROR_GH_TOKEN "ROR KBN" || return $?
 
   local WORKFLOW_REF
   WORKFLOW_REF=$(_resolve_workflow_ref "$ROR_KBN_PUBLISH_WORKFLOW_REF" "$ROR_KBN_GH_REPO" \
-    "$KBN_REPO_GH_TOKEN" "$TARGET_BRANCH" "$ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF")
+    "$ROR_GH_TOKEN" "$TARGET_BRANCH" "$ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF")
 
   echo ""
   echo ">>> Dispatching ROR KBN pre-build: versions=$KBN_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
 
   # Same naming rule as ES below: these must match the workflow's inputs on its default branch.
   _dispatch_prebuild_workflow "ROR KBN" \
-    "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$KBN_REPO_GH_TOKEN" "$RUN_TAG" \
+    "$ROR_KBN_GH_REPO" "$ROR_KBN_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ROR_GH_TOKEN" "$RUN_TAG" \
     -f "kbn_versions=$KBN_VERSIONS" \
     -f "target_branch=$TARGET_BRANCH" \
     -f "tag=$RUN_TAG" \
@@ -457,11 +457,11 @@ dispatch_es_prebuild_image() {
   RUN_TAG=$3
   FORCE_REBUILD=${4:-false}
 
-  _require_dispatch_token ES_REPO_GH_TOKEN "ROR ES" || return $?
+  _require_dispatch_token ROR_GH_TOKEN "ROR ES" || return $?
 
   local WORKFLOW_REF
   WORKFLOW_REF=$(_resolve_workflow_ref "$ROR_ES_PUBLISH_WORKFLOW_REF" "$ROR_ES_GH_REPO" \
-    "$ES_REPO_GH_TOKEN" "$TARGET_BRANCH" "$ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF")
+    "$ROR_GH_TOKEN" "$TARGET_BRANCH" "$ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF")
 
   echo ""
   echo ">>> Dispatching ROR ES pre-build: versions=$ES_VERSIONS tag=$RUN_TAG branch=$TARGET_BRANCH${WORKFLOW_REF:+ (workflow ref: $WORKFLOW_REF)}"
@@ -470,7 +470,7 @@ dispatch_es_prebuild_image() {
   # dispatch against that copy, not against the one on WORKFLOW_REF. A mismatch fails with 422
   # "Unexpected inputs provided", listing the names it did not recognise.
   _dispatch_prebuild_workflow "ROR ES" \
-    "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ES_REPO_GH_TOKEN" "$RUN_TAG" \
+    "$ROR_ES_GH_REPO" "$ROR_ES_PUBLISH_WORKFLOW" "$WORKFLOW_REF" "$ROR_GH_TOKEN" "$RUN_TAG" \
     -f "es_versions=$ES_VERSIONS" \
     -f "target_branch=$TARGET_BRANCH" \
     -f "tag=$RUN_TAG" \
@@ -652,7 +652,7 @@ wait_for_plugin_prebuild_images() {
       RUN_ID=${ROR_ES_PREBUILD_RUN_ID:-}
       RUN_URL=${ROR_ES_PREBUILD_RUN_URL:-}
       RUN_REPO=$ROR_ES_GH_REPO
-      RUN_TOKEN=${ES_REPO_GH_TOKEN:-}
+      RUN_TOKEN=${ROR_GH_TOKEN:-}
       ;;
     kbn)
       LABEL="ROR KBN"
@@ -661,7 +661,7 @@ wait_for_plugin_prebuild_images() {
       RUN_ID=${ROR_KBN_PREBUILD_RUN_ID:-}
       RUN_URL=${ROR_KBN_PREBUILD_RUN_URL:-}
       RUN_REPO=$ROR_KBN_GH_REPO
-      RUN_TOKEN=${KBN_REPO_GH_TOKEN:-}
+      RUN_TOKEN=${ROR_GH_TOKEN:-}
       ;;
     *)
       echo "ERROR: wait_for_plugin_prebuild_images: plugin must be 'es' or 'kbn', got '$PLUGIN'"
