@@ -4,7 +4,8 @@ metadata:
   name: eck-ror
 spec:
   version: ${KBN_VERSION}
-  image: ${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}
+  # start.sh builds this name, pulls it on the host and loads it into the Kind nodes.
+  image: ${ROR_KBN_IMAGE}
   count: 1
   elasticsearchRef:
     name: eck-ror
@@ -25,6 +26,7 @@ spec:
     spec:
       containers:
         - name: kibana
+          imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: false
             runAsUser: 0
