@@ -54,6 +54,11 @@ SK="${!SK_VAR}"
 BUCKET="${!BUCKET_VAR}"
 REGION="${!REGION_VAR}"
 PATH_PREFIX="${!PREFIX_VAR:-}"
+# The store variables end with a slash (ROR_S3_PATH_E2E_REPORTS is `ror/e2e_reports/`) and the callers
+# append `/build_<run id>` to them, so the key reaches us with `//` in the middle. The DGP gateway
+# answers 400 to every PUT with a doubled slash, which loses all the artifacts of a red run. Squeeze
+# the repeats here instead of trusting each variable to be clean.
+PATH_PREFIX="$(printf '%s' "$PATH_PREFIX" | tr -s '/')"
 
 SOURCE_DIR="${1:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"
 S3_SUBFOLDER="${2:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"
