@@ -42,6 +42,10 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
+      # Chrome replaces Electron while we chase the renderer crash in Reporting.cy.ts.
+      # This fails in a second if the runner image ever drops Chrome.
+      - name: Show Chrome version
+        run: google-chrome --version
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -58,6 +62,7 @@ jobs:
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+          CYPRESS_BROWSER: chrome
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
@@ -156,6 +161,10 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
+      # Chrome replaces Electron while we chase the renderer crash in Reporting.cy.ts.
+      # This fails in a second if the runner image ever drops Chrome.
+      - name: Show Chrome version
+        run: google-chrome --version
       # Retry mechanism to handle transient infrastructure issues:
       # - npm error 429 Too Many Requests from registry.npmjs.org
       # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
@@ -171,6 +180,7 @@ jobs:
             ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_ES_VERSION }} --ror-kbn ${{ env.ROR_KBN_VERSION }} --mode ${{ env.MODE }}
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+          CYPRESS_BROWSER: chrome
 
       - name: Stop Docker memory monitor
         if: always()

@@ -42,7 +42,7 @@ if [[ "$ENV_NAME" != "elk-ror" && "$ENV_NAME" != "eck-ror" ]]; then
   exit 1
 fi
 
-echo "Running E2E Cypress tests (mode: $RUN_TYPE) ..."
+echo "Running E2E Cypress tests (mode: $RUN_TYPE, browser: ${CYPRESS_BROWSER:-electron}) ..."
 
 yarn --frozen-lockfile install
 
