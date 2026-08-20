@@ -27,7 +27,6 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
-export ELECTRON_EXTRA_LAUNCH_ARGS="--disable-gpu"
 KBN_VERSION="$1"
 ENV_NAME="$2"
 RUN_TYPE="${3:-run}" # Default to "run" if not provided
