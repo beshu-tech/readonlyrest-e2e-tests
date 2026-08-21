@@ -196,10 +196,45 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
 });
 
 /**
- * Chrome refuses navigator.clipboard.readText() until the browser grants the permission, which is
- * why every clipboard test failed with NotAllowedError when the suite moved off Electron. Electron
- * asks for nothing, so the grant runs only for a real Chromium browser. Without an origin, CDP
- * grants the permission to all origins.
+ * Chrome hands a headless test an empty clipboard. The permission grant below removes the
+ * NotAllowedError, but the read still comes back as '', while Electron always returned the copied
+ * text. So remember what the page copies — Kibana copies either through navigator.clipboard
+ * .writeText or through document.execCommand('copy') over a selected node — and give the test that
+ * text. The real clipboard stays as the fallback, which is the path Electron keeps taking.
+ */
+const COPIED_TEXT_KEY = '__rorCopiedText';
+
+const rememberCopiedText = (win: Cypress.AUTWindow, text?: string | null) => {
+  if (text) {
+    (win as unknown as Record<string, string>)[COPIED_TEXT_KEY] = text;
+  }
+};
+
+Cypress.on('window:before:load', win => {
+  const { clipboard } = win.navigator;
+  if (clipboard?.writeText) {
+    const writeText = clipboard.writeText.bind(clipboard);
+    clipboard.writeText = (text: string) => {
+      rememberCopiedText(win, text);
+      return writeText(text).catch(() => undefined);
+    };
+  }
+
+  const execCommand = win.document.execCommand.bind(win.document);
+  win.document.execCommand = (commandId: string, showUI?: boolean, value?: string) => {
+    if (commandId === 'copy') {
+      const active = win.document.activeElement;
+      const isField = active instanceof win.HTMLInputElement || active instanceof win.HTMLTextAreaElement;
+      rememberCopiedText(win, isField ? active.value : win.getSelection()?.toString());
+    }
+    return execCommand(commandId, showUI, value);
+  };
+});
+
+/**
+ * Chrome also refuses navigator.clipboard.readText() until the browser grants the permission.
+ * Electron asks for nothing, so the grant runs only for a real Chromium browser. Without an origin,
+ * CDP grants the permission to all origins.
  */
 const grantClipboardRead = () => {
   if (Cypress.browser.family !== 'chromium' || Cypress.browser.name === 'electron') {
@@ -215,12 +250,16 @@ const grantClipboardRead = () => {
 };
 
 Cypress.Commands.add('getValueFromClipboard', () =>
-  grantClipboardRead().then(() =>
-    cy.window().then(win => {
+  cy.window().then(win => {
+    const copied = (win as unknown as Record<string, string>)[COPIED_TEXT_KEY];
+    if (copied) {
+      return cy.wrap(copied, { log: false });
+    }
+    return grantClipboardRead().then(() => {
       win.focus(); // headless Chrome reads the clipboard only for a focused document
       return win.navigator.clipboard.readText();
-    })
-  )
+    });
+  })
 );
 
 Cypress.on('uncaught:exception', (err, runnable) => {
