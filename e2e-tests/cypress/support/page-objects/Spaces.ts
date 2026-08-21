@@ -1,6 +1,5 @@
 import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
-import { ManageSpaces } from './ManageSpaces';
 
 export class Spaces {
   static removeSpace(spaceName: string) {
@@ -43,8 +42,7 @@ export class Spaces {
 
   static createNewSpace(spaceName: string) {
     cy.log('Create new space');
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    ManageSpaces.getManageButtonInNavSelector().click({ force: true });
+    cy.location('search').then(search => cy.visit(`/s/default/app/management/kibana/spaces${search}`));
     cy.get('[data-test-subj=createSpace]').click();
     cy.get('[data-test-subj=addSpaceName]').type(spaceName);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
