@@ -14,10 +14,8 @@ export class Tenancy {
     'U2FsdGVkX19NA4zo3j%2BFfqlrhGwAoRnqfKlt4mELK8JYITdrBgNrxNAkXTvRn%2FAUmarKlnZBqKBK0592NX%2FWyer%2B2CvTOaL1T1PH0FoUWvEJEu7L1crZPcYG1WMike82';
 
   static checkTenancyNameInBadge(tenancyName: string, kibanaAccess: 'a' | 'rw' | 'ro' | 'ro_strict') {
-    cy.get('[data-testid="tenant-indicator"]').should($indicator => {
-      $indicator.trigger('mouseover');
-      expect($indicator).to.have.text(`${tenancyName}${kibanaAccess}`);
-    });
+    cy.get('[data-testid="tenant-indicator"]').trigger('mouseover');
+    cy.get('[data-testid="tenant-indicator"]').should('have.text', `${tenancyName}${kibanaAccess}`);
   }
 
   static getTenancyFromUrl() {

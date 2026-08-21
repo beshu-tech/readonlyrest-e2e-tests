@@ -26,6 +26,9 @@ describe('Tenancy', () => {
     ) => {
       RorMenu.changeTenancy('administrators', endUrl, '');
       cy.go('back');
+      cy.urlShouldMatch(endUrl);
+      cy.reload();
+      cy.get('[data-test-subj=globalLoadingIndicator-hidden]').should('be.visible');
     };
 
     // eslint-disable-next-line no-use-before-define
