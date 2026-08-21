@@ -235,9 +235,10 @@ Cypress.on('window:before:load', win => {
 
 Cypress.Commands.add('getValueFromClipboard', () =>
   cy
-    .window()
-    .then(win => win.navigator.clipboard.readText())
-    .then(text => {
+    .wrap(null, { log: false })
+    .should(() => expect(copiedText, 'clipboard text').not.to.be.empty)
+    .then(() => {
+      const text = copiedText;
       copiedText = '';
       return text;
     })
