@@ -195,7 +195,33 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
+/**
+ * Chrome refuses navigator.clipboard.readText() until the browser grants the permission, which is
+ * why every clipboard test failed with NotAllowedError when the suite moved off Electron. Electron
+ * asks for nothing, so the grant runs only for a real Chromium browser. Without an origin, CDP
+ * grants the permission to all origins.
+ */
+const grantClipboardRead = () => {
+  if (Cypress.browser.family !== 'chromium' || Cypress.browser.name === 'electron') {
+    return cy.wrap(null, { log: false });
+  }
+  return cy.wrap(
+    Cypress.automation('remote:debugger:protocol', {
+      command: 'Browser.grantPermissions',
+      params: { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] }
+    }),
+    { log: false }
+  );
+};
+
+Cypress.Commands.add('getValueFromClipboard', () =>
+  grantClipboardRead().then(() =>
+    cy.window().then(win => {
+      win.focus(); // headless Chrome reads the clipboard only for a focused document
+      return win.navigator.clipboard.readText();
+    })
+  )
+);
 
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**
