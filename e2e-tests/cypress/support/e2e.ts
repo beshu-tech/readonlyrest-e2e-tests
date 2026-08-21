@@ -16,29 +16,6 @@
 // Import commands.js using ES2015 syntax:
 import './commands';
 
-before(() => {
-  if (Cypress.browser.family !== 'chromium') {
-    return;
-  }
-
-  // Electron 37 denies clipboard writes in headless CI unless Chromium grants this before Kibana loads.
-  const baseUrl = Cypress.config('baseUrl');
-  if (!baseUrl) {
-    throw new Error('Cypress baseUrl is required to grant clipboard permissions');
-  }
-
-  cy.wrap(
-    Cypress.automation('remote:debugger:protocol', {
-      command: 'Browser.grantPermissions',
-      params: {
-        origin: new URL(baseUrl).origin,
-        permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite']
-      }
-    }),
-    { log: false }
-  );
-});
-
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
 /// <reference types="cypress" />

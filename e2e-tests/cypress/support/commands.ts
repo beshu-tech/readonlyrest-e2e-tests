@@ -195,7 +195,53 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
+/**
+ * Headless Linux has no system clipboard for Electron. Keep clipboard behavior in the AUT so the
+ * tests validate exactly what Kibana copies without relying on the runner's desktop session.
+ */
+let copiedText = '';
+
+Cypress.on('test:before:run', () => {
+  copiedText = '';
+});
+
+Cypress.on('window:before:load', win => {
+  Object.defineProperty(win.navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      readText: () => Promise.resolve(copiedText),
+      writeText: (text: string) => {
+        copiedText = text;
+        return Promise.resolve();
+      }
+    }
+  });
+
+  const execCommand = win.document.execCommand.bind(win.document);
+  Object.defineProperty(win.document, 'execCommand', {
+    configurable: true,
+    value: (commandId: string, showUI?: boolean, value?: string) => {
+      if (commandId !== 'copy') {
+        return execCommand(commandId, showUI, value);
+      }
+
+      const active = win.document.activeElement;
+      const isField = active instanceof win.HTMLInputElement || active instanceof win.HTMLTextAreaElement;
+      copiedText = (isField ? active.value : win.getSelection()?.toString()) ?? '';
+      return true;
+    }
+  });
+});
+
+Cypress.Commands.add('getValueFromClipboard', () =>
+  cy
+    .window()
+    .then(win => win.navigator.clipboard.readText())
+    .then(text => {
+      copiedText = '';
+      return text;
+    })
+);
 
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**
