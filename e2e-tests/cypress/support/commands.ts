@@ -195,7 +195,46 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
+/**
+ * Headless browsers can expose a clipboard API while still returning an empty value. Remember what
+ * the page copies so the tests validate Kibana's generated text without depending on the runner's
+ * system clipboard.
+ */
+const COPIED_TEXT_KEY = '__rorCopiedText';
+
+const rememberCopiedText = (win: Cypress.AUTWindow, text?: string | null) => {
+  if (text) {
+    (win as unknown as Record<string, string>)[COPIED_TEXT_KEY] = text;
+  }
+};
+
+Cypress.on('window:before:load', win => {
+  const { clipboard } = win.navigator;
+  if (clipboard?.writeText) {
+    const writeText = clipboard.writeText.bind(clipboard);
+    clipboard.writeText = (text: string) => {
+      rememberCopiedText(win, text);
+      return writeText(text).catch(() => undefined);
+    };
+  }
+
+  const execCommand = win.document.execCommand.bind(win.document);
+  win.document.execCommand = (commandId: string, showUI?: boolean, value?: string) => {
+    if (commandId === 'copy') {
+      const active = win.document.activeElement;
+      const isField = active instanceof win.HTMLInputElement || active instanceof win.HTMLTextAreaElement;
+      rememberCopiedText(win, isField ? active.value : win.getSelection()?.toString());
+    }
+    return execCommand(commandId, showUI, value);
+  };
+});
+
+Cypress.Commands.add('getValueFromClipboard', () =>
+  cy.window().then(win => {
+    const copied = (win as unknown as Record<string, string>)[COPIED_TEXT_KEY];
+    return copied ? cy.wrap(copied, { log: false }) : win.navigator.clipboard.readText();
+  })
+);
 
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**
