@@ -7,14 +7,14 @@
     "lint": "eslint .",
     "lint:fix": "yarn lint -- --fix",
     "open": "./node_modules/.bin/cypress open",
-    "run": "ELECTRON_ENABLE_LOGGING=1 ELECTRON_EXTRA_LAUNCH_ARGS=\"${ELECTRON_EXTRA_LAUNCH_ARGS:---ignore-gpu-blocklist}\" ./node_modules/.bin/cypress run --browser \"${CYPRESS_BROWSER:-electron}\""
+    "run": "ELECTRON_ENABLE_LOGGING=1 ELECTRON_EXTRA_LAUNCH_ARGS='--ignore-gpu-blocklist' ./node_modules/.bin/cypress run"
   },
   "license": "Beshu Limited, All rights reserved",
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "dependencies": {
-    "@testing-library/cypress": "^10.0.3",
-    "cypress": "14.5.4",
-    "cypress-network-idle": "^1.15.0",
+    "@testing-library/cypress": "^10.1.3",
+    "cypress": "15.21.0",
+    "cypress-network-idle": "^2.0.1",
     "form-data": "^4.0.4",
     "js-yaml": "^4.1.1",
     "node-fetch": "2.6.7",

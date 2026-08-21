@@ -51,11 +51,6 @@ jobs:
         with:
           action: start
 
-      # Chrome replaces Electron while we chase the renderer crash in Reporting.cy.ts.
-      # This fails in a second if the runner image ever drops Chrome.
-      - name: Show Chrome version
-        run: google-chrome --version
-
       - name: Run E2E tests
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
@@ -70,13 +65,11 @@ jobs:
             ./runner.sh "${PARAMS[@]}"
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
           ENV: ${{ github.event.inputs.env }}
           ELK_VERSION: ${{ github.event.inputs.elk_version }}
           ROR_ES_VERSION: ${{ github.event.inputs.ror_es_version }}
           ROR_KBN_VERSION: ${{ github.event.inputs.ror_kbn_version }}
           MODE: ${{ github.event.inputs.mode }}
-          CYPRESS_BROWSER: chrome
 
       - name: Stop Docker memory monitor
         if: always()
