@@ -123,11 +123,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 handle_error() {
-  ./environments/"$ENV_NAME"/print-logs.sh
+  local status=$?
+  ./environments/"$ENV_NAME"/print-logs.sh || true
+  return "$status"
 }
 
 cleanup() {
-  ./environments/"$ENV_NAME"/stop-and-clean.sh
+  local status=$?
+  ./environments/"$ENV_NAME"/stop-and-clean.sh || true
+  return "$status"
 }
 
 trap handle_error ERR

@@ -49,12 +49,21 @@ yarn --frozen-lockfile install
 if [[ "$RUN_TYPE" == "open" ]]; then
   yarn open --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY,envName=$ENV_NAME"
 else
-  yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY,envName=$ENV_NAME"
-fi
+  mkdir -p ../results
 
-if [[ $? -ne 0 ]]; then
-  echo "❌ E2E tests failed :("
-  exit 1
+  set +e
+  yarn run run --env="kibanaVersion=$KBN_VERSION,enterpriseActivationKey=$ROR_ACTIVATION_KEY,envName=$ENV_NAME" 2>&1 |
+    while IFS= read -r LINE || [[ -n "$LINE" ]]; do
+      printf '%s\n' "${LINE//"$ROR_ACTIVATION_KEY"/***}"
+    done |
+    tee ../results/cypress.log
+  CYPRESS_EXIT_CODE=${PIPESTATUS[0]}
+  set -e
+
+  if [[ "$CYPRESS_EXIT_CODE" -ne 0 ]]; then
+    echo "❌ E2E tests failed :("
+    exit "$CYPRESS_EXIT_CODE"
+  fi
 fi
 
 echo "✅ E2E tests result: SUCCESS"
