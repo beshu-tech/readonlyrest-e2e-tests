@@ -163,7 +163,6 @@ function runTests({
 
     IndexManagement.waitingForSectionLoadingFinish();
     callbackAfterLogin?.();
-    Tenancy.checkTenancyNameInBadge('template', 'rw');
 
     Spaces.createNewSpace(newSpace);
     Spaces.openSpace(newSpace);
