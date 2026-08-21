@@ -136,7 +136,7 @@ function runTests({
     } else {
       cy.getValueFromClipboard().should(
         'contain',
-        `<iframe src="https://localhost:5601/s/default/app/dashboards?embed=true&${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`
+        `<iframe src="https://localhost:5601/s/default/app/dashboards?embed=true&amp;${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`
       );
     }
   });

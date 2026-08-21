@@ -227,7 +227,11 @@ Cypress.on('window:before:load', win => {
 
       const active = win.document.activeElement;
       const isField = active instanceof win.HTMLInputElement || active instanceof win.HTMLTextAreaElement;
-      copiedText = (isField ? active.value : win.getSelection()?.toString()) ?? '';
+      const selectedText = (isField ? active.value : win.getSelection()?.toString()) ?? '';
+      const clipboardData = new win.DataTransfer();
+      const copyEvent = new win.ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData });
+      (active ?? win.document).dispatchEvent(copyEvent);
+      copiedText = clipboardData.getData('text/plain') || selectedText;
       return true;
     }
   });
