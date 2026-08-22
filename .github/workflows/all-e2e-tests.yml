@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["9.5.1", "9.4.5", "8.19.20", "7.17.29"]
+        version: ["9.5.2", "9.4.5", "8.19.20", "7.17.29"]
         env: [docker, eck-2.16.1, eck-3.5.0]
     steps:
       - name: Checkout code
@@ -135,7 +135,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["9.5.1", "9.4.5", "8.19.20", "7.17.29"]
+        version: ["9.5.2", "9.4.5", "8.19.20", "7.17.29"]
         env: [docker, eck-2.16.1, eck-3.5.0]
     env:
       ROR_ES_VERSION: "latest"
