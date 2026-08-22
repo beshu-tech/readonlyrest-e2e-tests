@@ -28,5 +28,6 @@ export class Loader {
       cy.window().then(win => win.location.replace(target));
     });
     cy.urlShouldMatch(`${spacePrefix}${finishUrl}`);
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]').should('exist');
   }
 }

@@ -23,6 +23,7 @@ export class Discover {
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
     cy.contains('was saved', { timeout: 10000 }).should('exist');
+    cy.url().should('include', '/view/');
   }
 
   static exportToCsv() {
