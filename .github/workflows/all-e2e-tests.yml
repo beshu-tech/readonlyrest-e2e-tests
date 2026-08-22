@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["9.5.1", "9.4.5", "8.19.20", "7.17.29"]
+        version: ["9.5.2", "9.4.5", "8.19.20", "7.17.29"]
         env: [docker, eck-2.16.1, eck-3.5.0]
     steps:
       - name: Checkout code
@@ -159,7 +159,7 @@ jobs:
         id: prepare
         env:
           # Mirrors the prod-e2e-tests matrix — keep both in sync.
-          ELK_VERSIONS: "9.5.1 9.4.5 8.19.20 7.17.29"
+          ELK_VERSIONS: "9.5.2 9.4.5 8.19.20 7.17.29"
           # On a PR, head_ref is the source branch — the plugins must be built from the PR head, not
           # from the merge ref github.ref points at. On a push, head_ref is empty and ref_name is
           # the branch that was pushed (develop).
