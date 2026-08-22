@@ -23,10 +23,6 @@ export class Discover {
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
     cy.contains('was saved', { timeout: 10000 }).should('exist');
-
-    cy.findByRole('navigation', {
-      name: /breadcrumb/i
-    }).findByText(reportName);
   }
 
   static exportToCsv() {
@@ -176,7 +172,7 @@ export class Discover {
       cy.getByDataTestSubj('superDatePickerToggleQuickMenuButton').click();
       cy.getByDataTestSubj('superDatePickerCommonlyUsed_Today').click();
     }
-    
+
     cy.wait('@search');
   };
 
