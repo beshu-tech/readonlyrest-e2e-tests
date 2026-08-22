@@ -21,10 +21,27 @@ export class Discover {
     cy.contains('Discover').click();
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
+    const usesContentManagement = semver.gte(getKibanaVersion(), '9.4.0');
+    const saveSearchUrl = usesContentManagement
+      ? '**/api/content_management/rpc/create'
+      : '**/api/saved_objects/search*';
+    cy.intercept('POST', saveSearchUrl).as('saveSearch');
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('be.enabled').click({ force: true });
     cy.get('[data-test-subj=savedObjectTitle]').should('not.exist');
     cy.contains('was saved', { timeout: 10000 }).should('exist');
-    cy.url().should('include', '/view/');
+    cy.wait('@saveSearch').then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      const savedSearchId = usesContentManagement ? response?.body.result.result.item.id : response?.body.id;
+      expect(savedSearchId).to.be.a('string');
+
+      cy.url().then(url => {
+        if (!url.includes('/view/')) {
+          cy.visit(`${url.split('#')[0]}#/view/${savedSearchId}`);
+        }
+      });
+
+      cy.url().should('include', `/view/${savedSearchId}`);
+    });
   }
 
   static exportToCsv() {
