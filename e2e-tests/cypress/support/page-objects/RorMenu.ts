@@ -1,19 +1,21 @@
 import { Loader } from './Loader';
-import semver from 'semver';
-import { getKibanaVersion } from '../helpers';
 
 export class RorMenu {
+  private static readonly TRIGGER = '#rorMenuPopover';
+  private static readonly PANEL = '#rorMenuPanel';
+
   static openRorMenu() {
-    cy.get('#rorMenuPopover').click();
+    RorMenu.clickTriggerUntilOpen();
+    cy.get(RorMenu.PANEL, { timeout: 10000 }).should('exist');
   }
 
   static closeRorMenu() {
-    cy.get('#rorMenuPopover').click();
+    cy.get(RorMenu.TRIGGER).click();
   }
 
   static openEditSecuritySettings() {
     cy.intercept('GET', '/pkp/api/settings').as('getSettings');
-    cy.contains('Edit security settings').click({ force: true });
+    cy.get(RorMenu.PANEL).contains('Edit security settings').click({ force: true });
     cy.wait('@getSettings').then(({ response }) => {
       expect([200, 304]).to.include(response.statusCode);
     });
@@ -37,9 +39,23 @@ export class RorMenu {
 
   static openDataViewsPage() {
     cy.log('open data views page');
-    cy.get('#rorMenuPopover').click();
+    RorMenu.openRorMenu();
     cy.get('.ror_kibana_management').click({ force: true });
     cy.get('.euiButtonEmpty').contains('Data View', { matchCase: false }).click({ force: true });
+  }
+
+  private static clickTriggerUntilOpen(attempt = 1): Cypress.Chainable {
+    return cy
+      .get(RorMenu.TRIGGER, { timeout: 30000 })
+      .click()
+      .wait(300, { log: false })
+      .get('body', { log: false })
+      .then($body => {
+        if ($body.find(RorMenu.PANEL).length === 0 && attempt < 3) {
+          return RorMenu.clickTriggerUntilOpen(attempt + 1);
+        }
+        return $body;
+      });
   }
 
   static pressLogoutButton() {

@@ -21,12 +21,23 @@ export class Discover {
     cy.contains('Discover').click();
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
-    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
+    const usesContentManagement = semver.gte(getKibanaVersion(), '8.19.0');
+    const saveSearchUrl = usesContentManagement
+      ? '**/api/content_management/rpc/create'
+      : '**/api/saved_objects/search*';
+    cy.intercept('POST', saveSearchUrl).as('saveSearch');
+    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('be.enabled').click({ force: true });
+    cy.get('[data-test-subj=savedObjectTitle]').should('not.exist');
     cy.contains('was saved', { timeout: 10000 }).should('exist');
+    cy.wait('@saveSearch').then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      const savedSearchId = usesContentManagement ? response?.body.result.result.item.id : response?.body.id;
+      expect(savedSearchId).to.be.a('string');
 
-    cy.findByRole('navigation', {
-      name: /breadcrumb/i
-    }).findByText(reportName);
+      if (!usesContentManagement) {
+        cy.url().should('include', `/view/${savedSearchId}`);
+      }
+    });
   }
 
   static exportToCsv() {
@@ -176,7 +187,7 @@ export class Discover {
       cy.getByDataTestSubj('superDatePickerToggleQuickMenuButton').click();
       cy.getByDataTestSubj('superDatePickerCommonlyUsed_Today').click();
     }
-    
+
     cy.wait('@search');
   };
 

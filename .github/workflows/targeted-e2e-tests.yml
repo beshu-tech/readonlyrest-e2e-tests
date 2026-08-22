@@ -65,7 +65,6 @@ jobs:
             ./runner.sh "${PARAMS[@]}"
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
           ENV: ${{ github.event.inputs.env }}
           ELK_VERSION: ${{ github.event.inputs.elk_version }}
           ROR_ES_VERSION: ${{ github.event.inputs.ror_es_version }}

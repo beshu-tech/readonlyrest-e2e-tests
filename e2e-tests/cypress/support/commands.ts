@@ -195,7 +195,58 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
+/**
+ * Headless Linux has no system clipboard for Electron. Keep clipboard behavior in the AUT so the
+ * tests validate exactly what Kibana copies without relying on the runner's desktop session.
+ */
+let copiedText = '';
+
+Cypress.on('test:before:run', () => {
+  copiedText = '';
+});
+
+Cypress.on('window:before:load', win => {
+  Object.defineProperty(win.navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      readText: () => Promise.resolve(copiedText),
+      writeText: (text: string) => {
+        copiedText = text;
+        return Promise.resolve();
+      }
+    }
+  });
+
+  const execCommand = win.document.execCommand.bind(win.document);
+  Object.defineProperty(win.document, 'execCommand', {
+    configurable: true,
+    value: (commandId: string, showUI?: boolean, value?: string) => {
+      if (commandId !== 'copy') {
+        return execCommand(commandId, showUI, value);
+      }
+
+      const active = win.document.activeElement;
+      const isField = active instanceof win.HTMLInputElement || active instanceof win.HTMLTextAreaElement;
+      const selectedText = (isField ? active.value : win.getSelection()?.toString()) ?? '';
+      const clipboardData = new win.DataTransfer();
+      const copyEvent = new win.ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData });
+      (active ?? win.document).dispatchEvent(copyEvent);
+      copiedText = clipboardData.getData('text/plain') || selectedText;
+      return true;
+    }
+  });
+});
+
+Cypress.Commands.add('getValueFromClipboard', () =>
+  cy
+    .wrap(null, { log: false })
+    .should(() => expect(copiedText, 'clipboard text').not.to.be.empty)
+    .then(() => {
+      const text = copiedText;
+      copiedText = '';
+      return text;
+    })
+);
 
 Cypress.on('uncaught:exception', (err, runnable) => {
   /**

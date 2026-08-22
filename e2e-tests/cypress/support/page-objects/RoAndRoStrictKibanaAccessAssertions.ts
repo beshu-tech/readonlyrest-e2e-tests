@@ -19,7 +19,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     kbnApiClient.loadSampleData('ecommerce', credentials, 'template_group');
     Settings.setSettingsData(fixtureYamlFileName);
     Login.initialization();
-    RoAndRoStrictKibanaAccessAssertions.changeTenancyAndAwaitSpaces('template');
+    RorMenu.changeTenancy('template');
     Home.loadSampleDataButtonHidden();
 
     cy.log('Verify Dashboard features');
@@ -110,15 +110,5 @@ export class RoAndRoStrictKibanaAccessAssertions {
     IndexPattern.deleteIndexPatternButtonHidden();
     IndexPattern.addIndexButtonHidden();
     IndexPattern.rowEditItemButtonsHidden();
-  }
-
-  private static changeTenancyAndAwaitSpaces(tenancyName: string) {
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
-      cy.intercept('*/bundles/plugin/spaces/1.0.0/spaces.chunk*').as('spacesPlugin');
-    }
-    RorMenu.changeTenancy(tenancyName);
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
-      cy.wait('@spacesPlugin');
-    }
   }
 }
