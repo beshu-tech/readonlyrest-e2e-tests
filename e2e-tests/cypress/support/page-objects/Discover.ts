@@ -21,7 +21,8 @@ export class Discover {
     cy.contains('Discover').click();
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
-    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
+    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('be.enabled').click({ force: true });
+    cy.get('[data-test-subj=savedObjectTitle]').should('not.exist');
     cy.contains('was saved', { timeout: 10000 }).should('exist');
     cy.url().should('include', '/view/');
   }
