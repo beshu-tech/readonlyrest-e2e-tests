@@ -1,4 +1,11 @@
-FROM nginx:latest
+# MIRROR puts a pull-through cache in front of the Docker Hub name below.
+# .github/scripts/docker-hub-mirror.sh sets it in CI, and it is empty when the mirror is off. A local
+# build passes nothing and pulls from Docker Hub.
+#
+# `library/` is the namespace of an official image, so the name resolves with the prefix and without
+# it, to the same digest.
+ARG MIRROR=
+FROM ${MIRROR}library/nginx:latest
 
 COPY conf/kbn/kbn-proxy-nginx.conf /etc/nginx/nginx.conf
 COPY certs/kibana.key /etc/nginx/kibana/kibana.key

@@ -1,4 +1,11 @@
-FROM node:20
+# MIRROR puts a pull-through cache in front of the Docker Hub name below.
+# .github/scripts/docker-hub-mirror.sh sets it in CI, and it is empty when the mirror is off. A local
+# build passes nothing and pulls from Docker Hub.
+#
+# `library/` is the namespace of an official image, so the name resolves with the prefix and without
+# it, to the same digest.
+ARG MIRROR=
+FROM ${MIRROR}library/node:20
 
 RUN apt-get update && apt-get install -y --fix-missing\
     vim \

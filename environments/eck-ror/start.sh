@@ -168,7 +168,8 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   IMAGE_NAME="node-apm-app"
   TAG="latest"
 
-  docker buildx build --load -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
+  docker buildx build --load --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
+    -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
   echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
   # Load node-apm-app Docker image into the Kind cluster
@@ -177,8 +178,10 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
   echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
-  # Load busybox used by the wait-for-apm init container
-  docker pull busybox || { echo "Failed to pull busybox image."; exit 1; }
+  # Load busybox used by the wait-for-apm init container.
+  BUSYBOX_IMAGE="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}library/busybox"
+  docker pull "$BUSYBOX_IMAGE" || { echo "Failed to pull busybox image: $BUSYBOX_IMAGE"; exit 1; }
+  docker tag "$BUSYBOX_IMAGE" busybox || { echo "Failed to tag $BUSYBOX_IMAGE as busybox."; exit 1; }
   kind load docker-image busybox --name "$CLUSTER_NAME" || { echo "Failed to load busybox into Kind cluster."; exit 1; }
   echo "busybox image loaded into Kind cluster"
 else
