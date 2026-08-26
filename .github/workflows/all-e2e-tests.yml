@@ -40,6 +40,8 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
+      - name: Configure the Docker Hub mirror
+        run: source .github/scripts/docker-hub-mirror.sh
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -107,6 +109,8 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
+      - name: Configure the Docker Hub mirror
+        run: source .github/scripts/docker-hub-mirror.sh
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
       - name: Start Docker memory monitor
@@ -202,6 +206,8 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
+      - name: Configure the Docker Hub mirror
+        run: source .github/scripts/docker-hub-mirror.sh
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:

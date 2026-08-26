@@ -38,6 +38,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Configure the Docker Hub mirror
+        run: source .github/scripts/docker-hub-mirror.sh
+
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:

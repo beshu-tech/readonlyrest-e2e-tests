@@ -117,6 +117,16 @@ If you prefer, you can use scripts from the `docker-based-ror-dev-env` folder to
 3. you want to check what has to be installed to run the stack with no issues
 4. it can be used in the pipeline if you want to use custom runners without special preparation for them
 
+### Docker Hub pull mirror
+
+The CI jobs pull the Docker Hub base images through `mirror.gcr.io`, a pull-through cache. Docker Hub
+limits pulls per IP address, a runner shares its address with other tenants, and a neighbour over the
+limit makes our pull fail with a bare `429`. A login does not prevent that, because the limit ignores
+the account.
+
+`.github/scripts/docker-hub-mirror.sh` holds the setting and says which image names read it. A local
+run pulls from Docker Hub, and `ROR_DOCKER_HUB_MIRROR=false` switches the mirror off in CI.
+
 ## Troubleshooting
 
 Remember that most of the tests assume that ROR KBN is run with the Enterprise license. You have to set it on your host as an [environment variable](https://www.baeldung.com/linux/bash-set-and-export#export-command-in-bash) `ROR_ACTIVATION_KEY`. You can obtain a trial activation key in the [Customer Portal](https://readonlyrest.com/customer) or use the developer one. 

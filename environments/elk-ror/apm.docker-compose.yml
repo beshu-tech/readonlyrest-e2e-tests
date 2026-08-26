@@ -27,6 +27,8 @@ services:
     build:
       context: ../common/images/node-apm-app/
       dockerfile: Dockerfile
+      args:
+        MIRROR: ${ROR_DOCKER_HUB_MIRROR_PREFIX:-}
     environment:
       APM_URL: https://apm-server:8200
     depends_on:
