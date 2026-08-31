@@ -27,6 +27,24 @@ export class Reporting {
     cy.get('[data-test-subj=reportJobRow]').should('have.length', reportNames.length);
   }
 
+  /**
+   * Title-agnostic alternative to verifySavedReport. On Kibana <9.0.0, a CSV report generated
+   * shortly after saving a Discover session can be persisted with payload.title "Untitled
+   * Discover session" instead of the session's actual saved name (confirmed via proxy-level ES
+   * response logging - a title-binding race distinct from, and not fixed by, the reopen done in
+   * Discover.saveReport for >=9.0.0). Use this where the test only needs to confirm a report was
+   * generated and completed, not that its title matches the saved search name.
+   */
+  static verifyReportsCount(count: number) {
+    cy.log('verifyReportsCount');
+    cy.get('[data-test-subj=reportJobRow]').should('have.length', count);
+    if (count > 0) {
+      cy.get('[data-test-subj=reportJobRow]').each($row => {
+        cy.wrap($row).contains(/Done|Completed/).should('be.visible');
+      });
+    }
+  }
+
   static verifyIfReportingPageAfterRefresh() {
     cy.log('Verify if reporting page open after refresh');
     const expectedUrl = semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0')
@@ -76,6 +94,37 @@ export class Reporting {
       'have.length.greaterThan',
       0
     );
+  }
+
+  /**
+   * Title-agnostic alternative to downloadAndVerifyReportExists: downloads the first report
+   * without assuming its filename matches the saved search name (see verifyReportsCount).
+   */
+  static downloadAndVerifyAnyReportExists(timeout = 20000, interval = 500) {
+    cy.log('download report (title-agnostic)');
+
+    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      cy.get('[data-test-subj="reportJobRow"]').eq(0).find('[data-test-subj^="reportDownloadLink-"]').click();
+    } else {
+      cy.get('[data-test-subj="reportJobRow"]').eq(0).find('[aria-label="Download report"]').click();
+    }
+
+    const startTime = Date.now();
+
+    const check = (): Cypress.Chainable<undefined> =>
+      cy.task<string[]>('listDownloadedFiles').then((files): Cypress.Chainable<undefined> => {
+        if (files.some(file => file.endsWith('.csv'))) {
+          // Cypress 14's wrap() overloads infer Chainable<JQuery<undefined>> for a bare undefined;
+          // the cast keeps this branch aligned with check()'s Chainable<undefined> signature.
+          return cy.wrap(undefined) as Cypress.Chainable<undefined>;
+        }
+        if (Date.now() - startTime >= timeout) {
+          throw new Error(`Timeout waiting for a downloaded .csv file after ${timeout / 1000}s (found: ${files})`);
+        }
+        return cy.wait(interval).then(check);
+      });
+
+    return cy.wrap(null).then(check);
   }
 
   static verifyAllDataStreamsSegmentsCount(index: string, numberOfSegments: number, timeout = 30000) {

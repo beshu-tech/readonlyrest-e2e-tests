@@ -212,6 +212,14 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       }
 
       return null;
+    },
+    async listDownloadedFiles() {
+      const downloadsFolder = path.join('cypress', 'downloads');
+      try {
+        return await fs.promises.readdir(downloadsFolder);
+      } catch {
+        return [];
+      }
     }
   });
 
