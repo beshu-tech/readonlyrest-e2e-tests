@@ -56,9 +56,17 @@ export class Spaces {
   }
 
   static navigateToCreateSpacePage() {
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.get('[data-test-subj=manageSpaces]').click({ force: true });
-    cy.get('[data-test-subj=createSpace]').click();
+    cy.getByDataTestSubj('spacesNavSelector').click();
+    // EUI toggles this popover on click, and the first synthesized click sometimes
+    // lands while the header re-renders, leaving the popover shut. Toggle again if
+    // the entry is absent; the assertion then holds the real state.
+    cy.get('body').then($body => {
+      if ($body.find('[data-test-subj=manageSpaces]').length === 0) {
+        cy.getByDataTestSubj('spacesNavSelector').click();
+      }
+    });
+    cy.getByDataTestSubj('manageSpaces').should('exist').click({ force: true });
+    cy.getByDataTestSubj('createSpace').click();
   }
 
   static openSolutionViewDropdown() {
