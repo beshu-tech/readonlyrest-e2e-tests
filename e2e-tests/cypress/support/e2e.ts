@@ -53,6 +53,7 @@ declare global {
         currentGroupHeader?: string;
         impersonating?: string;
         failOnStatusCode?: boolean;
+        headers?: { [key: string]: string };
       }): Chainable<Subject>;
       kbnPost({
         endpoint,

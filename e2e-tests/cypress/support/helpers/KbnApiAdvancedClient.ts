@@ -32,6 +32,39 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
+  /**
+   * Waits out a restart that is known to be under way: watches Kibana go away first, then serve
+   * again. Only call this when the config really did change — see changeKibanaConfig, which asks the
+   * endpoint. Never seeing Kibana go down is a failure here, deliberately: treating it as 'then no
+   * restart was needed' would put back exactly the race described above whenever a shutdown ran
+   * slower than the wait.
+   */
+  public waitForKibanaRestart(baseUrl: string, downRetries = 120, delay = 1000) {
+    let attempts = 0;
+
+    const isServing = (status: string) => status === 'available' || status === 'green';
+
+    const waitUntilDown = () =>
+      cy.task('checkKibanaHealth', { url: baseUrl }).then(status => {
+        if (!isServing(status as string)) {
+          cy.log('⏳ Kibana went down, waiting for it to come back');
+          return;
+        }
+
+        if (attempts >= downRetries) {
+          throw new Error(
+            `Kibana was still serving ${downRetries * delay}ms after a config change that restarts it. ` +
+              'It never went down, so there is no safe point to carry on from.'
+          );
+        }
+
+        attempts += 1;
+        return cy.wait(delay).then(waitUntilDown);
+      });
+
+    return waitUntilDown().then(() => this.waitForKibanaHealth(baseUrl, 90, 2000));
+  }
+
   public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {
     let attempts = 0;
 
