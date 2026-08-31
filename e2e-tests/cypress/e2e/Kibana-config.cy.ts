@@ -14,8 +14,14 @@ import { Tenancy } from '../support/page-objects/Tenancy';
 
 const customKibanaIndexName = '.kibana_custom';
 
-// FIXME: This test is skipped because sometimes kibana config reload crashes Kibana on CI.
-describe.skip('Kibana-config', () => {
+// The docker env (elk-ror) runs 2 kbn-ror replicas behind kbn-proxy's round robin (see
+// base.docker-compose.yml). Config reload here (rorApiInternalKbnClient.changeKibanaConfig) only
+// updates the node that handles the request; the ROR Kibana plugin does not propagate config
+// changes across instances, so the other replica keeps serving the stale config. A single client's
+// requests can then land on nodes disagreeing about the active config, which is the same class of
+// issue Activation-keys.cy.ts hit and skipped for the same reason. The eck-* environments run a
+// single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
+(Cypress.env().envName === 'elk-ror' ? describe.skip : describe)('Kibana-config', () => {
   after(() => {
     rorApiInternalKbnClient.changeKibanaConfig('defaultKibanaConfig.yml');
     kbnApiAdvancedClient.waitForKibanaHealth(Cypress.config().baseUrl);
