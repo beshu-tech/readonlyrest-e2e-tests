@@ -14,14 +14,18 @@ import { Tenancy } from '../support/page-objects/Tenancy';
 
 const customKibanaIndexName = '.kibana_custom';
 
-// The docker env (elk-ror) runs 2 kbn-ror replicas behind kbn-proxy's round robin (see
-// base.docker-compose.yml). Config reload here (rorApiInternalKbnClient.changeKibanaConfig) only
-// updates the node that handles the request; the ROR Kibana plugin does not propagate config
-// changes across instances, so the other replica keeps serving the stale config. A single client's
-// requests can then land on nodes disagreeing about the active config, which is the same class of
-// issue Activation-keys.cy.ts hit and skipped for the same reason. The eck-* environments run a
-// single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
-(Cypress.env().envName === 'elk-ror' ? describe.skip : describe)('Kibana-config', () => {
+// rorApiInternalKbnClient.changeKibanaConfig rewrites kibana.yml on disk and restarts Kibana, which
+// this suite relies on for every nested describe. Two environments can't support that:
+// - docker env (elk-ror) runs 2 kbn-ror replicas behind kbn-proxy's round robin (see
+//   base.docker-compose.yml). The config reload only updates the node that handles the request; the
+//   ROR Kibana plugin does not propagate config changes across instances, so the other replica keeps
+//   serving the stale config. A single client's requests can then land on nodes disagreeing about the
+//   active config, which is the same class of issue Activation-keys.cy.ts hit and skipped for the
+//   same reason.
+// - eck envs run Kibana under Kubernetes, where kibana.yml is mounted read-only from a
+//   ConfigMap/Secret. The rewrite always 500s with EROFS, so the custom config never applies and
+//   every test here fails predictably.
+describe.skip('Kibana-config', () => {
   after(() => {
     rorApiInternalKbnClient.changeKibanaConfig('defaultKibanaConfig.yml');
     kbnApiAdvancedClient.waitForKibanaHealth(requiredBaseUrl());
