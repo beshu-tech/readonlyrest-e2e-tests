@@ -21,14 +21,53 @@ export class Discover {
     cy.contains('Discover').click();
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
+
+    if (semver.gte(getKibanaVersion(), '9.0.0')) {
+      cy.intercept('POST', '**/api/content_management/rpc/create').as('createDiscoverSession');
+    }
+
+    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('not.be.disabled');
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
-    Discover.verifySearchSaved();
+    Discover.verifySearchSaved(reportName);
+
+    if (semver.gte(getKibanaVersion(), '9.0.0')) {
+      Discover.reopenSavedDiscoverSession(reportName);
+    }
   }
 
-  static verifySearchSaved() {
+  static verifySearchSaved(reportName: string) {
     cy.log('verifySearchSaved');
-    cy.contains('was saved', { timeout: 10000 }).should('exist');
-    cy.url().should('include', '/view/');
+    cy.contains(`'${reportName}' was saved`, { timeout: 10000 }).should('exist');
+  }
+
+  /**
+   * On Kibana 9.x, saving a brand-new Discover session does not reliably rebind the active tab
+   * to the saved object (the tab keeps its default "Untitled" label even though the session was
+   * saved under the right title) - reports generated right after save inherit that stale label.
+   * Explicitly navigating to the saved object's own /view/<id> URL forces Discover to reinitialize
+   * from the persisted session, which does set the tab label correctly.
+   *
+   * Kibana 8.19.18 has a related but distinct issue: even after this reopen, a CSV report
+   * generated shortly after save can still have payload.title "Untitled Discover session"
+   * (confirmed via proxy-level ES response logging) - the reopen fixes the visible tab label but
+   * not whatever internal state the reporting export reads from. Callers that need to assert on
+   * a report's title on <9.0.0 should not rely on saveReport's `reportName` alone.
+   */
+  private static reopenSavedDiscoverSession(reportName: string) {
+    cy.log('reopenSavedDiscoverSession');
+    cy.wait('@createDiscoverSession').then(({ response }) => {
+      const savedId = response?.body?.result?.result?.item?.id;
+      if (!savedId) return;
+
+      cy.url().then(currentUrl => {
+        const targetUrl = new URL(currentUrl);
+        targetUrl.hash = `#/view/${savedId}`;
+        cy.visit(targetUrl.toString());
+      });
+    });
+    // Not '.should(be.visible)': cy.contains() can match a visually-hidden
+    // euiScreenReaderOnly duplicate of this text before the real, visible one.
+    cy.contains(reportName, { timeout: 20000 }).should('exist');
   }
 
   static exportToCsv() {
