@@ -32,6 +32,48 @@ export class EsApiAdvancedClient extends EsApiClient {
     cy.log('Pruning all reporting indices - DONE!');
   }
 
+  /**
+   * Backdates every session so the cleanup task deletes it on its next pass, instead of waiting out
+   * session_timeout_minutes. `expiresAt` is the field the v1 session codec writes and the range
+   * query in server/SessionCleanupTaskManager.ts selects on: rename it there and this stops working.
+   *
+   * One backdate is not enough: the proxy rolls expiresAt forward on authenticated traffic
+   * (sessionManager.refreshSession), so a background Kibana request can rescue the document
+   * before the cleanup tick — or make this update a version-conflict no-op, which is why
+   * conflicts=proceed. The loop re-backdates until the sweep wins, bounded by `attempts`.
+   */
+  public expireAllSessionsUntilSwept(index: string, timeout = 20000, interval = 1500): Cypress.Chainable<number> {
+    return recurse(
+      () => {
+        this.expireAllSessions(index);
+        return this.findIndicesByPattern(index).then(result => {
+          const found = result.find(({ index: name }) => name === index);
+          return found ? Number.parseInt(found['docs.count'], 10) : 0;
+        });
+      },
+      count => count === 0,
+      {
+        timeout,
+        // The cleanup interval in the fixture is 1s, so each pass gives one tick a chance to run.
+        delay: interval,
+        log: count => cy.log(`Sessions left in ${index}: ${count}`),
+        error: `Sessions in ${index} survived repeated backdating`
+      }
+    );
+  }
+
+  private expireAllSessions(index: string): void {
+    cy.log(`Expiring all sessions in ${index}...`);
+    cy.esPost({
+      endpoint: `${index}/_update_by_query?refresh=true&conflicts=proceed`,
+      credentials: Cypress.env().kibanaUserCredentials,
+      payload: {
+        script: { source: 'ctx._source.expiresAt = 0' },
+        query: { match_all: {} }
+      }
+    });
+  }
+
   public getAllReportingIndices() {
     cy.log('Getting all reporting indices...');
     return this.indices().then(result => result.filter(index => index.index.startsWith('.reporting')));
