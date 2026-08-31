@@ -25,6 +25,10 @@ xpack.reporting.encryptionKey: "321421321211231241232132132132132"
 telemetry.enabled: false
 
 readonlyrest_kbn:
+  # Without an explicit value this stack runs with no session clearing, and a previous
+  # spec's tenancy survives login. Clearing on login and tenancy hop keeps the specs
+  # independent of each other.
+  clearSessionOnEvents: [login, tenancyHop]
   cookiePass: '12312313123213123213123adadasdasdasd'
   kibanaIndexTemplate: ".kibana_template_group"
   resetKibanaIndexToTemplate: true
@@ -32,6 +36,8 @@ readonlyrest_kbn:
   sessions_index_name: 'test_index'
   session_timeout_minutes: 0.05
   sessions_cleanup_interval: '1s'
+  # Every probe refreshes the session; keep probes clear of the timeout so a session can expire.
+  sessions_probe_interval_seconds: 180
   whitelistedPaths: [".*/api/status$", ".*/api/index_management/indices$"]
   tenantIndex:
     number_of_shards: 2
