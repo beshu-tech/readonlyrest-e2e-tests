@@ -12,7 +12,12 @@ export class RorApiInternalKbnClient {
     message?: string;
     iss?: string;
   }> {
-    return cy.kbnGet({
+    return cy.kbnGet<{
+      status?: string;
+      statusCode?: number;
+      message?: string;
+      iss?: string;
+    }>({
       endpoint: 'pkp/api/license',
       credentials,
       impersonating,
@@ -23,7 +28,7 @@ export class RorApiInternalKbnClient {
   public deactivateTestSettings({
     credentials = Cypress.env().kibanaUserCredentials
   }: { credentials?: string } = {}): Cypress.Chainable<void> {
-    return cy.kbnDelete({
+    return cy.kbnDelete<void>({
       endpoint: 'pkp/api/test',
       credentials
     });

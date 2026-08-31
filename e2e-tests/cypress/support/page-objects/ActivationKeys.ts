@@ -30,6 +30,6 @@ export class ActivationKeys {
   static deleteLicense() {
     cy.log('Delete license');
     SecuritySettings.getIframeBody().contains('Delete').click();
-    SecuritySettings.getIframeBody().contains('Delete activation key').click({ force: true });
+    SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').click({ force: true });
   }
 }

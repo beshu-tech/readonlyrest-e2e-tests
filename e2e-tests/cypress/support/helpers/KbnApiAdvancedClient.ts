@@ -4,9 +4,15 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
     this.getSavedObjects(credentials, group).then(result => {
-      result.saved_objects.map(savedObject => {
+      // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
+      // index can be mid-reset, and a session sweep or config restart can log the request out,
+      // in which case the _find answers with a login page instead of the find JSON. An index
+      // that is already resetting has nothing left to clean, so treat that as the empty list.
+      (result?.saved_objects ?? []).forEach(savedObject => {
         cy.log(`Remove ${savedObject.id} saved object for ${credentials}`);
-        this.deleteSavedObject(savedObject, credentials, group);
+        // Best effort: an object listed a moment ago can already be gone (404). Losing that
+        // race must not fail cleanup.
+        this.deleteSavedObject(savedObject, credentials, group, { failOnStatusCode: false });
       });
     });
   }
