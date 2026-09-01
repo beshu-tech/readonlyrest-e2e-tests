@@ -3,7 +3,7 @@ import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
 
 export class Dashboard {
-  static openItem(number) {
+  static openItem(number: number) {
     cy.findAllByRole('row')
       .eq(number + 1)
       .within(() => {

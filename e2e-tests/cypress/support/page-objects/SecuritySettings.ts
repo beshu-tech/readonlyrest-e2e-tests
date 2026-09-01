@@ -37,7 +37,7 @@ export class SecuritySettings {
     return cy.window().then({ timeout }, win => {
       return new Cypress.Promise(resolve => {
         const checkIframe = () => {
-          const iframe: HTMLIFrameElement = win.document.querySelector('#readonlyrestIframe');
+          const iframe: HTMLIFrameElement | null = win.document.querySelector('#readonlyrestIframe');
           if (iframe && iframe.contentDocument && iframe.contentDocument.querySelector(selector)) {
             resolve();
           } else {

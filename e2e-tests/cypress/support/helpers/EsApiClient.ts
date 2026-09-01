@@ -36,7 +36,7 @@ export class EsApiClient {
   }
 
   public documentsForIndex(index: string): Chainable<DocumentsForIndex> {
-    return cy.esGet({
+    return cy.esGet<DocumentsForIndex>({
       endpoint: `${index}/_search`,
       credentials: Cypress.env().kibanaUserCredentials
     });
@@ -62,21 +62,21 @@ export class EsApiClient {
   }
 
   public indices(): Cypress.Chainable<GetIndices[]> {
-    return cy.esGet({
+    return cy.esGet<GetIndices[]>({
       endpoint: '_cat/indices?format=json&expand_wildcards=all',
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
 
   public dataStreams(): Cypress.Chainable<GetDataStreams> {
-    return cy.esGet({
+    return cy.esGet<GetDataStreams>({
       endpoint: '_data_stream?format=json&expand_wildcards=all',
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
 
   public findIndicesByPattern(pattern: string): Cypress.Chainable<GetIndices[]> {
-    return cy.esGet({
+    return cy.esGet<GetIndices[]>({
       endpoint: `_cat/indices/${pattern}?format=json`,
       credentials: Cypress.env().kibanaUserCredentials
     });
@@ -99,7 +99,7 @@ export class EsApiClient {
     });
   }
 
-  public rolloverIndex(index): void {
+  public rolloverIndex(index: string): void {
     cy.esPost({
       endpoint: `${index}/_rollover`,
       credentials: Cypress.env().kibanaUserCredentials

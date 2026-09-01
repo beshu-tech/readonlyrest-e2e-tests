@@ -27,6 +27,11 @@ describe('Tenancy', () => {
       RorMenu.changeTenancy('administrators', endUrl, '');
       IndexManagement.waitUntilLoaded();
       cy.go('back');
+      // Chromium 138 serves history-back from the back/forward cache, which restores
+      // the page without re-running the injected tenancy scripts, so the URL tenancy
+      // is not re-applied. Tracked in RORDEV-2172 — until the product handles BFCache
+      // restores, this suite pins the full-load semantics explicitly.
+      cy.reload();
     };
 
     // eslint-disable-next-line no-use-before-define

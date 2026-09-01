@@ -1,4 +1,5 @@
 import { Loader } from './Loader';
+import { requiredBaseUrl } from '../helpers';
 
 type Credentials = { username: string; password: string };
 export class Login {
@@ -30,7 +31,7 @@ export class Login {
       username: Cypress.env('login'),
       password: Cypress.env('password')
     },
-    visitedUrl = Cypress.config('baseUrl')
+    visitedUrl = requiredBaseUrl()
   }: {
     credentials?: Credentials;
     visitedUrl?: string;

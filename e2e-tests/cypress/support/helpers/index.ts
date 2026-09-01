@@ -8,7 +8,13 @@ export const getKibanaVersion = () => {
   return kibanaVersion;
 };
 
-export function isJsonString(str) {
+export function requiredBaseUrl(): string {
+  const baseUrl = Cypress.config('baseUrl');
+  if (!baseUrl) throw new Error('Cypress baseUrl is not configured');
+  return baseUrl;
+}
+
+export function isJsonString(str: string) {
   try {
     JSON.parse(str);
   } catch (e) {
