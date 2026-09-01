@@ -52,6 +52,12 @@ export class Discover {
    * (confirmed via proxy-level ES response logging) - the reopen fixes the visible tab label but
    * not whatever internal state the reporting export reads from. Callers that need to assert on
    * a report's title on <9.0.0 should not rely on saveReport's `reportName` alone.
+   *
+   * Sets the hash directly instead of cy.visit()'ing the target URL: Discover's router picks up
+   * the route change the same way (it's hash-based), but a hash-only change skips tearing down and
+   * re-fetching the whole document/JS bundle. saveReport can run several times in one spec
+   * (e.g. Reporting.cy.ts), and the extra full page loads from cy.visit() were heavy enough to
+   * crash the Electron renderer on memory-constrained CI runners.
    */
   private static reopenSavedDiscoverSession(reportName: string) {
     cy.log('reopenSavedDiscoverSession');
@@ -59,10 +65,8 @@ export class Discover {
       const savedId = response?.body?.result?.result?.item?.id;
       if (!savedId) return;
 
-      cy.url().then(currentUrl => {
-        const targetUrl = new URL(currentUrl);
-        targetUrl.hash = `#/view/${savedId}`;
-        cy.visit(targetUrl.toString());
+      cy.window().then(win => {
+        win.location.hash = `#/view/${savedId}`;
       });
     });
     // Not '.should(be.visible)': cy.contains() can match a visually-hidden
