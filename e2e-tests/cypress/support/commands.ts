@@ -234,8 +234,8 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
     err.message.includes("Cannot read properties of undefined (reading 'id')") || // kibana 9.x Discover throws when opening with no data views in the tenant
     err.message.includes('endpoint is ignored by ReadonlyREST plugin') || // unsupportedEndpointsFilter.ts intercepts Kibana security endpoints with 501; some callers lack try-catch
+    err.message.includes('Loading chunk') || // kibana 9.3.2 fails to fetch lazily loaded plugin chunks; affects every spec, so it stays global
     (isKibana8x && err.message.includes('ChunkLoadError')) || // kibana 8.x lazily loads plugin chunks; a reload can interrupt that load
-    (isKibana8x && err.message.includes('Loading chunk')) || // same lazy-chunk-loading failure, different error wording
     (isKibana8x && err.message.includes('executing a cancelled action')) || // kibana 8.x plugin lifecycle throws this on reload; can surface after the triggering test ends, so it must be suppressed globally (cy.on() inside a single it() doesn't cover afterEach)
     (isKibana819 && err.message.includes('toUpperCase is not a function')) // kibana 8.19.x throws this as an unhandled promise rejection from its own notifications module after cy.reload(); reproduced via automatic-tests/run.sh loop against User-settings.cy.ts
   ) {
