@@ -125,4 +125,3 @@ readonlyrest_kbn:
     login_subtitle: 'PRO/Enterprise: You should see a red border, a tiny unicorn logo, a two column page, and this text. You should see none of these customisation when testing ROR Free.'
     login_custom_logo: 'https://i.imgur.com/MdRBUfV.gif'
     login_html_head_inject: '<style> body { border: 3px solid red; }</style>'
-    login_custom_js_inject_file: '/usr/share/kibana/custom_login.js'
