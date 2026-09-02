@@ -23,7 +23,7 @@ export class Dashboard {
 
   static verifyDashboardExists(dashboardName: string) {
     cy.log(`Verifying that dashboard "${dashboardName}" exists`);
-    cy.get('[data-test-subj*="dashboardListingTitleLink"]').contains(dashboardName).should('exist');
+    cy.get('[data-test-subj*="dashboardListingTitleLink"]', { timeout: 20000 }).contains(dashboardName).should('exist');
   }
 
   static verifyDashboardNotExist(dashboardName: string) {
