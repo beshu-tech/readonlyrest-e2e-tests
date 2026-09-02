@@ -117,7 +117,7 @@ readonlyrest_kbn:
     cookiePass: '12312313123213123213123adadasdasdasd'
     logLevel: 'trace'
     logPrettyPrintEnabled: true
-    whitelistedPaths: [.*/api/status$]
+    whitelistedPaths: [".*/api/status$"]
     clearSessionOnEvents: [login, tenancyHop]
     sessions_probe_interval_seconds: 60
     store_sessions_in_index: true
