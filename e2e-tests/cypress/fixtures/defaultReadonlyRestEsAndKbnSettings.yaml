@@ -52,6 +52,7 @@ readonlyrest:
           kibana:
               <<: *common-kibana-rules
               access: admin
+              hide_apps: ['Enterprise Search|Overview', 'Management']
               metadata:
                   alert_message: 'Dear @{acl:user}'
         - name: infosec
