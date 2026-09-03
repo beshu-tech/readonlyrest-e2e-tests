@@ -1,6 +1,6 @@
 export class KbnApiClient {
   public getDataViews(credentials: string, group?: string): Cypress.Chainable<DataViews> {
-    return cy.kbnGet({
+    return cy.kbnGet<DataViews>({
       endpoint: 'api/data_views',
       credentials,
       currentGroupHeader: group
@@ -25,18 +25,24 @@ export class KbnApiClient {
   }
 
   public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
-    return cy.kbnGet({
+    return cy.kbnGet<GetObject>({
       endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url',
       credentials,
       currentGroupHeader: group
     });
   }
 
-  public deleteSavedObject(savedObject: SavedObject, credentials: string, group?: string): void {
+  public deleteSavedObject(
+    savedObject: SavedObject,
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
     cy.kbnDelete({
       endpoint: `api/saved_objects/${savedObject.type}/${savedObject.id}`,
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
     });
   }
 
@@ -65,7 +71,7 @@ export class KbnApiClient {
   }
 
   public getAllSpaces(credentials: string, group?: string): Cypress.Chainable<Space[]> {
-    return cy.kbnGet({
+    return cy.kbnGet<Space[]>({
       endpoint: `api/spaces/space`,
       credentials,
       currentGroupHeader: group
@@ -77,7 +83,7 @@ export class KbnApiClient {
     credentials: string,
     group?: string
   ): Cypress.Chainable<ShortUrlResponse> {
-    return cy.kbnPost({
+    return cy.kbnPost<ShortUrlResponse>({
       endpoint: 's/default/api/short_url',
       credentials,
       currentGroupHeader: group,
@@ -86,7 +92,7 @@ export class KbnApiClient {
   }
 
   public createShortUrlLegacy(credentials: string, group?: string): Cypress.Chainable<ShortUrlResponse> {
-    return cy.kbnPost({
+    return cy.kbnPost<ShortUrlResponse>({
       endpoint: 'api/saved_objects/url',
       credentials,
       currentGroupHeader: group,

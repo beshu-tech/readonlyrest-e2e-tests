@@ -42,7 +42,7 @@ declare global {
         failOnStatusCode?: boolean;
         headers?: { [key: string]: string };
       }): Chainable<Subject>;
-      kbnGet({
+      kbnGet<T = Subject>({
         endpoint,
         credentials,
         currentGroupHeader,
@@ -53,8 +53,9 @@ declare global {
         currentGroupHeader?: string;
         impersonating?: string;
         failOnStatusCode?: boolean;
-      }): Chainable<Subject>;
-      kbnPost({
+        headers?: { [key: string]: string };
+      }): Chainable<T>;
+      kbnPost<T = Subject>({
         endpoint,
         credentials,
         payload,
@@ -67,7 +68,7 @@ declare global {
         currentGroupHeader?: string;
         impersonating?: string;
         headers?: { [key: string]: string };
-      }): Chainable<Subject>;
+      }): Chainable<T>;
       kbnPut({
         endpoint,
         credentials,
@@ -88,16 +89,18 @@ declare global {
         fixtureFilename: string;
         currentGroupHeader?: string;
       }): Chainable<Subject>;
-      kbnDelete({
+      kbnDelete<T = Subject>({
         endpoint,
         credentials,
-        currentGroupHeader
+        currentGroupHeader,
+        failOnStatusCode
       }: {
         endpoint: string;
         credentials: string;
         currentGroupHeader?: string;
         impersonating?: string;
-      }): Chainable<Subject>;
+        failOnStatusCode?: boolean;
+      }): Chainable<T>;
 
       esRequest({
         method,
@@ -112,7 +115,7 @@ declare global {
         payload?: Payload;
         failOnStatusCode?: boolean;
       }): Chainable<Subject>;
-      esGet({ endpoint, credentials }: { endpoint: string; credentials: string }): Chainable<Subject>;
+      esGet<T = Subject>({ endpoint, credentials }: { endpoint: string; credentials: string }): Chainable<T>;
       esPost({
         endpoint,
         credentials,

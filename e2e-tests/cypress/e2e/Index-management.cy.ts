@@ -73,7 +73,7 @@ describe('Index management', () => {
     IndexManagement.verifyIndexExists(testIndexName);
   });
 
-  it.only('should verify empty data streams page', () => {
+  it('should verify empty data streams page', () => {
     const userCredentials = 'user2:dev';
     const [username, password] = userCredentials.split(':');
     Login.initialization({ credentials: { username, password } });

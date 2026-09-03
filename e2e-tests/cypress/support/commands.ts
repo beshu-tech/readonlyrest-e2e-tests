@@ -72,14 +72,17 @@ Cypress.Commands.add('esGet', ({ endpoint, credentials }, ...args) =>
   })
 );
 
-Cypress.Commands.add('kbnDelete', ({ endpoint, credentials, currentGroupHeader, impersonating }, ...args) =>
-  cy.kbnRequest({
-    method: 'DELETE',
-    endpoint,
-    credentials,
-    currentGroupHeader,
-    impersonating
-  })
+Cypress.Commands.add(
+  'kbnDelete',
+  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode }, ...args) =>
+    cy.kbnRequest({
+      method: 'DELETE',
+      endpoint,
+      credentials,
+      currentGroupHeader,
+      impersonating,
+      failOnStatusCode
+    })
 );
 
 Cypress.Commands.add('esDelete', ({ endpoint, credentials, failOnStatusCode }, ...args) =>

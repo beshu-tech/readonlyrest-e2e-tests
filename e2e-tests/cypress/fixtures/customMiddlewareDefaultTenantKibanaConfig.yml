@@ -26,6 +26,10 @@ xpack.reporting.encryptionKey: "321421321211231241232132132132132"
 telemetry.enabled: false
 
 readonlyrest_kbn:
+  # Without an explicit value this stack runs with no session clearing, and a previous
+  # spec's tenancy survives login. Clearing on login and tenancy hop keeps the specs
+  # independent of each other.
+  clearSessionOnEvents: [login, tenancyHop]
   cookiePass: '12312313123213123213123adadasdasdasd'
   store_sessions_in_index: true
   tenantIndex:
