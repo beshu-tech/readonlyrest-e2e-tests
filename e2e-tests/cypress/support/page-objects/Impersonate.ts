@@ -47,7 +47,7 @@ export class Impersonate {
     cy.get('@service').contains(name);
   }
 
-  static assertUser(index: number, rowIndex, username: string, groups?: string[], hasImpersonateButton = true) {
+  static assertUser(index: number, rowIndex: number, username: string, groups?: string[], hasImpersonateButton = true) {
     cy.log('Check user');
     Impersonate.getServiceByIndex(index).as('service');
     cy.get('@service').findAllByRole('rowgroup').eq(1).findAllByRole('row').eq(rowIndex).as('rowIndex');
@@ -69,13 +69,13 @@ export class Impersonate {
     }
   }
 
-  static openConfigureServiceDialog(index) {
+  static openConfigureServiceDialog(index: number) {
     cy.log('Open Configure Service Dialog');
     Impersonate.getServiceByIndex(index).as('service');
     cy.get('@service').contains('Configure').click();
   }
 
-  static openEditAuthMockDialog(index) {
+  static openEditAuthMockDialog(index: number) {
     cy.log('Open Edit Auth mock dialog');
     Impersonate.getServiceByIndex(index).as('service');
     cy.get('@service').find('[data-testid=edit-auth-mock-service-icon]').click({ force: true });

@@ -1,7 +1,7 @@
 import { SecuritySettings } from './SecuritySettings';
 
 export class Editor {
-  static changeConfig(config) {
+  static changeConfig(config: string) {
     cy.log('Change text');
     const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
     SecuritySettings.getIframeBody()
@@ -13,7 +13,7 @@ export class Editor {
       .type(config, { force: true });
   }
 
-  static pasteConfig(config) {
+  static pasteConfig(config: string) {
     cy.log('paste config');
     const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
     SecuritySettings.getIframeBody()
@@ -23,17 +23,18 @@ export class Editor {
       .focus()
       .type(`${selectAllKeys}{backspace}`, { force: true })
       .then($el => {
+        const clipboardData = new DataTransfer();
         const pasteEvent = new ClipboardEvent('paste', {
           bubbles: true,
           cancelable: true,
-          clipboardData: new DataTransfer()
+          clipboardData
         });
-        pasteEvent.clipboardData.setData('text/plain', config);
+        clipboardData.setData('text/plain', config);
         $el[0].dispatchEvent(pasteEvent);
       });
   }
 
-  static replaceValues(findValue, newValue) {
+  static replaceValues(findValue: string, newValue: string) {
     cy.log('Replace values');
     const findKeys = Cypress.platform === 'darwin' ? '{cmd}f' : '{ctrl}f';
     const closeSearchBoxIfExist = '{esc}';

@@ -1,5 +1,5 @@
 export class Canvas {
-  static openItem(number) {
+  static openItem(number: number) {
     cy.findAllByRole('row')
       .eq(number + 1)
       .within(() => {

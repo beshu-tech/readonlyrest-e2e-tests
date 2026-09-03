@@ -60,7 +60,10 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          timeout_minutes: 35
+          # eck envs are slower per-request than docker (K8s networking overhead vs docker-compose
+          # bridge), and the full 27-spec suite plus the ~9-minute Tenancy.cy.ts spec doesn't
+          # reliably fit in 35 minutes there.
+          timeout_minutes: 45
           retry_wait_seconds: 120
           retry_on: any
           command: |
@@ -227,7 +230,10 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          timeout_minutes: 35
+          # eck envs are slower per-request than docker (K8s networking overhead vs docker-compose
+          # bridge), and the full 27-spec suite plus the ~9-minute Tenancy.cy.ts spec doesn't
+          # reliably fit in 35 minutes there.
+          timeout_minutes: 45
           retry_wait_seconds: 120
           retry_on: any
           command: |

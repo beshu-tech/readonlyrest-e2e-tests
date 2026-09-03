@@ -32,7 +32,7 @@ const formatLoggerData = (data: unknown) =>
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
-      const { method, url, headers, body, failOnStatusCode } = options;
+      const { method, url, headers, body, failOnStatusCode, allowTransportError } = options;
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
@@ -56,6 +56,13 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(data)}`);
         return data;
       } catch (error) {
+        if (allowTransportError) {
+          // /pkp/api/kibanaConfig SIGINTs Kibana and only then writes its 200, so the socket is
+          // reset before the reply lands. Losing the reply is the normal outcome, not a failure —
+          // the caller confirms the change by waiting for Kibana to come back up.
+          console.log(`Transport error tolerated for ${method} ${url}: ${(error as Error).message}`);
+          return { status: 'TRANSPORT_ERROR', message: (error as Error).message };
+        }
         console.error('HTTP Request failed:', {
           error: (error as Error).message,
           url,
@@ -212,6 +219,14 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       }
 
       return null;
+    },
+    async listDownloadedFiles() {
+      const downloadsFolder = path.join('cypress', 'downloads');
+      try {
+        return await fs.promises.readdir(downloadsFolder);
+      } catch {
+        return [];
+      }
     }
   });
 
@@ -247,6 +262,8 @@ interface HttpCallOptions {
   headers?: { [key: string]: string };
   body: string | null;
   failOnStatusCode?: boolean;
+  // For endpoints that restart the server they answer from, so the reply is lost by design.
+  allowTransportError?: boolean;
 }
 
 interface FileToUpload {
