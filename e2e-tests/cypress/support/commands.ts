@@ -6,7 +6,7 @@ import { capture as clipboardCapture } from './clipboardCapture';
 
 Cypress.Commands.add(
   'kbnPost',
-  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) => {
+  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) =>
     cy.kbnRequest({
       method: 'POST',
       endpoint,
@@ -15,8 +15,7 @@ Cypress.Commands.add(
       currentGroupHeader,
       headers,
       impersonating
-    });
-  }
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
