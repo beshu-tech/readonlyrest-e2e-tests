@@ -2,7 +2,7 @@ import * as semver from 'semver';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
-import { rorApiClient } from '../support/helpers/RorApiClient';
+import { Settings } from '../support/page-objects/Settings';
 
 describe('Direct kibana request', () => {
   const user1 = 'user1:dev';
@@ -10,12 +10,12 @@ describe('Direct kibana request', () => {
 
   beforeEach(() => {
     clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });
 
   afterEach(() => {
     clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });
 
   it('should check direct kibana request', () => {
@@ -84,7 +84,7 @@ describe('Direct kibana request', () => {
   });
 
   it('should create short URL with x-ror-tenancy-id header', () => {
-    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
 
     const createShortUrl = semver.gte(getKibanaVersion(), '8.0.0')
       ? kbnApiClient.createShortUrl(

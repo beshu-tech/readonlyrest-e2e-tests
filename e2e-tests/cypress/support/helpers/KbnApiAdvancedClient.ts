@@ -3,11 +3,12 @@ import { KbnApiClient } from './KbnApiClient';
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
-    this.getSavedObjects(credentials, group).then(result => {
+    this.getSavedObjects(credentials, group, { failOnStatusCode: false }).then(result => {
       // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
       // index can be mid-reset, and a session sweep or config restart can log the request out,
-      // in which case the _find answers with a login page instead of the find JSON. An index
-      // that is already resetting has nothing left to clean, so treat that as the empty list.
+      // in which case the _find answers with a login page instead of the find JSON (or, if the
+      // ACL evaluates the mid-reset tenancy index as inaccessible, a 403). An index that is
+      // already resetting has nothing left to clean, so treat any of that as the empty list.
       (result?.saved_objects ?? []).forEach(savedObject => {
         cy.log(`Remove ${savedObject.id} saved object for ${credentials}`);
         // Best effort: an object listed a moment ago can already be gone (404). Losing that
@@ -50,11 +51,11 @@ export class KbnApiAdvancedClient extends KbnApiClient {
 
     const isServing = (status: string) => status === 'available' || status === 'green';
 
-    const waitUntilDown = () =>
-      cy.task('checkKibanaHealth', { url: baseUrl }).then(status => {
-        if (!isServing(status as string)) {
+    const waitUntilDown = (): Cypress.Chainable<undefined> =>
+      cy.task<string>('checkKibanaHealth', { url: baseUrl }).then((status): Cypress.Chainable<undefined> => {
+        if (!isServing(status)) {
           cy.log('⏳ Kibana went down, waiting for it to come back');
-          return;
+          return cy.then(() => undefined);
         }
 
         if (attempts >= downRetries) {
@@ -74,18 +75,18 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {
     let attempts = 0;
 
-    function poll() {
+    function poll(): Cypress.Chainable<undefined> {
       return cy
-        .task('checkKibanaHealth', {
+        .task<string>('checkKibanaHealth', {
           url: baseUrl
         })
-        .then(status => {
+        .then((status): Cypress.Chainable<undefined> => {
           const kibana8xAndAboveSuccessStatus = status === 'available';
           const kibana7xSuccessStatus = status === 'green';
 
           if (kibana8xAndAboveSuccessStatus || kibana7xSuccessStatus) {
             cy.log('✅ Kibana is healthy');
-            return;
+            return cy.then(() => undefined);
           }
 
           if (attempts >= retries) {

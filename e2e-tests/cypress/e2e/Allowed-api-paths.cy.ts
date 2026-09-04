@@ -15,8 +15,8 @@ const apiOnlyInternalUser = 'api_only_internal_user:dev';
 const apiOnlyRorUser = 'api_only_ror_user:dev';
 
 describe('allowed_api_paths enforcement for api_only users', () => {
-  before(() => rorApiClient.configureRorIndexMainSettings('allowedApiPathsSettings.yaml'));
-  after(() => rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml'));
+  before(() => rorApiClient.configureRorIndexMainSettingsFromFixture('allowedApiPathsSettings.yaml'));
+  after(() => rorApiClient.configureRorIndexMainSettingsFromFixture('defaultReadonlyRestEsAndKbnSettings.yaml'));
 
   describe('exact /api/ path', () => {
     it('allows direct API calls to paths listed in allowed_api_paths', () => {
