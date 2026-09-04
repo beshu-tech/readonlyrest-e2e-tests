@@ -14,6 +14,12 @@ import { Tenancy } from '../support/page-objects/Tenancy';
 
 describe('sanity check', () => {
   beforeEach(() => {
+    // The report assertions below count every row the reporting page lists, so the test needs an
+    // empty report store to start from. afterEach alone cannot promise that: when a hook fails, the
+    // rest of it is skipped, and a retry then starts with the previous attempt's report still there
+    // and fails with "Too many elements found" instead of the real error. Prune here as well, so
+    // each attempt sets up its own precondition.
+    esApiAdvancedClient.pruneAllReportingIndices();
     SampleData.createSampleData('sample_index', 1);
     Login.initialization();
   });

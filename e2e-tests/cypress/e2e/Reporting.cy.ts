@@ -26,6 +26,12 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       let oldFormatReportingName: string;
 
       beforeEach(() => {
+        // verifySavedReport counts every listed report, so this suite needs an empty report store
+        // plus exactly the one fixture doc it adds below. afterEach cannot promise that on its own:
+        // a failed hook skips the rest of the cleanup and the next retry then counts the previous
+        // attempt's reports too. Prune first, then add the fixture - the prune also clears
+        // `.reporting*` docs, so the two steps must stay in this order.
+        esApiAdvancedClient.pruneAllReportingIndices();
         cy.fixture('old_format_reporting_doc.json').then(oldFormatReportingDoc => {
           oldFormatReportingName = oldFormatReportingDoc.payload.title;
           esApiClient.addDocument(oldFormatReportingIndex, oldFormatReportingDoc.id, oldFormatReportingDoc);
@@ -79,6 +85,12 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
 } else {
   testData.forEach(({ username, password, index }) => {
     const reportingName = `report for ${index} index`;
+
+    // Same reason as the >=8.15 suite above: give every attempt its own empty report store, because
+    // a skipped afterEach otherwise makes each retry fail on the leftovers instead of the real error.
+    beforeEach(() => {
+      esApiAdvancedClient.pruneAllReportingIndices();
+    });
 
     afterEach(() => {
       kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);

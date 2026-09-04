@@ -200,7 +200,22 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
 
 Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
 
-Cypress.on('uncaught:exception', (err, runnable) => {
+Cypress.on('uncaught:exception', (err, runnable, promise) => {
+  /**
+   * Kibana keeps polling in the background (task manager, alerting, telemetry) while a test tears
+   * down. When the previous attempt's page is being logged out, one of those fetches can answer
+   * with a gateway status. Nothing in the app awaits that promise, so it surfaces as an unhandled
+   * rejection and fails whichever hook is running - usually an afterEach, which then skips the rest
+   * of the cleanup and poisons every following retry (RORDEV: Sanity-check "Too many elements
+   * found. Found '2', expected '1'").
+   *
+   * Only unhandled rejections are ignored here, never an error a test action waits on: `promise` is
+   * set only for a rejection no application code handled.
+   */
+  if (promise && /\b(Bad Gateway|Gateway Timeout|Service Unavailable)\b/.test(err.message)) {
+    return false;
+  }
+
   /**
    * Don't fail test when these specific errors from kibana platform
    */
