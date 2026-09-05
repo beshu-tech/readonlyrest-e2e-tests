@@ -17,9 +17,11 @@ describe('sanity check', () => {
     // The report assertions below count every row the reporting page lists, so the test needs an
     // empty report store to start from. afterEach alone cannot promise that: when a hook fails, the
     // rest of it is skipped, and a retry then starts with the previous attempt's report still there
-    // and fails with "Too many elements found" instead of the real error. Prune here as well, so
-    // each attempt sets up its own precondition.
-    esApiAdvancedClient.pruneAllReportingIndices();
+    // and fails with "Too many elements found" instead of the real error.
+    //
+    // UntilEmpty, not the bare prune: attempt 1 can leave a report queued but not yet written, and
+    // the bare prune would return before it lands.
+    esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
     SampleData.createSampleData('sample_index', 1);
     Login.initialization();
   });
