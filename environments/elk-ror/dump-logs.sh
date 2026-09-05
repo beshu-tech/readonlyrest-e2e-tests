@@ -15,7 +15,11 @@
 set -uo pipefail
 
 OUT=${1:?Usage: dump-logs.sh <output dir>}
-PROJECT=${2:-elk-ror}
+
+# The compose project name, which is the directory name: start.sh runs `docker compose` from
+# environments/elk-ror with no -p. Not a parameter - the only caller passes the output dir alone,
+# and a second positional would mean something different in the eck-ror twin.
+PROJECT=elk-ror
 
 mkdir -p "$OUT" 2>/dev/null || exit 0
 
