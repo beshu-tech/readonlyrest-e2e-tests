@@ -151,8 +151,10 @@ time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK
 if [[ "$MODE" == "e2e" ]]; then
   echo -e "Running E2E tests...\n"
 
-  # `#!/bin/bash -e` at the top would end the script here on a failing suite, and the stack would be
-  # torn down with its logs never read. Take the status by hand so the dump below gets to run.
+  # Take the status by hand. `#!/bin/bash -e` would end the script here, before the dump below.
+  # The ERR trap still fires either way - bash runs it with errexit off - so print-logs.sh runs
+  # first as it always did. That is not a substitute: it cats elk-ror.log, which start.sh writes
+  # only from its OWN trap, so on a test failure the file does not exist. Hence the dump.
   set +e
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
   E2E_STATUS=$?
