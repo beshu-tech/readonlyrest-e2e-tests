@@ -58,7 +58,10 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 1
-          timeout_minutes: 60
+          # Same suite as all-e2e-tests.yml, so the same cap. A genuine pass can run past 60 min
+          # - the suite reaches ~77 min in the slow shape, and Tenancy.cy.ts alone measured 19:35 -
+          # and max_attempts is 1 here, so nothing catches it when it does.
+          timeout_minutes: 75
           retry_wait_seconds: 120
           command: |
             PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
