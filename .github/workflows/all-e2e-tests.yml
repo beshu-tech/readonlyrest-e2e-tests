@@ -61,9 +61,20 @@ jobs:
         with:
           max_attempts: 2
           # eck envs are slower per-request than docker (K8s networking overhead vs docker-compose
-          # bridge), and the full 27-spec suite plus the ~9-minute Tenancy.cy.ts spec doesn't
-          # reliably fit in 35 minutes there.
-          timeout_minutes: 45
+          # bridge), and the full 27-spec suite does not fit a short cap there.
+          #
+          # 45 was still too short. Of the E2E legs that ran between 26 Aug and 5 Sep, every failure
+          # sampled ended in "Timeout of 2700000ms hit" with no failing spec at all, and the failed
+          # legs start at 40.9 min where the successful ones sit at a median of 28.4. Run
+          # 33853781633 was killed while running Tenancy.cy.ts - spec 27 of 27, the last one.
+          #
+          # Tenancy.cy.ts is also not the "~9 minutes" this comment used to claim: it was measured
+          # at 19:35 in one run. The ES repo runs this same 27-spec suite under a 120-minute cap and
+          # its legs take 32-56 min, so 45 was below the suite's own working range.
+          #
+          # 75 covers the observed worst case with headroom. These jobs set no timeout-minutes of
+          # their own, so both attempts still fit well inside the 360-minute default.
+          timeout_minutes: 75
           retry_wait_seconds: 120
           retry_on: any
           command: |
@@ -231,9 +242,20 @@ jobs:
         with:
           max_attempts: 2
           # eck envs are slower per-request than docker (K8s networking overhead vs docker-compose
-          # bridge), and the full 27-spec suite plus the ~9-minute Tenancy.cy.ts spec doesn't
-          # reliably fit in 35 minutes there.
-          timeout_minutes: 45
+          # bridge), and the full 27-spec suite does not fit a short cap there.
+          #
+          # 45 was still too short. Of the E2E legs that ran between 26 Aug and 5 Sep, every failure
+          # sampled ended in "Timeout of 2700000ms hit" with no failing spec at all, and the failed
+          # legs start at 40.9 min where the successful ones sit at a median of 28.4. Run
+          # 33853781633 was killed while running Tenancy.cy.ts - spec 27 of 27, the last one.
+          #
+          # Tenancy.cy.ts is also not the "~9 minutes" this comment used to claim: it was measured
+          # at 19:35 in one run. The ES repo runs this same 27-spec suite under a 120-minute cap and
+          # its legs take 32-56 min, so 45 was below the suite's own working range.
+          #
+          # 75 covers the observed worst case with headroom. These jobs set no timeout-minutes of
+          # their own, so both attempts still fit well inside the 360-minute default.
+          timeout_minutes: 75
           retry_wait_seconds: 120
           retry_on: any
           command: |
