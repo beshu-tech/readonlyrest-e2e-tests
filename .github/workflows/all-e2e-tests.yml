@@ -63,23 +63,31 @@ jobs:
           # eck envs are slower per-request than docker (K8s networking overhead vs docker-compose
           # bridge), and the full 27-spec suite does not fit a short cap there.
           #
-          # 45 was still too short. Of the E2E legs that ran between 26 Aug and 5 Sep, every failure
-          # sampled ended in "Timeout of 2700000ms hit" with no failing spec at all, and the failed
-          # legs start at 40.9 min where the successful ones sit at a median of 28.4. Run
-          # 33853781633 was killed while running Tenancy.cy.ts - spec 27 of 27, the last one.
+          # 45 was too short, but it is NOT what makes these legs red - see below.
           #
-          # Tenancy.cy.ts is also not the "~9 minutes" this comment used to claim: it was measured
-          # at 19:35 in one run. The ES repo runs this same 27-spec suite under a 120-minute cap and
-          # its legs take 32-56 min, so 45 was below the suite's own working range.
+          # timeout_minutes is per attempt, and retryWait runs after every failed attempt including
+          # the last (nick-fields/retry src/index.ts, both the timeout and the error branch), so two
+          # attempts cost 2x45+4 = 94 min. Of the 82 E2E legs that failed between 26 Aug and 5 Sep,
+          # exactly ONE reached 94. The other 81 finished below it, so at most one of their attempts
+          # timed out and the rest of the time they were failing for real reasons.
           #
-          # 75 covers the observed worst case with headroom. These jobs set no timeout-minutes of
-          # their own, so both attempts still fit well inside the 360-minute default.
+          # The common shape is the 75-78 min cluster: attempt 1 fails on its own at about 29 min,
+          # then attempt 2 is cut off at 45. Only the LAST attempt's error is reported, which is why
+          # sampling recent failures showed "Timeout of 2700000ms hit" - it hides why attempt 1
+          # failed and denies attempt 2 the chance to finish.
           #
-          # It is not free: worst case per leg goes from 2x45+2 = 92 min to 2x75+2 = 152, and each
-          # job is 4 versions x 3 envs, so up to +720 runner-minutes per run when everything times
-          # out. max_attempts stays 2 because the retry is there for the transients named above -
-          # npm 429, a missing dev image - not for the timeouts. With a cap that fits the suite,
-          # a timeout should now be the rare branch rather than the usual one.
+          # So this raise does not turn the matrix green. It makes the suite report the real failure
+          # instead of a timeout, and lets a second attempt run to completion. The redness itself is
+          # spec flakiness, fixed elsewhere (#118 and the whole-suite collapse #120 makes visible).
+          #
+          # Tenancy.cy.ts is 19:35 in one measured run, not the "~9 minutes" this comment used to
+          # claim. The ES repo runs the same 27-spec suite under a 120-minute cap.
+          #
+          # 75 per attempt. Worst case per leg goes from 94 to 154 min, and each job is 4 versions
+          # x 3 envs, so up to +720 runner-minutes per run when everything times out. These jobs set
+          # no timeout-minutes of their own, so two attempts fit inside the 360-minute default.
+          # max_attempts stays 2: the retry is for the transients named above - npm 429, a missing
+          # dev image - not for the timeouts.
           timeout_minutes: 75
           retry_wait_seconds: 120
           retry_on: any
