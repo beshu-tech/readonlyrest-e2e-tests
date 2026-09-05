@@ -74,6 +74,12 @@ jobs:
           #
           # 75 covers the observed worst case with headroom. These jobs set no timeout-minutes of
           # their own, so both attempts still fit well inside the 360-minute default.
+          #
+          # It is not free: worst case per leg goes from 2x45+2 = 92 min to 2x75+2 = 152, and each
+          # job is 4 versions x 3 envs, so up to +720 runner-minutes per run when everything times
+          # out. max_attempts stays 2 because the retry is there for the transients named above -
+          # npm 429, a missing dev image - not for the timeouts. With a cap that fits the suite,
+          # a timeout should now be the rare branch rather than the usual one.
           timeout_minutes: 75
           retry_wait_seconds: 120
           retry_on: any
@@ -255,6 +261,12 @@ jobs:
           #
           # 75 covers the observed worst case with headroom. These jobs set no timeout-minutes of
           # their own, so both attempts still fit well inside the 360-minute default.
+          #
+          # It is not free: worst case per leg goes from 2x45+2 = 92 min to 2x75+2 = 152, and each
+          # job is 4 versions x 3 envs, so up to +720 runner-minutes per run when everything times
+          # out. max_attempts stays 2 because the retry is there for the transients named above -
+          # npm 429, a missing dev image - not for the timeouts. With a cap that fits the suite,
+          # a timeout should now be the rare branch rather than the usual one.
           timeout_minutes: 75
           retry_wait_seconds: 120
           retry_on: any
