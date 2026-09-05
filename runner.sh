@@ -150,7 +150,23 @@ time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK
 
 if [[ "$MODE" == "e2e" ]]; then
   echo -e "Running E2E tests...\n"
+
+  # `#!/bin/bash -e` at the top would end the script here on a failing suite, and the stack would be
+  # torn down with its logs never read. Take the status by hand so the dump below gets to run.
+  set +e
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+  E2E_STATUS=$?
+  set -e
+
+  if [[ $E2E_STATUS -ne 0 ]]; then
+    # Into results/, because that is the directory the callers already collect: the ES repo uploads
+    # "$E2E_TESTS_DIR/results" to S3 on failure, next to the Cypress videos and screenshots. Putting
+    # the logs there means no caller has to change to start receiving them.
+    echo -e "\nE2E tests failed - collecting the stack logs\n"
+    ./environments/"$ENV_NAME"/dump-logs.sh results/stack-logs || true
+  fi
+
+  exit $E2E_STATUS
 else
   echo -e "Bootstrap mode: Cluster setup completed.\n"
 fi
