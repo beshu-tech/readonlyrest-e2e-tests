@@ -58,7 +58,10 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 1
-          timeout_minutes: 60
+          # Same suite, same reason as all-e2e-tests.yml: failed legs there start at 40.9 min and
+          # Tenancy.cy.ts alone measured 19:35, so 60 sits inside the band that produced the
+          # timeouts - and there is no second attempt behind it here.
+          timeout_minutes: 75
           retry_wait_seconds: 120
           command: |
             PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
