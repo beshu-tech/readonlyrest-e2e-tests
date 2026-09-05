@@ -150,7 +150,25 @@ time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK
 
 if [[ "$MODE" == "e2e" ]]; then
   echo -e "Running E2E tests...\n"
+
+  # Take the status by hand. `#!/bin/bash -e` would end the script here, before the dump below.
+  # The ERR trap still fires either way - bash runs it with errexit off - so print-logs.sh runs
+  # first as it always did. That is not a substitute: it cats elk-ror.log, which start.sh writes
+  # only from its OWN trap, so on a test failure the file does not exist. Hence the dump.
+  set +e
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+  E2E_STATUS=$?
+  set -e
+
+  if [[ $E2E_STATUS -ne 0 ]]; then
+    # Into results/, because that is the directory the callers already collect: the ES repo uploads
+    # "$E2E_TESTS_DIR/results" to S3 on failure, next to the Cypress videos and screenshots. Putting
+    # the logs there means no caller has to change to start receiving them.
+    echo -e "\nE2E tests failed - collecting the stack logs\n"
+    ./environments/"$ENV_NAME"/dump-logs.sh results/stack-logs || true
+  fi
+
+  exit $E2E_STATUS
 else
   echo -e "Bootstrap mode: Cluster setup completed.\n"
 fi
