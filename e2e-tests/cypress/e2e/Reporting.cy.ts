@@ -87,10 +87,9 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
     const reportingName = `report for ${index} index`;
 
     describe(`Reporting tests for ${username}`, () => {
-      // Inside the describe, not beside it. Registering a hook at this level attaches it to the
-      // spec's ROOT suite, so testData's two entries give two copies that run before and after
-      // EVERY test in the file, including the >=8.15 suite which does its own pruning. The
-      // afterEach below was already misplaced that way; both are now scoped to this suite.
+      // Inside the describe, not beside it. A hook registered outside attaches to the spec's ROOT
+      // suite, so testData's two entries give two copies that run before and after EVERY test in
+      // the file, including the >=8.15 suite, which does its own pruning.
       //
       // Same reason as the >=8.15 suite above: give every attempt its own empty report store,
       // because a skipped afterEach otherwise makes each retry fail on the leftovers instead of
