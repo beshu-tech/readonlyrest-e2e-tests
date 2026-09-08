@@ -35,6 +35,11 @@ describe('Kibana-content-overwrite', () => {
 
       StackManagement.openConnectorsPage();
       isAlertingOverwritePageVisible();
+
+      StackManagement.openRulesPage();
+      isAlertingOverwritePageVisible();
+      StackManagement.openConnectorsPage();
+      isAlertingOverwritePageVisible();
     } else {
       StackManagement.openRulesAndConnectorsPage();
       isAlertingOverwritePageVisible();
