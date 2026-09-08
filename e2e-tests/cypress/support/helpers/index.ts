@@ -1,8 +1,12 @@
+import * as semver from 'semver';
+
 export const getKibanaVersion = () => {
   const kibanaVersion: string = Cypress.env('kibanaVersion');
   console.log('kibana version', kibanaVersion);
-  if (!kibanaVersion) {
-    throw new Error('Kibana version not specified in the config file');
+  if (!kibanaVersion || !semver.valid(kibanaVersion)) {
+    throw new Error(
+      `Kibana version not specified correctly (got "${kibanaVersion}"). Pass it via --env kibanaVersion=<version>.`
+    );
   }
 
   return kibanaVersion;

@@ -105,6 +105,10 @@ export class Settings {
         ...(yaml.load(esYamlSettings) as object),
         readonlyrest_kbn: {
           cookiePass: '12312313123213123213123adadasdasdasd',
+          // elk-ror runs 2 kbn-ror replicas behind kbn-proxy's round robin. Without index-backed
+          // sessions, each node keeps sessions in memory, so a login on one replica isn't
+          // recognized by the other and the next request bounces back to /login.
+          store_sessions_in_index: true,
           ...parseKbnSettings(readonlyRestKbnSettings)
         }
       };
