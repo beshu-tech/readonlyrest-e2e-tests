@@ -87,7 +87,7 @@ describe('Readonlyrest-settings', () => {
 
     cy.reload();
 
-    cy.get('h1').shouldHaveStyle('color', 'rgb(0,128,0)');
+    cy.get('h1', { timeout: 30000 }).shouldHaveStyle('color', 'rgb(0,128,0)');
   });
 
   it('should verify custom Kibana JS', () => {
@@ -104,7 +104,7 @@ describe('Readonlyrest-settings', () => {
 
     cy.reload();
 
-    cy.get('[data-testid="metadata-alert-message"]')
+    cy.get('[data-testid="metadata-alert-message"]', { timeout: 30000 })
       .should('exist')
       .then($el => {
         cy.log(`Alert message: ${$el.text()}`);
@@ -139,7 +139,7 @@ describe('Readonlyrest-settings', () => {
 
     cy.reload();
 
-    cy.get('[data-testid="metadata-enriched-data"]')
+    cy.get('[data-testid="metadata-enriched-data"]', { timeout: 30000 })
       .should('exist')
       .then($el => {
         cy.log(`Entiched data: ${$el.text()}`);

@@ -7,6 +7,19 @@ import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
 
+// Shared and kept alive across calls so requests reuse an established TCP+TLS connection instead
+// of each `httpCall`/`uploadFile` negotiating a brand-new one. In the eck-ror CI environment,
+// Kibana is reached through kind's NodePort/iptables overlay rather than a direct docker port
+// mapping, and that extra hop is where the many short-lived connections a fresh Agent-per-call
+// created were most likely to get dropped or hang.
+const sharedHttpsAgent: Agent = new Agent({
+  rejectUnauthorized: false,
+  secureProtocol: 'TLSv1_2_method',
+  keepAlive: true,
+  keepAliveMsecs: 1000,
+  maxSockets: 50
+});
+
 let embeddedServer: ReturnType<typeof https.createServer> | null = null;
 const EMBEDDED_SERVER_PORT = 8080;
 const ROOT_DIR = path.join(__dirname, '..', '..', '..');
@@ -32,6 +45,41 @@ const formatLoggerData = (data: unknown) =>
 const NON_JSON_RETRY_ATTEMPTS = 5;
 const NON_JSON_RETRY_DELAY_MS = 2000;
 
+// The eck-ror CI environment reaches Kibana through kind's NodePort/iptables overlay instead of
+// a direct docker port mapping, which occasionally drops or hangs a TCP connection outright
+// (ECONNRESET, socket hang up) rather than serving a slow-but-valid response. Without a retry
+// here, a single dropped connection burns the whole cy.task timeout and, since Cypress only
+// prints failures once the spec finishes, can silently take the rest of the spec down with it.
+const TRANSPORT_ERROR_RETRY_ATTEMPTS = 3;
+const TRANSPORT_ERROR_RETRY_DELAY_MS = 1000;
+// Without a per-request timeout, a socket that hangs instead of dropping outright (no
+// ECONNRESET, just silence) burns the entire cy.task `taskTimeout` (20000ms) on its first
+// attempt, so the retry loop above never even gets a chance to run. Capping each attempt well
+// under a third of that budget guarantees all TRANSPORT_ERROR_RETRY_ATTEMPTS attempts (plus their
+// TRANSPORT_ERROR_RETRY_DELAY_MS sleeps) fit inside taskTimeout even in the worst case.
+const FETCH_TIMEOUT_MS = 5000;
+const TRANSIENT_NETWORK_ERROR_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'EPIPE',
+  'EHOSTUNREACH',
+  'ENETUNREACH'
+]);
+
+const isTransientNetworkError = (error: unknown): boolean => {
+  const err = error as { code?: string; type?: string; message?: string };
+  if (err?.code && TRANSIENT_NETWORK_ERROR_CODES.has(err.code)) {
+    return true;
+  }
+  // node-fetch's own `timeout` option (set via FETCH_TIMEOUT_MS above) surfaces as a
+  // FetchError with type 'request-timeout' rather than one of the Node error codes above.
+  if (err?.type === 'request-timeout') {
+    return true;
+  }
+  return typeof err?.message === 'string' && err.message.includes('socket hang up');
+};
+
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 // Right after a Kibana restart, ROR-KBN can still be finishing its own settings load (an ES
@@ -42,11 +90,19 @@ const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(r
 // the caller to read exactly as before.
 // `createInit` is a factory (not a static object) because a retried attempt needs its own
 // request body - a FormData upload's underlying stream can only be read once.
-const fetchWithJsonRetry = async (url: string, createInit: () => Parameters<typeof fetch>[1]): Promise<Response> => {
+//
+// `retryOnTransportError` is off for calls that intentionally expect the connection to be reset
+// (e.g. /pkp/api/kibanaConfig SIGINTs Kibana before writing its reply) - those should fail fast
+// into the caller's own handling instead of burning retries on an error that's the expected outcome.
+const fetchWithJsonRetry = async (
+  url: string,
+  createInit: () => Parameters<typeof fetch>[1],
+  retryOnTransportError = true
+): Promise<Response> => {
   let response: Response;
   for (let attempt = 1; attempt <= NON_JSON_RETRY_ATTEMPTS; attempt++) {
     // eslint-disable-next-line no-await-in-loop
-    response = await fetch(url, createInit());
+    response = await fetchWithTransportRetry(url, createInit, retryOnTransportError);
     const contentType = response.headers.get('content-type') || '';
 
     // The startup race serves Kibana's login page (text/html) in place of the expected
@@ -61,7 +117,9 @@ const fetchWithJsonRetry = async (url: string, createInit: () => Parameters<type
     }
 
     console.log(
-      `Got HTML response (content-type: ${contentType || 'none'}) for ${url} - ROR-KBN might still be starting up. Retrying (${attempt}/${NON_JSON_RETRY_ATTEMPTS})...`
+      `Got HTML response (content-type: ${
+        contentType || 'none'
+      }) for ${url} - ROR-KBN might still be starting up. Retrying (${attempt}/${NON_JSON_RETRY_ATTEMPTS})...`
     );
     // eslint-disable-next-line no-await-in-loop
     await sleep(NON_JSON_RETRY_DELAY_MS);
@@ -70,23 +128,54 @@ const fetchWithJsonRetry = async (url: string, createInit: () => Parameters<type
   return response!;
 };
 
+const fetchWithTransportRetry = async (
+  url: string,
+  createInit: () => Parameters<typeof fetch>[1],
+  retryOnTransportError: boolean
+): Promise<Response> => {
+  for (let attempt = 1; attempt <= TRANSPORT_ERROR_RETRY_ATTEMPTS; attempt++) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await fetch(url, { timeout: FETCH_TIMEOUT_MS, ...createInit() });
+    } catch (error) {
+      const isLastAttempt = attempt === TRANSPORT_ERROR_RETRY_ATTEMPTS;
+      if (!retryOnTransportError || !isTransientNetworkError(error) || isLastAttempt) {
+        throw error;
+      }
+      console.log(
+        `Transient network error (${
+          (error as Error).message
+        }) for ${url} - retrying (${attempt}/${TRANSPORT_ERROR_RETRY_ATTEMPTS})...`
+      );
+      // A transient error on one request can leave other keep-alive sockets in the shared pool
+      // half-broken too (the same kind NodePort hop dropped them all around the same time), and a
+      // retry that happens to grab one of those instead of opening a fresh connection fails the
+      // same way. Destroying the whole pool forces the retry onto a brand-new TCP+TLS connection.
+      sharedHttpsAgent.destroy();
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(TRANSPORT_ERROR_RETRY_DELAY_MS);
+    }
+  }
+  // Unreachable: the loop above always either returns or throws.
+  throw new Error(`Unreachable: exhausted retries for ${url} without returning or throwing`);
+};
+
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
       const { method, url, headers, body, failOnStatusCode, allowTransportError } = options;
 
-      const agent: Agent = new Agent({
-        rejectUnauthorized: false,
-        secureProtocol: 'TLSv1_2_method'
-      });
-
       try {
-        const response: Response = await fetchWithJsonRetry(url, () => ({
-          method,
-          headers,
-          body: body ?? undefined,
-          agent
-        }));
+        const response: Response = await fetchWithJsonRetry(
+          url,
+          () => ({
+            method,
+            headers,
+            body: body ?? undefined,
+            agent: sharedHttpsAgent
+          }),
+          !allowTransportError
+        );
 
         if (!response.ok && failOnStatusCode) {
           throw new Error(
@@ -122,11 +211,6 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     async uploadFile(options: UploadFileOptions): Promise<any> {
       const { url, headers, file } = options;
 
-      const agent: Agent = new Agent({
-        rejectUnauthorized: false,
-        secureProtocol: 'TLSv1_2_method'
-      });
-
       const buildForm = (): { form: FormData; combinedHeaders: { [key: string]: string } } => {
         const form = new FormData();
         form.append('file', file.fileBinaryContent, {
@@ -142,7 +226,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       try {
         const response: Response = await fetchWithJsonRetry(url, () => {
           const { form, combinedHeaders } = buildForm();
-          return { method, headers: combinedHeaders, body: form, agent };
+          return { method, headers: combinedHeaders, body: form, agent: sharedHttpsAgent };
         });
 
         if (!response.ok) {

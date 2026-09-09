@@ -4,7 +4,6 @@
  * Written by Beshu Limited <info@readonlyrest.com> in London, UK
  */
 
-import { Login } from '../support/page-objects/Login';
 import { rorApiClient } from '../support/helpers/RorApiClient';
 
 // api_only users — allowed_api_paths enforcement is active

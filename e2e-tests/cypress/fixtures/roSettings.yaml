@@ -71,3 +71,4 @@ readonlyrest:
       auth_key: admin:dev
 readonlyrest_kbn:
     cookiePass: '12312313123213123213123adadasdasdasd'
+    store_sessions_in_index: true
