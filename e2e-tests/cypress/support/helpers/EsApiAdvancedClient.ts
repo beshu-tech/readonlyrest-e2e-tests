@@ -74,6 +74,47 @@ export class EsApiAdvancedClient extends EsApiClient {
     });
   }
 
+  /**
+   * Prune, then wait until the report store is actually empty.
+   *
+   * pruneAllReportingIndices fires the deletes and returns. That is enough for a report that has
+   * already landed and not enough for one a previous attempt left QUEUED: exportToCsv returns when
+   * Kibana accepts the job, not when it writes it (see Discover.exportToCsv), so on a retry the
+   * earlier report can arrive just after the prune and make the next count assertion fail with the
+   * "Too many elements found" this is meant to prevent.
+   *
+   * Polling closes that window rather than sealing it. A report queued after the last poll can
+   * still arrive; draining Kibana's task manager is the only way to rule that out, and no test
+   * needs that today.
+   */
+  public pruneAllReportingIndicesUntilEmpty(timeout = 20000, interval = 1000): Cypress.Chainable<number> {
+    this.pruneAllReportingIndices();
+
+    return recurse(
+      () => this.reportingDocsCount(),
+      total => total === 0,
+      {
+        timeout,
+        delay: interval,
+        log: total => cy.log(`Reporting docs still present: ${total}`),
+        error: 'Timeout waiting for the reporting store to be empty'
+      }
+    );
+  }
+
+  /**
+   * Documents in every place a report can live: the legacy `.reporting*` indices, which the prune
+   * empties but does not delete, and the `.ds-.kibana-reporting-*` segments behind the data
+   * streams, which it does delete. One `_cat/indices` pass covers both.
+   */
+  public reportingDocsCount(): Cypress.Chainable<number> {
+    return this.indices().then(result =>
+      result
+        .filter(index => index.index.startsWith('.reporting') || index.index.startsWith('.ds-.kibana-reporting-'))
+        .reduce((sum, index) => sum + Number.parseInt(index['docs.count'] ?? '0', 10), 0)
+    );
+  }
+
   public getAllReportingIndices() {
     cy.log('Getting all reporting indices...');
     return this.indices().then(result => result.filter(index => index.index.startsWith('.reporting')));
