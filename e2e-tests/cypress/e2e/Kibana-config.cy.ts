@@ -146,7 +146,6 @@ describe.skip('Kibana-config', () => {
     // not take — and it then fails all three retries, so it is settled state and not a slow page.
     // It behaves the same with clearSessionOnEvents set and unset, so it is not that. The other
     // eight tests here are steady, so this is skipped rather than left to erode the signal.
-    // eslint-disable-next-line jest/no-disabled-tests -- see the FIXME above
     it.skip('should open correct tenancy after login when custom middleware sets defaultGroup', () => {
       Login.initialization();
 

@@ -40,7 +40,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       });
 
       try {
-        const response: Response = await fetch(url, { method, headers, body, agent });
+        const response: Response = await fetch(url, { method, headers, body: body ?? undefined, agent });
 
         if (!response.ok && failOnStatusCode) {
           throw new Error(
@@ -164,19 +164,24 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
 
       return new Promise((resolve, reject) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        embeddedServer = (https.createServer as any)(sslOptions, (_req: any, res: any) => {
-          const jwt = generateJwt({ sub: 'admin', group: ['administrators', 'infosec', 'template'], iat: Math.floor(Date.now() / 1000) });
+        const server = (https.createServer as any)(sslOptions, (_req: any, res: any) => {
+          const jwt = generateJwt({
+            sub: 'admin',
+            group: ['administrators', 'infosec', 'template'],
+            iat: Math.floor(Date.now() / 1000)
+          });
           const htmlWithJwt = html.toString().replace(/jwt=[^&"#\s]+/, `jwt=${jwt}`);
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(htmlWithJwt);
         });
 
-        embeddedServer.listen(EMBEDDED_SERVER_PORT, () => {
+        embeddedServer = server;
+        server.listen(EMBEDDED_SERVER_PORT, () => {
           console.log(`Embedded server started at https://localhost:${EMBEDDED_SERVER_PORT}`);
           resolve(EMBEDDED_SERVER_PORT);
         });
 
-        embeddedServer.on('error', (err: NodeJS.ErrnoException) => {
+        server.on('error', (err: NodeJS.ErrnoException) => {
           if (err.code === 'EADDRINUSE') {
             console.log(`Port ${EMBEDDED_SERVER_PORT} already in use — assuming server is running`);
             embeddedServer = null;
@@ -243,10 +248,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     // specs and the failure video was wrongly deleted before upload.
     const failures =
       (results.stats && results.stats.failures > 0) ||
-      (results.tests || []).some((t) =>
-        t.state === 'failed' ||
-        (t.attempts || []).some((a) => a.state === 'failed')
-      );
+      (results.tests || []).some(t => t.state === 'failed' || (t.attempts || []).some(a => a.state === 'failed'));
     if (failures) return;
     try {
       await fs.promises.unlink(results.video);
