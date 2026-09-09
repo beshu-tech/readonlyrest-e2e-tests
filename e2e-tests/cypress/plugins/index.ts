@@ -136,6 +136,11 @@ const fetchWithTransportRetry = async (
           (error as Error).message
         }) for ${url} - retrying (${attempt}/${TRANSPORT_ERROR_RETRY_ATTEMPTS})...`
       );
+      // A transient error on one request can leave other keep-alive sockets in the shared pool
+      // half-broken too (the same kind NodePort hop dropped them all around the same time), and a
+      // retry that happens to grab one of those instead of opening a fresh connection fails the
+      // same way. Destroying the whole pool forces the retry onto a brand-new TCP+TLS connection.
+      sharedHttpsAgent.destroy();
       // eslint-disable-next-line no-await-in-loop
       await sleep(TRANSPORT_ERROR_RETRY_DELAY_MS);
     }

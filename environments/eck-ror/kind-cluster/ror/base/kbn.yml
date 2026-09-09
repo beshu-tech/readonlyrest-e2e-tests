@@ -36,3 +36,27 @@ spec:
               value: "yes"
             - name: NODE_OPTIONS
               value: "--max-old-space-size=768"
+          # The default readiness probe (timeoutSeconds: 5, failureThreshold: 3) flips the pod
+          # NotReady under normal kind/CI CPU contention, which pulls it out of the Service's
+          # endpoints and turns any in-flight request into a bare TCP reset instead of a slow-but-
+          # valid response - the ECONNRESET flakiness seen in e2e runs traces back to this, not to
+          # the e2e HTTP client. Widening the tolerance keeps flaky-but-alive Kibana in rotation.
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 15
+            failureThreshold: 6
+            successThreshold: 1
+          # No CPU limit is set deliberately (avoids throttling), but an explicit request gives
+          # Kibana a fairer scheduling share against ES/APM/kind's own control-plane pods sharing
+          # the same Docker Desktop CPU budget.
+          resources:
+            requests:
+              cpu: '500m'
+              memory: '2Gi'
+            limits:
+              memory: '2Gi'
