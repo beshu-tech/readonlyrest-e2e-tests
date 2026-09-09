@@ -5,12 +5,14 @@
 // See run-20260831-073804-1.log for the flaky "should disable multitenancy" / "should verify index
 // based session" failures this caused.
 //
-// Rather than blindly sleeping a fixed delay (too short under load, wastefully long otherwise),
-// re-POST the same content and rely on the endpoint's own idempotency check: once the node has
-// actually picked up the new config, re-posting it answers "Current settings are already loaded"
-// instead of SUCCESS. That's the readiness signal we poll for.
-const SETTINGS_PROPAGATION_POLL_INTERVAL_MS = 1000;
-const SETTINGS_PROPAGATION_POLL_TIMEOUT_MS = 15000;
+// A re-POST-and-check-for-idempotency poll was tried here instead of a flat sleep, but the
+// idempotency check compares against the config already persisted in the ES index - which the
+// first POST writes immediately - not against any single node's in-memory cache. Against the
+// docker env's 2 kbn-ror replicas behind kbn-proxy's round robin, that made the "poll" resolve
+// after its very first iteration (~1s) regardless of whether either replica had actually
+// refreshed, which was worse than the flat delay it replaced. See run-34312427155 for the
+// resulting "should verify index based session" / Hide_apps / Sanity-check flakiness.
+const SETTINGS_PROPAGATION_DELAY_MS = 8000;
 
 export class RorApiClient {
   public configureRorIndexMainSettings(yamlContent: string): Cypress.Chainable<void> {
@@ -28,7 +30,7 @@ export class RorApiClient {
         // config - e.g. two specs in a row both resetting to the same default fixture. That's
         // the desired state, not an error; only a genuinely different failure should throw.
         if (response.status === 'SUCCESS') {
-          return this.waitForSettingsPropagation(yamlContent);
+          return cy.wait(SETTINGS_PROPAGATION_DELAY_MS);
         }
         if (response.message !== 'Current settings are already loaded') {
           throw new Error(`Failed to configure ROR index main settings: ${JSON.stringify(response)}`);
@@ -36,33 +38,6 @@ export class RorApiClient {
         return undefined;
       })
       .then(() => undefined);
-  }
-
-  private waitForSettingsPropagation(yamlContent: string, elapsedMs = 0): Cypress.Chainable<void> {
-    return cy
-      .wait(SETTINGS_PROPAGATION_POLL_INTERVAL_MS)
-      .kbnPost<{ status: string; message: string }>({
-        endpoint: 'api/ror/settings?override=true',
-        headers: {
-          'Content-Type': 'application/yaml'
-        },
-        credentials: Cypress.env().kibanaUserCredentials,
-        payload: yamlContent
-      })
-      .then(response => {
-        if (response.message === 'Current settings are already loaded') {
-          return undefined;
-        }
-
-        const nextElapsedMs = elapsedMs + SETTINGS_PROPAGATION_POLL_INTERVAL_MS;
-        if (nextElapsedMs >= SETTINGS_PROPAGATION_POLL_TIMEOUT_MS) {
-          throw new Error(
-            `Timed out after ${SETTINGS_PROPAGATION_POLL_TIMEOUT_MS}ms waiting for ROR index main settings to propagate`
-          );
-        }
-
-        return this.waitForSettingsPropagation(yamlContent, nextElapsedMs);
-      });
   }
 
   public configureRorIndexMainSettingsFromFixture(fixtureYamlFileName: string): Cypress.Chainable<void> {

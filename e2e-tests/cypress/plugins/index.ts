@@ -52,6 +52,12 @@ const NON_JSON_RETRY_DELAY_MS = 2000;
 // prints failures once the spec finishes, can silently take the rest of the spec down with it.
 const TRANSPORT_ERROR_RETRY_ATTEMPTS = 3;
 const TRANSPORT_ERROR_RETRY_DELAY_MS = 1000;
+// Without a per-request timeout, a socket that hangs instead of dropping outright (no
+// ECONNRESET, just silence) burns the entire cy.task `taskTimeout` (20000ms) on its first
+// attempt, so the retry loop above never even gets a chance to run. Capping each attempt well
+// under a third of that budget guarantees all TRANSPORT_ERROR_RETRY_ATTEMPTS attempts (plus their
+// TRANSPORT_ERROR_RETRY_DELAY_MS sleeps) fit inside taskTimeout even in the worst case.
+const FETCH_TIMEOUT_MS = 5000;
 const TRANSIENT_NETWORK_ERROR_CODES = new Set([
   'ECONNRESET',
   'ECONNREFUSED',
@@ -62,8 +68,13 @@ const TRANSIENT_NETWORK_ERROR_CODES = new Set([
 ]);
 
 const isTransientNetworkError = (error: unknown): boolean => {
-  const err = error as { code?: string; message?: string };
+  const err = error as { code?: string; type?: string; message?: string };
   if (err?.code && TRANSIENT_NETWORK_ERROR_CODES.has(err.code)) {
+    return true;
+  }
+  // node-fetch's own `timeout` option (set via FETCH_TIMEOUT_MS above) surfaces as a
+  // FetchError with type 'request-timeout' rather than one of the Node error codes above.
+  if (err?.type === 'request-timeout') {
     return true;
   }
   return typeof err?.message === 'string' && err.message.includes('socket hang up');
@@ -125,7 +136,7 @@ const fetchWithTransportRetry = async (
   for (let attempt = 1; attempt <= TRANSPORT_ERROR_RETRY_ATTEMPTS; attempt++) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      return await fetch(url, createInit());
+      return await fetch(url, { timeout: FETCH_TIMEOUT_MS, ...createInit() });
     } catch (error) {
       const isLastAttempt = attempt === TRANSPORT_ERROR_RETRY_ATTEMPTS;
       if (!retryOnTransportError || !isTransientNetworkError(error) || isLastAttempt) {
