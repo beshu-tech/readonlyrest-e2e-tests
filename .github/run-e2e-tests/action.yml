@@ -1,0 +1,68 @@
+name: 'Run E2E tests'
+description: 'Runs the Cypress e2e suite through the retry wrapper. Holds the cap, the retry policy and the runner invocation, so that the three callers cannot drift apart.'
+
+inputs:
+  env:
+    description: '"elk-ror" or "eck-ror"'
+    required: true
+  elk:
+    description: 'ELK version under test'
+    required: true
+  activation_key:
+    description: 'ROR Enterprise activation key. A composite action cannot read secrets, so the caller passes it.'
+    required: true
+  mode:
+    description: '"prod", "dev", or empty to let runner.sh decide'
+    required: false
+    default: ''
+  ror_es:
+    description: 'ROR ES image tag. Empty runs against the released plugin.'
+    required: false
+    default: ''
+  ror_kbn:
+    description: 'ROR KBN image tag. Empty runs against the released plugin.'
+    required: false
+    default: ''
+  max_attempts:
+    description: 'How many times to run the suite. 1 for a hand-dispatched run, where a second attempt only doubles the wait.'
+    required: false
+    default: '2'
+  electron_extra_launch_args:
+    description: 'Extra Electron flags for the browser Cypress starts.'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run E2E tests
+      uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
+      with:
+        max_attempts: ${{ inputs.max_attempts }}
+        # timeout_minutes is per attempt. The retry also waits after the last attempt, so two
+        # attempts cost 2 x 75 minutes plus retry_wait_seconds.
+        #
+        # The eck envs answer each request more slowly than docker, because Kubernetes networking
+        # adds overhead that the docker-compose bridge does not. The 27-spec suite does not fit
+        # 45 minutes there. An attempt that hits the cap reports the timeout and hides the
+        # failure that came before it.
+        timeout_minutes: 75
+        retry_wait_seconds: 120
+        # The retry covers transient infrastructure, not a failing suite: HTTP 429 from the npm
+        # registry, and a dev image that the registry does not serve yet. At max_attempts 1 it
+        # never fires.
+        retry_on: any
+        command: |
+          PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
+          [ -n "$ROR_ES_VERSION" ] && PARAMS+=(--ror-es "$ROR_ES_VERSION")
+          [ -n "$ROR_KBN_VERSION" ] && PARAMS+=(--ror-kbn "$ROR_KBN_VERSION")
+          [ -n "$MODE" ] && PARAMS+=(--mode "$MODE")
+          ./runner.sh "${PARAMS[@]}"
+      env:
+        ROR_ACTIVATION_KEY: ${{ inputs.activation_key }}
+        ELECTRON_EXTRA_LAUNCH_ARGS: ${{ inputs.electron_extra_launch_args }}
+        ENV: ${{ inputs.env }}
+        ELK_VERSION: ${{ inputs.elk }}
+        ROR_ES_VERSION: ${{ inputs.ror_es }}
+        ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
+        MODE: ${{ inputs.mode }}
