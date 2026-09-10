@@ -1,0 +1,33 @@
+# CLAUDE.md
+
+End-to-end tests for the ReadonlyREST plugins for Elasticsearch and Kibana. Cypress + TypeScript, run against an ELK stack that `runner.sh` bootstraps in Docker or in ECK (Kind).
+
+## Layout
+
+- `e2e-tests/cypress/e2e` — the tests. `e2e-tests/cypress/support/page-objects` — the page objects they drive.
+- `environments/` — the tested stacks (`elk-ror` for Docker Compose, the ECK ones for Kind).
+- `ci/`, `.github/workflows/` — the pipeline. `all-e2e-tests.yml` runs the full matrix, `targeted-e2e-tests.yml` one version on demand.
+- `runner.sh` — bootstraps an environment and runs the suite in one shot.
+- `README.md` — how to run the tests: the `runner.sh` flags, the environments, the Docker-based dev env, and the Docker Hub mirror.
+
+## Conventions
+
+Read the file before you write code, a comment, a commit message or a PR description.
+
+- docs/dev/branching.md — the two long-lived branches, which one a PR targets, and the merges between them.
+- docs/dev/code-style.md — the rules for comments: what a comment says, where it goes, and what deserves one.
+- docs/dev/writing-style.md — the language we write in, and the rules it gives us.
+
+## Checks
+
+Run from `e2e-tests/`:
+
+```bash
+yarn lint
+yarn tsCheck
+```
+
+## Avoid reading (generated, large)
+
+- `e2e-tests/node_modules/`, `e2e-tests/yarn.lock`
+- `results/` — videos and screenshots of test runs
