@@ -1,5 +1,6 @@
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
+import { capture as clipboardCapture } from './clipboardCapture';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -61,15 +62,17 @@ Cypress.Commands.add(
       impersonating,
       failOnStatusCode,
       headers
-    })
+    }) as Cypress.Chainable<unknown>
 );
 
-Cypress.Commands.add('esGet', ({ endpoint, credentials }, ...args) =>
-  cy.esRequest({
-    method: 'GET',
-    endpoint,
-    credentials
-  })
+Cypress.Commands.add(
+  'esGet',
+  ({ endpoint, credentials }, ...args) =>
+    cy.esRequest({
+      method: 'GET',
+      endpoint,
+      credentials
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add(
@@ -82,16 +85,18 @@ Cypress.Commands.add(
       currentGroupHeader,
       impersonating,
       failOnStatusCode
-    })
+    }) as Cypress.Chainable<unknown>
 );
 
-Cypress.Commands.add('esDelete', ({ endpoint, credentials, failOnStatusCode }, ...args) =>
-  cy.esRequest({
-    method: 'DELETE',
-    endpoint,
-    credentials,
-    failOnStatusCode
-  })
+Cypress.Commands.add(
+  'esDelete',
+  ({ endpoint, credentials, failOnStatusCode }, ...args) =>
+    cy.esRequest({
+      method: 'DELETE',
+      endpoint,
+      credentials,
+      failOnStatusCode
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add(
@@ -198,7 +203,19 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
+// .its() re-reads the property on every retry, which .then() would not - see clipboardCapture.ts.
+Cypress.Commands.add('getValueFromClipboard', () => cy.wrap(clipboardCapture, { log: false }).its('text'));
+
+// Cypress 15 types cy.wait's alias parameter as `@${string}`; mirroring it here means a forgotten
+// '@' prefix is a compile error instead of a silent numeric wait.
+Cypress.Commands.add(
+  'waitForResponse',
+  (alias: `@${string}`) =>
+    cy.wait(alias).then(({ response }) => {
+      if (!response) throw new Error(`Expected a response for ${alias}`);
+      return response;
+    }) as unknown as Cypress.Chainable<{ statusCode: number }>
+);
 
 Cypress.on('uncaught:exception', (err, runnable, promise) => {
   /**

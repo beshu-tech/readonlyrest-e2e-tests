@@ -50,11 +50,11 @@ export class KbnApiAdvancedClient extends KbnApiClient {
 
     const isServing = (status: string) => status === 'available' || status === 'green';
 
-    const waitUntilDown = () =>
-      cy.task('checkKibanaHealth', { url: baseUrl }).then(status => {
-        if (!isServing(status as string)) {
+    const waitUntilDown = (): Cypress.Chainable<undefined> =>
+      cy.task<string>('checkKibanaHealth', { url: baseUrl }).then((status): Cypress.Chainable<undefined> => {
+        if (!isServing(status)) {
           cy.log('⏳ Kibana went down, waiting for it to come back');
-          return;
+          return cy.wrap(undefined);
         }
 
         if (attempts >= downRetries) {
@@ -74,18 +74,18 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {
     let attempts = 0;
 
-    function poll() {
+    function poll(): Cypress.Chainable<undefined> {
       return cy
-        .task('checkKibanaHealth', {
+        .task<string>('checkKibanaHealth', {
           url: baseUrl
         })
-        .then(status => {
+        .then((status): Cypress.Chainable<undefined> => {
           const kibana8xAndAboveSuccessStatus = status === 'available';
           const kibana7xSuccessStatus = status === 'green';
 
           if (kibana8xAndAboveSuccessStatus || kibana7xSuccessStatus) {
             cy.log('✅ Kibana is healthy');
-            return;
+            return cy.wrap(undefined);
           }
 
           if (attempts >= retries) {

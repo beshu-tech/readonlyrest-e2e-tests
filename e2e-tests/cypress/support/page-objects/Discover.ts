@@ -221,7 +221,7 @@ export class Discover {
       cy.getByDataTestSubj('superDatePickerToggleQuickMenuButton').click();
       cy.getByDataTestSubj('superDatePickerCommonlyUsed_Today').click();
     }
-    
+
     cy.wait('@search');
   };
 
