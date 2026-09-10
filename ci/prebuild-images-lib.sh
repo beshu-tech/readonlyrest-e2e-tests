@@ -303,12 +303,10 @@ _prebuild_run_state() {
   rm -f "$ERR_FILE"
   ROR_PREBUILD_LAST_RUN_READ_ERROR=""
 
-  # A run whose status is still `in_progress` is not necessarily still worth waiting for. Neither
-  # publish-pre-builds workflow uses continue-on-error, so the FIRST job to end in failure,
-  # cancelled or timed_out decides the run - the rest of it only costs the waiter time. The waiter
-  # holds a paid runner while it polls (three ubicloud-standard-8 legs per readonlyrest_kbn
-  # pipeline run), and on 2026-09-04 that was 78 minutes of idling for a pre-build that had
-  # already failed. Report the failing job's conclusion straight away and let the caller stop.
+  # A run that still says `in_progress` is not always worth waiting for. The pre-build workflows do
+  # not set continue-on-error, so the first job that ends in failure, cancelled or timed_out decides
+  # the run. The rest of the run only costs the waiter time, and the waiter holds a paid runner
+  # while it polls. Report that job's conclusion at once, so that the caller can stop.
   ROR_PREBUILD_RUN_STATE=$(echo "$JSON" |
     jq -r '
       def terminal: . == "failure" or . == "cancelled" or . == "timed_out";
@@ -319,8 +317,8 @@ _prebuild_run_state() {
     ROR_PREBUILD_RUN_STATE=unknown
   [ -n "$ROR_PREBUILD_RUN_STATE" ] || ROR_PREBUILD_RUN_STATE=unknown
 
-  # The name of the job that decided it, for the error the caller prints. Empty when the run
-  # finished on its own rather than being called early.
+  # The name of the job that decided the run, for the error the caller prints. Empty when the run
+  # reached its own conclusion.
   ROR_PREBUILD_DEAD_JOB=$(echo "$JSON" |
     jq -r '
       def terminal: . == "failure" or . == "cancelled" or . == "timed_out";
