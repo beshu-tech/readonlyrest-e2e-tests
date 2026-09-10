@@ -175,8 +175,10 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
           res.end(htmlWithJwt);
         });
 
-        embeddedServer = server;
+        // Take ownership only after the port is ours. If listen() fails we keep
+        // embeddedServer null, so the next call tries again instead of trusting a dead server.
         server.listen(EMBEDDED_SERVER_PORT, () => {
+          embeddedServer = server;
           console.log(`Embedded server started at https://localhost:${EMBEDDED_SERVER_PORT}`);
           resolve(EMBEDDED_SERVER_PORT);
         });
@@ -184,7 +186,6 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         server.on('error', (err: NodeJS.ErrnoException) => {
           if (err.code === 'EADDRINUSE') {
             console.log(`Port ${EMBEDDED_SERVER_PORT} already in use — assuming server is running`);
-            embeddedServer = null;
             resolve(EMBEDDED_SERVER_PORT);
           } else {
             reject(err);
