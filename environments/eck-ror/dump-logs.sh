@@ -1,14 +1,14 @@
 #!/bin/bash
-# The eck-ror twin of environments/elk-ror/dump-logs.sh: pod logs, pod status and cluster events
-# into <output dir>, one file per pod. Same reason, same contract - it never fails the caller.
+# The eck-ror twin: pod logs, pod status and cluster events into <output dir>, one file per pod.
+# It never fails the caller.
 #
-# Every kubectl call goes through `docker exec eck-ror-control-plane`, the way start.sh does it.
-# The host does not necessarily have a kubectl that can reach this kind cluster.
+# Every kubectl call goes through `docker exec` on the control-plane node. The host does not
+# necessarily have a kubectl that can reach this kind cluster.
 set -uo pipefail
 
 OUT=${1:?Usage: dump-logs.sh <output dir>}
 
-# The kind node, named by start.sh. Not a parameter - the only caller passes the output dir alone.
+# The kind node. Not a parameter: the only caller passes the output dir alone.
 CONTROL_PLANE=eck-ror-control-plane
 
 mkdir -p "$OUT" 2>/dev/null || exit 0

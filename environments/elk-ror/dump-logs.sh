@@ -1,14 +1,12 @@
 #!/bin/bash
 # Write the running stack's container logs into <output dir>, one file per container.
 #
-# Not the same job as print-logs.sh, which cats elk-ror.log. start.sh writes that file only from
-# its ERR trap, so it exists only when the stack failed to COME UP. The failures this script is for
-# are the opposite: the stack came up, the healthchecks passed, and the Cypress suite then collapsed
-# with every spec stuck on /login. Seven of those between 12 Aug and 4 Sep, and none of them left a
-# single line of Kibana or Elasticsearch log behind to explain it.
+# This covers the case where the stack came up, the healthchecks passed, and the suite then failed.
+# The stack's own log file covers the opposite case, a stack that never came up, so on a test
+# failure that file does not exist.
 #
-# Reads the containers straight from docker rather than from `docker compose`, so it needs neither
-# the compose file list that start.sh assembles nor the working directory it assembles them in.
+# The container list comes from docker, not from `docker compose`, so this needs neither the
+# compose file list nor the working directory that the start script assembles them in.
 #
 # Never fails the caller. It runs on a path that is already failing, and a missing log must not
 # replace the real error with an error from collecting logs.
@@ -16,8 +14,8 @@ set -uo pipefail
 
 OUT=${1:?Usage: dump-logs.sh <output dir>}
 
-# The compose project name, which is the directory name: start.sh runs `docker compose` from
-# environments/elk-ror with no -p. Not a parameter - the only caller passes the output dir alone,
+# The compose project name, which is this directory's name, because the start script runs
+# `docker compose` here with no -p. Not a parameter: the only caller passes the output dir alone,
 # and a second positional would mean something different in the eck-ror twin.
 PROJECT=elk-ror
 
