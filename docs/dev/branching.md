@@ -2,7 +2,7 @@
 
 ## The two long-lived branches
 
-- `master` tests the released plugins. Its CI runs the suite against the published images (`--mode prod`, `ror-latest`) on every push to `master`, on every pull request that targets `master`, and on the nightly schedule.
+- `master` tests the released plugins. Its CI runs the suite against the published images (`--mode prod`, `ror-latest`) on every push to `master`, on every non-fork pull request that targets `master`, and on the nightly schedule.
 - `develop` tests the plugin code that is not released yet. Its CI builds branch-matched dev images of the ES and the Kibana plugin, then runs the suite against them.
 
 Both branches hold the same tests. The branch decides which plugin build the tests run against. `.github/workflows/all-e2e-tests.yml` holds the two job sets.
@@ -20,7 +20,7 @@ The repo has no version and no release of its own. It follows the two plugin rep
 3. **A fix for a test that fails against the released plugins.** A flaky test counts. The nightly run on `master` stays red until the fix lands there.
 4. **A pipeline, workflow or runner change.** `master` runs the nightly and the full matrix, so it needs the current pipeline.
 5. **Cleanup after a ROR release.** Fallbacks for versions we no longer support, and the settings the release made obsolete.
-6. **Docs that describe the released setup.**
+6. **Docs.** The ones that describe the released setup, and the ones that define the development process itself — this file among them. `master` is the branch a reader lands on, so it holds the authoritative copy; the merge back carries it to `develop`.
 
 Everything else targets `develop`. Two questions decide a case that is not on the list. Do the released plugins need the change now? Does the change leave the dev-image path untouched? If both answers are no, the PR targets `develop`.
 
