@@ -292,7 +292,7 @@ _prebuild_run_state() {
   # gh writes the reason to stderr, and the JSON to stdout, so the two are kept apart. Merging them
   # would put any notice of gh into the text that jq reads.
   ERR_FILE=$(mktemp)
-  JSON=$(GH_TOKEN="$TOKEN" gh run view "$RUN_ID" -R "$REPO" --json status,conclusion 2>"$ERR_FILE") || STATUS=$?
+  JSON=$(GH_TOKEN="$TOKEN" gh run view "$RUN_ID" -R "$REPO" --json status,conclusion,jobs 2>"$ERR_FILE") || STATUS=$?
 
   if [ "$STATUS" -ne 0 ]; then
     ROR_PREBUILD_LAST_RUN_READ_ERROR=$(cat "$ERR_FILE")
@@ -303,10 +303,28 @@ _prebuild_run_state() {
   rm -f "$ERR_FILE"
   ROR_PREBUILD_LAST_RUN_READ_ERROR=""
 
+  # A run that still says `in_progress` is not always worth waiting for. The pre-build workflows do
+  # not set continue-on-error, so the first job that ends in failure, cancelled or timed_out decides
+  # the run. The rest of the run only costs the waiter time, and the waiter holds a paid runner
+  # while it polls. Report that job's conclusion at once, so that the caller can stop.
   ROR_PREBUILD_RUN_STATE=$(echo "$JSON" |
-    jq -r 'if .status != "completed" then "running" else (.conclusion // "unknown") end' 2>/dev/null) ||
+    jq -r '
+      def terminal: . == "failure" or . == "cancelled" or . == "timed_out";
+      ((.jobs // []) | map(select(.conclusion | terminal)) | first) as $dead
+      | if .status == "completed" then (.conclusion // "unknown")
+        elif $dead then $dead.conclusion
+        else "running" end' 2>/dev/null) ||
     ROR_PREBUILD_RUN_STATE=unknown
   [ -n "$ROR_PREBUILD_RUN_STATE" ] || ROR_PREBUILD_RUN_STATE=unknown
+
+  # The name of the job that decided the run, for the error the caller prints. Empty when the run
+  # reached its own conclusion.
+  ROR_PREBUILD_DEAD_JOB=$(echo "$JSON" |
+    jq -r '
+      def terminal: . == "failure" or . == "cancelled" or . == "timed_out";
+      if .status == "completed" then ""
+      else (((.jobs // []) | map(select(.conclusion | terminal)) | first | .name) // "") end' 2>/dev/null) ||
+    ROR_PREBUILD_DEAD_JOB=""
 }
 
 # Set by _dispatch_prebuild_workflow so the plugin-specific wrappers below can stash the run they
@@ -567,7 +585,12 @@ _wait_for_prebuild_run() {
         fi
         ;;
       *)
-        echo "ERROR: the $LABEL pre-build run finished with '$STATE', so its images will never be published."
+        if [ -n "${ROR_PREBUILD_DEAD_JOB:-}" ]; then
+          echo "ERROR: the $LABEL pre-build run cannot succeed: job '$ROR_PREBUILD_DEAD_JOB' ended with"
+          echo "       '$STATE' after $((WAITED / 60)) min. Not waiting for the rest of the run."
+        else
+          echo "ERROR: the $LABEL pre-build run finished with '$STATE', so its images will never be published."
+        fi
         echo "       Run: ${RUN_URL:-<unknown>}"
         return 6
         ;;
