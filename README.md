@@ -101,6 +101,12 @@ $ ./docker-based-ror-dev-env/runE2ETests7xInDocker.sh
 
 ## Development
 
+### Conventions
+
+- [docs/dev/branching.md](docs/dev/branching.md) — the two long-lived branches, which one a PR targets, and the merges between them.
+- [docs/dev/code-style.md](docs/dev/code-style.md) — the rules for comments: what a comment says, where it goes, and what deserves one.
+- [docs/dev/writing-style.md](docs/dev/writing-style.md) — the language we write in, and the rules it gives us.
+
 ### Test environment 
 
 The test environment is created with the Docker Compose. All code is located in the `environments/elk-ror` folder. Currently, the latest version of ROR is downloaded for the sake of tests. In the future, we are going to improve it and build plugins from sources too.
