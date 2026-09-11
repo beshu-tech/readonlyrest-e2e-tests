@@ -5,7 +5,7 @@ import { userCredentials } from '../support/helpers';
 
 describe('sanity check ro_strict kibana access', () => {
   afterEach(() => {
-    Settings.setSettingsData('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
     kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
   });
 

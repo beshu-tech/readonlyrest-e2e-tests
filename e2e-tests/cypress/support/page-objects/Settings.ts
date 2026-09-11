@@ -1,6 +1,9 @@
+import * as yaml from 'js-yaml';
+
 import { rorApiClient } from '../helpers/RorApiClient';
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
+import { parseKbnSettings } from '../helpers/parseKibanaSettings';
 
 export class Settings {
   static open() {
@@ -34,9 +37,15 @@ export class Settings {
 
   static clickSaveButton() {
     cy.log('Save file settings');
-    cy.intercept('POST', '/pkp/api/settings').as('saveSettings');
+
     SecuritySettings.getIframeBody().contains('Save').click();
-    cy.waitForResponse('@saveSettings').then(response => {
+  }
+
+  static confirmSaveModal() {
+    cy.log('Confirm settings save modal');
+    cy.intercept('POST', '/pkp/api/settings*').as('confirmSaveSettings');
+    SecuritySettings.getIframeBody().contains('Save anyway').click();
+    cy.waitForResponse('@confirmSaveSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
   }
@@ -86,7 +95,20 @@ export class Settings {
   }
 
   static setSettingsData(fixtureYamlSettingsFileName: string) {
-    cy.log('Set settings data from file ' + fixtureYamlSettingsFileName);
-    rorApiClient.configureRorIndexMainSettings(fixtureYamlSettingsFileName);
+    cy.log(`Set settings data from file ${fixtureYamlSettingsFileName}`);
+    rorApiClient.configureRorIndexMainSettingsFromFixture(fixtureYamlSettingsFileName);
+  }
+
+  static setReadonlyRestKbnSettings(readonlyRestKbnSettings = '') {
+    cy.fixture('defaultReadonlyRestEsSettings.yaml').then(esYamlSettings => {
+      const merged = {
+        ...(yaml.load(esYamlSettings) as object),
+        readonlyrest_kbn: {
+          cookiePass: '12312313123213123213123adadasdasdasd',
+          ...parseKbnSettings(readonlyRestKbnSettings)
+        }
+      };
+      rorApiClient.configureRorIndexMainSettings(yaml.dump(merged));
+    });
   }
 }

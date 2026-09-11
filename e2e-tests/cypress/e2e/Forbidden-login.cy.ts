@@ -3,7 +3,7 @@ import { Settings } from '../support/page-objects/Settings';
 
 describe('Forbidden login test', () => {
   before(() => {
-    Settings.setSettingsData('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });
 
   beforeEach(() => {

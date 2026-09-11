@@ -9,6 +9,7 @@ describe('Test ACL', () => {
     Settings.open();
     Settings.reloadFromFileSettings();
     Settings.clickSaveButton();
+    Settings.confirmSaveModal();
     TestSettings.setDefaultData();
   });
 
