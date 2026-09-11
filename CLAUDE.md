@@ -5,7 +5,7 @@ End-to-end tests for the ReadonlyREST plugins for Elasticsearch and Kibana. Cypr
 ## Layout
 
 - `e2e-tests/cypress/e2e` — the tests. `e2e-tests/cypress/support/page-objects` — the page objects they drive.
-- `environments/` — the tested stacks (`elk-ror` for Docker Compose, the ECK ones for Kind).
+- `environments/` — the tested stacks: `elk-ror` for Docker Compose, `eck-ror` for Kind (the ECK version is a `start.sh` flag), and `common` for the parts both share.
 - `ci/`, `.github/workflows/` — the pipeline. `all-e2e-tests.yml` runs the full matrix, `targeted-e2e-tests.yml` one version on demand.
 - `runner.sh` — bootstraps an environment and runs the suite in one shot.
 - `README.md` — how to run the tests: the `runner.sh` flags, the environments, the Docker-based dev env, and the Docker Hub mirror.
