@@ -55,7 +55,11 @@ const stagedSelection = (win: Cypress.AUTWindow): string => {
 /** Runs the page's own `copy` handlers, and returns whatever they wrote to the event. */
 const enrichedByPageHandlers = (win: Cypress.AUTWindow): string => {
   const dataTransfer = new win.DataTransfer();
-  const syntheticCopy = new win.ClipboardEvent('copy', { clipboardData: dataTransfer, bubbles: true, cancelable: true });
+  const syntheticCopy = new win.ClipboardEvent('copy', {
+    clipboardData: dataTransfer,
+    bubbles: true,
+    cancelable: true
+  });
 
   (win.document.activeElement ?? win.document).dispatchEvent(syntheticCopy);
 

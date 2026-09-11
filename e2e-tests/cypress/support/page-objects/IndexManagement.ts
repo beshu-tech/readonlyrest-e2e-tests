@@ -6,9 +6,9 @@ export class IndexManagement {
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       cy.get('[data-test-subj="indicesSearch"]').should('be.visible');
     } else {
-      cy.get('input[aria-label="This is a search bar. As you type, the results lower in the page will automatically filter."]').should(
-        'be.visible'
-      );
+      cy.get(
+        'input[aria-label="This is a search bar. As you type, the results lower in the page will automatically filter."]'
+      ).should('be.visible');
     }
   }
 

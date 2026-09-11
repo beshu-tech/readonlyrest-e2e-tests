@@ -1,7 +1,11 @@
+import { createRequire } from 'node:module';
 import { defineConfig } from 'cypress';
+import createBundler from '@bahmutov/cypress-esbuild-preprocessor';
 
 export default defineConfig({
   chromeWebSecurity: false,
+  // Only useful during interactive `cypress open`.
+  watchForFileChanges: false,
   experimentalMemoryManagement: true,
   numTestsKeptInMemory: 0,
   env: {
@@ -32,8 +36,14 @@ export default defineConfig({
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
-      return require('./cypress/plugins/index.ts')(on, config);
+      // The default webpack + ts-loader preprocessor needs TypeScript's classic Program API, which
+      // TypeScript 7 does not ship. esbuild strips the TypeScript syntax without it.
+      on('file:preprocessor', createBundler({ tsconfigRaw: { compilerOptions: { target: 'es2015' } } }));
+      // Cypress 15 loads this config through tsx, possibly as ESM, where bare `require` is absent.
+      // @ts-expect-error TypeScript checks this project as CJS, but Cypress can load the config as ESM.
+      const nodeRequire = createRequire(import.meta.url);
+      nodeRequire('esbuild-register');
+      return nodeRequire('./cypress/plugins/index.ts')(on, config);
     },
     baseUrl: 'https://localhost:5601',
     videosFolder: '../results/videos',

@@ -88,13 +88,15 @@ Cypress.Commands.add(
     }) as Cypress.Chainable<unknown>
 );
 
-Cypress.Commands.add('esDelete', ({ endpoint, credentials, failOnStatusCode }, ...args) =>
-  cy.esRequest({
-    method: 'DELETE',
-    endpoint,
-    credentials,
-    failOnStatusCode
-  })
+Cypress.Commands.add(
+  'esDelete',
+  ({ endpoint, credentials, failOnStatusCode }, ...args) =>
+    cy.esRequest({
+      method: 'DELETE',
+      endpoint,
+      credentials,
+      failOnStatusCode
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add(
@@ -213,10 +215,25 @@ Cypress.Commands.add('waitForResponse', (alias: `@${string}`) =>
   }) as unknown as Cypress.Chainable<{ statusCode: number }>
 );
 
-Cypress.on('uncaught:exception', (err, runnable) => {
+Cypress.on('uncaught:exception', (err, runnable, promise) => {
   const kibanaVersion = getKibanaVersion();
   const isKibana8x = semver.satisfies(kibanaVersion, '>=8.0.0 <9.0.0');
   const isKibana819 = semver.satisfies(kibanaVersion, '>=8.19.0 <8.20.0');
+
+  /**
+   * Kibana keeps polling in the background (task manager, alerting, telemetry) while a test tears
+   * down. When the previous attempt's page is being logged out, one of those fetches can answer
+   * with a gateway status. Nothing in the app awaits that promise, so it surfaces as an unhandled
+   * rejection and fails whichever hook is running - usually an afterEach, which then skips the rest
+   * of the cleanup and poisons every following retry (RORDEV: Sanity-check "Too many elements
+   * found. Found '2', expected '1'").
+   *
+   * Only unhandled rejections are ignored here, never an error a test action waits on: `promise` is
+   * set only for a rejection no application code handled.
+   */
+  if (promise && /\b(Bad Gateway|Gateway Timeout|Service Unavailable)\b/.test(err.message)) {
+    return false;
+  }
 
   /**
    * Don't fail test when these specific errors from kibana platform
