@@ -1,3 +1,6 @@
+// typescript-eslint has no TS 7 support yet; point it at the TS 6 API (see the shim).
+require('./scripts/register-typescript-eslint-compat.cjs');
+
 module.exports = {
   env: {
     browser: true,
@@ -19,6 +22,12 @@ module.exports = {
     }
   },
   rules: {
+    // @typescript-eslint 8 promotes these to errors in `recommended`. The suite predates that; keep
+    // them visible as warnings until a dedicated cleanup, so a toolchain bump does not rewrite tests.
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-unused-vars': ['warn', { args: 'none' }],
+    '@typescript-eslint/no-unused-expressions': 'warn',
+    '@typescript-eslint/no-require-imports': 'warn',
     'prettier/prettier': 'error',
     'import/extensions': 'off',
     'import/no-extraneous-dependencies': 'off',

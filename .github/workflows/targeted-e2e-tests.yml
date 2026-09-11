@@ -58,7 +58,10 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 1
-          timeout_minutes: 60
+          # A run that passes can still need more than 60 minutes. The suite reaches about 77
+          # minutes in its slow shape, and its longest spec alone measured 19:35. max_attempts is
+          # 1 here, so nothing catches an attempt that the cap cuts off.
+          timeout_minutes: 75
           retry_wait_seconds: 120
           command: |
             PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")

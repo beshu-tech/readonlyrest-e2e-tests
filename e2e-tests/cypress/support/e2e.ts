@@ -24,6 +24,7 @@ import { installClipboardCapture, resetClipboardCapture } from './clipboardCaptu
 // clipboardCapture.ts for why Chromium 138 makes that necessary.
 Cypress.on('window:before:load', installClipboardCapture);
 beforeEach(resetClipboardCapture);
+
 /// <reference types="cypress" />
 
 declare global {
