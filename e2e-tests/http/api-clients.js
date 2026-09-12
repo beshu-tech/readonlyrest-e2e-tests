@@ -1,5 +1,9 @@
 import { kibanaUserCredentials } from './config.js';
-import { esPost, kbnDelete, kbnGet, kbnPost, readFixture } from './http-client.js';
+import { describeBody, esPost, kbnDelete, kbnGet, kbnPost, readFixture } from './http-client.js';
+
+// Every `credentials` here is a Basic pair, `user:password`. CI keeps its logs, so a log line names
+// the account and never the pair.
+const accountOf = credentials => String(credentials).split(':')[0];
 
 // cypress/support/helpers/RorApiClient.ts
 
@@ -57,7 +61,7 @@ export const createShortUrlLegacy = (credentials, group) =>
 // cypress/support/helpers/KbnApiAdvancedClient.ts
 
 export async function deleteSavedObjects(credentials, group) {
-  console.log(`Get all saved objects for the ${credentials}`);
+  console.log(`Get all saved objects for the ${accountOf(credentials)}`);
   const result = await getSavedObjects(credentials, group);
 
   // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
@@ -65,7 +69,7 @@ export async function deleteSavedObjects(credentials, group) {
   // in which case the _find answers with a login page instead of the find JSON. An index
   // that is already resetting has nothing left to clean, so treat that as the empty list.
   for (const savedObject of result?.saved_objects ?? []) {
-    console.log(`Remove ${savedObject.id} saved object for ${credentials}`);
+    console.log(`Remove ${savedObject.id} saved object for ${accountOf(credentials)}`);
     // Best effort: an object listed a moment ago can already be gone (404). Losing that
     // race must not fail cleanup.
     await deleteSavedObject(savedObject, credentials, group, { failOnStatusCode: false });
@@ -73,11 +77,22 @@ export async function deleteSavedObjects(credentials, group) {
 }
 
 export async function deleteDataViews(credentials, group) {
-  console.log(`get all data_views for the ${credentials}`);
+  const account = accountOf(credentials);
+  console.log(`get all data_views for the ${account}`);
   const result = await getDataViews(credentials, group);
 
+  // api/data_views answers { data_view: [...] }, but it can also answer 2xx with a login page when a
+  // session sweep or a config restart logs the request out. An empty-list fallback would read that
+  // as 'nothing to clean' and hide the logout, so say what came back instead.
+  if (!Array.isArray(result?.data_view)) {
+    throw new Error(
+      `api/data_views did not answer with { data_view: [...] } for ${account}${group ? ` in ${group}` : ''}. ` +
+        `Body: ${describeBody(result)}`
+    );
+  }
+
   for (const dataView of result.data_view) {
-    console.log(`Remove ${dataView.id} saved object for ${credentials}`);
+    console.log(`Remove ${dataView.id} saved object for ${account}`);
     await deleteDataView(dataView.id, credentials, group);
   }
 }

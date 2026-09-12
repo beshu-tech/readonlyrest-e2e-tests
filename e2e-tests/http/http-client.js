@@ -14,8 +14,10 @@ const fixturesDir = new URL('../cypress/fixtures/', import.meta.url);
 
 const basicAuth = credentials => `Basic ${Buffer.from(credentials).toString('base64')}`;
 
-const describeBody = data => {
-  const shown = typeof data === 'string' ? data : JSON.stringify(data);
+// A body in a failure message, short enough to read. JSON.stringify gives undefined for undefined
+// and for a function, so String() is the last resort.
+export const describeBody = data => {
+  const shown = typeof data === 'string' ? data : JSON.stringify(data) ?? String(data);
   return shown.length > 2000 ? `${shown.slice(0, 2000)}…` : shown;
 };
 
@@ -66,7 +68,12 @@ async function readBody(response, method, url, failOnStatusCode) {
   return data;
 }
 
-async function httpCall({ method, url, credentials, payload, headers, failOnStatusCode = true }) {
+/**
+ * The body alone, which is what cypress/support/commands.ts gives a caller. `withStatus` is for the
+ * caller that runs with failOnStatusCode: false and therefore has to judge the outcome itself: the
+ * body of a failed request can carry no code at all, so the status has to come with it.
+ */
+async function httpCall({ method, url, credentials, payload, headers, failOnStatusCode = true, withStatus = false }) {
   const response = await send(method, url, {
     method,
     headers: {
@@ -77,7 +84,9 @@ async function httpCall({ method, url, credentials, payload, headers, failOnStat
     body: payload === undefined || payload === null ? undefined : JSON.stringify(payload)
   });
 
-  return readBody(response, method, url, failOnStatusCode);
+  const body = await readBody(response, method, url, failOnStatusCode);
+
+  return withStatus ? { status: response.status, body } : body;
 }
 
 /**
@@ -108,14 +117,18 @@ function kibanaHeaders({ group, impersonating, headers }) {
   };
 }
 
-function kbnRequest(method, { endpoint, credentials, payload, group, impersonating, failOnStatusCode, headers }) {
+function kbnRequest(
+  method,
+  { endpoint, credentials, payload, group, impersonating, failOnStatusCode, withStatus, headers }
+) {
   return httpCall({
     method,
     url: `${kibanaUrl}/${endpoint}`,
     credentials,
     payload,
     headers: kibanaHeaders({ group, impersonating, headers }),
-    failOnStatusCode
+    failOnStatusCode,
+    withStatus
   });
 }
 

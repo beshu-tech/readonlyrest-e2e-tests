@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { configureRorIndexMainSettings } from './api-clients.js';
-import { kbnGet } from './http-client.js';
+import { describeBody, kbnGet } from './http-client.js';
 
 // api_only users — allowed_api_paths enforcement is active
 const apiOnlyExactUser = 'api_only_restricted_user:dev';
@@ -84,51 +84,43 @@ describe('allowed_api_paths enforcement for api_only users', () => {
 
 // --- Helpers ---
 
+// These requests run with failOnStatusCode: false, so this file judges the outcome itself and needs
+// the HTTP status to do it: a failed request can answer with a login page or a plain-text error,
+// and neither body carries a code. So this caller asks for { status, body }.
 function apiGet(endpoint, credentials) {
-  return kbnGet({ endpoint, credentials, failOnStatusCode: false });
+  return kbnGet({ endpoint, credentials, failOnStatusCode: false, withStatus: true });
 }
 
 // ROR 403 is a specific body shape from guardKibanaApiPath; any other status means ROR let the request through
-function assertRor403(response) {
-  const body = bodyOf(response);
-  const shown = JSON.stringify(response);
+function assertRor403({ body }) {
+  const envelope = bodyOf(body);
+  const shown = describeBody(body);
 
-  assert.equal(body.status_code, 403, `expected ReadonlyREST's forbidden envelope, got: ${shown}`);
-  assert.equal(body.status, 'forbidden', `expected ReadonlyREST's forbidden envelope, got: ${shown}`);
+  assert.equal(envelope.status_code, 403, `expected ReadonlyREST's forbidden envelope, got: ${shown}`);
+  assert.equal(envelope.status, 'forbidden', `expected ReadonlyREST's forbidden envelope, got: ${shown}`);
 }
 
 // Only that ReadonlyREST let the request reach Kibana. It says nothing about what Kibana then did
 // with it, so prefer assertRequestSucceeded wherever the endpoint actually serves something.
-function assertNotBlockedByRor(response) {
-  assert.notEqual(
-    bodyOf(response).status,
-    'forbidden',
-    `ReadonlyREST blocked the request: ${JSON.stringify(response)}`
-  );
+function assertNotBlockedByRor({ body }) {
+  assert.notEqual(bodyOf(body).status, 'forbidden', `ReadonlyREST blocked the request: ${describeBody(body)}`);
 }
 
-// The requests run with failOnStatusCode: false and kbnGet yields the body only, so the HTTP status
-// is not visible here — whatever the body carries is. Both layers put a code in it on failure
-// (ReadonlyREST as `status_code`, Kibana core as `statusCode`), but ReadonlyREST's own API also puts
-// one there on success — /api/ror/user/tenants answers { statusCode: 200, status: 'SUCCESS', ... }.
-// So it is the value that decides, not the presence of the field; a body with no code at all is the
-// resource itself and therefore fine.
+// Both halves of the answer. The status says the request succeeded, which no body can say on its
+// own; the body says ReadonlyREST did not block it, which the status cannot — ReadonlyREST's own API
+// answers /api/ror/user/tenants with { statusCode: 200, status: 'SUCCESS', ... }.
 function assertRequestSucceeded(response) {
-  const shown = JSON.stringify(response);
-
   assertNotBlockedByRor(response);
-  assert.ok(statusCodeOf(bodyOf(response)) < 400, `the request did not succeed: ${shown}`);
+  assert.ok(
+    response.status < 400,
+    `the request did not succeed: HTTP ${response.status}; Body: ${describeBody(response.body)}`
+  );
 }
 
 // A body that is not an object carries no status field, which is the same answer an object without
 // one gives.
-function bodyOf(response) {
-  return response !== null && typeof response === 'object' ? response : {};
-}
-
-function statusCodeOf(body) {
-  const code = body.status_code ?? body.statusCode;
-  return typeof code === 'number' ? code : 200;
+function bodyOf(body) {
+  return body !== null && typeof body === 'object' ? body : {};
 }
 
 async function expectBlocked(endpoint, credentials) {
@@ -144,9 +136,10 @@ async function expectNotBlocked(endpoint, credentials) {
 }
 
 function expectSpacesResponseIncludesDefault(response) {
-  const spaces = response;
+  assertRequestSucceeded(response);
+  const spaces = response.body;
   assert.ok(
     Array.isArray(spaces) && spaces.map(space => space.id).includes('default'),
-    `expected the default space in the response, got: ${JSON.stringify(response)}`
+    `expected the default space in the response, got: ${describeBody(spaces)}`
   );
 }
