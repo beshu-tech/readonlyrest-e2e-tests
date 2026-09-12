@@ -11,6 +11,14 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# A second push to the same pull request makes the first run's result worthless, and this suite
+# holds runners for hours. Cancel it. Only for pull requests: on master, the nightly and a manual
+# dispatch the group is the run id, which is unique, so those runs neither cancel nor queue behind
+# each other. Grouping them by ref instead would park a nightly behind a master push for hours.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   APPLY_RESOURCE_LIMITS: "auto"
 
@@ -99,11 +107,13 @@ jobs:
   # Bootstrap uses released images (no --mode), as it did before.
   master-bootstrap-tests:
     name: "🚀 Bootstrap Tests"
+    # Not on a pull request. The matrix is 34 released versions x 2 envs, and every one of them
+    # tests plugins that are already out, so nothing a pull request changes can change the result.
+    # The nightly and a push to master still run it, because the released set moves there.
     if: >
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
+      (github.event_name == 'push' && github.ref == 'refs/heads/master')
     needs: prod-e2e-tests
     runs-on: ubuntu-latest
     strategy:
