@@ -1,0 +1,5 @@
+{
+  "name": "ror-e2e-http-tests",
+  "private": true,
+  "type": "module"
+}

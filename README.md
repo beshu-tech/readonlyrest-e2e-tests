@@ -115,6 +115,15 @@ The test environment is created with the Docker Compose. All code is located in 
 
 The Cypress-based tests are located in the `e2e-tests/cypress/e2e`. Screenshots and videos for test runs will be stored in `results/videos` and `results/snapshots` folders.
 
+### HTTP API tests
+
+The tests in `e2e-tests/http` call the Elasticsearch and the Kibana API and never open a page, so they need no browser and no `yarn install`. They run on Node's own test runner, against the same stack as the Cypress suite, and `runner.sh` starts them immediately before it. A test belongs here when it asserts on an API answer alone; a test that reads what Kibana renders belongs in Cypress.
+
+To run them against a stack that is already up:
+```bash
+./e2e-tests/http/run-tests.sh "8.15.2"
+```
+
 ### Docker-based ROR development environment 
 
 If you prefer, you can use scripts from the `docker-based-ror-dev-env` folder to run them inside a docker container of the Docker-based ROR development environment image. It's not needed, but it can be helpful in the following cases:
