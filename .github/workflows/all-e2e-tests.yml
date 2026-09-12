@@ -6,10 +6,15 @@ on:
     - cron: '0 0 * * *'
   # Only the two long-lived branches. Feature branches are covered by their pull request, and
   # listing them here would run everything twice for every push to an open PR.
+  # paths-ignore on both: a change to prose cannot change what the suite does, and a docs-only
+  # pull request costs the same 12 legs as a code one without it. Keep the list to files that are
+  # never read at runtime — anything under e2e-tests/, .github/ or environments/ must still run.
   push:
     branches: [master, develop]
+    paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
 
 # A second push to the same pull request makes the first run's result worthless, and this suite
 # holds runners for hours. Cancel it. Only for pull requests: on master, the nightly and a manual

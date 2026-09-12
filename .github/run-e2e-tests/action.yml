@@ -35,6 +35,24 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # run-tests.sh runs `yarn --frozen-lockfile install` and Cypress downloads its binary on first
+    # use. Measured over 10 legs of nightly 34547123638 that is 30s for the install and 5-22s for
+    # the binary, on every leg, for dependencies that change when yarn.lock does. Both caches are
+    # keyed on the file that decides their content, so a stale entry cannot be served.
+    - name: Cache the yarn download cache and node_modules
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: |
+          ~/.cache/yarn
+          e2e-tests/node_modules
+        key: e2e-yarn-${{ runner.os }}-${{ hashFiles('e2e-tests/yarn.lock') }}
+    - name: Cache the Cypress binary
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        # Keyed on yarn.lock as well: the binary version is pinned by the `cypress` entry in it,
+        # so one key covers both and cannot disagree with the installed package.
+        path: ~/.cache/Cypress
+        key: e2e-cypress-${{ runner.os }}-${{ hashFiles('e2e-tests/yarn.lock') }}
     - name: Run E2E tests
       uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
       with:
