@@ -52,6 +52,9 @@ describe('Spaces', () => {
 
   if (semver.gte(getKibanaVersion(), '9.1.0')) {
     // FIXME: for Kibana 9.1.0 there is a new .kibana_security_search index not handled on es side yet
+    //
+    // The skip is version-gated, not a suite-wide one: only Kibana >= 9.1.0 is affected, and the
+    // else branch below still runs the test on every earlier version.
     it.skip('should create and navigate to new space with hidden features');
   } else {
     it('should create and navigate to new space with hidden features', () => {

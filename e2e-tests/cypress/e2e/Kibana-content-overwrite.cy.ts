@@ -35,6 +35,17 @@ describe('Kibana-content-overwrite', () => {
 
       StackManagement.openConnectorsPage();
       isAlertingOverwritePageVisible();
+
+      // Rules -> Connectors with no homepage between them, unlike the pair above. Kibana moves
+      // between those two pages in-app, so it wipes the children of the pageBody container without
+      // replacing the container itself. A second ReactDOM.render() on that same node is then a
+      // no-op reconciliation against a stale fiber tree, and the overwrite never reappears
+      // (RORDEV-2185). The route through the homepage does not reproduce it, because the container
+      // is replaced on the way.
+      StackManagement.openRulesPage();
+      isAlertingOverwritePageVisible();
+      StackManagement.openConnectorsPage();
+      isAlertingOverwritePageVisible();
     } else {
       StackManagement.openRulesAndConnectorsPage();
       isAlertingOverwritePageVisible();

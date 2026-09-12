@@ -5,6 +5,11 @@ import { Editor } from '../support/page-objects/Editor';
 import { rorApiInternalKbnClient } from '../support/helpers/RorApiInternalKbnClient';
 
 // TODO: Uncomment when functionality enabled
+//
+// RORDEV-1813. These tests assert that a readonlyrest_kbn block saved to the .readonlyrest index
+// takes effect without a Kibana restart. readonlyrest_kbn#754 deliberately turned that hot reload
+// off (see the FIXMEs on RorConfigManager.startConfigRefresh), so the suite cannot pass today.
+// Re-enable it with the reload redesign, not before.
 describe.skip('Ror config', () => {
   beforeEach(() => {
     Login.initialization();
