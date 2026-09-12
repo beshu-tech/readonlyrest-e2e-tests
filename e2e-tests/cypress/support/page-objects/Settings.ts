@@ -1,4 +1,5 @@
 import * as yaml from 'js-yaml';
+import { recurse } from 'cypress-recurse';
 
 import { rorApiClient } from '../helpers/RorApiClient';
 import { RorMenu } from './RorMenu';
@@ -6,6 +7,9 @@ import { SecuritySettings } from './SecuritySettings';
 import { parseKbnSettings } from '../helpers/parseKibanaSettings';
 
 export class Settings {
+  private static readonly SAVE_MODAL_SETTLE_MS = 300;
+  private static readonly SAVE_MODAL_RETRY_ATTEMPTS = 3;
+
   static open() {
     cy.log('Open settings');
     RorMenu.openRorMenu();
@@ -44,10 +48,35 @@ export class Settings {
   static confirmSaveModal() {
     cy.log('Confirm settings save modal');
     cy.intercept('POST', '/pkp/api/settings*').as('confirmSaveSettings');
+    // The save click can occasionally land while the settings iframe is still catching up with a
+    // just-established session (a transient "Forbidden" flashes and the confirmation modal never
+    // mounts), so retry the Save click until "Save anyway" actually shows up instead of failing
+    // after a single 20s wait.
+    Settings.clickSaveButtonUntilModalAppears();
     SecuritySettings.getIframeBody().contains('Save anyway').click();
     cy.waitForResponse('@confirmSaveSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
+  }
+
+  private static clickSaveButtonUntilModalAppears() {
+    recurse(
+      () =>
+        cy
+          .then(() => Settings.clickSaveButton())
+          .then(() => cy.wait(Settings.SAVE_MODAL_SETTLE_MS, { log: false }))
+          .then(() => SecuritySettings.getIframeBody()),
+      $body => ($body as JQuery<HTMLElement>).find(':contains("Save anyway")').length > 0,
+      {
+        limit: Settings.SAVE_MODAL_RETRY_ATTEMPTS,
+        delay: 0,
+        timeout: 20000,
+        // confirmSaveModal() asserts on the modal text right after this, so failing here would
+        // only replace that message with a less specific one.
+        doNotFail: true,
+        log: false
+      }
+    );
   }
 
   static closeToastMessages() {

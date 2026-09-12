@@ -97,12 +97,13 @@ const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(r
 const fetchWithJsonRetry = async (
   url: string,
   createInit: () => Parameters<typeof fetch>[1],
-  retryOnTransportError = true
+  retryOnTransportError = true,
+  timeoutMs = FETCH_TIMEOUT_MS
 ): Promise<Response> => {
   let response: Response;
   for (let attempt = 1; attempt <= NON_JSON_RETRY_ATTEMPTS; attempt++) {
     // eslint-disable-next-line no-await-in-loop
-    response = await fetchWithTransportRetry(url, createInit, retryOnTransportError);
+    response = await fetchWithTransportRetry(url, createInit, retryOnTransportError, timeoutMs);
     const contentType = response.headers.get('content-type') || '';
 
     // The startup race serves Kibana's login page (text/html) in place of the expected
@@ -131,12 +132,13 @@ const fetchWithJsonRetry = async (
 const fetchWithTransportRetry = async (
   url: string,
   createInit: () => Parameters<typeof fetch>[1],
-  retryOnTransportError: boolean
+  retryOnTransportError: boolean,
+  timeoutMs: number
 ): Promise<Response> => {
   for (let attempt = 1; attempt <= TRANSPORT_ERROR_RETRY_ATTEMPTS; attempt++) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      return await fetch(url, { timeout: FETCH_TIMEOUT_MS, ...createInit() });
+      return await fetch(url, { timeout: timeoutMs, ...createInit() });
     } catch (error) {
       const isLastAttempt = attempt === TRANSPORT_ERROR_RETRY_ATTEMPTS;
       if (!retryOnTransportError || !isTransientNetworkError(error) || isLastAttempt) {
@@ -163,7 +165,7 @@ const fetchWithTransportRetry = async (
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
-      const { method, url, headers, body, failOnStatusCode, allowTransportError } = options;
+      const { method, url, headers, body, failOnStatusCode, allowTransportError, timeoutMs } = options;
 
       try {
         const response: Response = await fetchWithJsonRetry(
@@ -174,7 +176,8 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
             body: body ?? undefined,
             agent: sharedHttpsAgent
           }),
-          !allowTransportError
+          !allowTransportError,
+          timeoutMs
         );
 
         if (!response.ok && failOnStatusCode) {
@@ -394,6 +397,10 @@ interface HttpCallOptions {
   failOnStatusCode?: boolean;
   // For endpoints that restart the server they answer from, so the reply is lost by design.
   allowTransportError?: boolean;
+  // Overrides FETCH_TIMEOUT_MS for endpoints that are legitimately slower than a transport-error
+  // check needs to be, e.g. Kibana's sample-data install (creates an index, then bulk-inserts
+  // thousands of documents into it).
+  timeoutMs?: number;
 }
 
 interface FileToUpload {

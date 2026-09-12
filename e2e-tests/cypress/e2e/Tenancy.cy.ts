@@ -41,15 +41,26 @@ describe('Tenancy', () => {
   describe('should run tests when tenancy switched in a different tab', () => {
     const urlWithInfosecTenancyId = `/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
 
+    // Retries re-run the whole test body, including this callback, so a failed attempt opens
+    // another popup on top of whatever the previous attempt left behind. Left uncollected, they
+    // pile up (each one polling Kibana unauthenticated) until a later attempt's login hangs
+    // waiting for a Kibana request queue the orphaned tabs are still contending for.
+    let openedWindow: Window | null = null;
+
     const openAnotherTabs = () => {
       cy.window().then(win => {
-        win.open(urlWithInfosecTenancyId, '_blank');
+        openedWindow = win.open(urlWithInfosecTenancyId, '_blank');
       });
     };
 
     beforeEach(() => {
       cy.clearCookies();
       cy.clearLocalStorage();
+    });
+
+    afterEach(() => {
+      openedWindow?.close();
+      openedWindow = null;
     });
 
     // eslint-disable-next-line no-use-before-define
