@@ -1,5 +1,21 @@
 import { KbnApiClient } from './KbnApiClient';
 
+// Every `credentials` here is a Basic pair, `user:password`. CI keeps its logs, so a message names
+// the account and never the pair.
+const accountOf = (credentials: string): string => credentials.split(':')[0];
+
+const inTenancy = (group?: string): string => (group ? ` in ${group}` : '');
+
+/**
+ * The answer as the reader has to see it. A Kibana call that is logged out answers with a login
+ * page, and `httpCall` hands that back as the page source, so the body is the evidence: cap it
+ * instead of putting a whole HTML page in one error message.
+ */
+const describeBody = (data: unknown): string => {
+  const shown = typeof data === 'string' ? data : JSON.stringify(data) ?? String(data);
+  return shown.length > 2000 ? `${shown.slice(0, 2000)}…` : shown;
+};
+
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
@@ -20,6 +36,18 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteDataViews(credentials: string, group?: string) {
     cy.log(`get all data_views for the ${credentials}`);
     this.getDataViews(credentials, group).then(result => {
+      // api/data_views answers { data_view: [...] }, and it answers 2xx with a login page when a
+      // session sweep or a config restart logs the request out. The empty-list fallback that
+      // deleteSavedObjects uses does not fit here: this cleanup races no index reset, so an answer
+      // that is not the data_views JSON means the request failed, and an empty list would read that
+      // as 'nothing to clean' and let the test pass. Say what came back instead.
+      if (!Array.isArray(result?.data_view)) {
+        throw new Error(
+          `api/data_views did not answer with { data_view: [...] } for ${accountOf(credentials)}` +
+            `${inTenancy(group)}. Body: ${describeBody(result)}`
+        );
+      }
+
       result.data_view.forEach(dataView => {
         cy.log(`Remove ${dataView.id} saved object for ${credentials}`);
         this.deleteDataView(dataView.id, credentials, group);
@@ -30,6 +58,15 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteAllSpaces(credentials: string, group?: string): void {
     cy.log(`Delete all spaces`);
     this.getAllSpaces(credentials, group).then(spaces => {
+      // Same logout race as deleteDataViews: api/spaces/space answers with the list of spaces, and
+      // answers 2xx with a login page once the request is no longer authenticated.
+      if (!Array.isArray(spaces)) {
+        throw new Error(
+          `api/spaces/space did not answer with a list of spaces for ${accountOf(credentials)}` +
+            `${inTenancy(group)}. Body: ${describeBody(spaces)}`
+        );
+      }
+
       spaces
         .filter(space => space.id !== 'default')
         .forEach(space => {
