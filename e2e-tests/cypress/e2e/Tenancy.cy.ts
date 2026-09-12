@@ -56,6 +56,82 @@ describe('Tenancy', () => {
     runTests({ callbackBeforeLogin: openAnotherTabs });
   });
 
+  // Out of runTests as well, but for a different reason. This one does read both callbacks, so the
+  // three passes were not identical — they asked whether the copied link still carries the tenancy
+  // after a history-back and after a cross-tab switch. That property is the URL tenancy surviving
+  // the variant, and the first test in runTests already asserts exactly that under all three
+  // passes, through checkTenancyNameInBadge and verifyKibanaNavigationLinkItemHref. What is left
+  // here is the share panel itself, which the variants do not touch. It is also the most expensive
+  // test in the suite: it installs the ecommerce sample data, and it was doing so three times.
+  describe('share link', () => {
+    afterEach(() => {
+      kbnApiClient.deleteSampleData('ecommerce', userCredentials);
+    });
+
+    it('should copy link to specific visualization with tenancy information', () => {
+      const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
+      Login.initialization({
+        visitedUrl: urlWithTenancyId,
+        finishUrl: urlWithTenancyId,
+        spacePrefix: ''
+      });
+
+      kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
+      cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
+      KibanaNavigation.openPage('Discover');
+      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+        cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');
+      } else {
+        cy.get('[data-test-subj="indexPattern-switch-link"]', { timeout: 30000 }).should('exist');
+      }
+      Discover.openShareDiscover();
+      Discover.clickCopyLinkButton('admin');
+      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+        cy.getValueFromClipboard()
+          .should('contain', 'https://localhost:5601/s/default/app/r/s')
+          .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
+      } else {
+        cy.getValueFromClipboard().should(
+          'contain',
+          `https://localhost:5601/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#`
+        );
+      }
+
+      Dashboard.openDashboard();
+      Dashboard.openItem(0);
+      Dashboard.openShareDashboard();
+      Dashboard.clickCopyLinkButton();
+
+      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+        cy.getValueFromClipboard()
+          .should('contain', 'https://localhost:5601/s/default/app/r/s')
+          .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
+      } else {
+        cy.getValueFromClipboard().should(
+          'contain',
+          `https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/`
+        );
+      }
+      if (semver.lt(getKibanaVersion(), '8.0.0')) {
+        Dashboard.backToShareDashboard();
+      }
+      Dashboard.clickEmbedTab();
+      Dashboard.clickCopyEmbedCodeButton();
+
+      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+        cy.getValueFromClipboard().should(
+          'contain',
+          `<iframe src="https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/view/`
+        );
+      } else {
+        cy.getValueFromClipboard().should(
+          'contain',
+          `<iframe src="https://localhost:5601/s/default/app/dashboards?embed=true&amp;${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`
+        );
+      }
+    });
+  });
+
   // Outside runTests: neither of these reads callbackBeforeLogin or callbackAfterLogin, so the
   // three runTests passes ran byte-identical copies of them. Once is once.
   it('should redirect to page not found when tenancy is not available', () => {
@@ -161,71 +237,6 @@ function runTests({
     Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
     Loader.loading();
     Tenancy.checkTenancyNameInBadge('administrators', 'a');
-  });
-
-  it('should copy link to specific visualization with tenancy information', () => {
-    const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
-    callbackBeforeLogin?.();
-    Login.initialization({
-      visitedUrl: urlWithTenancyId,
-      finishUrl: urlWithTenancyId,
-      spacePrefix: ''
-    });
-
-    callbackAfterLogin?.();
-    kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
-    cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
-    KibanaNavigation.openPage('Discover');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');
-    } else {
-      cy.get('[data-test-subj="indexPattern-switch-link"]', { timeout: 30000 }).should('exist');
-    }
-    Discover.openShareDiscover();
-    Discover.clickCopyLinkButton('admin');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.getValueFromClipboard()
-        .should('contain', 'https://localhost:5601/s/default/app/r/s')
-        .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
-    } else {
-      cy.getValueFromClipboard().should(
-        'contain',
-        `https://localhost:5601/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#`
-      );
-    }
-
-    Dashboard.openDashboard();
-    Dashboard.openItem(0);
-    Dashboard.openShareDashboard();
-    Dashboard.clickCopyLinkButton();
-
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.getValueFromClipboard()
-        .should('contain', 'https://localhost:5601/s/default/app/r/s')
-        .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
-    } else {
-      cy.getValueFromClipboard().should(
-        'contain',
-        `https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/`
-      );
-    }
-    if (semver.lt(getKibanaVersion(), '8.0.0')) {
-      Dashboard.backToShareDashboard();
-    }
-    Dashboard.clickEmbedTab();
-    Dashboard.clickCopyEmbedCodeButton();
-
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.getValueFromClipboard().should(
-        'contain',
-        `<iframe src="https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/view/`
-      );
-    } else {
-      cy.getValueFromClipboard().should(
-        'contain',
-        `<iframe src="https://localhost:5601/s/default/app/dashboards?embed=true&amp;${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`
-      );
-    }
   });
 
   it('should correctly switch Kibana space', () => {
