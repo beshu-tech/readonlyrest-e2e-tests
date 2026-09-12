@@ -17,9 +17,10 @@ export class KibanaNavigation {
 
   static openKibanaNavigation() {
     cy.log('openKibanaNavigation');
-    // Clear any overlays by pressing ESC prior to opening nav
+    // Clear any overlays by pressing ESC prior to opening nav. The two events are one key press,
+    // so nothing has to happen between them; the 200ms that used to sit here was dead time on
+    // every call, and openPage calls this for every navigation in the suite.
     cy.get('body').trigger('keydown', { keyCode: 27 });
-    cy.wait(200);
     cy.get('body').trigger('keyup', { keyCode: 27 });
 
     cy.get('[data-test-subj=toggleNavButton]').click({ force: true });
