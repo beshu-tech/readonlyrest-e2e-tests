@@ -1,7 +1,6 @@
 import { Login } from '../support/page-objects/Login';
 import { TestSettings } from '../support/page-objects/TestSettings';
 import { Settings } from '../support/page-objects/Settings';
-import { Editor } from '../support/page-objects/Editor';
 
 describe('Test ACL', () => {
   beforeEach(() => {
@@ -17,36 +16,11 @@ describe('Test ACL', () => {
     TestSettings.pressInvalidateFileTestSettings();
 
     cy.log('should check promote as permanent settings functionality when success');
-    // Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP1`);
+
     TestSettings.pressSaveTestSettingsButton();
 
-    // TODO: Uncomment it when es plugin fix issue with settings
-
-    // TestSettings.promoteAsPermanent();
-
-    // cy.log(
-    //   'should save Test ACL promote as permanent settings functionality when not saving changes'
-    // );
-    // Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP2`);
-    // TestSettings.pressPromoteAsPermanentButton();
-    // TestSettings.saveTestSettingsBeforePermanentPromote();
-
-    // cy.log(
-    //   'should reject save Test ACL promote as permanent settings functionality when not saving changes'
-    // );
-    //
-    // Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP3`);
-    // TestSettings.pressPromoteAsPermanentButton();
-    // TestSettings.rejectSaveTestSettingsBeforePermanentPromote();
-    //
-    // cy.log('should failed promote as permanent when settings already exists');
-    // TestSettings.pressPromoteAsPermanentButton();
-    // TestSettings.saveTestSettingsBeforePermanentPromoteFailed();
-    //
-    // cy.log('should check save Test ACL functionality');
-    // Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP4`);
-    // TestSettings.pressSaveTestSettingsButton();
-    // TestSettings.successfulSaveTestSettingsToast().should('be.visible');
+    // The promote-as-permanent steps that used to sit here were commented out waiting on an ES
+    // plugin fix. They are tracked in the ROR KBN repo's testController tests, not here.
 
     /**
      * TODO: Uncomment all toast based assertions and try to make this check non-deterministic

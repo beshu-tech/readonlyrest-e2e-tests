@@ -1,16 +1,58 @@
 name: 'Cleanup disk space'
-description: 'Cleanup runner disk space'
+description: 'Frees runner disk space, but only when the job needs more than the runner already has free.'
+
+inputs:
+  required_gb:
+    description: >
+      How much free space on / the job needs. The cleanup is skipped when the runner already has
+      this much, because deleting the preinstalled toolchains costs ~80 seconds and an e2e leg
+      that never fills the disk pays it for nothing. A bootstrap leg only boots a stack, so it
+      passes a small number here; a full suite leg keeps the default.
+    required: false
+    default: '25'
 
 runs:
   using: 'composite'
   steps:
     - name: Cleanup disk space
       shell: bash
+      env:
+        REQUIRED_GB: ${{ inputs.required_gb }}
       run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build
+        set -euo pipefail
+
+        FREE_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+        echo "Free space on /: ${FREE_GB}G. This job asks for ${REQUIRED_GB}G."
+
+        if [ "$FREE_GB" -ge "$REQUIRED_GB" ]; then
+          echo "Enough free space already — skipping the cleanup."
+          exit 0
+        fi
+
+        # Independent trees on the same disk. Deleting them in parallel finishes in about the time
+        # the largest one takes, instead of the sum.
+        #
+        # Each job's pid is kept and waited on by name. A bare `wait` returns 0 whatever the jobs
+        # did, so a deletion that failed would leave the disk full and let the suite run into it
+        # later, with an error that points anywhere but here.
+        pids=()
+        sudo rm -rf /usr/share/dotnet & pids+=("$!")
+        sudo rm -rf /usr/local/lib/android & pids+=("$!")
+        sudo rm -rf /opt/ghc & pids+=("$!")
+        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build & pids+=("$!")
+
+        failed=0
+        for pid in "${pids[@]}"; do
+          wait "$pid" || failed=1
+        done
+        if [ "$failed" -ne 0 ]; then
+          echo "At least one cleanup deletion failed. Disk space below:"
+          df -h /
+          exit 1
+        fi
+
         sudo apt-get clean
         sudo rm -rf /var/lib/apt/lists/*
-        
+
         echo "Available disk space after cleanup:"
-        df -h
+        df -h /

@@ -236,11 +236,50 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     }
   });
 
+  // A test that needed a second or third attempt still passed, so nothing in the run output says
+  // it was retried — and a green leg can be paying a full extra spec for it. Report every retried
+  // test on the run summary, so the flaky ones can be named instead of guessed at.
+  //
+  // GITHUB_STEP_SUMMARY is unset outside Actions and this then does nothing. Best effort: a broken
+  // report must never fail a suite that passed.
+  const reportRetriedTests = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
+    const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+    if (!summaryFile || !results || !results.tests) return;
+
+    const retried = results.tests
+      .map(test => ({
+        title: (test.title || []).join(' > '),
+        attempts: (test.attempts || []).length,
+        state: test.state
+      }))
+      .filter(test => test.attempts > 1);
+
+    if (retried.length === 0) return;
+
+    const rows = retried
+      .map(test => `| \`${path.basename(spec.relative)}\` | ${test.title} | ${test.attempts} | ${test.state} |`)
+      .join('\n');
+
+    try {
+      await fs.promises.appendFile(
+        summaryFile,
+        `\n<!-- retries -->\n| spec | test | attempts | final |\n| --- | --- | --- | --- |\n${rows}\n`
+      );
+    } catch {
+      // best-effort reporting; never fail a green run over it
+    }
+  };
+
   // Discard the video for specs that finished with all tests passing.
   // Combined with `videoCompression: false` in cypress.config.ts, this keeps
   // failure-debug videos available while avoiding writing GBs of green-run
   // videos to disk and uploading them as artifacts.
-  on('after:spec', async (_spec, results) => {
+  on('after:spec', async (spec, results) => {
+    // Two `on('after:spec')` registrations do not both run. EventRegistrar keeps one function per
+    // event name (`_registeredEvents[event] = callback`) and executeNodeEvent looks it up by name,
+    // so a second registration silently replaces the first. Both jobs live in this one handler.
+    await reportRetriedTests(spec, results);
+
     if (!results || !results.video) return;
     // Keep the video if the spec had ANY failure. Prefer the stable
     // `results.stats.failures` counter — in Cypress 14 the per-attempt

@@ -31,10 +31,12 @@ describe('settings', () => {
     cy.log('should check save changes functionality when no changes provided');
     // Settings.currentSettingsAlreadyLoadedToast().should('be.visible');
 
-    cy.log('should check save changes functionality when malformed settings provided');
-    Editor.changeConfig('readonlyrest:');
-    Settings.clickSaveButton();
-    // Settings.malformedSavedConfigurationToast().should('be.visible');
+    // The malformed-settings step used to sit here. Its only live assertion was clickSaveButton's
+    // `expect(statusCode).to.eq(200)`, so it asserted that saving `readonlyrest:` SUCCEEDS: it
+    // would have stayed green if ROR silently swallowed a broken config, and would have gone red
+    // the day ROR started rejecting one. The toast assertion that carried the real meaning is
+    // commented out above its sibling steps. Rejecting malformed config is covered by
+    // JsonSchemaValidator.test.ts and rorApi.test.ts in the ROR KBN repo.
 
     cy.log('should check save changes functionality when success');
     Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP${Cypress._.random(0, 1e6)}`);
