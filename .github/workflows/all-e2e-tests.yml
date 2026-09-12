@@ -11,6 +11,14 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# A second push to the same pull request makes the first run's result worthless, and this suite
+# holds runners for hours. Cancel it. Only for pull requests: on master, the nightly and a manual
+# dispatch the group is the run id, which is unique, so those runs neither cancel nor queue behind
+# each other. Grouping them by ref instead would park a nightly behind a master push for hours.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   APPLY_RESOURCE_LIMITS: "auto"
 
