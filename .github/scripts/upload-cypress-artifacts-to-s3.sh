@@ -64,6 +64,16 @@ fi
 
 S3_PATH="${PATH_PREFIX:+${PATH_PREFIX%/}/}${S3_SUBFOLDER%/}/"
 
+# The gateway rejects a key with an empty path segment:
+#   <Code>InvalidArgument</Code>
+#   <Message>InvalidArgument: Key must not contain empty path segments ('//')</Message>
+# and every upload in the job then 403s in a step that is `continue-on-error`, so a red e2e job
+# quietly leaves nothing behind. It happens when ROR_S3_PATH_E2E_REPORTS ends with a slash: the
+# caller appends `/build_<run id>` to it before this script sees it, which puts the `//` in the
+# middle of PATH_PREFIX, where trimming the tail cannot reach it. Collapse them instead of
+# trusting the variable's shape.
+S3_PATH=$(printf '%s' "$S3_PATH" | sed 's://*:/:g')
+
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
