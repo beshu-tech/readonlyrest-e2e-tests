@@ -242,7 +242,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
   //
   // GITHUB_STEP_SUMMARY is unset outside Actions and this then does nothing. Best effort: a broken
   // report must never fail a suite that passed.
-  on('after:spec', async (spec, results) => {
+  const reportRetriedTests = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
     const summaryFile = process.env.GITHUB_STEP_SUMMARY;
     if (!summaryFile || !results || !results.tests) return;
 
@@ -268,13 +268,18 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     } catch {
       // best-effort reporting; never fail a green run over it
     }
-  });
+  };
 
   // Discard the video for specs that finished with all tests passing.
   // Combined with `videoCompression: false` in cypress.config.ts, this keeps
   // failure-debug videos available while avoiding writing GBs of green-run
   // videos to disk and uploading them as artifacts.
-  on('after:spec', async (_spec, results) => {
+  on('after:spec', async (spec, results) => {
+    // Two `on('after:spec')` registrations do not both run. EventRegistrar keeps one function per
+    // event name (`_registeredEvents[event] = callback`) and executeNodeEvent looks it up by name,
+    // so a second registration silently replaces the first. Both jobs live in this one handler.
+    await reportRetriedTests(spec, results);
+
     if (!results || !results.video) return;
     // Keep the video if the spec had ANY failure. Prefer the stable
     // `results.stats.failures` counter — in Cypress 14 the per-attempt
