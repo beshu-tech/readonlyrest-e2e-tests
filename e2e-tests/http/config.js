@@ -4,6 +4,18 @@
 
 const stripTrailingSlash = url => url.replace(/\/+$/, '');
 
+const milliseconds = (variableName, fallback) => {
+  const raw = process.env[variableName];
+  if (raw === undefined || raw === '') return fallback;
+
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${variableName} must be a positive number of milliseconds, got: ${raw}`);
+  }
+
+  return value;
+};
+
 export const kibanaUrl = stripTrailingSlash(process.env.KIBANA_URL || 'https://localhost:5601');
 
 export const elasticsearchUrl = stripTrailingSlash(process.env.ELASTICSEARCH_URL || 'https://localhost:9200');
@@ -12,6 +24,20 @@ export const userCredentials = `${process.env.KIBANA_LOGIN || 'admin'}:${process
 
 // The account that may write the ROR settings index.
 export const kibanaUserCredentials = process.env.KIBANA_USER_CREDENTIALS || 'kibana:kibana';
+
+// 'elk-ror' or 'eck-ror'. runner.sh passes it down; it only names the environment in a failure.
+export const envName = process.env.ENV_NAME || 'unknown';
+
+/**
+ * The deadline on every single request. undici waits 300s for the response headers and then
+ * 300s more for the body, which is how one unreachable stack turned 15 tests into 65 minutes of
+ * a CI leg. Cypress bounded the same calls at 20s (cypress.config.ts responseTimeout, taskTimeout);
+ * this is larger only because a settings rewrite makes ReadonlyREST reload the whole ACL.
+ */
+export const requestTimeoutMs = milliseconds('HTTP_REQUEST_TIMEOUT_MS', 30000);
+
+// The budget for the readiness check that runs once, before the tests.
+export const readinessTimeoutMs = milliseconds('HTTP_READINESS_TIMEOUT_MS', 180000);
 
 export function getKibanaVersion() {
   const kibanaVersion = process.env.KIBANA_VERSION;

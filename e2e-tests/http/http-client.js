@@ -1,6 +1,6 @@
 import tls from 'node:tls';
 import { readFile } from 'node:fs/promises';
-import { elasticsearchUrl, kibanaUrl } from './config.js';
+import { elasticsearchUrl, kibanaUrl, requestTimeoutMs } from './config.js';
 
 // cypress/plugins/index.ts gives every call an agent built with `rejectUnauthorized: false` and
 // `secureProtocol: 'TLSv1_2_method'`. The stack serves a self-signed certificate, so without the
@@ -20,18 +20,29 @@ const describeBody = data => {
 };
 
 /**
+ * Node exports no dispatcher, so undici's headersTimeout and bodyTimeout stay at their 300s
+ * defaults and cannot be lowered. One deadline over the whole call does the same job: the signal
+ * covers the connection, the headers and the body, and it fires as a TimeoutError.
+ */
+const deadline = (timeoutMs = requestTimeoutMs) => AbortSignal.timeout(timeoutMs);
+
+const describeFailure = (error, timeoutMs = requestTimeoutMs) =>
+  error.name === 'TimeoutError'
+    ? `no answer in ${timeoutMs}ms`
+    : // ECONNREFUSED arrives as an AggregateError with an empty message, so take the code first.
+      error.cause?.code || error.cause?.message || error.message;
+
+/**
  * A transport error here means the stack is not there, which is the first thing a reader needs to
  * know. `fetch` reports all of them as the same 'fetch failed', with the address only in `cause`.
  */
 async function send(method, url, options) {
   try {
-    return await fetch(url, options);
+    return await fetch(url, { ...options, signal: deadline() });
   } catch (error) {
-    // ECONNREFUSED arrives as an AggregateError with an empty message, so take the code first.
-    const reason = error.cause?.code || error.cause?.message || error.message;
     throw new Error(
-      `Cannot reach ${method} ${url} (${reason}). The suite needs a running ELK stack with ReadonlyREST — ` +
-        'runner.sh starts one.',
+      `Cannot reach ${method} ${url} (${describeFailure(error)}). The suite needs a running ELK stack with ` +
+        'ReadonlyREST — runner.sh starts one.',
       { cause: error }
     );
   }
@@ -39,7 +50,14 @@ async function send(method, url, options) {
 
 async function readBody(response, method, url, failOnStatusCode) {
   const contentType = response.headers.get('content-type') || '';
-  const data = contentType.includes('application/json') ? await response.json() : await response.text();
+
+  let data;
+  try {
+    data = contentType.includes('application/json') ? await response.json() : await response.text();
+  } catch (error) {
+    // The deadline covers the body too, so a stack that sends headers and then stalls ends here.
+    throw new Error(`Cannot read the answer of ${method} ${url} (${describeFailure(error)}).`, { cause: error });
+  }
 
   if (!response.ok && failOnStatusCode) {
     throw new Error(`HTTP error: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${describeBody(data)}`);
@@ -60,6 +78,24 @@ async function httpCall({ method, url, credentials, payload, headers, failOnStat
   });
 
   return readBody(response, method, url, failOnStatusCode);
+}
+
+/**
+ * One attempt, status only, for the readiness check: it needs to know whether the address answers
+ * at all, not what it said. The body is drained because an unread one holds the socket open.
+ */
+export async function probe(url, credentials, timeoutMs = requestTimeoutMs) {
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { authorization: basicAuth(credentials), 'kbn-xsrf': 'true' },
+      signal: deadline(timeoutMs)
+    });
+    await response.arrayBuffer();
+    return { status: response.status };
+  } catch (error) {
+    return { reason: describeFailure(error, timeoutMs) };
+  }
 }
 
 // The headers cypress/support/commands.ts puts on every Kibana call.

@@ -119,10 +119,22 @@ The Cypress-based tests are located in the `e2e-tests/cypress/e2e`. Screenshots 
 
 The tests in `e2e-tests/http` call the Elasticsearch and the Kibana API and never open a page, so they need no browser and no `yarn install`. They run on Node's own test runner, against the same stack as the Cypress suite, and `runner.sh` starts them immediately before it. A test belongs here when it asserts on an API answer alone; a test that reads what Kibana renders belongs in Cypress.
 
-To run them against a stack that is already up:
+To run them against a stack that is already up (the environment name is optional and only names the
+environment in a failure message):
 ```bash
-./e2e-tests/http/run-tests.sh "8.15.2"
+./e2e-tests/http/run-tests.sh "8.15.2" "eck-ror"
 ```
+
+Before the first test, the suite asks Elasticsearch and Kibana whether they answer. A stack that is
+not there fails the run in seconds, with the address it could not reach, instead of letting every
+test wait out its own deadline. Four environment variables move the deadlines:
+
+| Variable | Default | What it bounds |
+|---|---|---|
+| `HTTP_READINESS_TIMEOUT_MS` | `180000` | the wait for Elasticsearch and Kibana to answer, before the tests |
+| `HTTP_REQUEST_TIMEOUT_MS` | `30000` | one request, from the connection to the last byte of the body |
+| `HTTP_TEST_TIMEOUT_MS` | `90000` | one test |
+| `HTTP_SUITE_TIMEOUT_SECONDS` | `600` | the whole `node --test` run |
 
 ### Docker-based ROR development environment 
 

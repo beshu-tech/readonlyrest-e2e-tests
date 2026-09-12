@@ -150,7 +150,7 @@ time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK
 
 if [[ "$MODE" == "e2e" ]]; then
   # Against the same stack, and before Cypress, because a second job would pay a second boot.
-  time ./e2e-tests/http/run-tests.sh "$ELK_VERSION"
+  time ./e2e-tests/http/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
 
   echo -e "Running E2E tests...\n"
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
