@@ -56,6 +56,29 @@ describe('Tenancy', () => {
     runTests({ callbackBeforeLogin: openAnotherTabs });
   });
 
+  // Outside runTests: neither of these reads callbackBeforeLogin or callbackAfterLogin, so the
+  // three runTests passes ran byte-identical copies of them. Once is once.
+  it('should redirect to page not found when tenancy is not available', () => {
+    const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
+    Login.initialization({
+      visitedUrl: urlWithTenancyId,
+      finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`,
+      spacePrefix: ''
+    });
+  });
+
+  it('should hide correct Kibana navigation items on tenancy switch', () => {
+    const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
+    Login.initialization({
+      visitedUrl: urlWithTenancyId,
+      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
+      spacePrefix: ''
+    });
+
+    KibanaNavigation.openKibanaNavigation();
+    KibanaNavigation.checkIfNotVisible('Stack Management');
+  });
+
   it('should not apply stale remembered tenancy to a new user session after logout', () => {
     const homeUrlWithInfosecTenancy = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
 
@@ -205,15 +228,6 @@ function runTests({
     }
   });
 
-  it('should redirect to page not found when tenancy is not available', () => {
-    const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
-    Login.initialization({
-      visitedUrl: urlWithTenancyId,
-      finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`,
-      spacePrefix: ''
-    });
-  });
-
   it('should correctly switch Kibana space', () => {
     const newSpace = 'test-space';
 
@@ -230,17 +244,5 @@ function runTests({
     Spaces.createNewSpace(newSpace);
     Spaces.openSpace(newSpace);
     Spaces.verifyCurrentSpace(newSpace);
-  });
-
-  it('should hide correct Kibana navigation items on tenancy switch', () => {
-    const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
-    Login.initialization({
-      visitedUrl: urlWithTenancyId,
-      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
-      spacePrefix: ''
-    });
-
-    KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfNotVisible('Stack Management');
   });
 }
