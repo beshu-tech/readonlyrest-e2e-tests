@@ -20,7 +20,7 @@ inputs:
     required: false
     default: ''
   ror_kbn:
-    description: 'The same for the Kibana image.'
+    description: 'Goes into the Kibana image tag as <elk>-ror-<this>: a ROR version like 1.69.1, or a pre-build run tag. Empty means "latest", the released plugin.'
     required: false
     default: ''
   max_attempts:
