@@ -116,6 +116,10 @@ jobs:
         run: source .github/scripts/docker-hub-mirror.sh
       - name: Clean up disk space
         uses: ./.github/cleanup-disk-space
+        with:
+          # A bootstrap leg starts the stack and stops. It pulls two images and never writes a
+          # video, a screenshot or a Cypress cache, so it does not need the toolchains deleted.
+          required_gb: '8'
       - name: Start Docker memory monitor
         uses: ./.github/docker-memory-monitor
         with:
