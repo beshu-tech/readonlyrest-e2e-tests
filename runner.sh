@@ -149,6 +149,9 @@ echo -e "Running environment...\n"
 time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_MODE_ARG
 
 if [[ "$MODE" == "e2e" ]]; then
+  # Against the same stack, and before Cypress, because a second job would pay a second boot.
+  time ./e2e-tests/http/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+
   echo -e "Running E2E tests...\n"
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
 else
