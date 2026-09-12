@@ -122,13 +122,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# One collector for both failure paths, so that the two log mechanisms cannot drift apart. The
-# console keeps the stack's own log, which is what a stack that never came up explains itself with.
-# The files carry the per-container detail, which the console cannot hold and which a failure after
-# start-up needs. Neither may fail: this runs when something else has already gone wrong.
+STACK_LOGS=results/stack-logs
+
+# One collector, one output directory, for both failure paths, so the two cannot drift apart.
+# --console adds the stack's own log to the job log, which is what a stack that never came up
+# explains itself with. It never fails: this runs when something else has already gone wrong.
 collect_logs() {
-  ./environments/"$ENV_NAME"/print-logs.sh || true
-  ./environments/"$ENV_NAME"/dump-logs.sh results/stack-logs || true
+  ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" --console || true
 }
 
 E2E_OUTPUT=results/e2e-output.log
@@ -187,10 +187,12 @@ if [[ "$MODE" == "e2e" ]]; then
   write_step_summary
 
   if [[ $E2E_STATUS -ne 0 ]]; then
-    # Into results/, because that is the directory the callers already collect on failure, next to
-    # the Cypress videos and screenshots. No caller has to change to start receiving the logs.
+    # No --console: the job log already holds the whole Cypress output, and repeating the stack
+    # logs under it buries the summary. Into results/, because that is the directory the callers
+    # already collect on failure, next to the Cypress videos and screenshots. No caller has to
+    # change to start receiving the logs.
     echo -e "\nE2E tests failed - collecting the stack logs\n"
-    ./environments/"$ENV_NAME"/dump-logs.sh results/stack-logs || true
+    ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" || true
   fi
 
   exit $E2E_STATUS
