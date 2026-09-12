@@ -31,11 +31,25 @@ runs:
 
         # Independent trees on the same disk. Deleting them in parallel finishes in about the time
         # the largest one takes, instead of the sum.
-        sudo rm -rf /usr/share/dotnet &
-        sudo rm -rf /usr/local/lib/android &
-        sudo rm -rf /opt/ghc &
-        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build &
-        wait
+        #
+        # Each job's pid is kept and waited on by name. A bare `wait` returns 0 whatever the jobs
+        # did, so a deletion that failed would leave the disk full and let the suite run into it
+        # later, with an error that points anywhere but here.
+        pids=()
+        sudo rm -rf /usr/share/dotnet & pids+=("$!")
+        sudo rm -rf /usr/local/lib/android & pids+=("$!")
+        sudo rm -rf /opt/ghc & pids+=("$!")
+        sudo rm -rf /usr/local/share/boost /usr/local/share/boost-build & pids+=("$!")
+
+        failed=0
+        for pid in "${pids[@]}"; do
+          wait "$pid" || failed=1
+        done
+        if [ "$failed" -ne 0 ]; then
+          echo "At least one cleanup deletion failed. Disk space below:"
+          df -h /
+          exit 1
+        fi
 
         sudo apt-get clean
         sudo rm -rf /var/lib/apt/lists/*
