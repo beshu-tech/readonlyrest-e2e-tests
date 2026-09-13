@@ -55,7 +55,16 @@ services:
       replicas: 2
     environment:
       ES_API_URL: https://es-ror:9200
-      NODE_OPTIONS: "--max-old-space-size=768"
+      # 1536 MiB, not the 768 that #74 set for a 2-vCPU host that no longer runs this suite. Both
+      # replicas sit at the old cap under the 9.x suite — docker stats over four 9.4.6 legs: median
+      # 0.93-1.01 GiB per container, p95 1.00-1.06 GiB, against a ceiling of 768 MiB heap plus
+      # about 250 MiB that V8 needs outside it. Every Kibana restart on the red legs started from
+      # that ceiling with 6-8 GiB still free on the host and OOMKilled=false, which is V8 running out
+      # of heap, not the kernel. 8.19 and 7.17 sit at 0.91-0.92 GiB and never restart.
+      #
+      # Two replicas of 1536 MiB fit: the host is 16 GiB and had 6.5-7.6 GiB free at the old size.
+      # The limits overlay raises kbn-ror to match, so an opt-in cgroup cap cannot undercut the heap.
+      NODE_OPTIONS: "--max-old-space-size=1536"
     healthcheck:
       test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:5601/api/status" ]
       interval: 10s
