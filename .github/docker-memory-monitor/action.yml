@@ -90,3 +90,28 @@ runs:
         kill "$(cat /tmp/docker-memory-monitor.pid)" 2>/dev/null || true
         echo "=== Docker memory monitor log ==="
         cat /tmp/docker-memory-monitor.log || true
+
+        # Why the containers say nothing about their own deaths.
+        #
+        # The monitor samples `docker inspect` every 10 seconds. `restart: always` on kbn-ror puts a
+        # dead container back in `running` long before the next sample, so every one of the 1530
+        # inspect lines in a failing job reads `Status=running ExitCode=0 OOMKilled=false`. Those
+        # three fields describe the LIVE process, not the one that died. Measured on a container
+        # killed deliberately: a Node heap abort exits 134 and the monitor never sees it, and a
+        # kernel OOM kill shows `OOMKilled=true` for about one second in ten, so a 10-second poll
+        # misses it roughly nine times out of ten.
+        #
+        # elk-ror.log does not help either. environments/elk-ror/start.sh writes it only from the
+        # ERR trap on `docker compose up --wait`, so a stack that starts cleanly and loses Kibana
+        # fifteen minutes later never produces one. A failing job prints
+        # `cat: elk-ror.log: No such file or directory`.
+        #
+        # So the only record of why a container restarted is its own stdout, and nothing collects it.
+        # This does: docker keeps the previous process's output after a restart, and
+        # `--tail` bounds what a healthy run adds to the job log.
+        echo "=== Container logs (the restarted process's output is still here) ==="
+        for c in $(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -E '^(elk-ror|eck-ror)' || true); do
+          restarts=$(docker inspect -f '{{.RestartCount}}' "$c" 2>/dev/null || echo '?')
+          echo "--- $c (RestartCount=$restarts) ---"
+          docker logs --tail 200 --timestamps "$c" 2>&1 | tail -200 || true
+        done

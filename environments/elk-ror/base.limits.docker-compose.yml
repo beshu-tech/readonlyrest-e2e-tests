@@ -12,9 +12,8 @@ services:
     memswap_limit: 2g
 
   kbn-ror:
-    # 1536 MiB heap plus V8 overhead; see NODE_OPTIONS in base.docker-compose.yml.
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 1g
+    memswap_limit: 1g
 
   kbn-proxy:
     mem_limit: 256m
