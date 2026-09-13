@@ -150,24 +150,7 @@ time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK
 
 if [[ "$MODE" == "e2e" ]]; then
   echo -e "Running E2E tests...\n"
-  # DIAGNOSTIC (temporary, this PR only): the kbn-ror containers restart mid-suite with exit code 0
-  # on the red legs and never on the green ones. The EXIT trap tears the stack down, so the only
-  # moment to ask docker who stopped them, and what Kibana logged before it went, is right here.
-  SUITE_START=$(date +%s)
-  set +e
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
-  E2E_STATUS=$?
-  set -e
-  if [[ $E2E_STATUS -ne 0 ]]; then
-    echo "=== DIAG: container events since the suite started ==="
-    docker events --since "$SUITE_START" --until "$(date +%s)" --filter type=container \
-      --format '{{.Time}} {{.Actor.Attributes.name}} {{.Action}} exit={{index .Actor.Attributes "exitCode"}} signal={{index .Actor.Attributes "signal"}}' || true
-    for c in $(docker ps -a --filter 'name=^elk-ror-kbn' --format '{{.Names}}'); do
-      echo "=== DIAG: $c — last lines around shutdowns and listens ==="
-      docker logs --tail 600 "$c" 2>&1 | grep -inE 'sigint|sigterm|shutdown|shutting|stopping|fatal|heap|out of memory|listening|http server running|server running|EADDRINUSE|closed|deleteAllSessions|license|edition|config refresh|restart|unhandled|uncaught' | tail -100 || true
-    done
-  fi
-  exit $E2E_STATUS
 else
   echo -e "Bootstrap mode: Cluster setup completed.\n"
 fi
