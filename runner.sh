@@ -122,8 +122,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Runs from the ERR trap, while the stack is still up: the EXIT trap removes the containers, and
+# with them the record of why one died. results/ is the directory the workflow uploads on failure.
 handle_error() {
-  ./environments/"$ENV_NAME"/print-logs.sh
+  ./environments/"$ENV_NAME"/print-logs.sh "$PWD/results/stack-logs"
 }
 
 cleanup() {
