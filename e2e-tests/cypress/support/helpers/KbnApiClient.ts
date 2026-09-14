@@ -1,10 +1,21 @@
 export class KbnApiClient {
-  public getDataViews(credentials: string, group?: string): Cypress.Chainable<DataViews> {
-    return cy.kbnGet<DataViews>({
-      endpoint: 'api/data_views',
-      credentials,
-      currentGroupHeader: group
-    });
+  public getDataViews(credentials: BasicCredentials, group?: string): Cypress.Chainable<DataViews> {
+    return cy
+      .kbnGet<DataViews>({
+        endpoint: 'api/data_views',
+        credentials,
+        currentGroupHeader: group
+      })
+      .then(result => {
+        // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
+        if (!Array.isArray(result?.data_view)) {
+          throw new Error(
+            `api/data_views did not answer with { data_view: [...] } for ${accountOf(credentials)}` +
+              `${inTenancy(group)}. Body: ${describeBody(result)}`
+          );
+        }
+        return result;
+      });
   }
 
   public createDataView(dataView: object, credentials: string, group?: string): void {
@@ -70,12 +81,23 @@ export class KbnApiClient {
     });
   }
 
-  public getAllSpaces(credentials: string, group?: string): Cypress.Chainable<Space[]> {
-    return cy.kbnGet<Space[]>({
-      endpoint: `api/spaces/space`,
-      credentials,
-      currentGroupHeader: group
-    });
+  public getAllSpaces(credentials: BasicCredentials, group?: string): Cypress.Chainable<Space[]> {
+    return cy
+      .kbnGet<Space[]>({
+        endpoint: `api/spaces/space`,
+        credentials,
+        currentGroupHeader: group
+      })
+      .then(spaces => {
+        // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
+        if (!Array.isArray(spaces)) {
+          throw new Error(
+            `api/spaces/space did not answer with a list of spaces for ${accountOf(credentials)}` +
+              `${inTenancy(group)}. Body: ${describeBody(spaces)}`
+          );
+        }
+        return spaces;
+      });
   }
 
   public createShortUrl(
@@ -144,3 +166,15 @@ export interface ShortUrlPayload {
 export interface ShortUrlResponse {
   id: string;
 }
+
+export type BasicCredentials = `${string}:${string}`;
+
+// CI keeps its logs, so a message names the account and never the pair.
+const accountOf = (credentials: BasicCredentials): string => credentials.split(':')[0];
+
+const inTenancy = (group?: string): string => (group ? ` in ${group}` : '');
+
+const describeBody = (data: unknown): string => {
+  const shown = typeof data === 'string' ? data : JSON.stringify(data) ?? String(data);
+  return shown.length > 2000 ? `${shown.slice(0, 2000)}…` : shown;
+};
