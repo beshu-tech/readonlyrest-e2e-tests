@@ -21,7 +21,7 @@ describe('Reporting index', () => {
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
       kbnApiAdvancedClient.deleteDataViews(admin, 'infosec_group');
     }
-    Settings.setSettingsData('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });
 
   it('should correctly match index pattern when audit index_template contains .reporting', () => {
