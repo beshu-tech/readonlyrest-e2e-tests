@@ -11,6 +11,9 @@ name: Bootstrap tests
 #
 # Only docker. This job starts a stack and does not exercise the Kibana proxy, which is where
 # docker and ECK differ.
+permissions:
+  contents: read
+
 on:
   workflow_dispatch: {}
   schedule:
