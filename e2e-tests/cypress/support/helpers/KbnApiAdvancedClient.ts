@@ -1,4 +1,4 @@
-import { KbnApiClient } from './KbnApiClient';
+import { BasicCredentials, KbnApiClient } from './KbnApiClient';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
@@ -18,7 +18,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
-  public deleteDataViews(credentials: string, group?: string) {
+  public deleteDataViews(credentials: BasicCredentials, group?: string) {
     cy.log(`get all data_views for the ${credentials}`);
     this.getDataViews(credentials, group).then(result => {
       result.data_view.forEach(dataView => {
@@ -28,7 +28,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
-  public deleteAllSpaces(credentials: string, group?: string): void {
+  public deleteAllSpaces(credentials: BasicCredentials, group?: string): void {
     cy.log(`Delete all spaces`);
     this.getAllSpaces(credentials, group).then(spaces => {
       spaces

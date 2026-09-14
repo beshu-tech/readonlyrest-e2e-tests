@@ -52,17 +52,14 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
-      # Retries disabled (was nick-fields/retry, max_attempts: 2, retry_on: any): a real spec
-      # failure and a transient infra hiccup both exited non-zero, so this re-ran the entire
-      # 27-spec suite from scratch on any failure, masking flakiness instead of surfacing it -
-      # see run-34312427155's logs, where the whole suite ran twice back to back.
       - name: Run E2E tests
-        timeout-minutes: 45
-        run: |
-          ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --mode prod
-        env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+        uses: ./.github/run-e2e-tests
+        with:
+          env: ${{ matrix.env }}
+          elk: ${{ matrix.version }}
+          mode: prod
+          activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+          electron_extra_launch_args: '--disable-gpu'
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
@@ -214,16 +211,15 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
-      # Retries disabled (was nick-fields/retry, max_attempts: 2, retry_on: any): a real spec
-      # failure and a transient infra hiccup both exited non-zero, so this re-ran the entire
-      # 27-spec suite from scratch on any failure, masking flakiness instead of surfacing it -
-      # see run-34312427155's logs, where the whole suite ran twice back to back.
       - name: Run E2E tests
-        timeout-minutes: 45
-        run: |
-          ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_IMAGE_TAG }} --ror-kbn ${{ env.ROR_IMAGE_TAG }} --mode dev
-        env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+        uses: ./.github/run-e2e-tests
+        with:
+          env: ${{ matrix.env }}
+          elk: ${{ matrix.version }}
+          mode: dev
+          ror_es: ${{ env.ROR_IMAGE_TAG }}
+          ror_kbn: ${{ env.ROR_IMAGE_TAG }}
+          activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
 
       - name: Stop Docker memory monitor
         if: always()
