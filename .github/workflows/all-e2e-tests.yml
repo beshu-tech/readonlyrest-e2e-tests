@@ -215,7 +215,6 @@ jobs:
     timeout-minutes: 90
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
-      versions: ${{ steps.prepare.outputs.versions }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -240,10 +239,7 @@ jobs:
           RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
           # The pre-build helpers take a space-separated list; the matrix travels as JSON.
           ELK_VERSIONS=$(jq -r 'join(" ")' <<< "$ELK_VERSIONS_JSON")
-          {
-            echo "run_tag=$RUN_TAG"
-            echo "versions=$ELK_VERSIONS_JSON"
-          } >> "$GITHUB_OUTPUT"
+          echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
 
           dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
           wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
