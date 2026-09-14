@@ -52,25 +52,14 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
-      # Retry mechanism to handle transient infrastructure issues:
-      # - npm error 429 Too Many Requests from registry.npmjs.org
-      # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
-      # These errors are typically temporary and resolve with a simple retry.
       - name: Run E2E tests
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
+        uses: ./.github/run-e2e-tests
         with:
-          max_attempts: 2
-          # eck envs are slower per-request than docker (K8s networking overhead vs docker-compose
-          # bridge), and the full 27-spec suite plus the ~9-minute Tenancy.cy.ts spec doesn't
-          # reliably fit in 35 minutes there.
-          timeout_minutes: 45
-          retry_wait_seconds: 120
-          retry_on: any
-          command: |
-            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --mode prod
-        env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu'
+          env: ${{ matrix.env }}
+          elk: ${{ matrix.version }}
+          mode: prod
+          activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+          electron_extra_launch_args: '--disable-gpu'
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
@@ -222,24 +211,15 @@ jobs:
         uses: ./.github/docker-memory-monitor
         with:
           action: start
-      # Retry mechanism to handle transient infrastructure issues:
-      # - npm error 429 Too Many Requests from registry.npmjs.org
-      # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
-      # These errors are typically temporary and resolve with a simple retry.
       - name: Run E2E tests
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
+        uses: ./.github/run-e2e-tests
         with:
-          max_attempts: 2
-          # eck envs are slower per-request than docker (K8s networking overhead vs docker-compose
-          # bridge), and the full 27-spec suite plus the ~9-minute Tenancy.cy.ts spec doesn't
-          # reliably fit in 35 minutes there.
-          timeout_minutes: 45
-          retry_wait_seconds: 120
-          retry_on: any
-          command: |
-            ./runner.sh --run e2e --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es ${{ env.ROR_IMAGE_TAG }} --ror-kbn ${{ env.ROR_IMAGE_TAG }} --mode dev
-        env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+          env: ${{ matrix.env }}
+          elk: ${{ matrix.version }}
+          mode: dev
+          ror_es: ${{ env.ROR_IMAGE_TAG }}
+          ror_kbn: ${{ env.ROR_IMAGE_TAG }}
+          activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
 
       - name: Stop Docker memory monitor
         if: always()

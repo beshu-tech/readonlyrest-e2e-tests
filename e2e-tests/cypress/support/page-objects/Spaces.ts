@@ -17,7 +17,7 @@ export class Spaces {
 
     cy.intercept(`s/${spaceNameLowerCaseAndDash}/api/spaces/space/${spaceNameLowerCaseAndDash}`).as('deleteSpace');
     cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
-    cy.wait('@deleteSpace').then(({ response }) => {
+    cy.waitForResponse('@deleteSpace').then(response => {
       expect([204]).to.include(response.statusCode);
     });
   }

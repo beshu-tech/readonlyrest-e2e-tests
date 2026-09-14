@@ -18,7 +18,7 @@ export class Settings {
     cy.log('Discard changes');
     cy.intercept('GET', '/pkp/api/settings').as('getSettings');
     SecuritySettings.getIframeBody().contains('Discard changes').click();
-    cy.wait('@getSettings').then(({ response }) => {
+    cy.waitForResponse('@getSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -27,7 +27,7 @@ export class Settings {
     cy.log('Press reload from file test settings');
     cy.intercept('GET', '/pkp/api/settings/file').as('reloadFromFileSettings');
     Settings.pressReloadFromFileSettingsButton();
-    cy.wait('@reloadFromFileSettings').then(({ response }) => {
+    cy.waitForResponse('@reloadFromFileSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -36,7 +36,7 @@ export class Settings {
     cy.log('Save file settings');
     cy.intercept('POST', '/pkp/api/settings').as('saveSettings');
     SecuritySettings.getIframeBody().contains('Save').click();
-    cy.wait('@saveSettings').then(({ response }) => {
+    cy.waitForResponse('@saveSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
   }

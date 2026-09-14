@@ -4,7 +4,7 @@ import { Settings } from '../support/page-objects/Settings';
 import { Editor } from '../support/page-objects/Editor';
 import { rorApiInternalKbnClient } from '../support/helpers/RorApiInternalKbnClient';
 
-// TODO: Uncomment when functionality enabled
+// It will be unskipped when https://github.com/beshu-tech/readonlyrest-e2e-tests/pull/116 is merged.
 describe.skip('Ror config', () => {
   beforeEach(() => {
     Login.initialization();

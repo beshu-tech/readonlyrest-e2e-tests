@@ -24,7 +24,7 @@ export class Loader {
   public static settled() {
     cy.log('loading settled');
     cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
-    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('be.visible');
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('exist');
   }
 
   private static readonly SPLASH_TEXT = 'Loading Elastic';
@@ -71,6 +71,11 @@ export class Loader {
     cy.urlShouldMatch(`${spacePrefix}${finishUrl}`);
     // Explicit 80s rather than the 20s defaultCommandTimeout: start() can fall through before the
     // page has begun rendering, so this assertion carries the wait.
-    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('be.visible');
+    //
+    // Kibana swaps globalLoadingIndicator for its -hidden variant when loading completes, so the
+    // presence of that element is the loading-finished marker. Chromium 138 (Cypress 15) does not
+    // always judge this header svg visible after a reload, so the assertion is `exist`, as in
+    // readonlyrest_kbn/automatic-tests.
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('exist');
   }
 }

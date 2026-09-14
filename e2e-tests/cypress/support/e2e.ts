@@ -15,9 +15,15 @@
 
 // Import commands.js using ES2015 syntax:
 import './commands';
+import { installClipboardCapture, resetClipboardCapture } from './clipboardCapture';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
+// Record what the app copies, so the specs never depend on the OS clipboard - see
+// clipboardCapture.ts for why Chromium 138 makes that necessary.
+Cypress.on('window:before:load', installClipboardCapture);
+beforeEach(resetClipboardCapture);
+
 /// <reference types="cypress" />
 
 declare global {
@@ -147,6 +153,7 @@ declare global {
       findByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
       getValueFromClipboard(): Chainable<string>;
       urlShouldMatch(urlPattern: string): Chainable<string>;
+      waitForResponse(alias: `@${string}`): Chainable<{ statusCode: number }>;
     }
 
     type Payload = string | object;

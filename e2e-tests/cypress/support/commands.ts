@@ -1,5 +1,6 @@
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
+import { capture as clipboardCapture } from './clipboardCapture';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -61,15 +62,17 @@ Cypress.Commands.add(
       impersonating,
       failOnStatusCode,
       headers
-    })
+    }) as Cypress.Chainable<unknown>
 );
 
-Cypress.Commands.add('esGet', ({ endpoint, credentials }, ...args) =>
-  cy.esRequest({
-    method: 'GET',
-    endpoint,
-    credentials
-  })
+Cypress.Commands.add(
+  'esGet',
+  ({ endpoint, credentials }, ...args) =>
+    cy.esRequest({
+      method: 'GET',
+      endpoint,
+      credentials
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add(
@@ -82,16 +85,18 @@ Cypress.Commands.add(
       currentGroupHeader,
       impersonating,
       failOnStatusCode
-    })
+    }) as Cypress.Chainable<unknown>
 );
 
-Cypress.Commands.add('esDelete', ({ endpoint, credentials, failOnStatusCode }, ...args) =>
-  cy.esRequest({
-    method: 'DELETE',
-    endpoint,
-    credentials,
-    failOnStatusCode
-  })
+Cypress.Commands.add(
+  'esDelete',
+  ({ endpoint, credentials, failOnStatusCode }, ...args) =>
+    cy.esRequest({
+      method: 'DELETE',
+      endpoint,
+      credentials,
+      failOnStatusCode
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add(
@@ -198,9 +203,36 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-Cypress.Commands.add('getValueFromClipboard', () => cy.window().then(win => win.navigator.clipboard.readText()));
+// .its() re-reads the property on every retry, which .then() would not - see clipboardCapture.ts.
+Cypress.Commands.add('getValueFromClipboard', () => cy.wrap(clipboardCapture, { log: false }).its('text'));
 
-Cypress.on('uncaught:exception', (err, runnable) => {
+// Cypress 15 types cy.wait's alias parameter as `@${string}`; mirroring it here means a forgotten
+// '@' prefix is a compile error instead of a silent numeric wait.
+Cypress.Commands.add(
+  'waitForResponse',
+  (alias: `@${string}`) =>
+    cy.wait(alias).then(({ response }) => {
+      if (!response) throw new Error(`Expected a response for ${alias}`);
+      return response;
+    }) as unknown as Cypress.Chainable<{ statusCode: number }>
+);
+
+Cypress.on('uncaught:exception', (err, runnable, promise) => {
+  /**
+   * Kibana keeps polling in the background (task manager, alerting, telemetry) while a test tears
+   * down. When the previous attempt's page is being logged out, one of those fetches can answer
+   * with a gateway status. Nothing in the app awaits that promise, so it surfaces as an unhandled
+   * rejection and fails whichever hook is running - usually an afterEach, which then skips the rest
+   * of the cleanup and poisons every following retry (RORDEV: Sanity-check "Too many elements
+   * found. Found '2', expected '1'").
+   *
+   * Only unhandled rejections are ignored here, never an error a test action waits on: `promise` is
+   * set only for a rejection no application code handled.
+   */
+  if (promise && /\b(Bad Gateway|Gateway Timeout|Service Unavailable)\b/.test(err.message)) {
+    return false;
+  }
+
   /**
    * Don't fail test when these specific errors from kibana platform
    */

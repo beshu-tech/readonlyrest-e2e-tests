@@ -40,7 +40,9 @@ export class Reporting {
     cy.get('[data-test-subj=reportJobRow]').should('have.length', count);
     if (count > 0) {
       cy.get('[data-test-subj=reportJobRow]').each($row => {
-        cy.wrap($row).contains(/Done|Completed/).should('be.visible');
+        cy.wrap($row)
+          .contains(/Done|Completed/)
+          .should('be.visible');
       });
     }
   }

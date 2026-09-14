@@ -8,7 +8,7 @@ export class TestSettings {
     RorMenu.openEditSecuritySettings();
     cy.intercept('GET', '/pkp/api/test').as('getTestSettings');
     TestSettings.clickTestSettingsTab();
-    cy.wait('@getTestSettings').then(({ response }) => {
+    cy.waitForResponse('@getTestSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -36,7 +36,7 @@ export class TestSettings {
     cy.log('Load current settings');
     cy.intercept('GET', '/pkp/api/settings').as('loadCurrentSettings');
     TestSettings.pressLoadCurrentSettingsButton();
-    cy.wait('@loadCurrentSettings').then(({ response }) => {
+    cy.waitForResponse('@loadCurrentSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -48,10 +48,10 @@ export class TestSettings {
     SecuritySettings.getIframeBody()
       .findByRole('button', { name: /Deactivate/ })
       .click();
-    cy.wait('@invalidateTestSettings').then(({ response }) => {
+    cy.waitForResponse('@invalidateTestSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@getTestSettings').then(({ response }) => {
+    cy.waitForResponse('@getTestSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
 
@@ -65,7 +65,7 @@ export class TestSettings {
     cy.log('Press save Test ACL button');
     cy.intercept('POST', '/pkp/api/test').as('postTestSettings');
     SecuritySettings.getIframeBody().contains('Save').click();
-    cy.wait('@postTestSettings').then(({ response }) => {
+    cy.waitForResponse('@postTestSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
   }
@@ -83,13 +83,13 @@ export class TestSettings {
     cy.intercept('GET', '/pkp/api/settings/file').as('getTestSettings');
     TestSettings.pressPromoteAsPermanentButton();
 
-    cy.wait('@postSettings').then(({ response }) => {
+    cy.waitForResponse('@postSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@invalidateTestSettings').then(({ response }) => {
+    cy.waitForResponse('@invalidateTestSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@getTestSettings').then(({ response }) => {
+    cy.waitForResponse('@getTestSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -108,16 +108,16 @@ export class TestSettings {
     cy.intercept('GET', '/pkp/api/settings/file').as('getTestSettings');
     SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Save').click({ force: true });
 
-    cy.wait('@postTestSettings').then(({ response }) => {
+    cy.waitForResponse('@postTestSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@postSettings').then(({ response }) => {
+    cy.waitForResponse('@postSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@invalidateTestSettings').then(({ response }) => {
+    cy.waitForResponse('@invalidateTestSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@getTestSettings').then(({ response }) => {
+    cy.waitForResponse('@getTestSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -128,7 +128,7 @@ export class TestSettings {
     cy.intercept('POST', '/pkp/api/settings').as('postSettings');
     SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Reject').click({ force: true });
 
-    cy.wait('@postSettings').then(({ response }) => {
+    cy.waitForResponse('@postSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
     // Settings.currentSettingsAlreadyLoadedToast().should('be.visible');
@@ -143,13 +143,13 @@ export class TestSettings {
     cy.log('Save Test ACL modal before permanent promote');
     SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Reject').click({ force: true });
 
-    cy.wait('@postSettings').then(({ response }) => {
+    cy.waitForResponse('@postSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@invalidateTestSettings').then(({ response }) => {
+    cy.waitForResponse('@invalidateTestSettings').then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.wait('@getTestSettings').then(({ response }) => {
+    cy.waitForResponse('@getTestSettings').then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
