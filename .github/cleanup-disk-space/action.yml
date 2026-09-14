@@ -4,10 +4,8 @@ description: 'Frees runner disk space, but only when the job needs more than the
 inputs:
   required_gb:
     description: >
-      How much free space on / the job needs. The cleanup is skipped when the runner already has
-      this much, because deleting the preinstalled toolchains costs ~80 seconds and an e2e leg
-      that never fills the disk pays it for nothing. A bootstrap leg only boots a stack, so it
-      passes a small number here; a full suite leg keeps the default.
+      Free space on / the job needs, in GB. The cleanup is skipped when the runner already has
+      this much: deleting the preinstalled toolchains costs about 80 seconds.
     required: false
     default: '25'
 
@@ -29,12 +27,8 @@ runs:
           exit 0
         fi
 
-        # Independent trees on the same disk. Deleting them in parallel finishes in about the time
-        # the largest one takes, instead of the sum.
-        #
-        # Each job's pid is kept and waited on by name. A bare `wait` returns 0 whatever the jobs
-        # did, so a deletion that failed would leave the disk full and let the suite run into it
-        # later, with an error that points anywhere but here.
+        # Independent trees, deleted in parallel. Each pid is waited on by name: a bare `wait`
+        # returns 0 whatever the jobs did, and a failed deletion must fail this step.
         pids=()
         sudo rm -rf /usr/share/dotnet & pids+=("$!")
         sudo rm -rf /usr/local/lib/android & pids+=("$!")

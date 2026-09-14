@@ -16,11 +16,7 @@ describe('Test ACL', () => {
     TestSettings.pressInvalidateFileTestSettings();
 
     cy.log('should check promote as permanent settings functionality when success');
-
     TestSettings.pressSaveTestSettingsButton();
-
-    // The promote-as-permanent steps that used to sit here were commented out waiting on an ES
-    // plugin fix. They are tracked in the ROR KBN repo's testController tests, not here.
 
     /**
      * TODO: Uncomment all toast based assertions and try to make this check non-deterministic

@@ -56,13 +56,9 @@ describe('Tenancy', () => {
     runTests({ callbackBeforeLogin: openAnotherTabs });
   });
 
-  // Out of runTests as well, but for a different reason. This one does read both callbacks, so the
-  // three passes were not identical — they asked whether the copied link still carries the tenancy
-  // after a history-back and after a cross-tab switch. That property is the URL tenancy surviving
-  // the variant, and the first test in runTests already asserts exactly that under all three
-  // passes, through checkTenancyNameInBadge and verifyKibanaNavigationLinkItemHref. What is left
-  // here is the share panel itself, which the variants do not touch. It is also the most expensive
-  // test in the suite: it installs the ecommerce sample data, and it was doing so three times.
+  // Outside runTests: the share panel does not depend on how the session was opened, and the first
+  // test in runTests already checks that the tenancy survives each variant. This is the most
+  // expensive test in the suite, because it installs the ecommerce sample data.
   describe('share link', () => {
     afterEach(() => {
       kbnApiClient.deleteSampleData('ecommerce', userCredentials);
@@ -132,8 +128,8 @@ describe('Tenancy', () => {
     });
   });
 
-  // Outside runTests: neither of these reads callbackBeforeLogin or callbackAfterLogin, so the
-  // three runTests passes ran byte-identical copies of them. Once is once.
+  // Outside runTests: neither test reads callbackBeforeLogin or callbackAfterLogin, so the three
+  // passes would be identical.
   it('should redirect to page not found when tenancy is not available', () => {
     const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
     Login.initialization({
