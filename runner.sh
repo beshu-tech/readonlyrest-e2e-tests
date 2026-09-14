@@ -123,31 +123,27 @@ while [[ $# -gt 0 ]]; do
 done
 
 STACK_LOGS=results/stack-logs
+E2E_OUTPUT=results/e2e-output.log
+E2E_SUMMARY=results/e2e-summary.md
 
-# One collector, one output directory, for both failure paths, so the two cannot drift apart.
-# --console adds the stack's own log to the job log, which is what a stack that never came up
-# explains itself with. It never fails: this runs when something else has already gone wrong.
+# Runs from the ERR trap, where the stack did not come up. --console puts the stack log on the
+# console, because the job log has no other record of the failure.
 collect_logs() {
   ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" --console || true
 }
 
-E2E_OUTPUT=results/e2e-output.log
-
-# Cypress prints its per-spec table thousands of lines into the step log, where nobody finds it.
-# Repeat it on the run's summary page, which is the first thing a reader opens. Outside Actions
-# GITHUB_STEP_SUMMARY is unset and this does nothing.
-write_step_summary() {
-  [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+# The per-spec table and the totals that Cypress prints at the end of its output, as Markdown.
+write_summary() {
   [ -f "$E2E_OUTPUT" ] || return 0
   {
     echo "### E2E: ELK $ELK_VERSION on $ENV_NAME"
     echo
     echo '```'
-    # Strip the colour codes first: they render as literal escapes in Markdown, and Cypress puts
-    # some of them between the bracket and the words below, where they would break the match.
+    # Strip the colour codes first: Markdown shows them as literal escapes, and Cypress puts some
+    # between the bracket and "Run Finished", where they would break the match.
     sed -e 's/\x1b\[[0-9;]*m//g' "$E2E_OUTPUT" | sed -n '/Run Finished/,$p'
     echo '```'
-  } >> "$GITHUB_STEP_SUMMARY"
+  } > "$E2E_SUMMARY"
 }
 
 cleanup() {
@@ -177,20 +173,18 @@ if [[ "$MODE" == "e2e" ]]; then
 
   mkdir -p results
 
-  # Take the status by hand, because errexit would end the script here, before the summary and the
-  # logs below. PIPESTATUS holds the suite's status, not tee's.
+  # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the
+  # suite's status, not tee's.
   set +e
   time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
   E2E_STATUS=${PIPESTATUS[0]}
   set -e
 
-  write_step_summary
+  write_summary
 
   if [[ $E2E_STATUS -ne 0 ]]; then
-    # No --console: the job log already holds the whole Cypress output, and repeating the stack
-    # logs under it buries the summary. Into results/, because that is the directory the callers
-    # already collect on failure, next to the Cypress videos and screenshots. No caller has to
-    # change to start receiving the logs.
+    # No --console: the Cypress output is on the console, and the stack logs under it would bury
+    # the summary. results/ is the directory the callers upload on failure.
     echo -e "\nE2E tests failed - collecting the stack logs\n"
     ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" || true
   fi
