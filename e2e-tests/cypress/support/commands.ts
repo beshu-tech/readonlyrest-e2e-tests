@@ -166,7 +166,11 @@ function httpCall(
     timeoutMs
   };
 
-  return cy.task('httpCall', options);
+  // cy.task()'s own default timeout (taskTimeout in cypress.config.ts) is sized for the default
+  // FETCH_TIMEOUT_MS budget (see plugins/index.ts) - a caller overriding timeoutMs upward (e.g.
+  // loadSampleData's slower bulk-insert) needs a matching override here, or Cypress kills the
+  // whole task at the unmodified default before the fetch's own longer timeout is ever reached.
+  return timeoutMs ? cy.task('httpCall', options, { timeout: timeoutMs + 5000 }) : cy.task('httpCall', options);
 }
 
 function uploadFile(

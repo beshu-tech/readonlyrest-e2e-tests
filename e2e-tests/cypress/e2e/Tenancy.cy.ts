@@ -51,6 +51,8 @@ describe('Tenancy', () => {
       cy.window().then(win => {
         openedWindow = win.open(urlWithInfosecTenancyId, '_blank');
       });
+      cy.log('let the second tab reach its login page before the main tab starts logging in');
+      cy.wait(3000);
     };
 
     beforeEach(() => {

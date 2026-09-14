@@ -63,7 +63,16 @@ export class Settings {
     recurse(
       () =>
         cy
-          .then(() => Settings.clickSaveButton())
+          .then(() => SecuritySettings.getIframeBody())
+          .then($body => {
+            // Once the modal is opening, an overlay mask covers the Save button; clicking again
+            // would report the button as hidden instead of giving the modal time to finish
+            // mounting. Only re-click while nothing has opened yet.
+            const hasOverlay = ($body as JQuery<HTMLElement>).hasClass('euiBody-hasOverlayMask');
+            if (!hasOverlay) {
+              Settings.clickSaveButton();
+            }
+          })
           .then(() => cy.wait(Settings.SAVE_MODAL_SETTLE_MS, { log: false }))
           .then(() => SecuritySettings.getIframeBody()),
       $body => ($body as JQuery<HTMLElement>).find(':contains("Save anyway")').length > 0,
