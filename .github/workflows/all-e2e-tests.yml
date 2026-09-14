@@ -1,25 +1,35 @@
 name: End-to-end test workflow
 
+# What each trigger runs. The bootstrap sweep is a separate workflow.
+#
+#   trigger                      images       environments
+#   daily cron, manual dispatch  prod + dev   docker, eck-2.16.1, eck-3.5.0
+#   push to master               prod         docker, eck-3.5.0
+#   push to develop              dev          docker, eck-3.5.0
+#   pull request to master       prod         docker, eck-3.5.0
+#   pull request to develop      dev          docker, eck-3.5.0
+#   draft pull request           as above     docker
+#
+# prod images are the released plugins. dev images are built from the branch under test, or from
+# develop on the cron.
 on:
   workflow_dispatch: {}
   schedule:
     - cron: '0 0 * * *'
   # Only the two long-lived branches. Feature branches are covered by their pull request, and
   # listing them here would run everything twice for every push to an open PR.
-  # paths-ignore on both: a change to prose cannot change what the suite does, and a docs-only
-  # pull request costs the same 12 legs as a code one without it. Keep the list to files that are
-  # never read at runtime — anything under e2e-tests/, .github/ or environments/ must still run.
+  # paths-ignore on both: a change to prose cannot change what the suite does. Keep the list to
+  # files that are never read at runtime.
   push:
     branches: [master, develop]
     paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
+  # ready_for_review: a draft runs docker only, and the ECK leg must run when the draft ends.
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
 
-# A second push to the same pull request makes the first run's result worthless, and this suite
-# holds runners for hours. Cancel it. Only for pull requests: on master, the nightly and a manual
-# dispatch the group is the run id, which is unique, so those runs neither cancel nor queue behind
-# each other. Grouping them by ref instead would park a nightly behind a master push for hours.
+# A second push to a pull request cancels the run in progress. Every other run is grouped by its
+# run id, so those runs neither cancel nor queue behind each other.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -31,10 +41,8 @@ jobs:
   # ==========================================
   # MATRIX
   # ==========================================
-  # One source for the ELK version list and the (version, environment) pairs. ci/e2e-matrix.sh
-  # explains why the pairs are not a cross product; the short form is that the two ECK operator
-  # versions agree with each other and the extra column buys no information. The nightly asks for
-  # the flipped pairing, so the pairs a pull request does not run are covered within 24 hours.
+  # ci/e2e-matrix.sh holds the ELK version list. The environments depend on the trigger, as the
+  # table at the top says.
   setup:
     name: "🧮 Matrix"
     runs-on: ubuntu-latest
@@ -49,20 +57,25 @@ jobs:
           persist-credentials: false
       - name: Build the matrix
         id: matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
-          FLIP=""
-          [ "${{ github.event_name }}" = "schedule" ] && FLIP="--flip"
+          case "$EVENT_NAME" in
+            schedule|workflow_dispatch) ENVS="docker eck-2.16.1 eck-3.5.0" ;;
+            *) [ "$DRAFT" = "true" ] && ENVS="docker" || ENVS="docker eck-3.5.0" ;;
+          esac
           {
             echo "versions=$(./ci/e2e-matrix.sh versions)"
-            echo "e2e=$(./ci/e2e-matrix.sh matrix $FLIP)"
+            echo "e2e=$(./ci/e2e-matrix.sh matrix $ENVS)"
           } >> "$GITHUB_OUTPUT"
 
   # ==========================================
   # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
   # ==========================================
   # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
-  # plugins still pass the suite": master itself, PRs targeting it, and the nightly schedule.
+  # plugins still pass the suite": master itself, PRs targeting it, and the daily cron.
   prod-e2e-tests:
     name: "🔬 E2E Tests (released plugins)"
     needs: setup
@@ -118,16 +131,18 @@ jobs:
           path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
 
   # ==========================================
-  # DEV IMAGE PREPARATION - DEVELOP AND NON-MASTER PRs
+  # DEV IMAGE PREPARATION
   # ==========================================
-  # Builds branch-matched dev images of both plugins for dev-e2e-tests, tagged per run. One dispatch
-  # per plugin covers the whole matrix, since both pre-build workflows accept a version list.
-  # `target_branch` is passed verbatim; both fall back to `develop` if the branch is not there.
+  # Builds dev images of both plugins for dev-e2e-tests, tagged per run. One dispatch per plugin
+  # covers the whole matrix, since both pre-build workflows accept a version list. `target_branch`
+  # is passed verbatim; both fall back to `develop` if the branch is not there.
   # Fork PRs are excluded: the dispatch needs secrets GitHub does not expose to them.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
     needs: setup
     if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
       (github.event_name == 'pull_request' && github.base_ref != 'master' && github.event.pull_request.head.repo.fork == false)
     runs-on: ubuntu-latest
@@ -142,12 +157,11 @@ jobs:
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          # From ci/e2e-matrix.sh through the setup job, the same list prod-e2e-tests runs on.
           ELK_VERSIONS_JSON: ${{ needs.setup.outputs.versions }}
-          # On a PR, head_ref is the source branch — the plugins must be built from the PR head, not
-          # from the merge ref github.ref points at. On a push, head_ref is empty and ref_name is
-          # the branch that was pushed (develop).
-          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          # The cron builds develop. On a PR, head_ref is the source branch: the plugins must be
+          # built from the PR head, not from the merge ref github.ref points at. On a push or a
+          # manual dispatch, head_ref is empty and ref_name is the branch.
+          TARGET_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.head_ref || github.ref_name }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
 
         run: |
@@ -166,8 +180,7 @@ jobs:
   # ==========================================
   # E2E TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
   # ==========================================
-  # Every push to develop and every non-fork pull request that does not target master, against the
-  # per-run, branch-matched dev images produced by prepare-dev-images. Skipped automatically when
+  # Runs against the per-run dev images produced by prepare-dev-images. Skipped automatically when
   # that job is skipped.
   dev-e2e-tests:
     name: "🧪 E2E Tests (pre-build plugins)"
