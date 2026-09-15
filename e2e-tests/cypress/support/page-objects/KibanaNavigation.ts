@@ -17,12 +17,13 @@ export class KibanaNavigation {
 
   static openKibanaNavigation() {
     cy.log('openKibanaNavigation');
-    // Clear any overlays by pressing ESC prior to opening nav
-    cy.get('body').trigger('keydown', { keyCode: 27 });
-    cy.wait(200);
-    cy.get('body').trigger('keyup', { keyCode: 27 });
-
+    KibanaNavigation.closeOpenOverlays();
     cy.get('[data-test-subj=toggleNavButton]').click({ force: true });
+  }
+
+  private static closeOpenOverlays() {
+    cy.get('body').trigger('keydown', { keyCode: 27 });
+    cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
   static checkIfNotVisible(page: string) {

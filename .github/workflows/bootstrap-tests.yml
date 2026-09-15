@@ -1,0 +1,190 @@
+name: Bootstrap tests
+
+# Boots each released ELK version against the plugin images and stops. `--run bootstrap` runs no
+# tests: the only assertion is that the stack came up. What it can catch is "a plugin image does
+# not start on this old version".
+#
+#   trigger          images
+#   Sunday cron      prod, the released plugins
+#   Wednesday cron   dev, built from develop
+#   manual dispatch  both
+#
+# Only docker. This job starts a stack and does not exercise the Kibana proxy, which is where
+# docker and ECK differ.
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 1 * * 0'
+    - cron: '0 1 * * 3'
+
+env:
+  APPLY_RESOURCE_LIMITS: "auto"
+  # 7.10.0 is out of the list until the fix in
+  # https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/1362 is released.
+  ELK_VERSIONS: "9.5.0 9.4.0 9.3.0 9.2.0 9.1.0 9.0.0 8.19.0 8.18.0 8.17.0 8.16.0 8.15.0 8.14.0 8.13.0 8.12.0 8.11.0 8.10.1 8.9.0 8.8.0 8.7.0 8.6.0 8.5.0 8.4.0 8.3.0 8.2.0 8.1.0 8.0.0 7.17.0 7.16.0 7.15.0 7.14.0 7.13.0 7.12.0 7.11.2 7.9.0"
+
+jobs:
+  # ==========================================
+  # PLAN
+  # ==========================================
+  plan:
+    name: "🧮 Plan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      images: ${{ steps.plan.outputs.images }}
+      versions: ${{ steps.plan.outputs.versions }}
+    steps:
+      - name: Choose the images and list the versions
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          CRON: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          case "$EVENT:$CRON" in
+            workflow_dispatch:*) IMAGES="prod dev" ;;
+            "schedule:0 1 * * 0") IMAGES=prod ;;
+            "schedule:0 1 * * 3") IMAGES=dev ;;
+            *) echo "No plan for $EVENT $CRON" >&2; exit 1 ;;
+          esac
+          {
+            echo "images=$IMAGES"
+            echo "versions=$(jq -cn --arg v "$ELK_VERSIONS" '$v | split(" ")')"
+          } >> "$GITHUB_OUTPUT"
+
+  # ==========================================
+  # BOOTSTRAP TESTS - RELEASED (PROD) PLUGIN IMAGES
+  # ==========================================
+  prod-bootstrap-tests:
+    name: "🚀 Bootstrap Tests (released plugins)"
+    needs: plan
+    if: contains(needs.plan.outputs.images, 'prod')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJSON(needs.plan.outputs.versions) }}
+        env: [docker]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Configure the Docker Hub mirror
+        run: source .github/scripts/docker-hub-mirror.sh
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+        with:
+          # A bootstrap leg pulls two images and writes no video, screenshot or Cypress cache.
+          required_gb: '8'
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
+      # For transient infrastructure: an HTTP 429 from the npm registry, or an image pull that
+      # fails once.
+      - name: Run bootstrap tests
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
+        with:
+          max_attempts: 3
+          timeout_minutes: 30
+          retry_on: any
+          command: |
+            ./runner.sh --run bootstrap --mode prod --env ${{ matrix.env }} --elk ${{ matrix.version }}
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop
+
+  # ==========================================
+  # DEV IMAGE PREPARATION
+  # ==========================================
+  # Builds dev images of both plugins for every version in the list, tagged per run. The cron
+  # builds develop. A manual dispatch builds the branch it runs on; both pre-build workflows fall
+  # back to `develop` if the branch is not there.
+  prepare-dev-images:
+    name: "🏗️ Prepare dev images"
+    needs: plan
+    if: contains(needs.plan.outputs.images, 'dev')
+    runs-on: ubuntu-latest
+    # The pre-build runs build the whole list on one self-hosted runner, one version after the
+    # other. The e2e list has 4 versions; this one has 34.
+    timeout-minutes: 300
+    outputs:
+      run_tag: ${{ steps.prepare.outputs.run_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Dispatch and await ROR plugin pre-builds
+        id: prepare
+        env:
+          TARGET_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.ref_name }}
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+          ROR_ES_WAIT_TIMEOUT_SECONDS: 14400
+          ROR_KBN_WAIT_TIMEOUT_SECONDS: 14400
+        run: |
+          set -euo pipefail
+          . ci/prebuild-images-lib.sh
+
+          # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
+          RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
+
+          dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
+          wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
+
+  # ==========================================
+  # BOOTSTRAP TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
+  # ==========================================
+  # Skipped when prepare-dev-images is skipped.
+  dev-bootstrap-tests:
+    name: "🚀 Bootstrap Tests (pre-build plugins)"
+    needs: [plan, prepare-dev-images]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJSON(needs.plan.outputs.versions) }}
+        env: [docker]
+    env:
+      ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Configure the Docker Hub mirror
+        run: source .github/scripts/docker-hub-mirror.sh
+      - name: Clean up disk space
+        uses: ./.github/cleanup-disk-space
+        with:
+          # A bootstrap leg pulls two images and writes no video, screenshot or Cypress cache.
+          required_gb: '8'
+      - name: Start Docker memory monitor
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: start
+      - name: Run bootstrap tests
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
+        with:
+          max_attempts: 3
+          timeout_minutes: 30
+          retry_on: any
+          command: |
+            ./runner.sh --run bootstrap --mode dev --env ${{ matrix.env }} --elk ${{ matrix.version }} --ror-es "$ROR_IMAGE_TAG" --ror-kbn "$ROR_IMAGE_TAG"
+        env:
+          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+      - name: Stop Docker memory monitor
+        if: always()
+        uses: ./.github/docker-memory-monitor
+        with:
+          action: stop

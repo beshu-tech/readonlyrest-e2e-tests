@@ -2,8 +2,8 @@
 
 ## The two long-lived branches
 
-- `master` tests the released plugins. Its CI runs the suite against the published images (`--mode prod`, `ror-latest`) on every push to `master`, on every non-fork pull request that targets `master`, and on the nightly schedule.
-- `develop` tests the plugin code that is not released yet. Its CI builds branch-matched dev images of the ES and the Kibana plugin, then runs the suite against them.
+- `master` tests the released plugins. Its CI runs the suite against the published images (`--mode prod`, `ror-latest`) on every push to `master`, on every non-fork pull request that targets `master`, and on the daily schedule.
+- `develop` tests the plugin code that is not released yet. Its CI builds branch-matched dev images of the ES and the Kibana plugin, then runs the suite against them. The daily schedule runs this set too, with images built from `develop`.
 
 The two branches hold nearly the same tests, and the branch decides which plugin build they run against. They differ where `develop` already covers behaviour that is not released yet; the merge into `master` carries those tests over once the release is out. `.github/workflows/all-e2e-tests.yml` holds the two job sets.
 

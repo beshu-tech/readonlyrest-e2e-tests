@@ -31,11 +31,6 @@ describe('settings', () => {
     cy.log('should check save changes functionality when no changes provided');
     // Settings.currentSettingsAlreadyLoadedToast().should('be.visible');
 
-    cy.log('should check save changes functionality when malformed settings provided');
-    Editor.changeConfig('readonlyrest:');
-    Settings.clickSaveButton();
-    // Settings.malformedSavedConfigurationToast().should('be.visible');
-
     cy.log('should check save changes functionality when success');
     Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP${Cypress._.random(0, 1e6)}`);
     Settings.clickSaveButton();

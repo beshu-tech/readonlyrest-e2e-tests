@@ -236,11 +236,46 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     }
   });
 
+  // A retried test that passed leaves no trace in the run output. This lists every retried test
+  // on the GitHub run summary, so the flaky ones can be named. GITHUB_STEP_SUMMARY is unset outside
+  // Actions, and then this does nothing.
+  const reportRetriedTests = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
+    const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+    if (!summaryFile || !results || !results.tests) return;
+
+    const retried = results.tests
+      .map(test => ({
+        title: (test.title || []).join(' > '),
+        attempts: (test.attempts || []).length,
+        state: test.state
+      }))
+      .filter(test => test.attempts > 1);
+
+    if (retried.length === 0) return;
+
+    const rows = retried
+      .map(test => `| \`${path.basename(spec.relative)}\` | ${test.title} | ${test.attempts} | ${test.state} |`)
+      .join('\n');
+
+    try {
+      await fs.promises.appendFile(
+        summaryFile,
+        `\n<!-- retries -->\n| spec | test | attempts | final |\n| --- | --- | --- | --- |\n${rows}\n`
+      );
+    } catch {
+      // A broken report must never fail a suite that passed.
+    }
+  };
+
   // Discard the video for specs that finished with all tests passing.
   // Combined with `videoCompression: false` in cypress.config.ts, this keeps
   // failure-debug videos available while avoiding writing GBs of green-run
   // videos to disk and uploading them as artifacts.
-  on('after:spec', async (_spec, results) => {
+  on('after:spec', async (spec, results) => {
+    // Cypress keeps one handler per event name: a second `on('after:spec')` replaces the first.
+    // So both jobs live in this one handler.
+    await reportRetriedTests(spec, results);
+
     if (!results || !results.video) return;
     // Keep the video if the spec had ANY failure. Prefer the stable
     // `results.stats.failures` counter — in Cypress 14 the per-attempt

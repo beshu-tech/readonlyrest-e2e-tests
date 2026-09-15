@@ -1,0 +1,21 @@
+name: 'Cypress cache'
+description: 'Restores and saves the yarn download cache, node_modules and the Cypress binary for the e2e suite.'
+
+runs:
+  using: 'composite'
+  steps:
+    # Both caches are keyed on yarn.lock, the file that decides their content, so a stale entry
+    # cannot be served. The Cypress binary version is pinned by the `cypress` entry in it, so one
+    # key covers the binary too.
+    - name: Cache the yarn download cache and node_modules
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: |
+          ~/.cache/yarn
+          e2e-tests/node_modules
+        key: e2e-yarn-${{ runner.os }}-${{ hashFiles('e2e-tests/yarn.lock') }}
+    - name: Cache the Cypress binary
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: ~/.cache/Cypress
+        key: e2e-cypress-${{ runner.os }}-${{ hashFiles('e2e-tests/yarn.lock') }}
