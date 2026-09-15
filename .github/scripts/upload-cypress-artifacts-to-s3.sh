@@ -51,7 +51,13 @@ AK="${!AK_VAR}"
 SK="${!SK_VAR}"
 BUCKET="${!BUCKET_VAR}"
 REGION="${!REGION_VAR}"
+# Strip any trailing slash regardless of how the caller formatted it - upload-videos/action.yml
+# builds this from "<path_prefix>/build_<run_id>" and if path_prefix itself already ends in "/"
+# (as it did for the DGP endpoint), the unstripped value produces a "//" in every S3 key below,
+# which the endpoint rejects outright: "InvalidArgument: Key must not contain empty path
+# segments ('//')" - the cause of every artifact upload failing in run 34312427155.
 PATH_PREFIX="${!PREFIX_VAR:-}"
+PATH_PREFIX="${PATH_PREFIX%/}"
 
 SOURCE_DIR="${1:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"
 S3_SUBFOLDER="${2:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"

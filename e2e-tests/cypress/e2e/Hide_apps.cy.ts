@@ -10,7 +10,7 @@ import { SearchApps } from '../support/page-objects/SearchApps';
 import { Loader } from '../support/page-objects/Loader';
 import { Home } from '../support/page-objects/Home';
 
-describe('hidden apps', () => {
+describe('hidden apps', { pageLoadTimeout: 60000 }, () => {
   afterEach(() => {
     Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });

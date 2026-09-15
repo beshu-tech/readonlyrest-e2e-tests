@@ -6,15 +6,20 @@ import { capture as clipboardCapture } from './clipboardCapture';
 
 Cypress.Commands.add(
   'kbnPost',
-  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) =>
+  (
+    { endpoint, credentials, payload, currentGroupHeader, impersonating, failOnStatusCode, headers, timeoutMs },
+    ...args
+  ) =>
     cy.kbnRequest({
       method: 'POST',
       endpoint,
       credentials,
       payload,
       currentGroupHeader,
+      failOnStatusCode,
       headers,
-      impersonating
+      impersonating,
+      timeoutMs
     }) as Cypress.Chainable<unknown>
 );
 
@@ -67,12 +72,14 @@ Cypress.Commands.add(
     }) as Cypress.Chainable<unknown>
 );
 
-Cypress.Commands.add('esGet', ({ endpoint, credentials }, ...args) =>
-  cy.esRequest({
-    method: 'GET',
-    endpoint,
-    credentials
-  }) as Cypress.Chainable<unknown>
+Cypress.Commands.add(
+  'esGet',
+  ({ endpoint, credentials }, ...args) =>
+    cy.esRequest({
+      method: 'GET',
+      endpoint,
+      credentials
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add(
@@ -101,7 +108,17 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   'kbnRequest',
-  ({ method, endpoint, credentials, payload, currentGroupHeader, impersonating, failOnStatusCode, headers }) => {
+  ({
+    method,
+    endpoint,
+    credentials,
+    payload,
+    currentGroupHeader,
+    impersonating,
+    failOnStatusCode,
+    headers,
+    timeoutMs
+  }) => {
     const customHeaders: { [key: string]: string } = { 'kbn-xsrf': 'true', ...headers };
     if (currentGroupHeader) {
       customHeaders['x-ror-tenancy-id'] = currentGroupHeader;
@@ -111,7 +128,15 @@ Cypress.Commands.add(
       customHeaders['x-ror-impersonating'] = impersonating;
     }
 
-    httpCall(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders, failOnStatusCode);
+    httpCall(
+      method,
+      `${Cypress.config().baseUrl}/${endpoint}`,
+      credentials,
+      payload,
+      customHeaders,
+      failOnStatusCode,
+      timeoutMs
+    );
   }
 );
 
@@ -125,7 +150,8 @@ function httpCall(
   credentials: string,
   payload?: string | object,
   headers?: { [key: string]: string },
-  failOnStatusCode = true
+  failOnStatusCode = true,
+  timeoutMs?: number
 ): Cypress.Chainable<any> {
   const options = {
     method,
@@ -136,10 +162,15 @@ function httpCall(
       ...headers
     },
     body: payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload)) : null,
-    failOnStatusCode
+    failOnStatusCode,
+    timeoutMs
   };
 
-  return cy.task('httpCall', options);
+  // cy.task()'s own default timeout (taskTimeout in cypress.config.ts) is sized for the default
+  // FETCH_TIMEOUT_MS budget (see plugins/index.ts) - a caller overriding timeoutMs upward (e.g.
+  // loadSampleData's slower bulk-insert) needs a matching override here, or Cypress kills the
+  // whole task at the unmodified default before the fetch's own longer timeout is ever reached.
+  return timeoutMs ? cy.task('httpCall', options, { timeout: timeoutMs + 5000 }) : cy.task('httpCall', options);
 }
 
 function uploadFile(
@@ -208,11 +239,13 @@ Cypress.Commands.add('getValueFromClipboard', () => cy.wrap(clipboardCapture, { 
 
 // Cypress 15 types cy.wait's alias parameter as `@${string}`; mirroring it here means a
 // forgotten '@' prefix is a compile error instead of a silent numeric-wait.
-Cypress.Commands.add('waitForResponse', (alias: `@${string}`) =>
-  cy.wait(alias).then(({ response }) => {
-    if (!response) throw new Error(`Expected a response for ${alias}`);
-    return response;
-  }) as unknown as Cypress.Chainable<{ statusCode: number }>
+Cypress.Commands.add(
+  'waitForResponse',
+  (alias: `@${string}`) =>
+    cy.wait(alias).then(({ response }) => {
+      if (!response) throw new Error(`Expected a response for ${alias}`);
+      return response;
+    }) as unknown as Cypress.Chainable<{ statusCode: number }>
 );
 
 Cypress.on('uncaught:exception', (err, runnable, promise) => {

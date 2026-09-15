@@ -4,6 +4,12 @@ metadata:
   name: eck-ror-kbn-np
 spec:
   type: NodePort
+  # Keeps the pod's endpoint in the Service even while it's failing readiness. With only a
+  # single Kibana replica in this cluster, pulling the endpoint on every readiness flap (CPU
+  # contention on the kind node, GC pause, etc.) turns any in-flight request into a bare TCP
+  # reset (ECONNRESET) instead of a slow-but-valid response - that's the source of the
+  # widespread ECONNRESET flakiness seen in e2e runs, not the e2e HTTP client itself.
+  publishNotReadyAddresses: true
   ports:
   - port: 5601
     targetPort: 5601
