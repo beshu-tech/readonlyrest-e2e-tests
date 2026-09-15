@@ -1,29 +1,14 @@
 name: End-to-end test workflow
 
-# What each trigger runs. The bootstrap sweep is a separate workflow.
-#
-#   trigger                      images       environments
-#   daily cron, manual dispatch  prod + dev   docker, eck-2.16.1, eck-3.5.0
-#   push to master               prod         docker, eck-3.5.0
-#   push to develop              dev          docker, eck-3.5.0
-#   pull request to master       prod         docker, eck-3.5.0
-#   pull request to develop      dev          docker, eck-3.5.0
-#   draft pull request           as above     docker
-#
-# prod images are the released plugins. dev images are built from the branch under test, or from
-# develop on the cron.
 on:
   workflow_dispatch: {}
   schedule:
     - cron: '0 0 * * *'
-  # Only the two long-lived branches. Feature branches are covered by their pull request, and
-  # listing them here would run everything twice for every push to an open PR.
-  # paths-ignore on both: a change to prose cannot change what the suite does. Keep the list to
-  # files that are never read at runtime.
+  # Feature branches are covered by their pull request. Prose cannot change what the suite does.
   push:
     branches: [master, develop]
     paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
-  # ready_for_review: a draft runs docker only, and the ECK leg must run when the draft ends.
+  # ready_for_review: a draft runs docker only, so the ECK legs are due when the draft ends.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
@@ -36,58 +21,63 @@ concurrency:
 
 env:
   APPLY_RESOURCE_LIMITS: "auto"
+  # Newest first: a failure on the newest line is the one to see first in the run UI.
+  ELK_VERSIONS: "9.5.3 9.4.6 8.19.21 7.17.29"
+  ECK_3X: eck-3.5.0
+  ECK_2X: eck-2.16.1
 
 jobs:
   # ==========================================
-  # MATRIX
+  # PLAN
   # ==========================================
-  # ci/e2e-matrix.sh holds the ELK version list. The environments depend on the trigger, as the
-  # table at the top says.
-  setup:
-    name: "🧮 Matrix"
+  # Which plugin images to test, and on which environments. prod images are the released plugins.
+  # dev images are built from the branch under test, or from develop on the cron.
+  plan:
+    name: "🧮 Plan"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      versions: ${{ steps.matrix.outputs.versions }}
-      e2e: ${{ steps.matrix.outputs.e2e }}
+      images: ${{ steps.plan.outputs.images }}
+      matrix: ${{ steps.plan.outputs.matrix }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          persist-credentials: false
-      - name: Build the matrix
-        id: matrix
+      - name: Choose the images and the environments
+        id: plan
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          DRAFT: ${{ github.event.pull_request.draft }}
+          EVENT: ${{ github.event_name }}
+          # A pull request tests the plugins of the branch it targets.
+          BRANCH: ${{ github.base_ref || github.ref_name }}
+          DRAFT: ${{ github.event.pull_request.draft == true }}
+          # A fork PR gets no secrets, and the dev image pre-build needs them.
+          FORK: ${{ github.event.pull_request.head.repo.fork == true }}
         run: |
           set -euo pipefail
-          case "$EVENT_NAME" in
-            schedule|workflow_dispatch) ENVS="docker eck-2.16.1 eck-3.5.0" ;;
-            *) [ "$DRAFT" = "true" ] && ENVS="docker" || ENVS="docker eck-3.5.0" ;;
+          case "$EVENT" in
+            schedule | workflow_dispatch)
+              IMAGES="prod dev"
+              ENVS="docker $ECK_2X $ECK_3X"
+              ;;
+            push | pull_request)
+              [ "$BRANCH" = master ] && IMAGES=prod || IMAGES=dev
+              [ "$DRAFT" = true ] && ENVS=docker || ENVS="docker $ECK_3X"
+              [ "$FORK" = true ] && IMAGES=""
+              ;;
           esac
           {
-            echo "versions=$(./ci/e2e-matrix.sh versions)"
-            echo "e2e=$(./ci/e2e-matrix.sh matrix $ENVS)"
+            echo "images=$IMAGES"
+            echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
           } >> "$GITHUB_OUTPUT"
 
   # ==========================================
   # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
   # ==========================================
-  # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
-  # plugins still pass the suite": master itself, PRs targeting it, and the daily cron.
   prod-e2e-tests:
     name: "🔬 E2E Tests (released plugins)"
-    needs: setup
-    if: >
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
+    needs: plan
+    if: contains(needs.plan.outputs.images, 'prod')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.setup.outputs.e2e) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -133,18 +123,11 @@ jobs:
   # ==========================================
   # DEV IMAGE PREPARATION
   # ==========================================
-  # Builds dev images of both plugins for dev-e2e-tests, tagged per run. One dispatch per plugin
-  # covers the whole matrix, since both pre-build workflows accept a version list. `target_branch`
-  # is passed verbatim; both fall back to `develop` if the branch is not there.
-  # Fork PRs are excluded: the dispatch needs secrets GitHub does not expose to them.
+  # Builds dev images of both plugins for every version, tagged per run.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
-    needs: setup
-    if: >
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'pull_request' && github.base_ref != 'master' && github.event.pull_request.head.repo.fork == false)
+    needs: plan
+    if: contains(needs.plan.outputs.images, 'dev')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     outputs:
@@ -157,7 +140,6 @@ jobs:
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          ELK_VERSIONS_JSON: ${{ needs.setup.outputs.versions }}
           # The cron builds develop. On a PR, head_ref is the source branch: the plugins must be
           # built from the PR head, not from the merge ref github.ref points at. On a push or a
           # manual dispatch, head_ref is empty and ref_name is the branch.
@@ -170,8 +152,6 @@ jobs:
 
           # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
           RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
-          # The pre-build helpers take a space-separated list; the matrix travels as JSON.
-          ELK_VERSIONS=$(jq -r 'join(" ")' <<< "$ELK_VERSIONS_JSON")
           echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
 
           dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
@@ -180,15 +160,14 @@ jobs:
   # ==========================================
   # E2E TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
   # ==========================================
-  # Runs against the per-run dev images produced by prepare-dev-images. Skipped automatically when
-  # that job is skipped.
+  # Skipped when prepare-dev-images is skipped.
   dev-e2e-tests:
     name: "🧪 E2E Tests (pre-build plugins)"
-    needs: [setup, prepare-dev-images]
+    needs: [plan, prepare-dev-images]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.setup.outputs.e2e) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
