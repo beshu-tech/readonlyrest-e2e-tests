@@ -20,12 +20,20 @@ PROJECT=elk-ror
 
 mkdir -p "$OUT" 2>/dev/null || exit 0
 
-# Status and exit codes: on a collapse this is often enough on its own.
-docker ps -a --filter "name=^${PROJECT}" \
-  --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' > "$OUT/containers.txt" 2>&1 || true
+# Status and exit codes: on a collapse this is often enough on its own. RestartCount tells a
+# container that died and came back from one that never died: `docker ps` shows only the current
+# process.
+{
+  printf 'NAMES\tSTATUS\tRESTARTS\tIMAGE\n'
+  for container in $(docker ps -a --filter "name=^${PROJECT}" --format '{{.Names}}' 2>/dev/null); do
+    docker inspect -f '{{.Name}}{{"\t"}}{{.State.Status}}{{"\t"}}{{.RestartCount}}{{"\t"}}{{.Config.Image}}' "$container" 2>&1 | sed 's|^/||'
+  done
+} > "$OUT/containers.txt" 2>&1 || true
 
+# Docker keeps the output of every process a restart policy replaced, so the log also holds why
+# each earlier process died. --timestamps lines the deaths up with the Cypress timeline.
 for container in $(docker ps -a --filter "name=^${PROJECT}" --format '{{.Names}}' 2>/dev/null); do
-  docker logs "$container" > "$OUT/${container}.log" 2>&1 || true
+  docker logs --timestamps "$container" > "$OUT/${container}.log" 2>&1 || true
 done
 
 # The start script writes this log only when the stack fails to come up.
