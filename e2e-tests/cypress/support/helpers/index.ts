@@ -1,3 +1,5 @@
+import { BasicCredentials } from './KbnApiClient';
+
 export const getKibanaVersion = () => {
   const kibanaVersion: string = Cypress.env('kibanaVersion');
   console.log('kibana version', kibanaVersion);
@@ -23,4 +25,4 @@ export function isJsonString(str: string) {
   return true;
 }
 
-export const userCredentials = `${Cypress.env().login}:${Cypress.env().password}`;
+export const userCredentials: BasicCredentials = `${Cypress.env().login}:${Cypress.env().password}`;
