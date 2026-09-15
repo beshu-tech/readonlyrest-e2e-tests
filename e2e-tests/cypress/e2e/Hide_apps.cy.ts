@@ -66,7 +66,10 @@ describe('hidden apps', () => {
     });
   });
 
-  context('Kibana global search', () => {
+  // Restoring the default config from "all apps hidden" makes Kibana rebuild its app registry
+  // (150+ entries) before the SPA-initiated reload fires its `load` event; that routinely exceeds
+  // the global 20s pageLoadTimeout in the afterEach cleanup.
+  context('Kibana global search', { pageLoadTimeout: 60000 }, () => {
     beforeEach(() => {
       Settings.setSettingsData('hiddenAllAppsSettings.yaml');
       Login.initialization();
