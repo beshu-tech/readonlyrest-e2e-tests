@@ -10,7 +10,7 @@ import { SearchApps } from '../support/page-objects/SearchApps';
 import { Loader } from '../support/page-objects/Loader';
 import { Home } from '../support/page-objects/Home';
 
-describe('hidden apps', () => {
+describe('hidden apps', { pageLoadTimeout: 60000 }, () => {
   afterEach(() => {
     Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });
@@ -66,10 +66,7 @@ describe('hidden apps', () => {
     });
   });
 
-  // Restoring the default config from "all apps hidden" makes Kibana rebuild its app registry
-  // (150+ entries) before the SPA-initiated reload fires its `load` event; that routinely exceeds
-  // the global 20s pageLoadTimeout in the afterEach cleanup.
-  context('Kibana global search', { pageLoadTimeout: 60000 }, () => {
+  context('Kibana global search', () => {
     beforeEach(() => {
       Settings.setSettingsData('hiddenAllAppsSettings.yaml');
       Login.initialization();
