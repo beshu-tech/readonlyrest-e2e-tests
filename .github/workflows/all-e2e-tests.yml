@@ -51,17 +51,13 @@ jobs:
           FORK: ${{ github.event.pull_request.head.repo.fork == true }}
         run: |
           set -euo pipefail
-          case "$EVENT" in
-            schedule | workflow_dispatch)
-              IMAGES="prod dev"
-              ENVS="docker $ECK_2X $ECK_3X"
-              ;;
-            push | pull_request)
-              [ "$BRANCH" = master ] && IMAGES=prod || IMAGES=dev
-              [ "$DRAFT" = true ] && ENVS=docker || ENVS="docker $ECK_3X"
-              [ "$FORK" = true ] && IMAGES=""
-              ;;
-          esac
+          if   [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ]; then IMAGES="prod dev"; ENVS="docker $ECK_2X $ECK_3X"
+          elif [ "$FORK" = true ];                                            then IMAGES="";         ENVS=""
+          elif [ "$BRANCH" = master ] && [ "$DRAFT" = true ];                 then IMAGES="prod";     ENVS="docker"
+          elif [ "$BRANCH" = master ];                                        then IMAGES="prod";     ENVS="docker $ECK_3X"
+          elif [ "$DRAFT" = true ];                                           then IMAGES="dev";      ENVS="docker"
+          else                                                                     IMAGES="dev";      ENVS="docker $ECK_3X"
+          fi
           {
             echo "images=$IMAGES"
             echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
