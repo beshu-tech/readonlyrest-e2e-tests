@@ -6,6 +6,7 @@ import FormData from 'form-data';
 import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
+import { SINGLE_REPLICA, type KibanaHealth } from '../support/types';
 
 let embeddedServer: ReturnType<typeof https.createServer> | null = null;
 const EMBEDDED_SERVER_PORT = 8080;
@@ -18,6 +19,21 @@ const generateJwt = (payload: object): string => {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
   return `${header}.${body}.${signature}`;
+};
+
+/**
+ * Reads the replicas the proxy tried out of its X-Kbn-Upstream header.
+ *
+ * nginx lists one address per try, in order, so a list of two means the first replica did not
+ * answer and the second one did. An environment with one Kibana and no proxy sends no header.
+ */
+const replicasTriedFrom = (header: string | string[] | undefined): string[] => {
+  const value = Array.isArray(header) ? header[header.length - 1] : header;
+  const tried = (value ?? '')
+    .split(',')
+    .map(address => address.trim())
+    .filter(Boolean);
+  return tried.length > 0 ? tried : [SINGLE_REPLICA];
 };
 
 const formatLoggerData = (data: unknown) =>
@@ -123,7 +139,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         throw error;
       }
     },
-    checkKibanaHealth({ url }) {
+    checkKibanaHealth({ url }): Promise<KibanaHealth> {
       return new Promise(resolve => {
         const req = https.request(
           `${url}/api/status`,
@@ -135,20 +151,26 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
             }
           },
           res => {
+            const replicasTried = replicasTriedFrom(res.headers['x-kbn-upstream']);
             let data = '';
             res.on('data', chunk => (data += chunk));
             res.on('end', () => {
               try {
                 const json = JSON.parse(data);
-                resolve(json.status?.overall?.level || json.status.overall.state || 'unknown');
+                resolve({
+                  status: json.status?.overall?.level || json.status.overall.state || 'unknown',
+                  replicasTried
+                });
               } catch (e) {
-                resolve('parse-error');
+                resolve({ status: 'parse-error', replicasTried });
               }
             });
           }
         );
 
-        req.on('error', () => resolve('error'));
+        // A request that got no response reached no replica, so it names none. An empty list keeps
+        // it out of the caller's replica count, which a made-up name would inflate.
+        req.on('error', () => resolve({ status: 'error', replicasTried: [] }));
         req.end();
       });
     },

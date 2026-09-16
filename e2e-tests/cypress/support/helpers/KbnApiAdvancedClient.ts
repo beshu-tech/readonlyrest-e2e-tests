@@ -1,4 +1,16 @@
 import { BasicCredentials, KbnApiClient } from './KbnApiClient';
+import type { KibanaHealth } from '../types';
+
+/**
+ * Whether one probe proves that the replica it reached serves, and that no other replica turned the
+ * probe away.
+ *
+ * Kibana 8.x and later answer 'available'; 7.x answers 'green'. The proxy tries one replica per
+ * request and moves to the next when that one does not answer, so a probe that names two replicas
+ * has already found one of them down.
+ */
+const probeServed = ({ status, replicasTried }: KibanaHealth) =>
+  (status === 'available' || status === 'green') && replicasTried.length === 1;
 
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
@@ -48,11 +60,9 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   public waitForKibanaRestart(baseUrl: string, downRetries = 120, delay = 1000) {
     let attempts = 0;
 
-    const isServing = (status: string) => status === 'available' || status === 'green';
-
     const waitUntilDown = (): Cypress.Chainable<undefined> =>
-      cy.task<string>('checkKibanaHealth', { url: baseUrl }).then((status): Cypress.Chainable<undefined> => {
-        if (!isServing(status)) {
+      cy.task<KibanaHealth>('checkKibanaHealth', { url: baseUrl }).then((health): Cypress.Chainable<undefined> => {
+        if (!probeServed(health)) {
           cy.log('⏳ Kibana went down, waiting for it to come back');
           return cy.wrap(undefined);
         }
@@ -71,25 +81,42 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     return waitUntilDown().then(() => this.waitForKibanaHealth(baseUrl, 90, 2000));
   }
 
+  /**
+   * Waits until every Kibana replica serves, not just the one a probe happened to reach.
+   *
+   * The docker environment runs two Kibana replicas behind a round-robin proxy, so one healthy
+   * answer proves nothing about the other replica. A test that carries on after a single healthy
+   * answer sends half its requests to a replica that is still starting, which has no session yet
+   * and bounces the browser back to the login page.
+   *
+   * Round-robin gives each replica one request in turn, so a run of probes that each reached their
+   * replica first try, one longer than the number of replicas seen, covers them all. A probe that
+   * failed over, or that came back unhealthy, starts the run again.
+   */
   public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {
     let attempts = 0;
+    let servedInARow = 0;
+    const replicas = new Set<string>();
 
     function poll(): Cypress.Chainable<undefined> {
       return cy
-        .task<string>('checkKibanaHealth', {
+        .task<KibanaHealth>('checkKibanaHealth', {
           url: baseUrl
         })
-        .then((status): Cypress.Chainable<undefined> => {
-          const kibana8xAndAboveSuccessStatus = status === 'available';
-          const kibana7xSuccessStatus = status === 'green';
+        .then((health): Cypress.Chainable<undefined> => {
+          health.replicasTried.forEach(replica => replicas.add(replica));
+          servedInARow = probeServed(health) ? servedInARow + 1 : 0;
 
-          if (kibana8xAndAboveSuccessStatus || kibana7xSuccessStatus) {
-            cy.log('✅ Kibana is healthy');
+          if (servedInARow > replicas.size) {
+            cy.log(`✅ Kibana is healthy on all ${replicas.size} replica(s)`);
             return cy.wrap(undefined);
           }
 
           if (attempts >= retries) {
-            throw new Error(`❌ Kibana never became healthy (last status: ${status})`);
+            throw new Error(
+              `❌ Kibana never became healthy on all ${replicas.size} replica(s) ` +
+                `(last status: ${health.status} from ${health.replicasTried.join(' then ')})`
+            );
           }
 
           attempts += 1;
