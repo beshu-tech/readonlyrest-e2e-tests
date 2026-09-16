@@ -55,7 +55,9 @@ services:
       replicas: 2
     environment:
       ES_API_URL: https://es-ror:9200
-      NODE_OPTIONS: "--max-old-space-size=768"
+      # Kibana 9.4.6 exhausts a 768 MB heap: V8 dies near a 640 MB live set and the replica
+      # restarts mid-run. 1280 MB keeps it clear of that.
+      NODE_OPTIONS: "--max-old-space-size=1280"
     healthcheck:
       test: [ "CMD", "curl", "-k", "--fail", "-u", "kibana:kibana", "https://localhost:5601/api/status" ]
       interval: 10s
