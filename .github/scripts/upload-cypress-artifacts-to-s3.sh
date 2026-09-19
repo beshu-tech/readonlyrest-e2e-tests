@@ -51,9 +51,7 @@ AK="${!AK_VAR}"
 SK="${!SK_VAR}"
 BUCKET="${!BUCKET_VAR}"
 REGION="${!REGION_VAR}"
-# A trailing slash in the prefix gives "//" in each S3 key, and the endpoint rejects such keys.
 PATH_PREFIX="${!PREFIX_VAR:-}"
-PATH_PREFIX="${PATH_PREFIX%/}"
 
 SOURCE_DIR="${1:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"
 S3_SUBFOLDER="${2:?Usage: upload-cypress-artifacts-to-s3.sh <results dir> <s3 subfolder>}"
