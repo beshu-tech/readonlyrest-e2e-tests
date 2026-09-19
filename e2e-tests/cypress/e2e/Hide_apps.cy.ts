@@ -12,7 +12,7 @@ import { Home } from '../support/page-objects/Home';
 
 describe('hidden apps', { pageLoadTimeout: 60000 }, () => {
   afterEach(() => {
-    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
+    Settings.restoreDefaultSettingsData();
   });
 
   context('Stack Management navigation', () => {

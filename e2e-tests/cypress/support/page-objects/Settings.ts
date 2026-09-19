@@ -137,6 +137,16 @@ export class Settings {
     rorApiClient.configureRorIndexMainSettingsFromFixture(fixtureYamlSettingsFileName);
   }
 
+  // An open Kibana page keeps sending requests with the tenancy of the old settings. When the new
+  // settings do not match that tenancy, ES forbids the requests and Kibana stops with a fatal error.
+  // Cypress then fails the hook that runs. Unloading the page first means no request uses the old tenancy.
+  static restoreDefaultSettingsData() {
+    cy.window({ log: false }).then(win => {
+      win.location.href = 'about:blank';
+    });
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
+  }
+
   static setReadonlyRestKbnSettings(readonlyRestKbnSettings = '') {
     cy.fixture('defaultReadonlyRestEsSettings.yaml').then(esYamlSettings => {
       const merged = {
