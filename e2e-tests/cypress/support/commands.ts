@@ -1,10 +1,12 @@
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
+import * as semver from 'semver';
+import { getKibanaVersion } from './helpers';
 import { capture as clipboardCapture } from './clipboardCapture';
 
 Cypress.Commands.add(
   'kbnPost',
-  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) => {
+  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) =>
     cy.kbnRequest({
       method: 'POST',
       endpoint,
@@ -13,8 +15,7 @@ Cypress.Commands.add(
       currentGroupHeader,
       headers,
       impersonating
-    });
-  }
+    }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
@@ -47,6 +48,7 @@ Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
 Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }, ...args) =>
   uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
     'kbn-xsrf': 'true',
+    'elastic-api-version': '2023-10-31',
     ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {})
   })
 );
@@ -65,14 +67,12 @@ Cypress.Commands.add(
     }) as Cypress.Chainable<unknown>
 );
 
-Cypress.Commands.add(
-  'esGet',
-  ({ endpoint, credentials }, ...args) =>
-    cy.esRequest({
-      method: 'GET',
-      endpoint,
-      credentials
-    }) as Cypress.Chainable<unknown>
+Cypress.Commands.add('esGet', ({ endpoint, credentials }, ...args) =>
+  cy.esRequest({
+    method: 'GET',
+    endpoint,
+    credentials
+  }) as Cypress.Chainable<unknown>
 );
 
 Cypress.Commands.add(
@@ -135,7 +135,7 @@ function httpCall(
       authorization: `Basic ${btoa(credentials)}`,
       ...headers
     },
-    body: payload ? JSON.stringify(payload) : null,
+    body: payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload)) : null,
     failOnStatusCode
   };
 
@@ -203,21 +203,23 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-// .its() re-reads the property on every retry, which .then() would not - see clipboardCapture.ts.
+// .its() re-reads the property on every retry, which .then() would not — see clipboardCapture.ts.
 Cypress.Commands.add('getValueFromClipboard', () => cy.wrap(clipboardCapture, { log: false }).its('text'));
 
-// Cypress 15 types cy.wait's alias parameter as `@${string}`; mirroring it here means a forgotten
-// '@' prefix is a compile error instead of a silent numeric wait.
-Cypress.Commands.add(
-  'waitForResponse',
-  (alias: `@${string}`) =>
-    cy.wait(alias).then(({ response }) => {
-      if (!response) throw new Error(`Expected a response for ${alias}`);
-      return response;
-    }) as unknown as Cypress.Chainable<{ statusCode: number }>
+// Cypress 15 types cy.wait's alias parameter as `@${string}`; mirroring it here means a
+// forgotten '@' prefix is a compile error instead of a silent numeric-wait.
+Cypress.Commands.add('waitForResponse', (alias: `@${string}`) =>
+  cy.wait(alias).then(({ response }) => {
+    if (!response) throw new Error(`Expected a response for ${alias}`);
+    return response;
+  }) as unknown as Cypress.Chainable<{ statusCode: number }>
 );
 
 Cypress.on('uncaught:exception', (err, runnable, promise) => {
+  const kibanaVersion = getKibanaVersion();
+  const isKibana8x = semver.satisfies(kibanaVersion, '>=8.0.0 <9.0.0');
+  const isKibana819 = semver.satisfies(kibanaVersion, '>=8.19.0 <8.20.0');
+
   /**
    * Kibana keeps polling in the background (task manager, alerting, telemetry) while a test tears
    * down. When the previous attempt's page is being logged out, one of those fetches can answer
@@ -246,9 +248,12 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
     err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
-    err.message.includes('Loading chunk') || // kibana 9.3.2 fails to fetch lazily loaded plugin chunks; affects every spec, so it stays global
     err.message.includes("Cannot read properties of undefined (reading 'id')") || // kibana 9.x Discover throws when opening with no data views in the tenant
-    err.message.includes('endpoint is ignored by ReadonlyREST plugin') // unsupportedEndpointsFilter.ts intercepts Kibana security endpoints with 501; some callers lack try-catch
+    err.message.includes('endpoint is ignored by ReadonlyREST plugin') || // unsupportedEndpointsFilter.ts intercepts Kibana security endpoints with 501; some callers lack try-catch
+    err.message.includes('Loading chunk') || // kibana 9.3.2 fails to fetch lazily loaded plugin chunks; affects every spec, so it stays global
+    (isKibana8x && err.message.includes('ChunkLoadError')) || // kibana 8.x lazily loads plugin chunks; a reload can interrupt that load
+    (isKibana8x && err.message.includes('executing a cancelled action')) || // kibana 8.x plugin lifecycle throws this on reload; can surface after the triggering test ends, so it must be suppressed globally (cy.on() inside a single it() doesn't cover afterEach)
+    (isKibana819 && err.message.includes('toUpperCase is not a function')) // kibana 8.19.x throws this as an unhandled promise rejection from its own notifications module after cy.reload(); reproduced via automatic-tests/run.sh loop against User-settings.cy.ts
   ) {
     return false;
   }

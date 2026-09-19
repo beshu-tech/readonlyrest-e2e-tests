@@ -38,7 +38,7 @@ export class RorApiInternalKbnClient {
    * Rewrites kibana.yml and restarts Kibana, then waits for it to serve again. The restart resets
    * the connection before the reply arrives, so a transport error is a normal outcome here.
    */
-  public changeKibanaConfig(fixtureYamlFileName: string) {
+  public changeKibanaConfig(fixtureYamlFileName: string): Cypress.Chainable<undefined> {
     return cy
       .fixture(fixtureYamlFileName)
       .then(yamlContent =>
@@ -54,13 +54,13 @@ export class RorApiInternalKbnClient {
           allowTransportError: true
         })
       )
-      .then(response => {
+      .then((response: unknown) => {
         const status = (response as { status?: string } | null)?.status;
         const restarted = status === 'SUCCESS' || status === 'TRANSPORT_ERROR';
 
         if (!restarted) {
           cy.log(`kibanaConfig answered ${status ?? 'nothing recognisable'}: no restart to wait for`);
-          return;
+          return cy.then(() => undefined);
         }
 
         return kbnApiAdvancedClient.waitForKibanaRestart(requiredBaseUrl());

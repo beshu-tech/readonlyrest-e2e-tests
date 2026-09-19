@@ -19,7 +19,8 @@ import { installClipboardCapture, resetClipboardCapture } from './clipboardCaptu
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
-// Record what the app copies, so the specs never depend on the OS clipboard - see
+
+// Record what the app copies, so the specs never depend on the OS clipboard — see
 // clipboardCapture.ts for why Chromium 138 makes that necessary.
 Cypress.on('window:before:load', installClipboardCapture);
 beforeEach(resetClipboardCapture);
@@ -52,7 +53,8 @@ declare global {
         endpoint,
         credentials,
         currentGroupHeader,
-        failOnStatusCode
+        failOnStatusCode,
+        headers
       }: {
         endpoint: string;
         credentials: string;

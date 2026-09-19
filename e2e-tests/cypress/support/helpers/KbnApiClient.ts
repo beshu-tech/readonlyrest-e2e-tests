@@ -35,11 +35,16 @@ export class KbnApiClient {
     });
   }
 
-  public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
+  public getSavedObjects(
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): Cypress.Chainable<GetObject> {
     return cy.kbnGet<GetObject>({
       endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url',
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
     });
   }
 
