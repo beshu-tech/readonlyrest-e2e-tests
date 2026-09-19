@@ -35,16 +35,10 @@ spec:
             - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
               value: "yes"
             - name: NODE_OPTIONS
-              # 768 was tight enough on its own to be a plausible contributor to the readiness
-              # flapping below (GC pressure blocking the event loop long enough to miss a probe).
-              # Raised in step with the memory limit increase below.
+              # A smaller heap causes GC pauses long enough to fail the readiness probe.
               value: "--max-old-space-size=1536"
-          # The default readiness probe (timeoutSeconds: 5, failureThreshold: 3) flips the pod
-          # NotReady under normal kind/CI CPU contention. `publishNotReadyAddresses` on the
-          # kbn-np Service (see kbn-np.yml) now stops that flapping from turning into a hard
-          # ECONNRESET at the network level, but the probe's own timing was still inverted -
-          # timeoutSeconds must be <= periodSeconds or a slow-but-alive response can be judged
-          # a failure before the next check even starts.
+          # The default probe (timeoutSeconds: 5, failureThreshold: 3) fails under CI CPU load.
+          # timeoutSeconds must not be more than periodSeconds.
           readinessProbe:
             httpGet:
               path: /api/status
@@ -55,10 +49,8 @@ spec:
             timeoutSeconds: 10
             failureThreshold: 6
             successThreshold: 1
-          # No CPU limit is set deliberately (avoids throttling), but an explicit request gives
-          # Kibana a fairer scheduling share against ES/APM/kind's own control-plane pods sharing
-          # the same Docker Desktop CPU budget. Memory limit raised alongside NODE_OPTIONS above -
-          # 2Gi left barely any headroom over the 768Mi heap cap for Kibana's own process memory.
+          # No CPU limit, to prevent throttling. The CPU request gives Kibana a share against the
+          # other pods on the kind node. The memory limit leaves space above the heap cap.
           resources:
             requests:
               cpu: '500m'
