@@ -35,6 +35,8 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Restore the yarn and Cypress caches
+      uses: ./.github/cypress-cache
     - name: Run E2E tests
       uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
       with:
@@ -64,3 +66,9 @@ runs:
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
+    - name: Put the E2E summary on the run summary page
+      # The runner writes the file only when the suite ran, on a pass as well as on a failure.
+      if: always()
+      shell: bash
+      run: |
+        [ -f results/e2e-summary.md ] && cat results/e2e-summary.md >> "$GITHUB_STEP_SUMMARY" || true

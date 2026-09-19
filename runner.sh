@@ -122,15 +122,35 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-handle_error() {
-  ./environments/"$ENV_NAME"/print-logs.sh
+STACK_LOGS=results/stack-logs
+E2E_OUTPUT=results/e2e-output.log
+E2E_SUMMARY=results/e2e-summary.md
+
+# Runs from the ERR trap, where the stack did not come up. --console puts the stack log on the
+# console, because the job log has no other record of the failure.
+collect_logs() {
+  ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" --console || true
+}
+
+# The per-spec table and the totals that Cypress prints at the end of its output, as Markdown.
+write_summary() {
+  [ -f "$E2E_OUTPUT" ] || return 0
+  {
+    echo "### E2E: ELK $ELK_VERSION on $ENV_NAME"
+    echo
+    echo '```'
+    # Strip the colour codes first: Markdown shows them as literal escapes, and Cypress puts some
+    # between the bracket and "Run Finished", where they would break the match.
+    sed -e 's/\x1b\[[0-9;]*m//g' "$E2E_OUTPUT" | sed -n '/Run Finished/,$p'
+    echo '```'
+  } > "$E2E_SUMMARY"
 }
 
 cleanup() {
   ./environments/"$ENV_NAME"/stop-and-clean.sh
 }
 
-trap handle_error ERR
+trap collect_logs ERR
 trap cleanup EXIT
 
 echo -e "
@@ -150,7 +170,26 @@ time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK
 
 if [[ "$MODE" == "e2e" ]]; then
   echo -e "Running E2E tests...\n"
-  time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME"
+
+  mkdir -p results
+
+  # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the
+  # suite's status, not tee's.
+  set +e
+  time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
+  E2E_STATUS=${PIPESTATUS[0]}
+  set -e
+
+  write_summary
+
+  if [[ $E2E_STATUS -ne 0 ]]; then
+    # No --console: the Cypress output is on the console, and the stack logs under it would bury
+    # the summary. results/ is the directory the callers upload on failure.
+    echo -e "\nE2E tests failed - collecting the stack logs\n"
+    ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" || true
+  fi
+
+  exit $E2E_STATUS
 else
   echo -e "Bootstrap mode: Cluster setup completed.\n"
 fi

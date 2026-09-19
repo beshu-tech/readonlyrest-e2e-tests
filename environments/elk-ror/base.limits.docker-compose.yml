@@ -11,9 +11,10 @@ services:
     mem_limit: 2g
     memswap_limit: 2g
 
+  # Holds the pinned heap plus the node runtime, which measured about 270 MB on top.
   kbn-ror:
-    mem_limit: 1g
-    memswap_limit: 1g
+    mem_limit: 1792m
+    memswap_limit: 1792m
 
   kbn-proxy:
     mem_limit: 256m
