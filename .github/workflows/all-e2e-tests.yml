@@ -4,37 +4,76 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: '0 0 * * *'
-  # Only the two long-lived branches. Feature branches are covered by their pull request, and
-  # listing them here would run everything twice for every push to an open PR.
+  # Feature branches are covered by their pull request. Prose cannot change what the suite does.
   push:
     branches: [master, develop]
+    paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
+  # ready_for_review: a draft runs docker only, so the ECK legs are due when the draft ends.
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore: ['docs/**', '**/*.md', 'LICENSE']
+
+# A second push to a pull request cancels the run in progress. Every other run is grouped by its
+# run id, so those runs neither cancel nor queue behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   APPLY_RESOURCE_LIMITS: "auto"
+  # Newest first: a failure on the newest line is the one to see first in the run UI.
+  ELK_VERSIONS: "9.5.4 9.4.7 8.19.21 7.17.29"
+  ECK_3X: eck-3.5.0
+  ECK_2X: eck-2.16.1
 
 jobs:
   # ==========================================
+  # PLAN
+  # ==========================================
+  # Which plugin images to test, and on which environments. prod images are the released plugins.
+  # dev images are built from the branch under test, or from develop on the cron.
+  plan:
+    name: "🧮 Plan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      images: ${{ steps.plan.outputs.images }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Choose the images and the environments
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          # A pull request tests the plugins of the branch it targets.
+          BRANCH: ${{ github.base_ref || github.ref_name }}
+          DRAFT: ${{ github.event.pull_request.draft == true }}
+          # A fork PR gets no secrets, and the dev image pre-build needs them.
+          FORK: ${{ github.event.pull_request.head.repo.fork == true }}
+        run: |
+          set -euo pipefail
+          if   [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ]; then IMAGES="prod dev"; ENVS="docker $ECK_2X $ECK_3X"
+          elif [ "$FORK" = true ];                                            then IMAGES="";         ENVS=""
+          elif [ "$BRANCH" = master ] && [ "$DRAFT" = true ];                 then IMAGES="prod";     ENVS="docker"
+          elif [ "$BRANCH" = master ];                                        then IMAGES="prod";     ENVS="docker $ECK_3X"
+          elif [ "$DRAFT" = true ];                                           then IMAGES="dev";      ENVS="docker"
+          else                                                                     IMAGES="dev";      ENVS="docker $ECK_3X"
+          fi
+          {
+            echo "images=$IMAGES"
+            echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
+          } >> "$GITHUB_OUTPUT"
+
+  # ==========================================
   # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
   # ==========================================
-  # Runs against the RELEASED plugin images (`--mode prod`, ror-latest). The signal is "the shipped
-  # plugins still pass the suite": master itself, PRs targeting it, and the nightly schedule.
-  #
-  # Keep the matrix in sync with ELK_VERSIONS in prepare-dev-images.
   prod-e2e-tests:
     name: "🔬 E2E Tests (released plugins)"
-    if: >
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
+    needs: plan
+    if: contains(needs.plan.outputs.images, 'prod')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        version: ["9.5.3", "9.4.6", "8.19.21", "7.17.29"]
-        env: [docker, eck-2.16.1, eck-3.5.0]
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -78,75 +117,17 @@ jobs:
           path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
 
   # ==========================================
-  # BOOTSTRAP TESTS
+  # DEV IMAGE PREPARATION
   # ==========================================
-  # Same condition as prod-e2e-tests, which this gates on — kept identical so the two cannot drift.
-  # Bootstrap uses released images (no --mode), as it did before.
-  master-bootstrap-tests:
-    name: "🚀 Bootstrap Tests"
-    if: >
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.fork == false)
-    needs: prod-e2e-tests
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # 7.10.0 was temporarily removed due to this issue: https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/1362. Add it again when the fix is released.
-        version: ["9.5.0", "9.4.0", "9.3.0", "9.2.0", "9.1.0", "9.0.0", "8.19.0", "8.18.0", "8.17.0", "8.16.0", "8.15.0", "8.14.0", "8.13.0", "8.12.0", "8.11.0", "8.10.1", "8.9.0", "8.8.0", "8.7.0", "8.6.0", "8.5.0", "8.4.0", "8.3.0", "8.2.0", "8.1.0", "8.0.0", "7.17.0", "7.16.0", "7.15.0", "7.14.0", "7.13.0", "7.12.0", "7.11.2", "7.9.0"]
-        env: [docker, eck-3.5.0]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          persist-credentials: false
-      - name: Configure the Docker Hub mirror
-        run: source .github/scripts/docker-hub-mirror.sh
-      - name: Clean up disk space
-        uses: ./.github/cleanup-disk-space
-      - name: Start Docker memory monitor
-        uses: ./.github/docker-memory-monitor
-        with:
-          action: start
-      # Retry mechanism to handle transient infrastructure issues:
-      # - npm error 429 Too Many Requests from registry.npmjs.org
-      # - Docker image pull failures (e.g., beshultd/kibana-readonlyrest:*-ror-latest not found)
-      # These errors are typically temporary and resolve with a simple retry.
-      - name: Run bootstrap tests
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
-        with:
-          max_attempts: 3
-          timeout_minutes: 30
-          retry_on: any
-          command: |
-            ./runner.sh --run bootstrap --env ${{ matrix.env }} --elk ${{ matrix.version }}
-        env:
-          ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-      - name: Stop Docker memory monitor
-        if: always()
-        uses: ./.github/docker-memory-monitor
-        with:
-          action: stop
-
-  # ==========================================
-  # DEV IMAGE PREPARATION - DEVELOP AND NON-MASTER PRs
-  # ==========================================
-  # Builds branch-matched dev images of both plugins for dev-e2e-tests, tagged per run. One dispatch
-  # per plugin covers the whole matrix, since both pre-build workflows accept a version list.
-  # `target_branch` is passed verbatim; both fall back to `develop` if the branch is not there.
-  # Fork PRs are excluded: the dispatch needs secrets GitHub does not expose to them.
+  # Builds dev images of both plugins for every version, tagged per run.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
-    if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
-      (github.event_name == 'pull_request' && github.base_ref != 'master' && github.event.pull_request.head.repo.fork == false)
+    needs: plan
+    if: contains(needs.plan.outputs.images, 'dev')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
-      versions: ${{ steps.prepare.outputs.versions }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -155,12 +136,10 @@ jobs:
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          # Mirrors the prod-e2e-tests matrix — keep both in sync.
-          ELK_VERSIONS: "9.5.3 9.4.6 8.19.21 7.17.29"
-          # On a PR, head_ref is the source branch — the plugins must be built from the PR head, not
-          # from the merge ref github.ref points at. On a push, head_ref is empty and ref_name is
-          # the branch that was pushed (develop).
-          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+          # The cron builds develop. On a PR, head_ref is the source branch: the plugins must be
+          # built from the PR head, not from the merge ref github.ref points at. On a push or a
+          # manual dispatch, head_ref is empty and ref_name is the branch.
+          TARGET_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.head_ref || github.ref_name }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
 
         run: |
@@ -169,10 +148,7 @@ jobs:
 
           # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
           RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
-          {
-            echo "run_tag=$RUN_TAG"
-            echo "versions=$(printf '%s\n' $ELK_VERSIONS | jq -Rcn '[inputs]')"
-          } >> "$GITHUB_OUTPUT"
+          echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
 
           dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
           wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
@@ -180,18 +156,14 @@ jobs:
   # ==========================================
   # E2E TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
   # ==========================================
-  # Every push to develop and every non-fork pull request that does not target master, against the
-  # per-run, branch-matched dev images produced by prepare-dev-images. Skipped automatically when
-  # that job is skipped.
+  # Skipped when prepare-dev-images is skipped.
   dev-e2e-tests:
     name: "🧪 E2E Tests (pre-build plugins)"
-    needs: prepare-dev-images
+    needs: [plan, prepare-dev-images]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        version: ${{ fromJSON(needs.prepare-dev-images.outputs.versions) }}
-        env: [docker, eck-2.16.1, eck-3.5.0]
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:

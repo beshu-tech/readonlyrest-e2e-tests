@@ -140,11 +140,15 @@ export class RoAndRoStrictKibanaAccessAssertions {
   }
 
   private static changeTenancyAndAwaitSpaces(tenancyName: string) {
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+    const shouldAwaitSpacesPlugin = semver.gte(getKibanaVersion(), '9.4.0') && semver.lte(getKibanaVersion(), '9.5.3');
+
+    if (shouldAwaitSpacesPlugin) {
       cy.intercept('*/bundles/plugin/spaces/1.0.0/spaces.chunk*').as('spacesPlugin');
     }
+
     RorMenu.changeTenancy(tenancyName);
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+
+    if (shouldAwaitSpacesPlugin) {
       cy.wait('@spacesPlugin');
     }
   }
