@@ -10,7 +10,7 @@ import { SearchApps } from '../support/page-objects/SearchApps';
 import { Loader } from '../support/page-objects/Loader';
 import { Home } from '../support/page-objects/Home';
 
-describe('hidden apps', { pageLoadTimeout: 60000 }, () => {
+describe('hidden apps', () => {
   afterEach(() => {
     Settings.restoreDefaultSettingsData();
   });
