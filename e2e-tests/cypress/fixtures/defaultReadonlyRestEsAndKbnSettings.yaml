@@ -1,7 +1,7 @@
 helpers:
     ckr: &common-kibana-rules
         access: rw
-        hide_apps: ['Enterprise Search|Overview', 'Observability']
+        hide_apps: ['Enterprise Search|Overview']
         index: '.kibana_@{acl:current_group}'
 
     ag: &all-groups
@@ -41,6 +41,10 @@ readonlyrest:
           verbosity: error
           auth_key: 'elastic-internal:${INTERNAL_USR_PASS}'
         # <!-- related to ECK environment -->
+
+        - name: 'APM server - system account'
+          verbosity: error
+          auth_key: apm:test
 
         - name: JWT_AUTH
           jwt_auth:

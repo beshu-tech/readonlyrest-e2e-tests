@@ -80,7 +80,7 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(3, 'Local users');
       Impersonate.assertServiceType(3, 'local');
       Impersonate.assertServiceColumns(3, ['Username']);
-      Impersonate.assertUser(3, 2, 'kibana');
+      Impersonate.assertUser(3, 3, 'kibana');
     };
 
     createLdapUsers();
@@ -102,7 +102,7 @@ describe('impersonate', () => {
 
     cy.log('should impersonate localUser');
     Impersonate.open();
-    Impersonate.impersonateUserFromTheList(3, 3, 'new_user');
+    Impersonate.impersonateUserFromTheList(3, 4, 'new_user');
     Impersonate.finishImpersonation();
     Impersonate.verifyFinishedImpersonation();
 
