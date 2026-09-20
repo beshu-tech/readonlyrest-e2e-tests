@@ -9,6 +9,14 @@ import { KibanaToast } from './KibanaToast';
 type OpenBy = 'rorMenu' | 'kibanaNavigation';
 
 export class Reporting {
+  // Kibana settles the reporting management page on an /exports child route on 8.19.x and again
+  // from 9.5.0. The 9.0-9.4 line serves the bare /reporting path.
+  static get pagePath() {
+    return semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.5.0')
+      ? '/app/management/insightsAndAlerting/reporting/exports'
+      : '/app/management/insightsAndAlerting/reporting';
+  }
+
   static noReportsCreatedCheck(openBy: OpenBy) {
     cy.log('noReportsCreatedCheck');
     this.openReportingPage(openBy);
@@ -49,9 +57,7 @@ export class Reporting {
 
   static verifyIfReportingPageAfterRefresh() {
     cy.log('Verify if reporting page open after refresh');
-    const expectedUrl = semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0')
-      ? `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting/exports`
-      : `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`;
+    const expectedUrl = `${Cypress.config().baseUrl}/s/default${Reporting.pagePath}`;
 
     cy.url().should('include', expectedUrl);
 
