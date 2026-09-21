@@ -8,7 +8,6 @@ import { parseKbnSettings } from '../helpers/parseKibanaSettings';
 
 export class Settings {
   private static readonly SAVE_MODAL_SETTLE_MS = 300;
-  private static readonly SAVE_MODAL_RETRY_ATTEMPTS = 3;
 
   static open() {
     cy.log('Open settings');
@@ -73,12 +72,10 @@ export class Settings {
               Settings.clickSaveButton();
             }
           })
-          .then(() => cy.wait(Settings.SAVE_MODAL_SETTLE_MS, { log: false }))
           .then(() => SecuritySettings.getIframeBody()),
       $body => ($body as JQuery<HTMLElement>).find(':contains("Save anyway")').length > 0,
       {
-        limit: Settings.SAVE_MODAL_RETRY_ATTEMPTS,
-        delay: 0,
+        delay: Settings.SAVE_MODAL_SETTLE_MS,
         timeout: 20000,
         // confirmSaveModal() asserts on the modal text right after this, so failing here would
         // only replace that message with a less specific one.
