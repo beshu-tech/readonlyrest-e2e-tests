@@ -47,12 +47,11 @@ export class Impersonate {
     cy.get('@service').contains(name);
   }
 
-  static assertUser(index: number, rowIndex: number, username: string, groups?: string[], hasImpersonateButton = true) {
+  static assertUser(index: number, username: string, groups?: string[], hasImpersonateButton = true) {
     cy.log('Check user');
     Impersonate.getServiceByIndex(index).as('service');
-    cy.get('@service').findAllByRole('rowgroup').eq(1).findAllByRole('row').eq(rowIndex).as('rowIndex');
-    cy.get('@rowIndex').findByText(username);
-    cy.get('@rowIndex')
+    cy.get('@service').findAllByRole('rowgroup').eq(1).contains('[role="row"]', username).as('userRow');
+    cy.get('@userRow')
       .contains('Impersonate')
       .should(hasImpersonateButton ? 'exist' : 'not.exist');
 
@@ -62,10 +61,10 @@ export class Impersonate {
 
     if (groups.length > 0) {
       for (const group of groups) {
-        cy.get('@rowIndex').contains(group);
+        cy.get('@userRow').contains(group);
       }
     } else {
-      cy.get('@rowIndex').contains('-');
+      cy.get('@userRow').contains('-');
     }
   }
 

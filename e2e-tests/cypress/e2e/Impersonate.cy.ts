@@ -55,8 +55,8 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(0, 'LDAP 1');
       Impersonate.assertServiceType(0, 'ldap');
       Impersonate.assertServiceColumns(0, ['Username', 'Groups']);
-      Impersonate.assertUser(0, 0, 'JohnDoe', ['group3']);
-      Impersonate.assertUser(0, 1, 'RobertSmith', ['group3']);
+      Impersonate.assertUser(0, 'JohnDoe', ['group3']);
+      Impersonate.assertUser(0, 'RobertSmith', ['group3']);
     };
 
     const assertAuthnService = () => {
@@ -64,7 +64,7 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(1, 'ACME1 External Authorization Service');
       Impersonate.assertServiceType(1, 'authn');
       Impersonate.assertServiceColumns(1, ['Username']);
-      Impersonate.assertUser(1, 0, 'JaneDoe');
+      Impersonate.assertUser(1, 'JaneDoe');
     };
 
     const assertAuthzService = () => {
@@ -72,7 +72,7 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(2, 'ACME2 External Authentication Service');
       Impersonate.assertServiceType(2, 'authz');
       Impersonate.assertServiceColumns(2, ['Username', 'Groups']);
-      Impersonate.assertUser(2, 0, 'JaimeRhynes', ['Customer']);
+      Impersonate.assertUser(2, 'JaimeRhynes', ['Customer']);
     };
 
     const assertLocalUser = () => {
@@ -80,7 +80,7 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(3, 'Local users');
       Impersonate.assertServiceType(3, 'local');
       Impersonate.assertServiceColumns(3, ['Username']);
-      Impersonate.assertUser(3, 2, 'kibana');
+      Impersonate.assertUser(3, 'kibana');
     };
 
     createLdapUsers();
@@ -98,7 +98,7 @@ describe('impersonate', () => {
     Impersonate.openEditAuthMockDialog(2);
     Impersonate.addEditMockUser('kibana', ['group3']);
     Impersonate.saveEditMockUsers();
-    Impersonate.assertUser(2, 1, 'kibana', ['group3']);
+    Impersonate.assertUser(2, 'kibana', ['group3']);
 
     cy.log('should impersonate localUser');
     Impersonate.open();
