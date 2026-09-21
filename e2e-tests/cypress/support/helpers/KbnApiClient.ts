@@ -77,17 +77,17 @@ export class KbnApiClient {
     group?: string,
     timeout = 90000,
     interval = 5000
-  ): Cypress.Chainable<{ statusCode?: number }> {
+  ): Cypress.Chainable<{ statusCode?: number; elasticsearchIndicesCreated?: Record<string, number> }> {
     return recurse(
       () =>
-        cy.kbnPost<{ statusCode?: number }>({
+        cy.kbnPost<{ statusCode?: number; elasticsearchIndicesCreated?: Record<string, number> }>({
           endpoint: `api/sample_data/${sampleDatasetName}`,
           credentials,
           currentGroupHeader: group,
           failOnStatusCode: false,
           timeoutMs: 30000
         }),
-      response => !response?.statusCode,
+      response => response?.elasticsearchIndicesCreated !== undefined,
       {
         timeout,
         delay: interval,
