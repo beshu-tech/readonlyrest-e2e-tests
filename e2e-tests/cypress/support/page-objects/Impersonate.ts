@@ -47,13 +47,11 @@ export class Impersonate {
     cy.get('@service').contains(name);
   }
 
-  static assertUser(index: number, username: string, groups?: string[], hasImpersonateButton = true) {
+  static assertUser(index: number, username: string, groups?: string[]) {
     cy.log('Check user');
     Impersonate.getServiceByIndex(index).as('service');
     cy.get('@service').findAllByRole('rowgroup').eq(1).findByText(username).closest('tr').as('userRow');
-    cy.get('@userRow')
-      .contains('Impersonate')
-      .should(hasImpersonateButton ? 'exist' : 'not.exist');
+    cy.get('@userRow').contains('Impersonate').should('exist');
 
     if (!groups) {
       return;
