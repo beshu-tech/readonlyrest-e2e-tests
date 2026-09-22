@@ -1,6 +1,6 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
-import { userCredentials } from '../support/helpers';
+import { isMultiKibanaNodeEnv, userCredentials } from '../support/helpers';
 
 /**
  * Keys resolve in the order index -> env -> file -> bundled Free key. Loading a key through the UI
@@ -15,7 +15,7 @@ import { userCredentials } from '../support/helpers';
 // on nodes disagreeing about the current edition right after this test flips it, which is the same
 // class of issue Kibana-config.cy.ts hit and skipped for the same reason. The eck-* environments
 // run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
-(Cypress.env().envName === 'elk-ror' ? describe.skip : describe)('Activation key', () => {
+(isMultiKibanaNodeEnv() ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {
     Login.initialization();
     ActivationKeys.open();

@@ -1,3 +1,5 @@
+import { isMultiKibanaNodeEnv } from './index';
+
 // The node that answers this POST applies the new settings before it replies. Every other node
 // picks them up from its own poll of the index, which runs every 5 s. Until then it still serves
 // the old settings, so a login on one node is not recognized by the other and bounces to /login.
@@ -22,7 +24,7 @@ export class RorApiClient {
         // config - e.g. two specs in a row both resetting to the same default fixture. That's
         // the desired state, not an error; only a genuinely different failure should throw.
         if (response.status === 'SUCCESS') {
-          return Cypress.env().envName === 'elk-ror' ? cy.wait(SETTINGS_PROPAGATION_DELAY_MS) : undefined;
+          return isMultiKibanaNodeEnv() ? cy.wait(SETTINGS_PROPAGATION_DELAY_MS) : undefined;
         }
         if (response.message !== 'Current settings are already loaded') {
           throw new Error(`Failed to configure ROR index main settings: ${JSON.stringify(response)}`);

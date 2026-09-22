@@ -1,5 +1,6 @@
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { esApiClient } from '../support/helpers/EsApiClient';
+import { isMultiKibanaNodeEnv } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Discover } from '../support/page-objects/Discover';
@@ -33,7 +34,7 @@ describe('Readonlyrest-settings', () => {
   // do not share the per-session state that decides whether the tenant index gets reset from the
   // template. That made the test flaky there. The eck-* environments run a single Kibana node
   // (kind-cluster/ror/base/kbn.yml: count: 1), where every request hits the same state.
-  (Cypress.env().envName === 'elk-ror' ? it.skip : it)('should verify kibanaIndexTemplate functionality', () => {
+  (isMultiKibanaNodeEnv() ? it.skip : it)('should verify kibanaIndexTemplate functionality', () => {
     Settings.setReadonlyRestKbnSettings(`
   kibanaIndexTemplate: ".kibana_template_group"
   resetKibanaIndexToTemplate: true

@@ -1,5 +1,6 @@
 import * as semver from 'semver';
 import { BasicCredentials } from './KbnApiClient';
+import { EnvName } from '../types';
 
 export const getKibanaVersion = () => {
   const kibanaVersion: string = Cypress.env('kibanaVersion');
@@ -12,6 +13,10 @@ export const getKibanaVersion = () => {
 
   return kibanaVersion;
 };
+
+export function isMultiKibanaNodeEnv(): boolean {
+  return Cypress.env().envName === EnvName.ELK_ROR;
+}
 
 export function requiredBaseUrl(): string {
   const baseUrl = Cypress.config('baseUrl');
