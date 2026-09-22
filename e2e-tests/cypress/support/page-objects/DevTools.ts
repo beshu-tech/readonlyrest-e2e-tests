@@ -29,9 +29,10 @@ export class DevTools {
       // typing before it exists lands on the static "view-lines" rendering div instead, which
       // isn't a typeable element and throws. Wait for the real input to exist first.
       cy.get('[data-test-subj="consoleMonacoEditor"] textarea.inputarea').should('exist');
-      // The console's action-icon toolbar (euiFlexGroup) can overlap the editor while it settles,
-      // tripping Cypress's actionability check even though the editor is interactable - force the click.
-      cy.get('[data-test-subj="consoleMonacoEditor"]').click({ force: true }).type(text);
+      // The console's action-icon toolbar (euiFlexGroup) can overlap the editor while it settles.
+      // That cover is real and clears on its own, so let Cypress's actionability retry (bounded by
+      // defaultCommandTimeout) wait it out instead of forcing past it and risking a swallowed click.
+      cy.get('[data-test-subj="consoleMonacoEditor"]').click().type(text);
       cy.get('[data-test-subj="sendRequestButton"]').click();
     } else if (semver.lte(getKibanaVersion(), '7.9.0')) {
       // Select editor, delete, write
