@@ -49,7 +49,8 @@ export class Reporting {
 
   static verifyIfReportingPageAfterRefresh() {
     cy.log('Verify if reporting page open after refresh');
-    const expectedUrl = semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0')
+    // Kibana 8.19 and 9.1+ redirect the reporting page to /exports. 9.0 keeps the bare path.
+    const expectedUrl = semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
       ? `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting/exports`
       : `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`;
 
