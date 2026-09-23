@@ -66,10 +66,12 @@ export class KbnApiClient {
 
   /**
    * Kibana's sample-data installer deletes the previous index and recreates it in one request;
-   * those two steps occasionally race each other (resource_already_exists_exception -> 500), and
-   * the bulk-insert that follows a successful create is too slow for the shared httpCall timeout.
-   * Give this call more room per attempt and retry with backoff so the race gets to resolve
-   * itself instead of failing the test.
+   * those two steps occasionally race each other (resource_already_exists_exception -> 500).
+   * That failure resolves rather than rejecting (failOnStatusCode: false), so the fixed-interval
+   * retry below gets a chance to let the race settle. A cy.task timeout does not: it rejects the
+   * chain, cypress-recurse does not retry on rejection, and the loop ends immediately. So
+   * timeoutMs must, on its own, outlast the bulk-insert that follows a successful create - the
+   * retry budget below cannot cover a run where that insert is slower than timeoutMs.
    */
   public loadSampleData(
     sampleDatasetName: string,
