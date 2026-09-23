@@ -74,9 +74,7 @@ export class KbnApiClient {
   public loadSampleData(
     sampleDatasetName: string,
     credentials: string,
-    group?: string,
-    timeout = 90000,
-    interval = 5000
+    group?: string
   ): Cypress.Chainable<{ statusCode?: number; elasticsearchIndicesCreated?: Record<string, number> }> {
     return recurse(
       () =>
@@ -89,8 +87,8 @@ export class KbnApiClient {
         }),
       response => response?.elasticsearchIndicesCreated !== undefined,
       {
-        timeout,
-        delay: interval,
+        timeout: 90000,
+        delay: 5000,
         log: response => cy.log(`Load sample data "${sampleDatasetName}" response: ${JSON.stringify(response)}`),
         error: `Timed out loading sample data "${sampleDatasetName}"`
       }
