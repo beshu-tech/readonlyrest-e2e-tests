@@ -61,7 +61,12 @@ describe('sanity check', () => {
     Reporting.downloadAndVerifyAnyReportExists();
 
     cy.log('Change tenancy, and initialize it');
-    RorMenu.changeTenancy('Infosec', Reporting.pagePath);
+    // Kibana 8.19 and 9.1+ redirect the reporting page to /exports. 9.0 keeps the bare path.
+    const finishUrl = semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
+      ? '/app/management/insightsAndAlerting/reporting/exports'
+      : '/app/management/insightsAndAlerting/reporting';
+
+    RorMenu.changeTenancy('Infosec', finishUrl);
 
     if (semver.gte(getKibanaVersion(), '8.8.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
