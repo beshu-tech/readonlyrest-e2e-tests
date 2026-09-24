@@ -144,6 +144,30 @@ write_summary() {
     sed -e 's/\x1b\[[0-9;]*m//g' "$E2E_OUTPUT" | sed -n '/Run Finished/,$p'
     echo '```'
   } > "$E2E_SUMMARY"
+  annotate_failed_specs
+}
+
+# One warning annotation per failed spec. GitHub shows annotations in the checks list of a PR, so a
+# reader sees the spec without opening the log. It is a warning and not an error: when the retry
+# wrapper runs the suite again and it passes, the job is green and the warning records the flake.
+annotate_failed_specs() {
+  [ -n "${GITHUB_ACTIONS:-}" ] || return 0
+  local spec
+  while IFS= read -r spec; do
+    echo "::warning title=E2E: ELK $ELK_VERSION on $ENV_NAME::Cypress spec failed: $spec"
+  done < <(failed_specs "$E2E_SUMMARY")
+}
+
+# Prints the failed specs of the Cypress "Run Finished" table, one per line. Cypress wraps a long
+# spec name onto the next row, and that row has no ✔ or ✖ mark, so the name continues there.
+failed_specs() {
+  awk '
+    /^ *│ (✔|✖) / { flush(); if ($2 == "✖") name = $3; next }
+    /^ *│  +[^ ]/ { if (name != "") name = name $2; next }
+    { flush() }
+    END { flush() }
+    function flush() { if (name != "") print name; name = "" }
+  ' "$1"
 }
 
 cleanup() {
