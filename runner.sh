@@ -152,9 +152,10 @@ write_summary() {
 # wrapper runs the suite again and it passes, the job is green and the warning records the flake.
 annotate_failed_specs() {
   [ -n "${GITHUB_ACTIONS:-}" ] || return 0
-  local spec
+  # A workflow-command property escapes ":" and ",".
+  local spec title="E2E%3A ELK $ELK_VERSION on $ENV_NAME"
   while IFS= read -r spec; do
-    echo "::warning title=E2E: ELK $ELK_VERSION on $ENV_NAME::Cypress spec failed: $spec"
+    echo "::warning title=$title::Cypress spec failed: $spec"
   done < <(failed_specs "$E2E_SUMMARY")
 }
 
