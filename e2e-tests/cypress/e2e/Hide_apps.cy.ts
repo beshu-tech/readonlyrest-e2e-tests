@@ -12,7 +12,7 @@ import { Home } from '../support/page-objects/Home';
 
 describe('hidden apps', () => {
   afterEach(() => {
-    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
+    Settings.restoreDefaultSettingsData();
   });
 
   context('Stack Management navigation', () => {

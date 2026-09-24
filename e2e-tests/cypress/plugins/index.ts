@@ -61,7 +61,9 @@ const fetchWithJsonRetry = async (url: string, createInit: () => Parameters<type
     }
 
     console.log(
-      `Got HTML response (content-type: ${contentType || 'none'}) for ${url} - ROR-KBN might still be starting up. Retrying (${attempt}/${NON_JSON_RETRY_ATTEMPTS})...`
+      `Got HTML response (content-type: ${
+        contentType || 'none'
+      }) for ${url} - ROR-KBN might still be starting up. Retrying (${attempt}/${NON_JSON_RETRY_ATTEMPTS})...`
     );
     // eslint-disable-next-line no-await-in-loop
     await sleep(NON_JSON_RETRY_DELAY_MS);
@@ -112,9 +114,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         console.error('HTTP Request failed:', {
           error: (error as Error).message,
           url,
-          method,
-          headers,
-          body
+          method
         });
         throw error;
       }
@@ -160,8 +160,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         console.error('HTTP Request failed:', {
           error: (error as Error).message,
           url,
-          headers,
-          file
+          method
         });
         throw error;
       }
