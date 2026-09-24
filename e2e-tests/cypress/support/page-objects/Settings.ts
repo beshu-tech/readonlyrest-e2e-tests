@@ -67,8 +67,8 @@ export class Settings {
             // Once the modal is opening, an overlay mask covers the Save button; clicking again
             // would report the button as hidden instead of giving the modal time to finish
             // mounting. Only re-click while nothing has opened yet.
-            const hasOverlay = ($body as JQuery<HTMLElement>).hasClass('euiBody-hasOverlayMask');
-            if (!hasOverlay) {
+            const modalOpening = ($body as JQuery<HTMLElement>).find(':contains("Save anyway")').length > 0;
+            if (!modalOpening) {
               Settings.clickSaveButton();
             }
           })
