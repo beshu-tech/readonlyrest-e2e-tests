@@ -34,6 +34,7 @@ describe('settings', () => {
     cy.log('should check save changes functionality when success');
     Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP${Cypress._.random(0, 1e6)}`);
     Settings.clickSaveButton();
+    Settings.confirmSaveModal();
     // Settings.successfulSavedConfigurationToast().should('be.visible');
   });
 
@@ -42,9 +43,9 @@ describe('settings', () => {
 
     Login.initialization({ credentials: { username, password } });
     Settings.open();
-    cy.intercept('POST', '/pkp/api/settings').as('saveSettings');
+    cy.intercept({ method: 'POST', pathname: '/pkp/api/settings' }).as('saveSettings');
     Settings.clickSaveButton();
-
+    Settings.confirmSaveModal();
     cy.wait('@saveSettings').its('response.statusCode').should('equal', 200);
   });
 });

@@ -35,4 +35,25 @@ spec:
             - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
               value: "yes"
             - name: NODE_OPTIONS
-              value: "--max-old-space-size=768"
+              # A smaller heap causes GC pauses long enough to fail the readiness probe.
+              value: "--max-old-space-size=1536"
+          # The default probe (timeoutSeconds: 5, failureThreshold: 3) fails under CI CPU load.
+          # timeoutSeconds must not be more than periodSeconds.
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
+            successThreshold: 1
+          # No CPU limit, to prevent throttling. The CPU request gives Kibana a share against the
+          # other pods on the kind node. The memory limit leaves space above the heap cap.
+          resources:
+            requests:
+              cpu: '500m'
+              memory: '2Gi'
+            limits:
+              memory: '3Gi'

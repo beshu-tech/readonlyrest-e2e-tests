@@ -1,3 +1,5 @@
+import { recurse } from 'cypress-recurse';
+
 export class KbnApiClient {
   public getDataViews(credentials: BasicCredentials, group?: string): Cypress.Chainable<DataViews> {
     return cy
@@ -35,11 +37,16 @@ export class KbnApiClient {
     });
   }
 
-  public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
+  public getSavedObjects(
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): Cypress.Chainable<GetObject> {
     return cy.kbnGet<GetObject>({
       endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url',
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
     });
   }
 
@@ -57,12 +64,37 @@ export class KbnApiClient {
     });
   }
 
-  public loadSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
-    cy.kbnPost({
-      endpoint: `api/sample_data/${sampleDatasetName}`,
-      credentials,
-      currentGroupHeader: group
-    });
+  /**
+   * Kibana's sample-data installer deletes the previous index and recreates it in one request;
+   * those two steps occasionally race each other (resource_already_exists_exception -> 500).
+   * That failure resolves rather than rejecting (failOnStatusCode: false), so the fixed-interval
+   * retry below gets a chance to let the race settle. A cy.task timeout does not: it rejects the
+   * chain, cypress-recurse does not retry on rejection, and the loop ends immediately. So
+   * timeoutMs must, on its own, outlast the bulk-insert that follows a successful create - the
+   * retry budget below cannot cover a run where that insert is slower than timeoutMs.
+   */
+  public loadSampleData(
+    sampleDatasetName: string,
+    credentials: string,
+    group?: string
+  ): Cypress.Chainable<{ statusCode?: number; elasticsearchIndicesCreated?: Record<string, number> }> {
+    return recurse(
+      () =>
+        cy.kbnPost<{ statusCode?: number; elasticsearchIndicesCreated?: Record<string, number> }>({
+          endpoint: `api/sample_data/${sampleDatasetName}`,
+          credentials,
+          currentGroupHeader: group,
+          failOnStatusCode: false,
+          timeoutMs: 30000
+        }),
+      response => response?.elasticsearchIndicesCreated !== undefined,
+      {
+        timeout: 90000,
+        delay: 5000,
+        log: response => cy.log(`Load sample data "${sampleDatasetName}" response: ${JSON.stringify(response)}`),
+        error: `Timed out loading sample data "${sampleDatasetName}"`
+      }
+    );
   }
 
   public deleteSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
