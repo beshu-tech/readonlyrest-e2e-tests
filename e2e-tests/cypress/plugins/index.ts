@@ -114,9 +114,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         console.error('HTTP Request failed:', {
           error: (error as Error).message,
           url,
-          method,
-          headers,
-          body
+          method
         });
         throw error;
       }
@@ -162,8 +160,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         console.error('HTTP Request failed:', {
           error: (error as Error).message,
           url,
-          headers,
-          file
+          method
         });
         throw error;
       }
