@@ -162,11 +162,14 @@ annotate_failed_specs() {
 # spec name onto the next row, and that row has no ✔ or ✖ mark, so the name continues there.
 failed_specs() {
   awk '
-    /^ *│ (✔|✖) / { flush(); if ($2 == "✖") name = $3; next }
-    /^ *│  +[^ ]/ { if (name != "") name = name $2; next }
+    /^ *│ (✔|✖) / { flush(); if ($2 == "✖") name = column($0); next }
+    /^ *│  +[^ ]/ { if (name != "") name = name column($0); next }
     { flush() }
     END { flush() }
     function flush() { if (name != "") print name; name = "" }
+    # The spec column of a row: after the border and the mark, up to the gap before the duration.
+    # A spec name can hold single spaces.
+    function column(row) { sub(/^ *│ +(✔|✖)? +/, "", row); sub(/  .*/, "", row); return row }
   ' "$1"
 }
 
