@@ -144,6 +144,34 @@ write_summary() {
     sed -e 's/\x1b\[[0-9;]*m//g' "$E2E_OUTPUT" | sed -n '/Run Finished/,$p'
     echo '```'
   } > "$E2E_SUMMARY"
+  annotate_failed_specs
+}
+
+# One warning annotation per failed spec. GitHub shows annotations in the checks list of a PR, so a
+# reader sees the spec without opening the log. It is a warning and not an error: when the retry
+# wrapper runs the suite again and it passes, the job is green and the warning records the flake.
+annotate_failed_specs() {
+  [ -n "${GITHUB_ACTIONS:-}" ] || return 0
+  # A workflow-command property escapes ":" and ",".
+  local spec title="E2E%3A ELK $ELK_VERSION on $ENV_NAME"
+  while IFS= read -r spec; do
+    echo "::warning title=$title::Cypress spec failed: $spec"
+  done < <(failed_specs "$E2E_SUMMARY")
+}
+
+# Prints the failed specs of the Cypress "Run Finished" table, one per line. Cypress wraps a long
+# spec name onto the next row, and that row has no ✔ or ✖ mark, so the name continues there.
+failed_specs() {
+  awk '
+    /^ *│ (✔|✖) / { flush(); if ($2 == "✖") name = column($0); next }
+    /^ *│  +[^ ]/ { if (name != "") name = name column($0); next }
+    { flush() }
+    END { flush() }
+    function flush() { if (name != "") print name; name = "" }
+    # The spec column of a row: after the border and the mark, up to the gap before the duration.
+    # A spec name can hold single spaces.
+    function column(row) { sub(/^ *│ +(✔|✖)? +/, "", row); sub(/  .*/, "", row); return row }
+  ' "$1"
 }
 
 cleanup() {
