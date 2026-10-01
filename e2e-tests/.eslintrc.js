@@ -55,5 +55,26 @@ module.exports = {
     'default-param-last': 'off',
     'func-names': 'off',
     'prefer-destructuring': ['error', { AssignmentExpression: { array: false } }]
-  }
+  },
+  overrides: [
+    {
+      // RorApiClient waits for Kibana to answer after each ROR settings change. A direct call skips
+      // that wait, and the next test then meets a Kibana that is not ready.
+      files: ['**/*.ts'],
+      excludedFiles: ['cypress/support/helpers/RorApiClient.ts'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'Literal[value=/_readonlyrest.admin.config/]',
+            message: 'Change the ROR settings through rorApiClient.'
+          },
+          {
+            selector: 'TemplateElement[value.raw=/_readonlyrest.admin.config/]',
+            message: 'Change the ROR settings through rorApiClient.'
+          }
+        ]
+      }
+    }
+  ]
 };
