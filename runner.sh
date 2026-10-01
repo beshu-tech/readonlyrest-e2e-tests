@@ -125,6 +125,8 @@ done
 STACK_LOGS=results/stack-logs
 E2E_OUTPUT=results/e2e-output.log
 E2E_SUMMARY=results/e2e-summary.md
+E2E_FAILED_SPECS=results/failed-specs.tsv
+E2E_STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Runs from the ERR trap, where the stack did not come up. --console puts the stack log on the
 # console, because the job log has no other record of the failure.
@@ -144,19 +146,17 @@ write_summary() {
     sed -e 's/\x1b\[[0-9;]*m//g' "$E2E_OUTPUT" | sed -n '/Run Finished/,$p'
     echo '```'
   } > "$E2E_SUMMARY"
-  annotate_failed_specs
+  record_failed_specs
 }
 
-# One warning annotation per failed spec. GitHub shows annotations in the checks list of a PR, so a
-# reader sees the spec without opening the log. It is a warning and not an error: when the retry
-# wrapper runs the suite again and it passes, the job is green and the warning records the flake.
-annotate_failed_specs() {
-  [ -n "${GITHUB_ACTIONS:-}" ] || return 0
-  # A workflow-command property escapes ":" and ",".
-  local spec title="E2E%3A ELK $ELK_VERSION on $ENV_NAME"
+# Appends one row per failed spec: the start time of this suite run, a tab, the spec. The summary
+# above holds only the last run, and a retry runs this script again. This file keeps the failed
+# specs of every run, so a spec that failed and then passed on the retry stays on record.
+record_failed_specs() {
+  local spec
   while IFS= read -r spec; do
-    echo "::warning title=$title::Cypress spec failed: $spec"
-  done < <(failed_specs "$E2E_SUMMARY")
+    printf '%s\t%s\n' "$E2E_STARTED" "$spec"
+  done < <(failed_specs "$E2E_SUMMARY") >> "$E2E_FAILED_SPECS"
 }
 
 # Prints the failed specs of the Cypress "Run Finished" table, one per line. Cypress wraps a long

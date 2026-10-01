@@ -236,32 +236,31 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     }
   });
 
-  // A retried test that passed leaves no trace in the run output. This lists every retried test
-  // on the GitHub run summary, so the flaky ones can be named. GITHUB_STEP_SUMMARY is unset outside
-  // Actions, and then this does nothing.
+  // A retried test that passed leaves no trace in the run output. This appends every retried test
+  // to a tab-separated file, one row per test: spec, title, attempts, final state. The file
+  // collects the rows of every suite run in the same checkout, so a CI step can report them.
+  const retriedTestsFile = path.resolve(config.projectRoot, '..', 'results', 'retried-tests.tsv');
   const reportRetriedTests = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
-    const summaryFile = process.env.GITHUB_STEP_SUMMARY;
-    if (!summaryFile || !results || !results.tests) return;
+    if (!results || !results.tests) return;
 
-    const retried = results.tests
-      .map(test => ({
-        title: (test.title || []).join(' > '),
-        attempts: (test.attempts || []).length,
-        state: test.state
-      }))
-      .filter(test => test.attempts > 1);
+    // A tab or a line break in a title would split the row.
+    const cell = (text: string) => text.replace(/[\t\r\n]+/g, ' ');
+    const rows = results.tests
+      .filter(test => (test.attempts || []).length > 1)
+      .map(test =>
+        [
+          path.basename(spec.relative),
+          cell((test.title || []).join(' > ')),
+          (test.attempts || []).length,
+          test.state
+        ].join('\t')
+      );
 
-    if (retried.length === 0) return;
-
-    const rows = retried
-      .map(test => `| \`${path.basename(spec.relative)}\` | ${test.title} | ${test.attempts} | ${test.state} |`)
-      .join('\n');
+    if (rows.length === 0) return;
 
     try {
-      await fs.promises.appendFile(
-        summaryFile,
-        `\n<!-- retries -->\n| spec | test | attempts | final |\n| --- | --- | --- | --- |\n${rows}\n`
-      );
+      await fs.promises.mkdir(path.dirname(retriedTestsFile), { recursive: true });
+      await fs.promises.appendFile(retriedTestsFile, `${rows.join('\n')}\n`);
     } catch {
       // A broken report must never fail a suite that passed.
     }

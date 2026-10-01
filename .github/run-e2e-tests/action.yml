@@ -52,6 +52,9 @@ runs:
         # For transient infrastructure, not for a failing suite. Two things need it: an HTTP 429
         # from the npm registry, and a dev image the registry does not serve yet.
         retry_on: any
+        # The retry hides a failed attempt when the next one passes. The annotation keeps it on
+        # the checks list of the PR.
+        on_retry_command: echo "::warning title=E2E%3A ELK $ELK_VERSION on $ENV::The suite failed and runs again. The failed specs and the retried tests are on the run summary."
         command: |
           PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
           [ -n "$ROR_ES_VERSION" ] && PARAMS+=(--ror-es "$ROR_ES_VERSION")
@@ -72,3 +75,10 @@ runs:
       shell: bash
       run: |
         [ -f results/e2e-summary.md ] && cat results/e2e-summary.md >> "$GITHUB_STEP_SUMMARY" || true
+    - name: Annotate the failed specs and the retried tests
+      if: always()
+      shell: bash
+      run: .github/scripts/report-e2e-flakes.sh results "ELK $ELK_VERSION on $ENV"
+      env:
+        ELK_VERSION: ${{ inputs.elk }}
+        ENV: ${{ inputs.env }}
