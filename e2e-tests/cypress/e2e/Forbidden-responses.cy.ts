@@ -20,11 +20,13 @@ describe('Forbidden responses', () => {
     // deleteDataViews() 404s on 7.x; use _find instead.
     kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
     // Tags aren't covered by deleteSavedObjects; clean up separately, in the creator's tenant.
-    cy.kbnGet<{ tags: Array<{ id: string; name: string }> }>({
+    cy.kbnGet<{ tags?: Array<{ id: string; name: string }> }>({
       endpoint: 'api/saved_objects_tagging/tags',
-      credentials: userCredentials
-    }).then(({ tags }) => {
-      tags
+      credentials: userCredentials,
+      failOnStatusCode: false
+    }).then(result => {
+      // A logged-out Kibana answers with a login page, not the tags JSON; treat it as no tags.
+      (result?.tags ?? [])
         .filter(tag => tag.name === forbiddenTagName || tag.name === forbiddenAssignTagName)
         .forEach(tag =>
           cy.kbnDelete({
