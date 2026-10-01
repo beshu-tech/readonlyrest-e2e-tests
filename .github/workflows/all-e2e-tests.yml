@@ -22,7 +22,7 @@ concurrency:
 env:
   APPLY_RESOURCE_LIMITS: "auto"
   # Newest first: a failure on the newest line is the one to see first in the run UI.
-  ELK_VERSIONS: "9.5.4 9.4.7 8.19.21 7.17.29"
+  ELK_VERSIONS: "9.5.4 9.4.7 8.19.22 7.17.29"
   ECK_3X: eck-3.5.0
   ECK_2X: eck-2.16.1
 
