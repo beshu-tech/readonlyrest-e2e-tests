@@ -73,7 +73,7 @@ describe('Forbidden responses', () => {
       });
 
       Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
-      // Can race a ROR tenancy hop on first navigation; see Tenancy.cy.ts.
+      // Can race a ROR tenancy hop on first navigation.
       cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
       Dashboard.openDashboard();
       cy.get('[data-test-subj="checkboxSelectRow-forbidden-dashboard-listing-delete"]').click();
@@ -167,7 +167,7 @@ describe('Forbidden responses', () => {
 
     it("shows only Kibana's own generic error text, never the configured message, when a dashboard delete from the listing is forbidden", () => {
       // Same statusText bug as the 8.x/9.x dashboard test above; a plain object is passed
-      // here, so dangerToastErrorPatch.ts doesn't apply either. Known gap, not fixed.
+      // here, so the plugin's toast-error patch doesn't apply either. Known gap, not fixed.
       Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-dashboard-listing-delete-7x',
