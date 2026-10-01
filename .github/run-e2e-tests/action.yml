@@ -66,6 +66,18 @@ runs:
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
+    - name: Upload the stack logs of the failed attempts
+      # The runner writes results/stack-logs only for an attempt that failed, timed out or was
+      # cancelled. So this also uploads them for a job that passed on its retry.
+      if: always() && hashFiles('results/stack-logs/**') != ''
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: e2e-stack-logs-${{ inputs.mode || 'default' }}-${{ inputs.env }}-${{ inputs.elk }}-run-attempt-${{ github.run_attempt }}
+        path: |
+          results/stack-logs
+          results/e2e-summary.md
+        if-no-files-found: ignore
+        retention-days: 14
     - name: Put the E2E summary on the run summary page
       # The runner writes the file only when the suite ran, on a pass as well as on a failure.
       if: always()
