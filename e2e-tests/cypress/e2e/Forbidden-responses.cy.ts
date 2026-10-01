@@ -10,7 +10,6 @@ import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { getKibanaVersion } from '../support/helpers';
 
 const userCredentials = 'user2:dev';
-const adminCredentials = 'admin:dev';
 const forbiddenMessage = 'You shall not pass!';
 const forbiddenTagName = 'forbidden-tag-delete';
 const forbiddenAssignTagName = 'forbidden-tag-assign';
@@ -20,7 +19,6 @@ describe('Forbidden responses', () => {
     Settings.setSettingsData('defaultSettings.yaml');
     // deleteDataViews() 404s on 7.x; use _find instead.
     kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
-    kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
     // Tags aren't covered by deleteSavedObjects; clean up separately, in the creator's tenant.
     cy.kbnGet<{ tags: Array<{ id: string; name: string }> }>({
       endpoint: 'api/saved_objects_tagging/tags',
