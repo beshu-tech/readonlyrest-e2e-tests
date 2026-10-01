@@ -112,22 +112,18 @@ export class Reporting {
       cy.get('[data-test-subj="reportJobRow"]').eq(0).find('[aria-label="Download report"]').click();
     }
 
-    const startTime = Date.now();
-
-    const check = (): Cypress.Chainable<undefined> =>
-      cy.task<string[]>('listDownloadedFiles').then((files): Cypress.Chainable<undefined> => {
-        if (files.some(file => file.endsWith('.csv'))) {
-          // Cypress 14's wrap() overloads infer Chainable<JQuery<undefined>> for a bare undefined;
-          // the cast keeps this branch aligned with check()'s Chainable<undefined> signature.
-          return cy.wrap(undefined) as Cypress.Chainable<undefined>;
-        }
-        if (Date.now() - startTime >= timeout) {
-          throw new Error(`Timeout waiting for a downloaded .csv file after ${timeout / 1000}s (found: ${files})`);
-        }
-        return cy.wait(interval).then(check);
-      });
-
-    return cy.wrap(null).then(check);
+    // recurse measures the timeout from the moment this command runs. A clock read here would start
+    // when Cypress queues the test, and the time the earlier commands take would eat the wait.
+    return recurse(
+      () => cy.task<string[]>('listDownloadedFiles'),
+      files => files.some(file => file.endsWith('.csv')),
+      {
+        timeout,
+        delay: interval,
+        log: false,
+        error: `Timeout waiting for a downloaded .csv file after ${timeout / 1000}s`
+      }
+    );
   }
 
   static verifyAllDataStreamsSegmentsCount(index: string, numberOfSegments: number, timeout = 30000) {
