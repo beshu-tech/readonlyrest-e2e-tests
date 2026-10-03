@@ -125,8 +125,6 @@ done
 STACK_LOGS=results/stack-logs
 E2E_OUTPUT=results/e2e-output.log
 E2E_SUMMARY=results/e2e-summary.md
-E2E_FAILED_SPECS=results/failed-specs.tsv
-E2E_STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Runs from the ERR trap, where the stack did not come up. --console puts the stack log on the
 # console, because the job log has no other record of the failure.
@@ -146,32 +144,6 @@ write_summary() {
     sed -e 's/\x1b\[[0-9;]*m//g' "$E2E_OUTPUT" | sed -n '/Run Finished/,$p'
     echo '```'
   } > "$E2E_SUMMARY"
-  record_failed_specs
-}
-
-# Appends one row per failed spec: the start time of this suite run, a tab, the spec. The summary
-# above holds only the last run, and a retry runs this script again. This file keeps the failed
-# specs of every run, so a spec that failed and then passed on the retry stays on record.
-record_failed_specs() {
-  local spec
-  while IFS= read -r spec; do
-    printf '%s\t%s\n' "$E2E_STARTED" "$spec"
-  done < <(failed_specs "$E2E_SUMMARY") >> "$E2E_FAILED_SPECS"
-}
-
-# Prints the failed specs of the Cypress "Run Finished" table, one per line. Cypress wraps a long
-# spec name onto the next row, and that row has no ✔ or ✖ mark, so the name continues there.
-failed_specs() {
-  awk '
-    /^ *│ (✔|✖) / { flush(); if ($2 == "✖") name = column($0); next }
-    /^ *│  +[^ ]/ { if (name != "") name = name column($0); next }
-    { flush() }
-    END { flush() }
-    function flush() { if (name != "") print name; name = "" }
-    # The spec column of a row: after the border and the mark, up to the gap before the duration.
-    # A spec name can hold single spaces.
-    function column(row) { sub(/^ *│ +(✔|✖)? +/, "", row); sub(/  .*/, "", row); return row }
-  ' "$1"
 }
 
 cleanup() {

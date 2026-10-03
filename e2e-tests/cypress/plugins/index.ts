@@ -236,34 +236,40 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     }
   });
 
-  // A retried test that passed leaves no trace in the run output. This appends every retried test
-  // to a tab-separated file, one row per test: spec, title, attempts, final state. The file
-  // collects the rows of every suite run in the same checkout, so a CI step can report them.
-  const retriedTestsFile = path.resolve(config.projectRoot, '..', 'results', 'retried-tests.tsv');
-  const reportRetriedTests = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
-    if (!results || !results.tests) return;
-
-    // A tab or a line break in a title would split the row.
-    const cell = (text: string) => text.replace(/[\t\r\n]+/g, ' ');
-    const rows = results.tests
-      .filter(test => (test.attempts || []).length > 1)
-      .map(test =>
-        [
-          path.basename(spec.relative),
-          cell((test.title || []).join(' > ')),
-          (test.attempts || []).length,
-          test.state
-        ].join('\t')
-      );
-
+  // A retry hides a flake. Two tab-separated files keep the record, so a CI step can report it:
+  //   failed-specs.tsv   one row per failed spec: start time of this suite run, spec
+  //   retried-tests.tsv  one row per retried test: spec, title, attempts, final state
+  // Each suite run appends after each spec, so a run stopped at a timeout keeps its rows.
+  const resultsDir = path.resolve(config.projectRoot, '..', 'results');
+  const suiteRunStarted = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  // A tab or a line break in a cell would split the row.
+  const cell = (text: string) => text.replace(/[\t\r\n]+/g, ' ');
+  const appendRows = async (file: string, rows: (string | number)[][]) => {
     if (rows.length === 0) return;
-
     try {
-      await fs.promises.mkdir(path.dirname(retriedTestsFile), { recursive: true });
-      await fs.promises.appendFile(retriedTestsFile, `${rows.join('\n')}\n`);
+      await fs.promises.mkdir(resultsDir, { recursive: true });
+      await fs.promises.appendFile(
+        path.join(resultsDir, file),
+        rows.map(row => row.map(value => cell(String(value))).join('\t') + '\n').join('')
+      );
     } catch {
       // A broken report must never fail a suite that passed.
     }
+  };
+  const reportFlakes = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
+    if (!results) return;
+    const specName = path.basename(spec.relative);
+
+    // The same count gives the ✖ in the "Run Finished" table. `error` is a spec-level error, which
+    // can come without a failed test.
+    if ((results.stats && results.stats.failures > 0) || results.error) {
+      await appendRows('failed-specs.tsv', [[suiteRunStarted, specName]]);
+    }
+
+    const retried = (results.tests || [])
+      .filter(test => (test.attempts || []).length > 1)
+      .map(test => [specName, (test.title || []).join(' > '), test.attempts.length, test.state]);
+    await appendRows('retried-tests.tsv', retried);
   };
 
   // Discard the video for specs that finished with all tests passing.
@@ -273,7 +279,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
   on('after:spec', async (spec, results) => {
     // Cypress keeps one handler per event name: a second `on('after:spec')` replaces the first.
     // So both jobs live in this one handler.
-    await reportRetriedTests(spec, results);
+    await reportFlakes(spec, results);
 
     if (!results || !results.video) return;
     // Keep the video if the spec had ANY failure. Prefer the stable
