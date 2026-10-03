@@ -91,7 +91,6 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          # A retry that passes hides the failed start-up. The annotation keeps it on the checks list.
           on_retry_command: echo "::warning title=Bootstrap%3A ELK ${{ matrix.version }} on ${{ matrix.env }}::The start-up failed and runs again."
           timeout_minutes: 30
           retry_on: any
@@ -179,7 +178,6 @@ jobs:
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
         with:
           max_attempts: 2
-          # A retry that passes hides the failed start-up. The annotation keeps it on the checks list.
           on_retry_command: echo "::warning title=Bootstrap%3A ELK ${{ matrix.version }} on ${{ matrix.env }}::The start-up failed and runs again."
           timeout_minutes: 30
           retry_on: any
