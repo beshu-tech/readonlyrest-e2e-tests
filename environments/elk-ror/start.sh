@@ -202,10 +202,41 @@ handle_docker_compose_error() {
 trap 'handle_docker_compose_error' ERR
 
 # Bound the startup wait, mirroring TIMEOUT_IN_SECONDS in environments/eck-ror/start.sh. Bare
-# `--wait` blocks forever; with a timeout the ERR trap fires instead and dumps elk-ror.log.
+# `--wait` blocks forever.
 TIMEOUT_IN_SECONDS=600
+MAX_RESTARTS_PER_CONTAINER=3
 
-docker compose $DOCKER_COMPOSE_FILES up -d --build --remove-orphans --force-recreate \
-  --wait --wait-timeout $TIMEOUT_IN_SECONDS
+# `up` fails when a container exits while compose waits for it to be healthy, also when
+# `restart: always` brings it back. The wait for a `depends_on: service_healthy` does this too,
+# so `up` without `--wait` does not avoid it. A Kibana that crashes once at boot recovers on its
+# own, so `up` runs again after a failure that comes with a restart. A failure without a restart,
+# a container that restarts more than MAX_RESTARTS_PER_CONTAINER times, or the timeout ends it.
+compose_up_tolerating_restarts() {
+  local deadline=$((SECONDS + TIMEOUT_IN_SECONDS)) restarts_before=0 restarts most counts
+  local up_args=(--build --remove-orphans --force-recreate)
+  while (( SECONDS < deadline )); do
+    if docker compose $DOCKER_COMPOSE_FILES up -d "${up_args[@]}" --wait --wait-timeout $((deadline - SECONDS)); then
+      return 0
+    fi
+    # A container that waits for its restart counts as restarted: its RestartCount does not show it yet.
+    counts=$(docker inspect -f '{{.Name}} {{.RestartCount}} {{.State.Status}}' \
+      $(docker compose $DOCKER_COMPOSE_FILES ps -aq) 2>/dev/null \
+      | awk '{ print $1, $2 + ($3 == "restarting") }')
+    echo "Restarts per container:"
+    echo "$counts"
+    restarts=$(awk '{ s += $2 } END { print s + 0 }' <<< "$counts")
+    most=$(awk '$2 > m { m = $2 } END { print m + 0 }' <<< "$counts")
+    if (( restarts == restarts_before || most > MAX_RESTARTS_PER_CONTAINER )); then
+      return 1
+    fi
+    echo "A container restarted during the start. Waiting for the environment again ..."
+    restarts_before=$restarts
+    up_args=(--remove-orphans)
+  done
+  echo "The environment is not ready after ${TIMEOUT_IN_SECONDS}s."
+  return 1
+}
+
+compose_up_tolerating_restarts || handle_docker_compose_error
 
 echo "The environment is ready"
