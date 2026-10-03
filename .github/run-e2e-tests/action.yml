@@ -66,6 +66,43 @@ runs:
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
+    # The artifact below is public, and Actions masks a secret only in the job log, not in a file.
+    # Kibana gets the activation key, a JWT, so remove it from the logs: the whole key and each of
+    # its three parts, in case a log prints only one part.
+    - name: Remove the activation key from the stack logs
+      id: remove-activation-key
+      if: always() && hashFiles('results/stack-logs/**') != ''
+      shell: bash
+      env:
+        ROR_ACTIVATION_KEY: ${{ inputs.activation_key }}
+      run: |
+        [ -n "$ROR_ACTIVATION_KEY" ] || exit 0
+        # Each file to upload, NUL-separated. find fails on a path that does not exist.
+        upload_files() { find results/stack-logs results/e2e-summary.md -type f -print0 2>/dev/null || true; }
+        upload_files | xargs -0 -r perl -pi -e '
+          BEGIN { @s = grep { length($_) >= 16 } ($ENV{ROR_ACTIVATION_KEY}, split(/\./, $ENV{ROR_ACTIVATION_KEY})) }
+          for my $p (@s) { s/\Q$p\E/[ACTIVATION KEY REMOVED]/g }' || true
+        # perl -i skips a file it cannot rewrite and still exits 0, so check the result. A public
+        # artifact without the logs is better than one with the key.
+        if ! upload_files | xargs -0 -r perl -ne '
+          BEGIN { @s = grep { length($_) >= 16 } ($ENV{ROR_ACTIVATION_KEY}, split(/\./, $ENV{ROR_ACTIVATION_KEY})) }
+          for my $p (@s) { exit 1 if index($_, $p) >= 0 }'; then
+          echo "The activation key is still in the stack logs. They are not uploaded."
+          rm -rf results/stack-logs results/e2e-summary.md
+        fi
+    - name: Upload the stack logs of the failed attempts
+      # The runner writes results/stack-logs only for an attempt that failed, timed out or was
+      # cancelled. So this also uploads them for a job that passed on its retry.
+      # Only after the key is out of the logs.
+      if: always() && steps.remove-activation-key.outcome == 'success' && hashFiles('results/stack-logs/**') != ''
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: e2e-stack-logs-${{ inputs.mode || 'default' }}-${{ inputs.env }}-${{ inputs.elk }}-run-attempt-${{ github.run_attempt }}
+        path: |
+          results/stack-logs
+          results/e2e-summary.md
+        if-no-files-found: ignore
+        retention-days: 14
     - name: Put the E2E summary on the run summary page
       # The runner writes the file only when the suite ran, on a pass as well as on a failure.
       if: always()
