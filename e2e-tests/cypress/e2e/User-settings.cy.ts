@@ -37,10 +37,6 @@ describe('User settings', () => {
     Login.initialization();
   });
 
-  afterEach(() => {
-    cy.clearCookies();
-  });
-
   it('should verify user settings change', () => {
     cy.log('Change theme');
     UserSettings.open();

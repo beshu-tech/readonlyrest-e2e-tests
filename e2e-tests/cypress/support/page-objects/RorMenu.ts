@@ -1,5 +1,6 @@
 import { recurse } from 'cypress-recurse';
 import { Loader } from './Loader';
+import { expectSessionEnd } from '../sessionEnd';
 
 export class RorMenu {
   // The RorPopover wrapper, not the inner <button className="ror-menu-trigger"> that carries the
@@ -96,6 +97,7 @@ export class RorMenu {
   }
 
   static pressLogoutButton() {
+    expectSessionEnd();
     cy.contains('Log out').click();
   }
 
