@@ -43,6 +43,7 @@ export ROR_ES_VERSION="latest"
 export ROR_KBN_VERSION="latest"
 export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
 export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
+MODE="prod"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -100,11 +101,13 @@ while [[ $# -gt 0 ]]; do
     if [[ -n $2 && $2 != --* ]]; then
       case "$2" in
         "prod")
+          MODE="prod"
           export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest"
           export ROR_KBN_REPO="beshultd/kibana-readonlyrest"
           shift 2
           ;;
         "dev")
+          MODE="dev"
           export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
           export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
           shift 2
@@ -199,44 +202,64 @@ handle_docker_compose_error() {
   exit 1
 }
 
-trap 'handle_docker_compose_error' ERR
-
-# Bound the startup wait, mirroring TIMEOUT_IN_SECONDS in environments/eck-ror/start.sh. Bare
-# `--wait` blocks forever.
+# No new `up` starts after this deadline. `--wait` without a timeout blocks forever.
 TIMEOUT_IN_SECONDS=600
-MAX_RESTARTS_PER_CONTAINER=3
+# A released ROR KBN can stop Kibana once at boot, so a prod start runs `up` again after it.
+# A dev start does not: a restart at boot there is a regression to report.
+if [[ "$MODE" == "dev" ]]; then
+  MAX_RESTARTS_PER_CONTAINER="${MAX_RESTARTS_PER_CONTAINER:-0}"
+else
+  MAX_RESTARTS_PER_CONTAINER="${MAX_RESTARTS_PER_CONTAINER:-3}"
+fi
 
-# `up` fails when a container exits while compose waits for it to be healthy, also when
-# `restart: always` brings it back. The wait for a `depends_on: service_healthy` does this too,
-# so `up` without `--wait` does not avoid it. A Kibana that crashes once at boot recovers on its
-# own, so `up` runs again after a failure that comes with a restart. A failure without a restart,
-# a container that restarts more than MAX_RESTARTS_PER_CONTAINER times, or the timeout ends it.
+# Prints "<container> <RestartCount>" for each container, after no container is restarting any more.
+# Docker reports a restarting container as unhealthy, so an `up` started then fails at once.
+restart_counts() {
+  local deadline=$1 ids
+  ids=$(docker compose $DOCKER_COMPOSE_FILES ps -aq)
+  [[ -n "$ids" ]] || return 0
+  while (( SECONDS < deadline )) && docker inspect -f '{{.State.Status}}' $ids | grep -qx restarting; do
+    sleep 1
+  done
+  docker inspect -f '{{.Name}} {{.RestartCount}}' $ids | sed 's|^/||'
+}
+
+# `up` fails when a container exits during its health wait, also when `restart: always` brings it
+# back, and dropping `--wait` does not help. So `up` runs again while each failure comes with a new restart.
 compose_up_tolerating_restarts() {
-  local deadline=$((SECONDS + TIMEOUT_IN_SECONDS)) restarts_before=0 restarts most counts
-  local up_args=(--build --remove-orphans --force-recreate)
-  while (( SECONDS < deadline )); do
-    if docker compose $DOCKER_COMPOSE_FILES up -d "${up_args[@]}" --wait --wait-timeout $((deadline - SECONDS)); then
+  local deadline=$((SECONDS + TIMEOUT_IN_SECONDS)) remaining restarts_before=0 restarts most counts
+  local up_args=(--force-recreate)
+  while true; do
+    remaining=$((deadline - SECONDS))
+    if (( remaining <= 0 )); then
+      echo "The environment is not ready after ${TIMEOUT_IN_SECONDS}s."
+      return 1
+    fi
+    if docker compose $DOCKER_COMPOSE_FILES up -d --no-build --remove-orphans "${up_args[@]}" --wait --wait-timeout "$remaining"; then
+      # Also reports a restart that `up` did not see. Any restart here is a crash at boot.
+      restart_counts "$deadline" \
+        | awk '$2 > 0 { printf "::warning title=Container restarted at boot::%s restarted %d time(s) during the start\n", $1, $2 }'
       return 0
     fi
-    # A container that waits for its restart counts as restarted: its RestartCount does not show it yet.
-    counts=$(docker inspect -f '{{.Name}} {{.RestartCount}} {{.State.Status}}' \
-      $(docker compose $DOCKER_COMPOSE_FILES ps -aq) 2>/dev/null \
-      | awk '{ print $1, $2 + ($3 == "restarting") }')
-    echo "Restarts per container:"
-    echo "$counts"
+    counts=$(restart_counts "$deadline")
     restarts=$(awk '{ s += $2 } END { print s + 0 }' <<< "$counts")
     most=$(awk '$2 > m { m = $2 } END { print m + 0 }' <<< "$counts")
-    if (( restarts == restarts_before || most > MAX_RESTARTS_PER_CONTAINER )); then
+    if (( restarts == restarts_before )); then
+      echo "The start failed without a new container restart."
+      return 1
+    fi
+    if (( most > MAX_RESTARTS_PER_CONTAINER )); then
+      echo "A container restarted more than ${MAX_RESTARTS_PER_CONTAINER} time(s) during the start:"
+      echo "$counts"
       return 1
     fi
     echo "A container restarted during the start. Waiting for the environment again ..."
     restarts_before=$restarts
-    up_args=(--remove-orphans)
+    up_args=()
   done
-  echo "The environment is not ready after ${TIMEOUT_IN_SECONDS}s."
-  return 1
 }
 
+docker compose $DOCKER_COMPOSE_FILES build || handle_docker_compose_error
 compose_up_tolerating_restarts || handle_docker_compose_error
 
 echo "The environment is ready"
