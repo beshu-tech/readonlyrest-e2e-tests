@@ -6,12 +6,15 @@ import FormData from 'form-data';
 import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 let embeddedServer: ReturnType<typeof https.createServer> | null = null;
 const EMBEDDED_SERVER_PORT = 8080;
 const ROOT_DIR = path.join(__dirname, '..', '..', '..');
 const FIXTURES_DIR = path.join(__dirname, '..', 'fixtures');
 const JWT_SECRET = 'a-string-secret-at-least-256-bits-long';
+const ELK_ROR_DIR = path.join(ROOT_DIR, 'environments', 'elk-ror');
 
 const generateJwt = (payload: object): string => {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -209,6 +212,22 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     },
     generateJwt(payload: object): string {
       return generateJwt(payload);
+    },
+    // Docker environment only. Without a fixture, it puts back the kibana.yml of the environment.
+    async setKibanaConfig({ fixture }: { fixture: string | null }): Promise<null> {
+      const configFile = fixture
+        ? path.join(FIXTURES_DIR, fixture)
+        : path.join(ELK_ROR_DIR, 'conf', 'kbn', 'kibana.yml');
+      try {
+        const { stdout } = await promisify(execFile)(path.join(ELK_ROR_DIR, 'set-kibana-config.sh'), [configFile]);
+        console.log(stdout);
+      } catch (error) {
+        const { stdout, stderr } = error as { stdout?: string; stderr?: string };
+        throw new Error(
+          `set-kibana-config.sh failed for ${configFile}: ${(error as Error).message}\n${stdout}\n${stderr}`
+        );
+      }
+      return null;
     },
     async clearDownloads() {
       const downloadsFolder = path.join('cypress', 'downloads');
