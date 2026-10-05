@@ -1,0 +1,38 @@
+name: Check if the start retry can go
+
+# Fails when the prod start retry in environments/elk-ror/start.sh can go: every ELK_VERSIONS image
+# runs a ROR KBN release with the fix of sscarduzio/readonlyrest_kbn#1075. The steps to take:
+# https://github.com/beshu-tech/readonlyrest-e2e-tests/issues/146
+#
+# No e2e job waits for this check, and it starts no stack.
+#
+# Secret: ROR_GH_TOKEN, the token that dispatches the dev image pre-builds. Here it must also read the
+# contents of sscarduzio/readonlyrest_kbn, a private repo, for the release tags and the compare API.
+# GITHUB_TOKEN reads this repo only. Without that access the check fails, and its error says why.
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 6 * * 1'
+  # A change to the check runs it on its pull request.
+  pull_request:
+    paths:
+      - .github/workflows/check-start-retry-removal.yml
+      - .github/scripts/check-start-retry-removal.sh
+
+jobs:
+  check:
+    name: Can the start retry go?
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Find the ROR KBN release of each -ror-latest image, and check it for the fix
+        env:
+          GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+        run: .github/scripts/check-start-retry-removal.sh
