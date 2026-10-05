@@ -2,8 +2,9 @@ import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
 import { userCredentials } from '../support/helpers';
 
-// The page learns about the logout from the ROR KBN session probe, which runs every 30 s. So a
-// logout can take up to 30 s to show, more than the 20 s default timeout.
+// The logout shows up only after the next session probe, which runs every
+// readonlyrest_kbn.sessions_probe_interval_seconds (30 s by default). That is longer than the 20 s
+// default timeout.
 const LOGOUT_TIMEOUT = { timeout: 45000 };
 
 /**
