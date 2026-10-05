@@ -6,27 +6,29 @@
 // The filter ignores only these errors, and only in that window. Elsewhere they still fail the test.
 const SESSION_END_ERRORS = [/ChunkLoadError/, /Loading chunk \S+ failed/, /no elements in sequence/, /\bForbidden\b/];
 
-let sessionEndInProgress = false;
+// Cypress bundles the support file and each spec separately, so a module variable has one copy per
+// bundle. The page objects set the flag in the spec bundle, and the filter reads it in the support
+// bundle. Both bundles run in the same window, so the flag lives on the window.
+type SessionEndState = { rorSessionEndInProgress?: boolean };
+const state = globalThis as unknown as SessionEndState;
+
+const setSessionEndInProgress = (value: boolean) => {
+  state.rorSessionEndInProgress = value;
+};
 
 export const expectSessionEnd = () => {
-  cy.then(() => {
-    sessionEndInProgress = true;
-  });
+  cy.then(() => setSessionEndInProgress(true));
 };
 
 export const sessionEndCompleted = () => {
-  cy.then(() => {
-    sessionEndInProgress = false;
-  });
+  cy.then(() => setSessionEndInProgress(false));
 };
 
 export const installSessionEndExceptionFilter = () => {
-  beforeEach(() => {
-    sessionEndInProgress = false;
-  });
+  beforeEach(() => setSessionEndInProgress(false));
 
   Cypress.on('uncaught:exception', err => {
     const isSessionEndError = SESSION_END_ERRORS.some(pattern => pattern.test(`${err.name}: ${err.message}`));
-    return sessionEndInProgress && isSessionEndError ? false : undefined;
+    return state.rorSessionEndInProgress === true && isSessionEndError ? false : undefined;
   });
 };
