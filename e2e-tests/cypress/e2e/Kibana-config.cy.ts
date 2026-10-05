@@ -12,6 +12,7 @@ import { SampleData } from '../support/helpers/SampleData';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { Tenancy } from '../support/page-objects/Tenancy';
+import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { EnvName } from '../support/types';
 
 const customKibanaIndexName = '.kibana_custom';
@@ -69,7 +70,10 @@ const customKibanaIndexName = '.kibana_custom';
         { limit: 5, delay: 2000, timeout: 30000, log: false }
       );
 
-      cy.reload();
+      // In-app navigation, not a reload. A page load can go to the other Kibana replica, which has not
+      // seen this session yet. That replica resets the index to the template and deletes the dashboard.
+      KibanaNavigation.openHomepage();
+      Dashboard.openDashboard();
       Dashboard.verifyDashboardExists('Look at my dashboard');
       RorMenu.openRorMenu();
 
@@ -173,13 +177,27 @@ const customKibanaIndexName = '.kibana_custom';
   // xpack.reporting.index was removed in Kibana 8.0, so this only applies to the 7.x leg.
   if (semver.lt(getKibanaVersion(), '8.0.0')) {
     describe('Custom kibana config custom xpack.reporting.index', () => {
+      const docsIndex = 'sample_index';
+
       before(() => {
         KibanaConfig.apply('customKibanaConfigXpackReportingIndex.yml');
       });
 
-      it('should verify custom reporting index', () => {
-        const docsIndex = 'sample_index';
+      // The test counts the docs of the sample index and of the reporting index. A retry must not
+      // count the docs of the attempt before it, so each attempt starts from an empty store.
+      beforeEach(() => {
+        esApiClient.deleteIndex(docsIndex);
+        esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
+        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+      });
 
+      afterEach(() => {
+        esApiClient.deleteIndex(docsIndex);
+        esApiAdvancedClient.pruneAllReportingIndices();
+        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+      });
+
+      it('should verify custom reporting index', () => {
         SampleData.createSampleData(docsIndex, 1);
         Login.initialization();
 
@@ -196,10 +214,6 @@ const customKibanaIndexName = '.kibana_custom';
           expect(xpackReportingCustomIndex.health).to.equal('green');
           expect(Number.parseInt(xpackReportingCustomIndex['docs.count'], 10)).to.equal(1);
         });
-
-        esApiClient.deleteIndex(docsIndex);
-        esApiAdvancedClient.pruneAllReportingIndices();
-        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
       });
     });
   }
