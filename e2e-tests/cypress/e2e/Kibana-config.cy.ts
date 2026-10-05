@@ -87,7 +87,7 @@ const customKibanaIndexName = '.kibana_custom';
 
     // FIXME: no check that the cleanup task deletes an expired session. The task selects documents
     // on a top-level expiresAt, and the plugin writes a session document without one. Add the check
-    // when the plugin fixes the task.
+    // when https://github.com/sscarduzio/readonlyrest_kbn/pull/1088 reaches the dev image.
     it('should verify index based session', () => {
       Login.initialization();
       esApiAdvancedClient.waitForDocsCount(customSessionIndex, 1);
@@ -125,8 +125,11 @@ const customKibanaIndexName = '.kibana_custom';
         expect(response.status).to.equal(200);
       });
 
+      // FIXME: expect only 401 when every leg runs a ROR KBN release with readonlyrest_kbn#1074. A
+      // request with no session and no credentials gets 401 from builds with #1074 (dev images) and
+      // 403 from the releases before it, and a spec cannot tell the two builds apart.
       cy.request({ url: `${Cypress.config().baseUrl}/api/spaces/space`, failOnStatusCode: false }).then(response => {
-        expect(response.status).to.equal(403);
+        expect(response.status).to.be.oneOf([401, 403]);
         expect(response.body.error).to.equal('Unauthorized');
       });
     });
