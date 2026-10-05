@@ -204,16 +204,23 @@ handle_docker_compose_error() {
 
 # No new `up` starts after this deadline. `--wait` without a timeout blocks forever.
 TIMEOUT_IN_SECONDS=600
-# A released ROR KBN can stop Kibana once at boot, so a prod start runs `up` again after it.
-# A dev start does not: a restart at boot there is a regression to report.
+# ROR KBN 1.71.0 and older can stop Kibana at boot when an Elasticsearch call gets ECONNRESET, so a
+# prod start runs `up` again after it. A dev start does not: a restart at boot there is a regression.
+# The fix: https://github.com/sscarduzio/readonlyrest_kbn/pull/1075 (first release after 1.71.0).
+# Remove the retry: https://github.com/beshu-tech/readonlyrest-e2e-tests/issues/146
 if [[ "$MODE" == "dev" ]]; then
   MAX_RESTARTS_PER_CONTAINER="${MAX_RESTARTS_PER_CONTAINER:-0}"
 else
   MAX_RESTARTS_PER_CONTAINER="${MAX_RESTARTS_PER_CONTAINER:-3}"
 fi
+if [[ ! "$MAX_RESTARTS_PER_CONTAINER" =~ ^[0-9]{1,4}$ ]]; then
+  echo "Error: MAX_RESTARTS_PER_CONTAINER must be a non-negative integer, got '${MAX_RESTARTS_PER_CONTAINER}'."
+  exit 3
+fi
 
 # Prints "<container> <RestartCount>" for each container, after no container is restarting any more.
 # Docker reports a restarting container as unhealthy, so an `up` started then fails at once.
+# Fails when a container is still restarting at the deadline.
 restart_counts() {
   local deadline=$1 ids
   ids=$(docker compose $DOCKER_COMPOSE_FILES ps -aq)
@@ -222,12 +229,23 @@ restart_counts() {
     sleep 1
   done
   docker inspect -f '{{.Name}} {{.RestartCount}}' $ids | sed 's|^/||'
+  ! docker inspect -f '{{.State.Status}}' $ids | grep -qx restarting
+}
+
+within_restart_limit() {
+  local counts=$1 most
+  most=$(awk '$2 > m { m = $2 } END { print m + 0 }' <<< "$counts")
+  if (( most > MAX_RESTARTS_PER_CONTAINER )); then
+    echo "A container restarted more than ${MAX_RESTARTS_PER_CONTAINER} time(s) during the start:"
+    echo "$counts"
+    return 1
+  fi
 }
 
 # `up` fails when a container exits during its health wait, also when `restart: always` brings it
 # back, and dropping `--wait` does not help. So `up` runs again while each failure comes with a new restart.
 compose_up_tolerating_restarts() {
-  local deadline=$((SECONDS + TIMEOUT_IN_SECONDS)) remaining restarts_before=0 restarts most counts
+  local deadline=$((SECONDS + TIMEOUT_IN_SECONDS)) remaining restarts_before=0 restarts counts
   local up_args=(--force-recreate)
   while true; do
     remaining=$((deadline - SECONDS))
@@ -236,23 +254,24 @@ compose_up_tolerating_restarts() {
       return 1
     fi
     if docker compose $DOCKER_COMPOSE_FILES up -d --no-build --remove-orphans "${up_args[@]}" --wait --wait-timeout "$remaining"; then
-      # Also reports a restart that `up` did not see. Any restart here is a crash at boot.
-      restart_counts "$deadline" \
-        | awk '$2 > 0 { printf "::warning title=Container restarted at boot::%s restarted %d time(s) during the start\n", $1, $2 }'
+      # Also counts a restart that `up` did not see. Any restart here is a crash at boot.
+      if ! counts=$(restart_counts "$deadline"); then
+        echo "A container is still restarting after ${TIMEOUT_IN_SECONDS}s:"
+        echo "$counts"
+        return 1
+      fi
+      within_restart_limit "$counts" || return 1
+      awk '$2 > 0 { printf "::warning title=Container restarted at boot::%s restarted %d time(s) during the start\n", $1, $2 }' <<< "$counts"
       return 0
     fi
-    counts=$(restart_counts "$deadline")
+    # A container still restarting at the deadline ends the loop at its next pass.
+    counts=$(restart_counts "$deadline") || true
     restarts=$(awk '{ s += $2 } END { print s + 0 }' <<< "$counts")
-    most=$(awk '$2 > m { m = $2 } END { print m + 0 }' <<< "$counts")
     if (( restarts == restarts_before )); then
       echo "The start failed without a new container restart."
       return 1
     fi
-    if (( most > MAX_RESTARTS_PER_CONTAINER )); then
-      echo "A container restarted more than ${MAX_RESTARTS_PER_CONTAINER} time(s) during the start:"
-      echo "$counts"
-      return 1
-    fi
+    within_restart_limit "$counts" || return 1
     echo "A container restarted during the start. Waiting for the environment again ..."
     restarts_before=$restarts
     up_args=()
