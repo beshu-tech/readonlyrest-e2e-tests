@@ -198,7 +198,8 @@ if ! docker compose $DOCKER_COMPOSE_FILES config > /dev/null; then
 fi
 
 handle_docker_compose_error() {
-  docker compose $DOCKER_COMPOSE_FILES logs > elk-ror.log 2>&1
+  docker compose $DOCKER_COMPOSE_FILES logs 2>&1 | ../common/remove-activation-key.sh > elk-ror.log \
+    || echo "No logs: the activation key could not be removed from them." > elk-ror.log
   exit 1
 }
 
@@ -232,6 +233,46 @@ restart_counts() {
   ! docker inspect -f '{{.State.Status}}' $ids | grep -qx restarting
 }
 
+# Docker resets ExitCode and OOMKilled when it restarts a container. Its events keep the exit of each
+# process, so the start records them.
+record_exits() {
+  exits_file=$(mktemp)
+  docker events --filter type=container --filter event=die --filter event=oom \
+    --format '{{.Actor.ID}} {{.Action}}{{with index .Actor.Attributes "exitCode"}} exitCode={{.}}{{end}}' \
+    > "$exits_file" 2>/dev/null &
+  exits_pid=$!
+  # errexit applies in the trap too: a failed kill would turn a ready environment into exit 1.
+  trap 'kill "$exits_pid" 2>/dev/null || true; rm -f "$exits_file"' EXIT
+}
+
+# The crash message of ROR KBN 1.71.0 comes about 50 lines before the restart.
+RESTART_LOG_LINES=100
+shown_restarts=""
+
+# For each container that restarted since the last call: its state, its exits, and the last log lines
+# before its latest restart. The CI logs are public, so this removes the activation key from the logs.
+show_restarts() {
+  local name count id started status before
+  while read -r name count; do
+    [[ -n "$name" ]] && (( count > 0 )) || continue
+    grep -qxF "$name $count" <<< "$shown_restarts" && continue
+    shown_restarts+="$name $count"$'\n'
+    read -r id started status <<< "$(docker inspect -f '{{.Id}} {{.State.StartedAt}} {{.State.Status}}' "$name")"
+    # The output of a running process starts at StartedAt. A container that is not running shows
+    # its last exit at the end of its log.
+    before=()
+    [[ "$status" == running ]] && before=(--until "$started")
+    echo "::group::$name restarted $count time(s) during the start"
+    docker inspect -f 'State now: Status={{.State.Status}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} RestartCount={{.RestartCount}} StartedAt={{.State.StartedAt}} FinishedAt={{.State.FinishedAt}}' "$name"
+    awk -v id="$id" '$1 == id { $1 = ""; e = e (e ? "," : "") $0 }
+      END { print "Exits during the start:" (e ? e : " none recorded") }' "$exits_file"
+    echo "The last $RESTART_LOG_LINES log lines before the latest restart:"
+    docker logs --timestamps "${before[@]}" "$name" 2>&1 | tail -n "$RESTART_LOG_LINES" \
+      | ../common/remove-activation-key.sh || echo "The logs are not shown: the activation key could not be removed from them."
+    echo "::endgroup::"
+  done <<< "$1"
+}
+
 within_restart_limit() {
   local counts=$1 most
   most=$(awk '$2 > m { m = $2 } END { print m + 0 }' <<< "$counts")
@@ -245,7 +286,7 @@ within_restart_limit() {
 # `up` fails when a container exits during its health wait, also when `restart: always` brings it
 # back, and dropping `--wait` does not help. So `up` runs again while each failure comes with a new restart.
 compose_up_tolerating_restarts() {
-  local deadline=$((SECONDS + TIMEOUT_IN_SECONDS)) remaining restarts_before=0 restarts counts
+  local deadline=$((SECONDS + TIMEOUT_IN_SECONDS)) remaining restarts_before=0 restarts counts settled
   local up_args=(--force-recreate)
   while true; do
     remaining=$((deadline - SECONDS))
@@ -255,7 +296,10 @@ compose_up_tolerating_restarts() {
     fi
     if docker compose $DOCKER_COMPOSE_FILES up -d --no-build --remove-orphans "${up_args[@]}" --wait --wait-timeout "$remaining"; then
       # Also counts a restart that `up` did not see. Any restart here is a crash at boot.
-      if ! counts=$(restart_counts "$deadline"); then
+      counts=$(restart_counts "$deadline")
+      settled=$?
+      show_restarts "$counts"
+      if (( settled != 0 )); then
         echo "A container is still restarting after ${TIMEOUT_IN_SECONDS}s:"
         echo "$counts"
         return 1
@@ -266,6 +310,7 @@ compose_up_tolerating_restarts() {
     fi
     # A container still restarting at the deadline ends the loop at its next pass.
     counts=$(restart_counts "$deadline") || true
+    show_restarts "$counts"
     restarts=$(awk '{ s += $2 } END { print s + 0 }' <<< "$counts")
     if (( restarts == restarts_before )); then
       echo "The start failed without a new container restart."
@@ -279,6 +324,7 @@ compose_up_tolerating_restarts() {
 }
 
 docker compose $DOCKER_COMPOSE_FILES build || handle_docker_compose_error
+record_exits
 compose_up_tolerating_restarts || handle_docker_compose_error
 
 echo "The environment is ready"
