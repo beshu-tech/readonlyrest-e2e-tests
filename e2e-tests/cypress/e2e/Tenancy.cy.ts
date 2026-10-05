@@ -18,7 +18,7 @@ import { UserSettings } from '../support/page-objects/UserSettings';
 describe('Tenancy', () => {
   describe('should run tests', () => {
     afterEach(() => {
-      kbnApiClient.deleteSampleData('ecommerce', userCredentials);
+      kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
       kbnApiAdvancedClient.deleteAllSpaces(userCredentials, 'template_group');
     });
 
@@ -167,10 +167,10 @@ describe('Tenancy', () => {
     Tenancy.checkTenancyNameInBadge('template', 'rw');
   });
 
-  // Two tabs on two tenancies share one session cookie. cy.request sends the session cookie of the browser, and the
-  // x-ror-tenancy header is what the tenancy script of a tab adds to each Kibana API call. So the proxy sees the
-  // cy.request as an API call from a second tab of the same session. Each tenancy has its own Kibana index, and a
-  // marker data view in that index shows which tenancy answered a request.
+  // Two tabs on two tenancies share one session. The proxy must resolve the tenancy of each request from that
+  // request, and not from the session. cy.request sends the session cookie of the browser and the x-ror-tenancy
+  // header of the other tenancy. Each tenancy has its own Kibana index, and a marker data view in that index shows
+  // which tenancy answered a request.
   describe('should resolve the tenancy of each request when one session uses two tenancies', () => {
     const tenancies = {
       template: {
@@ -191,18 +191,14 @@ describe('Tenancy', () => {
     const findIndexPatternsEndpoint = '/api/saved_objects/_find?type=index-pattern&per_page=1000';
     const indexPatternIds = (result: GetObject) => result.saved_objects.map(savedObject => savedObject.id);
 
+    // Each marker exists only in its own tenancy.
     const deleteMarkers = () => {
-      Object.values(tenancies).forEach(tenancy => {
-        Object.values(tenancies).forEach(({ marker }) => {
-          kbnApiClient.deleteSavedObject({ type: 'index-pattern', id: marker }, userCredentials, tenancy.group, {
-            failOnStatusCode: false
-          });
-        });
+      Object.values(tenancies).forEach(({ group, marker }) => {
+        kbnApiClient.deleteSavedObject({ type: 'index-pattern', id: marker }, userCredentials, group);
       });
     };
 
     beforeEach(() => {
-      deleteMarkers();
       Object.values(tenancies).forEach(({ group, fixture }) => {
         cy.kbnImport({
           endpoint: 'api/saved_objects/_import?overwrite=true',
@@ -242,11 +238,17 @@ describe('Tenancy', () => {
             expect(indexPatternIds(result)).to.include(otherTenancy.marker).and.not.include(pageTenancy.marker);
           });
 
+        // The page loads again, as a tab does when the user goes back to it.
         cy.reload();
         Tenancy.checkTenancyNameInBadge(pageTenancyName, pageTenancy.access);
         // The page's fetch goes through the tenancy script of the page, which adds the tenancy of the page.
+        // no-referrer removes the referer fallback, so only the x-ror-tenancy header can resolve the tenancy.
         cy.window()
-          .then(win => win.fetch(findIndexPatternsEndpoint).then(response => response.json() as Promise<GetObject>))
+          .then(win =>
+            win
+              .fetch(findIndexPatternsEndpoint, { referrerPolicy: 'no-referrer' })
+              .then(response => response.json() as Promise<GetObject>)
+          )
           .then(result => {
             expect(indexPatternIds(result)).to.include(pageTenancy.marker).and.not.include(otherTenancy.marker);
           });
