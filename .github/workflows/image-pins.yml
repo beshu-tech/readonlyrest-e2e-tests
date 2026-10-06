@@ -1,0 +1,26 @@
+name: Image pins
+
+# A floating tag or an unpinned `npm install` builds a different image each day, and an upstream
+# release can break every e2e run with no change here. A FROM whose tag comes from a build argument
+# is exempt: that argument selects the image under test or a matrix version.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: |
+          npm=$(git grep -nE 'npm (i|install)( |$)' -- '*Dockerfile*' | grep -v -- '--before=' || true)
+          from=$(git grep -nE '^FROM ' -- '*Dockerfile*' | grep -v '@sha256:' | grep -vE 'FROM (--[^ ]+ )*[^ ]*\$\{[^ /]*( |$)' || true)
+          [ -z "$npm" ] || echo "::error::npm install without --before=<date>:"$'\n'"$npm"
+          [ -z "$from" ] || echo "::error::FROM without @sha256 digest:"$'\n'"$from"
+          [ -z "$npm$from" ]
