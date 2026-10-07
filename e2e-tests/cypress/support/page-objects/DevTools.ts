@@ -5,16 +5,32 @@ import { getKibanaVersion } from '../helpers';
 export class DevTools {
   static openDevTools() {
     cy.log('Open Dev tools');
+    if (semver.gte(getKibanaVersion(), '8.16.0') && semver.lt(getKibanaVersion(), '9.2.0')) {
+      DevTools.markConsoleTourAsDone();
+    }
     KibanaNavigation.openKibanaNavigation();
     cy.contains('Dev Tools').click();
 
-    if (semver.lt(getKibanaVersion(), '9.2.0')) {
-      if (semver.gte(getKibanaVersion(), '8.16.0')) {
-        cy.get("[data-test-subj='consoleSkipTourButton']").click();
-      } else {
-        cy.get('[data-test-subj="help-close-button"]').click();
-      }
+    if (semver.lt(getKibanaVersion(), '8.16.0')) {
+      cy.get('[data-test-subj="help-close-button"]').click();
     }
+  }
+
+  // Kibana 8.16 to 9.1 opens the Console with a tour. One navigation can mount the Console two or three
+  // times, and each mount shows its own tour, so a "Skip tour" click can find more than one button.
+  // The Console reads this key when it mounts, and a done tour shows no popover.
+  private static markConsoleTourAsDone() {
+    cy.window().then(win => {
+      win.localStorage.setItem(
+        'consoleTour',
+        JSON.stringify({
+          currentTourStep: 1,
+          isTourActive: false,
+          tourPopoverWidth: 360,
+          tourSubtitle: 'Console onboarding'
+        })
+      );
+    });
   }
 
   static sendRequest(text: string) {
