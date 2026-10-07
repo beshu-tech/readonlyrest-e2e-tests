@@ -16,6 +16,7 @@
 // Import commands.js using ES2015 syntax:
 import './commands';
 import { installClipboardCapture, resetClipboardCapture } from './clipboardCapture';
+import { installSessionEndExceptionFilter } from './sessionEnd';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
@@ -23,6 +24,8 @@ import { installClipboardCapture, resetClipboardCapture } from './clipboardCaptu
 // clipboardCapture.ts for why Chromium 138 makes that necessary.
 Cypress.on('window:before:load', installClipboardCapture);
 beforeEach(resetClipboardCapture);
+
+installSessionEndExceptionFilter();
 
 /// <reference types="cypress" />
 
