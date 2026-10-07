@@ -1,9 +1,7 @@
 name: Targeted E2E Tests
-# The title is how a caller that dispatches this workflow finds the run it started: dispatching
-# returns no run id. readonlyrest_kbn's run-e2e-tests job dispatches one run per ELK version with
-# its pre-build run tag in ror_kbn_version, so the two make the title unique to that leg. That job
-# builds the same text (dispatch_e2e_tests in its scripts/e2eTestsLib.sh): change both together.
-run-name: Targeted E2E ${{ inputs.elk_version }} ${{ inputs.ror_kbn_version }}
+# A caller that dispatches this workflow finds its run by this title: a dispatch returns no run id.
+# readonlyrest_kbn builds the same text in dispatch_e2e_tests, so change both together.
+run-name: Targeted E2E ${{ inputs.elk_version }} ${{ inputs.env }} ${{ inputs.ror_kbn_version }}
 
 on:
   workflow_dispatch:
