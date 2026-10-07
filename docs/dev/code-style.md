@@ -40,6 +40,14 @@ Do not comment self-describing code. A comment that repeats the line above it ad
 
 Unreadable code is a defect, not a subject for a comment. Fix the code first — a better name, a smaller function, an early return. Comment it only when you cannot fix it now, and then explain the constraint that keeps it this way.
 
+## Images
+
+Every image build gives the same result on every day. A floating tag or an unpinned install builds a different image each day, and an upstream release can break every e2e run with no change in this repo.
+
+- A `FROM` names its image by digest: `nginx:1.29@sha256:...`. A `FROM` whose tag comes from a build argument is the exception, because that argument selects the image under test or a matrix version.
+- An `npm install` in a Dockerfile gives exact versions and `--before=<date>`. The date also fixes the versions of the dependencies of those packages, which an exact version alone does not.
+- To move a pin, change the tag or the date and the digest together, in a PR of its own, and run the e2e suite on it.
+
 ## Language
 
 Every comment follows the repo writing style: `writing-style.md`.
