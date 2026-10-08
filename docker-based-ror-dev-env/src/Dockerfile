@@ -1,4 +1,4 @@
-FROM cruizba/ubuntu-dind:focal-26.1.4
+FROM cruizba/ubuntu-dind:focal-26.1.4@sha256:f48b104bb87df41b236a3abc901bf84022a8b6f5232768aaaf3b7c057cb1eae7
 
 ARG UID
 ARG GID
