@@ -11,34 +11,34 @@ describe('Dev tools', () => {
 
   it('should check dev tools', () => {
     cy.log('should verify POST _doc write request forbidden with 403 status');
-    DevTools.sendRequest('POST /xx-enrich-iis/_doc {enter} {{} "field": "value" {}}');
-    DevTools.verifyIf403Status();
+    DevTools.sendRequest('POST /xx-enrich-iis/_doc\n{ "field": "value" }');
+    DevTools.verifyResponseStatus(403, 'Forbidden');
 
-    cy.log('should verify GET /_index_template successful with 403 status');
+    cy.log('should verify GET /_index_template successful with 200 status');
     DevTools.sendRequest('GET /_index_template/');
-    DevTools.verifyIf200Status();
+    DevTools.verifyResponseStatus(200, 'OK');
 
     cy.log('should verify POST .kibana/_search successful with 200 status');
     DevTools.sendRequest('POST .kibana/_search');
-    DevTools.verifyIf200Status();
+    DevTools.verifyResponseStatus(200, 'OK');
 
     cy.log('should verify GET _search successful with 200 status');
-    DevTools.sendRequest('GET _search {enter} {{} {enter} "query": {{} {enter} "match_all": {{}} {enter} } } ');
-    DevTools.verifyIf200Status();
+    DevTools.sendRequest('GET _search\n{\n  "query": {\n    "match_all": {}\n  }\n}');
+    DevTools.verifyResponseStatus(200, 'OK');
 
-    cy.log('should verify GET _search successful with 200 status');
-    DevTools.sendRequest(
-      'GET _search {enter} {{} {enter} "query": {{} BAD_JSON {enter} "match_all": {{}} {enter} } } '
-    );
-
+    cy.log('should verify GET _search with bad JSON is rejected');
+    const badJsonRequest = 'GET _search\n{\n  "query": { BAD_JSON\n    "match_all": {}\n  }\n}';
     if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
+      DevTools.trySendRequest(badJsonRequest);
       DevTools.verifyIfContainsErrorsMessage();
     } else {
-      DevTools.verifyIf400Status();
+      DevTools.sendRequest(badJsonRequest);
+      DevTools.verifyResponseStatus(400, 'Bad Request');
     }
 
     cy.log('should verify whether .kibana index is not tweaked');
     DevTools.sendRequest('GET .kibana');
+    DevTools.verifyResponseStatus(200, 'OK');
     DevTools.verifyResponseInConsole(`.kibana_${getKibanaVersion()}_001`);
   });
 });

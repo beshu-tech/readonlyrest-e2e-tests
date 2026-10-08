@@ -1,4 +1,5 @@
 import * as semver from 'semver';
+import type { Interception } from 'cypress/types/net-stubbing';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
 
@@ -33,43 +34,60 @@ export class DevTools {
     });
   }
 
-  static sendRequest(text: string) {
+  // Sends the request from the Console and waits for its answer.
+  static sendRequest(request: string) {
     cy.log('Send request');
-    cy.intercept({ method: 'POST', pathname: '/s/default/api/console/proxy' }).as('sendRequest');
+    // `times: 1` gives each request its own route. Routes with the same alias all count a request
+    // they match, so with more routes a later cy.wait() can yield the answer of an earlier request.
+    cy.intercept({ method: 'POST', pathname: '/s/default/api/console/proxy', times: 1 }).as('consoleRequest');
+    DevTools.trySendRequest(request);
+    cy.wait('@consoleRequest');
+  }
+
+  // Enters the request and clicks send. The Console does not send a request with errors.
+  static trySendRequest(request: string) {
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
       cy.get('[data-test-subj="clearConsoleInput"]').click();
-      cy.get('[data-test-subj="consoleMonacoEditor"]').click().type(text);
+      cy.get('[data-test-subj="consoleMonacoEditor"]').click();
+      DevTools.pasteIntoFocusedEditor(request);
       cy.get('[data-test-subj="sendRequestButton"]').click();
     } else if (semver.lte(getKibanaVersion(), '7.9.0')) {
-      // Select editor, delete, write
       cy.get('#ConAppEditor').click();
       cy.get('#ConAppInputTextarea').clear({ force: true });
-      cy.get('#ConAppInputTextarea').type(text);
+      DevTools.pasteIntoFocusedEditor(request);
 
       // Click play
       cy.get('.ace_scroller:nth-child(4) > .ace_content').click({ force: true });
       cy.get('.conApp__editorActionButton path').click({ force: true });
     } else {
       cy.get('[data-test-subj=console-textarea]').focus().clear({ force: true });
-      cy.get('[data-test-subj=console-textarea]').focus().type(text, { force: true });
+      DevTools.pasteIntoFocusedEditor(request);
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
-    cy.wait('@sendRequest');
   }
 
-  static verifyIf200Status() {
-    cy.log('verify if 200 status');
-    cy.contains('200 - OK').should('be.visible');
+  // The Console autocomplete reacts to typed keys. A space asks for suggestions, and an Enter
+  // while they show accepts one: typed keys can give `POST /index/_doc GET { ... }`. A paste is
+  // one edit with no keys, so the editor gets the request as it is.
+  private static pasteIntoFocusedEditor(text: string) {
+    cy.focused().then($input => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/plain', text);
+      $input[0].dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
+    });
   }
 
-  static verifyIf400Status() {
-    cy.log('verify if 400 status');
-    cy.contains('400 - Bad Request').should('be.visible');
-  }
-
-  static verifyIf403Status() {
-    cy.log('verify if 403 status');
-    cy.contains('403 - Forbidden').should('be.visible');
+  static verifyResponseStatus(statusCode: number, statusText: string) {
+    cy.log(`verify ${statusCode} status`);
+    cy.get<Interception>('@consoleRequest').then(({ request, response }) => {
+      // Kibana 8 and later answers the proxy call with 200 and gives the ES status in a header, so
+      // that an ES 401 does not open the browser login prompt. Kibana 7 answers with the ES status.
+      const status = Number(response?.headers['x-console-proxy-status-code'] ?? response?.statusCode);
+      const query = new URL(request.url).searchParams;
+      const body = JSON.stringify(request.body ?? '').slice(0, 100);
+      expect(status, `ES status of ${query.get('method')} ${query.get('path')}, body ${body}`).to.equal(statusCode);
+    });
+    cy.contains(`${statusCode} - ${statusText}`).should('be.visible');
   }
 
   static verifyIfContainsErrorsMessage() {
