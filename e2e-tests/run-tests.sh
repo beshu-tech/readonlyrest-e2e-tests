@@ -47,8 +47,7 @@ echo "Running E2E Cypress tests (mode: $RUN_TYPE) ..."
 
 yarn --frozen-lockfile install
 
-# The key goes in through the environment, not --env: yarn prints the command line it runs, and that
-# output ends up in results/e2e-output.log.
+# The key goes in through the environment, not --env: yarn prints the command line it runs.
 export CYPRESS_enterpriseActivationKey="$ROR_ACTIVATION_KEY"
 if [[ "$RUN_TYPE" == "open" ]]; then
   yarn open --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME"

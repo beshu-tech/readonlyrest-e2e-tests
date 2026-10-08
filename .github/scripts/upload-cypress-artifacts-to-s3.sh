@@ -90,8 +90,8 @@ upload_one() {
   "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
-# Text files can hold a secret: Kibana logs the decrypted activation key at trace level. Each
-# occurrence becomes <redacted>. A file that still holds it after that is not uploaded at all.
+# A text file can hold a CI secret. Each occurrence of REDACT_VALUE becomes <redacted>, and a file
+# that still holds it after that is not uploaded at all.
 REDACT_VALUE=${REDACT_VALUE:-}
 redact() {
   local FILE=$1

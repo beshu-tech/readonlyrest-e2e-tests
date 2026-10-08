@@ -21,7 +21,7 @@ inputs:
     description: 'S3 secret access key'
     required: true
   redact:
-    description: 'A secret to remove from every text file before the upload, such as the ROR activation key. Kibana logs it at trace level.'
+    description: 'A CI secret to remove from every text file before the upload.'
     required: false
     default: ''
   results_dir:
