@@ -90,8 +90,20 @@ upload_one() {
   "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
+# Text files can hold a secret: Kibana logs the decrypted activation key at trace level. Each
+# occurrence becomes <redacted>. A file that still holds it after that is not uploaded at all.
+REDACT_VALUE=${REDACT_VALUE:-}
+redact() {
+  local FILE=$1
+  [ -n "$REDACT_VALUE" ] || return 0
+  grep -qF -- "$REDACT_VALUE" "$FILE" 2>/dev/null || return 0
+  REDACT_VALUE="$REDACT_VALUE" perl -i -pe 's/\Q$ENV{REDACT_VALUE}\E/<redacted>/g' "$FILE"
+  ! grep -qF -- "$REDACT_VALUE" "$FILE"
+}
+
 UPLOADED=0
 SKIPPED_EMPTY=0
+SKIPPED_SECRET=0
 FAILED=0
 DIAGNOSED=false
 
@@ -107,6 +119,13 @@ while IFS= read -r -d '' FILE; do
 
   REL=${FILE#"$SOURCE_DIR"/}
   MIME=$(mime_of "$FILE")
+  if [[ "$MIME" == text/* || "$MIME" == application/json || "$MIME" == application/xml || "$FILE" == *.md || "$FILE" == *.tsv ]]; then
+    if ! redact "$FILE"; then
+      echo "WARNING: $REL still holds the secret after redaction; not uploaded"
+      SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
+      continue
+    fi
+  fi
   if upload_one "$FILE" "${S3_PATH}${REL}" "$MIME"; then
     UPLOADED=$((UPLOADED + 1))
     continue
@@ -125,7 +144,7 @@ while IFS= read -r -d '' FILE; do
   fi
 done < <(find "$SOURCE_DIR" -type f -print0)
 
-echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
+echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY skipped_secret=$SKIPPED_SECRET failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
   echo "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
 elif [ "$FAILED" -eq 0 ]; then
