@@ -1,4 +1,5 @@
 import { BasicCredentials, KbnApiClient } from './KbnApiClient';
+import { requiredBaseUrl } from './index';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
@@ -69,6 +70,33 @@ export class KbnApiAdvancedClient extends KbnApiClient {
       });
 
     return waitUntilDown().then(() => this.waitForKibanaHealth(baseUrl, 90, 2000));
+  }
+
+  /**
+   * Waits until Kibana answers a request that ReadonlyREST authenticates. waitForKibanaHealth is not
+   * enough: /api/status answers also on a Kibana node whose ReadonlyREST part never answers a user
+   * request (RORDEV-2283). Behind the docker proxy the requests go to the Kibana replicas in turn, so
+   * four answers in a row mean that every replica answers. Such a node does not recover until it
+   * restarts, so the wait stays short.
+   */
+  public waitForKibanaToAnswerUserRequests() {
+    const requestTimeoutMs = 10000;
+    const totalTimeoutMs = 45000;
+
+    return cy.task(
+      'waitForKibanaToAnswer',
+      {
+        url: `${requiredBaseUrl()}/api/spaces/space`,
+        headers: {
+          authorization: `Basic ${btoa(`${Cypress.env('login')}:${Cypress.env('password')}`)}`,
+          'kbn-xsrf': 'true'
+        },
+        answersInARow: 4,
+        requestTimeoutMs,
+        totalTimeoutMs
+      },
+      { timeout: totalTimeoutMs + requestTimeoutMs }
+    );
   }
 
   public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {

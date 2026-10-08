@@ -233,6 +233,38 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       } catch {
         return [];
       }
+    },
+    // A status below 500 counts as an answer, a refusal too. No answer within requestTimeoutMs, or a
+    // 5xx, starts the count again.
+    async waitForKibanaToAnswer(options: KibanaAnswerWaitOptions): Promise<null> {
+      const { url, headers, answersInARow, requestTimeoutMs, totalTimeoutMs } = options;
+      const agent: Agent = new Agent({ rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' });
+      const deadline = Date.now() + totalTimeoutMs;
+      const outcomes: string[] = [];
+      let answers = 0;
+
+      while (answers < answersInARow) {
+        const timeLeft = deadline - Date.now();
+        if (timeLeft <= 0) {
+          throw new Error(
+            `Kibana did not answer ${answersInARow} requests in a row within ${totalTimeoutMs} ms. ` +
+              `GET ${url}: ${outcomes.join(', ')}`
+          );
+        }
+        const startedAt = Date.now();
+        try {
+          const response = await fetch(url, { headers, agent, timeout: Math.min(requestTimeoutMs, timeLeft) });
+          await response.text();
+          outcomes.push(`${response.status} in ${Date.now() - startedAt} ms`);
+          answers = response.status < 500 ? answers + 1 : 0;
+        } catch (error) {
+          outcomes.push(`${(error as Error).message} after ${Date.now() - startedAt} ms`);
+          answers = 0;
+        }
+      }
+
+      console.log(`Kibana answered ${answersInARow} requests in a row: GET ${url}: ${outcomes.join(', ')}`);
+      return null;
     }
   });
 
@@ -307,6 +339,14 @@ interface HttpCallOptions {
   failOnStatusCode?: boolean;
   // For endpoints that restart the server they answer from, so the reply is lost by design.
   allowTransportError?: boolean;
+}
+
+interface KibanaAnswerWaitOptions {
+  url: string;
+  headers: { [key: string]: string };
+  answersInARow: number;
+  requestTimeoutMs: number;
+  totalTimeoutMs: number;
 }
 
 interface FileToUpload {

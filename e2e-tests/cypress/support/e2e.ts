@@ -16,6 +16,7 @@
 // Import commands.js using ES2015 syntax:
 import './commands';
 import { installClipboardCapture, resetClipboardCapture } from './clipboardCapture';
+import { kbnApiAdvancedClient } from './helpers/KbnApiAdvancedClient';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
@@ -23,6 +24,10 @@ import { installClipboardCapture, resetClipboardCapture } from './clipboardCaptu
 // clipboardCapture.ts for why Chromium 138 makes that necessary.
 Cypress.on('window:before:load', installClipboardCapture);
 beforeEach(resetClipboardCapture);
+
+// A spec that starts on a Kibana that does not answer user requests fails at its first login, and
+// the cause stays hidden. Fail here instead, with the cause in the error.
+before(() => kbnApiAdvancedClient.waitForKibanaToAnswerUserRequests());
 
 /// <reference types="cypress" />
 
