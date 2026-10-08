@@ -234,6 +234,16 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
   }
 
   /**
+   * Kibana 7.17 Discover opens a saved search right after the save and runs its search again. When
+   * its own URL state update cancels that search, it throws the cancellation as an uncaught
+   * AbortError. A cancelled search is not a failure; an assertion on its result still fails a test
+   * that needs it.
+   */
+  if (err.name === 'AbortError') {
+    return false;
+  }
+
+  /**
    * Don't fail test when these specific errors from kibana platform
    */
   if (
