@@ -96,6 +96,9 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       // the real error.
       beforeEach(() => {
         esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
+        // On Kibana 7, Discover offers "Create index pattern" only when no index pattern exists.
+        // Earlier specs can leave one: the APM plugin adds `apm_static_index_pattern_id` to .kibana.
+        kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
       });
 
       afterEach(() => {
