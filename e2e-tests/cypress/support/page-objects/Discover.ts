@@ -8,8 +8,7 @@ export class Discover {
     createKibanaIndexPattern(indexPatternName);
 
     if (semver.lt(getKibanaVersion(), '8.8.0')) {
-      KibanaNavigation.openKibanaNavigation();
-      cy.contains('Discover').click({ force: true });
+      KibanaNavigation.openPage('Discover');
     }
 
     Discover.verifyIndexTitle(indexPatternName);
@@ -17,8 +16,7 @@ export class Discover {
 
   static saveReport(reportName: string) {
     cy.log('saveReport');
-    KibanaNavigation.openKibanaNavigation();
-    cy.contains('Discover').click();
+    KibanaNavigation.openPage('Discover');
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
 
@@ -148,14 +146,12 @@ export class Discover {
     cy.log('open data view page');
 
     const openDataPageForKibanaForAndAbove8_1_0 = () => {
-      KibanaNavigation.openKibanaNavigation();
-      cy.contains('Stack Management').click();
-      cy.contains('Data Views').click();
+      KibanaNavigation.openPage('Stack Management');
+      KibanaNavigation.openSubPage('Data Views');
     };
 
     const openDataPageForKibanaBefore7_18_1 = () => {
-      KibanaNavigation.openKibanaNavigation();
-      cy.contains('Discover').click();
+      KibanaNavigation.openPage('Discover');
     };
 
     if (semver.gte(getKibanaVersion(), '8.1.0')) {

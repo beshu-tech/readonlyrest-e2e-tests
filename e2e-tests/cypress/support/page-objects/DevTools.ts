@@ -10,8 +10,7 @@ export class DevTools {
     if (semver.gte(getKibanaVersion(), '8.16.0') && semver.lt(getKibanaVersion(), '9.2.0')) {
       DevTools.markConsoleTourAsDone();
     }
-    KibanaNavigation.openKibanaNavigation();
-    cy.contains('Dev Tools').click();
+    KibanaNavigation.openPage('Dev Tools');
 
     if (semver.lt(getKibanaVersion(), '8.16.0')) {
       cy.get('[data-test-subj="help-close-button"]').click();
