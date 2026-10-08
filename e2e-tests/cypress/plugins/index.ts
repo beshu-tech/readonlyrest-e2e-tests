@@ -235,9 +235,11 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       }
     },
     // A status below 500 counts as an answer, a refusal too. No answer within requestTimeoutMs, or a
-    // 5xx, starts the count again.
+    // 5xx, starts the count again. A refused connection or a 5xx comes back at once, so the next
+    // request waits a second: that keeps a stopped Kibana from getting thousands of requests.
     async waitForKibanaToAnswer(options: KibanaAnswerWaitOptions): Promise<null> {
       const { url, headers, answersInARow, requestTimeoutMs, totalTimeoutMs } = options;
+      const pauseAfterFailureMs = 1000;
       const agent: Agent = new Agent({ rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' });
       const deadline = Date.now() + totalTimeoutMs;
       const outcomes: string[] = [];
@@ -260,6 +262,9 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         } catch (error) {
           outcomes.push(`${(error as Error).message} after ${Date.now() - startedAt} ms`);
           answers = 0;
+        }
+        if (answers === 0) {
+          await new Promise(resolve => setTimeout(resolve, Math.min(pauseAfterFailureMs, deadline - Date.now())));
         }
       }
 
