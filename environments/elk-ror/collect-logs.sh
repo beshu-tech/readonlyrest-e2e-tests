@@ -39,20 +39,8 @@ done
 # The start script writes this log only when the stack fails to come up.
 [ -f "$PROJECT.log" ] && cp "$PROJECT.log" "$OUT/compose-startup.log" 2>/dev/null
 
-# The last healthcheck runs of each container, with their output. They show when a container
-# stopped passing its check, and what the check saw.
-for container in $(docker ps -a --filter "name=^${PROJECT}" --format '{{.Names}}' 2>/dev/null); do
-  echo "== $container"
-  docker inspect -f '{{if .State.Health}}{{.State.Health.Status}} failing-streak={{.State.Health.FailingStreak}}{{"\n"}}{{range .State.Health.Log}}{{.Start}} exit={{.ExitCode}} {{.Output}}{{"\n"}}{{end}}{{else}}no healthcheck{{end}}' "$container" 2>&1
-done > "$OUT/healthchecks.txt" 2>&1 || true
-
-# Last, because a hung replica makes each probe wait for its timeout. The probe goes to each replica
-# directly, so it names the replica that hangs, also when kbn-proxy hides it behind a 504.
-./probe-kibana.sh > "$OUT/kibana-probes.txt" 2>&1 || true
-
 echo ">>> stack logs written to $OUT"
 cat "$OUT/containers.txt" 2>/dev/null || true
-cat "$OUT/kibana-probes.txt" 2>/dev/null || true
 
 if [ "$CONSOLE" = "--console" ]; then
   echo "Logs from docker compose:"

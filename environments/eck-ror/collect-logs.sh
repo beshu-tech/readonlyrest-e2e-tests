@@ -32,13 +32,8 @@ kube get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.
       rm -f "$OUT/${ns}_${pod}.previous.log"
   done
 
-# Last, because a hung pod makes each probe wait for its timeout. The probe goes to each pod
-# directly, so it separates "Kibana core answers" from "ROR KBN answers".
-"$(dirname "$0")"/probe-kibana.sh > "$OUT/kibana-probes.txt" 2>&1 || true
-
 echo ">>> stack logs written to $OUT"
 cat "$OUT/pods.txt" 2>/dev/null || true
-cat "$OUT/kibana-probes.txt" 2>/dev/null || true
 
 if [ "$CONSOLE" = "--console" ]; then
   echo "Cluster events:"

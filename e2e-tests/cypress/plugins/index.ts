@@ -6,7 +6,6 @@ import FormData from 'form-data';
 import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
-import { awaitKibanaAnswers } from './awaitKibanaAnswers';
 
 let embeddedServer: ReturnType<typeof https.createServer> | null = null;
 const EMBEDDED_SERVER_PORT = 8080;
@@ -153,7 +152,6 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         req.end();
       });
     },
-    awaitKibanaAnswers,
     startEmbeddedServer(): Promise<number> {
       if (embeddedServer) return Promise.resolve(EMBEDDED_SERVER_PORT);
       const certDir = path.join(ROOT_DIR, 'environments', 'elk-ror', 'certs');

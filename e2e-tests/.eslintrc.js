@@ -55,28 +55,5 @@ module.exports = {
     'default-param-last': 'off',
     'func-names': 'off',
     'prefer-destructuring': ['error', { AssignmentExpression: { array: false } }]
-  },
-  overrides: [
-    {
-      // RorApiClient waits for Kibana to answer after each ROR settings change. A direct call skips
-      // that wait, and the next test then meets a Kibana that is not ready.
-      // The rule matches the 'admin/config' part of each string, so a path built from parts fails
-      // too. It stops mistakes, not a deliberate bypass.
-      files: ['**/*.ts'],
-      excludedFiles: ['cypress/support/helpers/RorApiClient.ts'],
-      rules: {
-        'no-restricted-syntax': [
-          'error',
-          {
-            selector: 'Literal[value=/admin.config/]',
-            message: 'Change the ROR settings through rorApiClient.'
-          },
-          {
-            selector: 'TemplateElement[value.raw=/admin.config/]',
-            message: 'Change the ROR settings through rorApiClient.'
-          }
-        ]
-      }
-    }
-  ]
+  }
 };

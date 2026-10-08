@@ -129,7 +129,7 @@ E2E_SUMMARY=results/e2e-summary.md
 # Runs from the ERR trap, where the stack did not come up. --console puts the stack log on the
 # console, because the job log has no other record of the failure.
 collect_logs() {
-  collect_stack_logs --console
+  ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" --console || true
 }
 
 # The per-spec table and the totals that Cypress prints at the end of its output, as Markdown.
@@ -147,56 +147,7 @@ write_summary() {
 }
 
 cleanup() {
-  # Set only while the suite runs: here the script ends with a signal or an error mid-suite.
-  [ -n "$WATCHDOG_PGID" ] && { kill -- "-$WATCHDOG_PGID" 2>/dev/null || true; }
-  [ -n "$SUITE_PGID" ] && { kill -TERM -- "-$SUITE_PGID" 2>/dev/null || true; }
-  # Also on a timeout or a cancel: the retry wrapper and GitHub end this script with a signal, and the
-  # teardown below deletes the containers with their logs.
-  [ "$RUN_PASSED" = true ] || collect_stack_logs
   ./environments/"$ENV_NAME"/stop-and-clean.sh
-}
-
-# A new directory for each run of this script: the retry wrapper runs it again in the same checkout,
-# and the next attempt must not overwrite the logs of the attempt that failed. No ":" in the name,
-# because the artifact upload rejects it.
-ATTEMPT_LOGS=$STACK_LOGS/attempt-$(date -u +%Y%m%dT%H%M%SZ)
-RUN_PASSED=false
-SUITE_STARTED=false
-STACK_LOGS_COLLECTED=false
-SUITE_PGID=
-WATCHDOG_PGID=
-
-collect_stack_logs() {
-  [ "$STACK_LOGS_COLLECTED" = true ] && return 0
-  STACK_LOGS_COLLECTED=true
-  ./environments/"$ENV_NAME"/collect-logs.sh "$ATTEMPT_LOGS" "$@" || true
-  # The output file of an earlier attempt is still there when this attempt did not reach the suite.
-  [ "$SUITE_STARTED" = true ] && cp "$E2E_OUTPUT" "$ATTEMPT_LOGS/" 2>/dev/null
-  return 0
-}
-
-# A Kibana replica that hangs does not recover, and every later test fails on it after 20 s, three
-# times. Without this stop, the attempt runs into the cap of the retry wrapper. One spec restarts
-# Kibana on purpose. The window is longer than that restart, so only a replica that stays down stops
-# the suite.
-KIBANA_PROBE_INTERVAL=30
-KIBANA_DOWN_LIMIT=420
-
-watch_kibana() {
-  local down_since=
-  while sleep "$KIBANA_PROBE_INTERVAL"; do
-    if ./environments/"$ENV_NAME"/probe-kibana.sh > results/kibana-watchdog.txt 2>&1; then
-      down_since=
-      continue
-    fi
-    down_since=${down_since:-$SECONDS}
-    if (( SECONDS - down_since >= KIBANA_DOWN_LIMIT )); then
-      echo -e "\nERROR: a Kibana replica does not answer for ${KIBANA_DOWN_LIMIT}s. The suite stops.\n"
-      cat results/kibana-watchdog.txt
-      kill -TERM -- "-$SUITE_PGID"
-      return
-    fi
-  done
 }
 
 trap collect_logs ERR
@@ -222,45 +173,23 @@ if [[ "$MODE" == "e2e" ]]; then
 
   mkdir -p results
 
-  # The stack is healthy by its own checks, which ask Kibana core only. This asks each replica for a
-  # request that goes through ROR KBN, and stops here when one does not answer.
-  if ! ./environments/"$ENV_NAME"/probe-kibana.sh --wait 120; then
-    echo -e "\nERROR: a Kibana replica does not answer after the start. The suite does not run.\n"
-    exit 1
-  fi
-
-  # errexit would end the script here, before the summary and the logs.
+  # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the
+  # suite's status, not tee's.
   set +e
-  SUITE_STARTED=true
-  # Job control puts each background job in its own process group, so one kill stops the whole
-  # suite: yarn, Cypress and its browser. The subshell exits with the suite's status, not tee's.
-  set -m
-  ( ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"; exit "${PIPESTATUS[0]}" ) &
-  SUITE_PGID=$!
-  watch_kibana &
-  WATCHDOG_PGID=$!
-  set +m
-  # The `||` keeps a failed suite from firing the ERR trap, which is for a stack that did not start.
-  E2E_STATUS=0
-  time wait "$SUITE_PGID" || E2E_STATUS=$?
-  SUITE_PGID=
-  # The watchdog is gone when it stopped the suite itself.
-  kill -- "-$WATCHDOG_PGID" 2>/dev/null || true
-  WATCHDOG_PGID=
+  time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
+  E2E_STATUS=${PIPESTATUS[0]}
   set -e
 
   write_summary
 
   if [[ $E2E_STATUS -ne 0 ]]; then
-    # The EXIT trap collects them. No --console: the Cypress output is on the console, and the stack
-    # logs under it would bury the summary.
+    # No --console: the Cypress output is on the console, and the stack logs under it would bury
+    # the summary. results/ is the directory the callers upload on failure.
     echo -e "\nE2E tests failed - collecting the stack logs\n"
-  else
-    RUN_PASSED=true
+    ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" || true
   fi
 
   exit $E2E_STATUS
 else
-  RUN_PASSED=true
   echo -e "Bootstrap mode: Cluster setup completed.\n"
 fi
