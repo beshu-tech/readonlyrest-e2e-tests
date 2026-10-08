@@ -1,5 +1,6 @@
 import * as semver from 'semver';
 import type { Interception } from 'cypress/types/net-stubbing';
+import { recurse } from 'cypress-recurse';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
 
@@ -47,9 +48,7 @@ export class DevTools {
   // Enters the request and clicks send. The Console does not send a request with errors.
   static trySendRequest(request: string) {
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.get('[data-test-subj="clearConsoleInput"]').click();
-      cy.get('[data-test-subj="consoleMonacoEditor"]').click();
-      DevTools.pasteIntoFocusedEditor(request);
+      DevTools.enterRequestIntoMonacoEditor(request);
       cy.get('[data-test-subj="sendRequestButton"]').click();
     } else if (semver.lte(getKibanaVersion(), '7.9.0')) {
       cy.get('#ConAppEditor').click();
@@ -64,6 +63,40 @@ export class DevTools {
       DevTools.pasteIntoFocusedEditor(request);
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
+  }
+
+  // Kibana 8.16 to 9.1 can mount the Console again after it shows (RORDEV-2282). The new mount
+  // replaces the editor and fills it with its start text, so a request entered before that is lost
+  // or lands inside the start text. So the request goes in again until the editor holds only it.
+  private static enterRequestIntoMonacoEditor(request: string, attempt = 1) {
+    cy.get('[data-test-subj="clearConsoleInput"]').click();
+    cy.get('[data-test-subj="consoleMonacoEditor"]').click();
+    DevTools.pasteIntoFocusedEditor(request);
+    // Monaco draws the pasted lines on a later frame, so the check polls for up to 2 s.
+    recurse(
+      () => DevTools.monacoEditorText(),
+      text => text === request,
+      { limit: 20, delay: 100, doNotFail: true, yield: 'value', log: false }
+    ).then(text => {
+      if (text !== request && attempt < DevTools.ENTER_ATTEMPTS) {
+        DevTools.enterRequestIntoMonacoEditor(request, attempt + 1);
+      } else {
+        expect(text, 'Console editor text').to.equal(request);
+      }
+    });
+  }
+
+  private static readonly ENTER_ATTEMPTS = 3;
+
+  // Monaco positions its line elements; their DOM order is not the line order.
+  private static monacoEditorText() {
+    return cy.get('[data-test-subj="consoleMonacoEditor"] .view-line').then($lines =>
+      $lines
+        .toArray()
+        .sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top))
+        .map(line => line.innerText.replace(/\u00a0/g, ' ').trimEnd())
+        .join('\n')
+    );
   }
 
   // The Console autocomplete reacts to typed keys. A space asks for suggestions, and an Enter
