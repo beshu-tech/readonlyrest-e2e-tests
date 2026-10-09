@@ -1,20 +1,38 @@
-import { BasicCredentials, KbnApiClient } from './KbnApiClient';
+import { BasicCredentials, KbnApiClient, SavedObject } from './KbnApiClient';
 import { requiredBaseUrl } from './index';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
-    this.getSavedObjects(credentials, group).then(result => {
-      // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
-      // index can be mid-reset, and a session sweep or config restart can log the request out,
-      // in which case the _find answers with a login page instead of the find JSON. An index
-      // that is already resetting has nothing left to clean, so treat that as the empty list.
-      (result?.saved_objects ?? []).forEach(savedObject => {
+    this.findAllSavedObjects(credentials, group).then(savedObjects => {
+      savedObjects.forEach(savedObject => {
         cy.log(`Remove ${savedObject.id} saved object for ${credentials}`);
         // Best effort: an object listed a moment ago can already be gone (404). Losing that
         // race must not fail cleanup.
         this.deleteSavedObject(savedObject, credentials, group, { failOnStatusCode: false });
       });
+    });
+  }
+
+  // _find gives one page of results, so this reads page after page until it has them all. The
+  // deletes come after the last page: a delete between two pages moves objects to earlier pages.
+  private findAllSavedObjects(
+    credentials: string,
+    group?: string,
+    page = 1,
+    found: SavedObject[] = []
+  ): Cypress.Chainable<SavedObject[]> {
+    return this.getSavedObjects(credentials, group, { page, perPage: 100 }).then(result => {
+      // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
+      // index can be mid-reset, and a session sweep or config restart can log the request out,
+      // in which case the _find answers with a login page instead of the find JSON. An index
+      // that is already resetting has nothing left to clean, so treat that as the end of the list.
+      const pageObjects = result?.saved_objects ?? [];
+      const all = [...found, ...pageObjects];
+      if (pageObjects.length === 0 || all.length >= (result.total ?? 0)) {
+        return cy.wrap(all, { log: false });
+      }
+      return this.findAllSavedObjects(credentials, group, page + 1, all);
     });
   }
 
