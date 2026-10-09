@@ -1,5 +1,4 @@
 import * as semver from 'semver';
-import type { Interception } from 'cypress/types/net-stubbing';
 import { recurse } from 'cypress-recurse';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
@@ -34,14 +33,29 @@ export class DevTools {
     });
   }
 
-  // Sends the request from the Console and waits for its answer.
-  static sendRequest(request: string) {
-    cy.log('Send request');
-    // `times: 1` gives each request its own route. Routes with the same alias all count a request
-    // they match, so with more routes a later cy.wait() can yield the answer of an earlier request.
-    cy.intercept({ method: 'POST', pathname: '/s/default/api/console/proxy', times: 1 }).as('consoleRequest');
+  // Sends the request from the Console and checks the ES status of its answer.
+  static sendRequest(request: string, statusCode: number, statusText: string) {
+    cy.log(`Send request, expect ${statusCode}`);
+    const [method, path] = request.split('\n')[0].trim().split(/\s+/);
+    const exactly = (text: string) => new RegExp(`^${Cypress._.escapeRegExp(text)}$`);
+    // The Console also sends its own requests through this proxy, for example the autocomplete
+    // loads on Kibana 7, so the route matches only the method and path of this request. `times: 1`
+    // gives each request its own route: routes with the same alias all count a request they match.
+    cy.intercept({
+      method: 'POST',
+      pathname: '/s/default/api/console/proxy',
+      query: { method: exactly(method), path: exactly(path) },
+      times: 1
+    }).as('consoleRequest');
     DevTools.trySendRequest(request);
-    cy.wait('@consoleRequest');
+    cy.wait('@consoleRequest').then(({ request: sent, response }) => {
+      // Kibana 8 and later answers the proxy call with 200 and gives the ES status in a header, so
+      // that an ES 401 does not open the browser login prompt. Kibana 7 answers with the ES status.
+      const status = Number(response?.headers['x-console-proxy-status-code'] ?? response?.statusCode);
+      const body = JSON.stringify(sent.body ?? '').slice(0, 100);
+      expect(status, `ES status of ${method} ${path}, body ${body}`).to.equal(statusCode);
+    });
+    cy.contains(`${statusCode} - ${statusText}`).should('be.visible');
   }
 
   // Enters the request and clicks send. The Console does not send a request with errors.
@@ -107,19 +121,6 @@ export class DevTools {
       clipboardData.setData('text/plain', text);
       $input[0].dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
     });
-  }
-
-  static verifyResponseStatus(statusCode: number, statusText: string) {
-    cy.log(`verify ${statusCode} status`);
-    cy.get<Interception>('@consoleRequest').then(({ request, response }) => {
-      // Kibana 8 and later answers the proxy call with 200 and gives the ES status in a header, so
-      // that an ES 401 does not open the browser login prompt. Kibana 7 answers with the ES status.
-      const status = Number(response?.headers['x-console-proxy-status-code'] ?? response?.statusCode);
-      const query = new URL(request.url).searchParams;
-      const body = JSON.stringify(request.body ?? '').slice(0, 100);
-      expect(status, `ES status of ${query.get('method')} ${query.get('path')}, body ${body}`).to.equal(statusCode);
-    });
-    cy.contains(`${statusCode} - ${statusText}`).should('be.visible');
   }
 
   static verifyIfContainsErrorsMessage() {
