@@ -1,7 +1,7 @@
 import * as semver from 'semver';
 import { recurse } from 'cypress-recurse';
 import { KibanaNavigation } from './KibanaNavigation';
-import { getKibanaVersion } from '../helpers';
+import { getKibanaVersion, pasteText } from '../helpers';
 
 export class DevTools {
   static openDevTools() {
@@ -116,11 +116,7 @@ export class DevTools {
   // while they show accepts one: typed keys can give `POST /index/_doc GET { ... }`. A paste is
   // one edit with no keys, so the editor gets the request as it is.
   private static pasteIntoFocusedEditor(text: string) {
-    cy.focused().then($input => {
-      const clipboardData = new DataTransfer();
-      clipboardData.setData('text/plain', text);
-      $input[0].dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
-    });
+    cy.focused().then($input => pasteText($input[0], text));
   }
 
   static verifyIfContainsErrorsMessage() {
