@@ -93,9 +93,12 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   /**
    * Waits until Kibana answers a request that ReadonlyREST authenticates. waitForKibanaHealth is not
    * enough: /api/status answers also on a Kibana node whose ReadonlyREST part never answers a user
-   * request (RORDEV-2283). Behind the docker proxy the requests go to the Kibana replicas in turn, so
-   * four answers in a row mean that every replica answers. Such a node does not recover until it
-   * restarts, so the wait stays short.
+   * request (RORDEV-2283). Such a node does not recover until it restarts, so the wait stays short.
+   *
+   * The wait finds a node that gives no answer within the request timeout. Behind the docker proxy
+   * the requests go to the replicas in turn, and the proxy waits longer than this timeout for an
+   * answer. The proxy sends a failed GET (refused, 502, 503 or 504) to the other replica, so the
+   * wait does not see a replica that fails in that way.
    */
   public waitForKibanaToAnswerUserRequests() {
     const requestTimeoutMs = 10000;
