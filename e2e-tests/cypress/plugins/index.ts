@@ -215,30 +215,6 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     generateJwt(payload: object): string {
       return generateJwt(payload);
     },
-    async clearDownloads() {
-      const downloadsFolder = path.join('cypress', 'downloads');
-      console.log('🧹 Starting to clear the downloads folder:', downloadsFolder);
-
-      try {
-        await fs.promises.rm(downloadsFolder, { recursive: true, force: true });
-        console.log('✅ Downloads folder cleared successfully.');
-
-        await fs.promises.mkdir(downloadsFolder, { recursive: true });
-        console.log('📁 Created a new empty downloads folder.');
-      } catch (err) {
-        console.error('❌ Error while clearing the downloads folder:', err);
-      }
-
-      return null;
-    },
-    async listDownloadedFiles() {
-      const downloadsFolder = path.join('cypress', 'downloads');
-      try {
-        return await fs.promises.readdir(downloadsFolder);
-      } catch {
-        return [];
-      }
-    },
     // A status below 500 counts as an answer, a refusal too. No answer within requestTimeoutMs, or a
     // 5xx, starts the count again. A refused connection or a 5xx comes back at once, so the next
     // request waits a second: that keeps a stopped Kibana from getting thousands of requests.

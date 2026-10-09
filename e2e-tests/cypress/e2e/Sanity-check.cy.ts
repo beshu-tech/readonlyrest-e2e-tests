@@ -31,7 +31,6 @@ describe('sanity check', () => {
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
-    cy.task('clearDownloads');
   });
 
   it('should verify that everything works', () => {

@@ -93,13 +93,6 @@ export class Discover {
     cy.get('[data-test-subj=generateReportButton]').click();
     cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
     cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');
-
-    /**
-     * TODO: For now csv download crash cypress electron browser (it's probably works in case of other browsers).
-     * For now we can skip it
-     */
-    // cy.get('[data-test-subj=downloadCompletedReportButton]').click();
-    // cy.readFile('cypress/downloads/admin_search.csv').should('not.be.null');
   }
 
   static openShareDiscover() {
