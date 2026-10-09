@@ -16,11 +16,11 @@ describe('sanity check', () => {
   beforeEach(() => {
     // The report assertions below count every row the reporting page lists, so the test needs an
     // empty report store to start from. afterEach alone cannot promise that: when a hook fails, the
-    // rest of it is skipped, and a retry then starts with the previous attempt's report still there
-    // and fails with "Too many elements found" instead of the real error.
+    // rest of it is skipped, and the next test then starts with the previous test's report still
+    // there and fails with "Too many elements found" instead of the real error.
     //
-    // UntilEmpty, not the bare prune: attempt 1 can leave a report queued but not yet written, and
-    // the bare prune would return before it lands.
+    // UntilEmpty, not the bare prune: the previous test can leave a report queued but not yet
+    // written, and the bare prune would return before it lands.
     esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
     SampleData.createSampleData('sample_index', 1);
     Login.initialization();
@@ -31,7 +31,6 @@ describe('sanity check', () => {
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
     kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
-    cy.task('clearDownloads');
   });
 
   it('should verify that everything works', () => {

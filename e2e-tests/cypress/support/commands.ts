@@ -1,6 +1,8 @@
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
+import * as semver from 'semver';
 import { capture as clipboardCapture } from './clipboardCapture';
+import { getKibanaVersion } from './helpers';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -220,16 +222,36 @@ Cypress.Commands.add(
 Cypress.on('uncaught:exception', (err, runnable, promise) => {
   /**
    * Kibana keeps polling in the background (task manager, alerting, telemetry) while a test tears
-   * down. When the previous attempt's page is being logged out, one of those fetches can answer
+   * down. When the previous test's page is being logged out, one of those fetches can answer
    * with a gateway status. Nothing in the app awaits that promise, so it surfaces as an unhandled
    * rejection and fails whichever hook is running - usually an afterEach, which then skips the rest
-   * of the cleanup and poisons every following retry (RORDEV: Sanity-check "Too many elements
+   * of the cleanup and poisons every following test (RORDEV: Sanity-check "Too many elements
    * found. Found '2', expected '1'").
    *
    * Only unhandled rejections are ignored here, never an error a test action waits on: `promise` is
    * set only for a rejection no application code handled.
    */
   if (promise && /\b(Bad Gateway|Gateway Timeout|Service Unavailable)\b/.test(err.message)) {
+    return false;
+  }
+
+  /**
+   * Kibana 7.17 Discover opens a saved search right after the save and runs its search again. When
+   * its own URL state update cancels that search, it throws the cancellation as an uncaught
+   * AbortError. A cancelled search is not a failure; an assertion on its result still fails a test
+   * that needs it. Only Kibana 7 needs this, so on 8 and later an uncaught AbortError still fails.
+   */
+  if (err.name === 'AbortError' && semver.lt(getKibanaVersion(), '8.0.0')) {
+    return false;
+  }
+
+  /**
+   * Kibana 9 cancels a search when the page leaves it. When the search has no async search id yet,
+   * the search interceptor (search_interceptor.ts, `id = id ?? response.id; await
+   * sendCancelRequest()`) builds the cancel path with no id, and buildPath throws. Nothing awaits
+   * that call, so it surfaces as an unhandled rejection. Only that rejection is ignored.
+   */
+  if (promise && err.message.includes('Missing required path parameter: id')) {
     return false;
   }
 

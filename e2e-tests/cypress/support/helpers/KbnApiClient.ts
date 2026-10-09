@@ -35,9 +35,15 @@ export class KbnApiClient {
     });
   }
 
-  public getSavedObjects(credentials: string, group?: string): Cypress.Chainable<GetObject> {
+  public getSavedObjects(
+    credentials: string,
+    group?: string,
+    { page = 1, perPage = 20 }: { page?: number; perPage?: number } = {}
+  ): Cypress.Chainable<GetObject> {
     return cy.kbnGet<GetObject>({
-      endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url',
+      endpoint:
+        'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url' +
+        `&page=${page}&per_page=${perPage}`,
       credentials,
       currentGroupHeader: group
     });
@@ -140,13 +146,14 @@ export interface DataViews {
   data_view: DataView[];
 }
 
-interface SavedObject {
+export interface SavedObject {
   type: string;
   id: string;
 }
 
 export interface GetObject {
   saved_objects: SavedObject[];
+  total: number;
 }
 
 interface Space {

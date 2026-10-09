@@ -1,19 +1,38 @@
-import { BasicCredentials, KbnApiClient } from './KbnApiClient';
+import { BasicCredentials, KbnApiClient, SavedObject } from './KbnApiClient';
+import { requiredBaseUrl } from './index';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
-    this.getSavedObjects(credentials, group).then(result => {
-      // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
-      // index can be mid-reset, and a session sweep or config restart can log the request out,
-      // in which case the _find answers with a login page instead of the find JSON. An index
-      // that is already resetting has nothing left to clean, so treat that as the empty list.
-      (result?.saved_objects ?? []).forEach(savedObject => {
+    this.findAllSavedObjects(credentials, group).then(savedObjects => {
+      savedObjects.forEach(savedObject => {
         cy.log(`Remove ${savedObject.id} saved object for ${credentials}`);
         // Best effort: an object listed a moment ago can already be gone (404). Losing that
         // race must not fail cleanup.
         this.deleteSavedObject(savedObject, credentials, group, { failOnStatusCode: false });
       });
+    });
+  }
+
+  // _find gives one page of results, so this reads page after page until it has them all. The
+  // deletes come after the last page: a delete between two pages moves objects to earlier pages.
+  private findAllSavedObjects(
+    credentials: string,
+    group?: string,
+    page = 1,
+    found: SavedObject[] = []
+  ): Cypress.Chainable<SavedObject[]> {
+    return this.getSavedObjects(credentials, group, { page, perPage: 100 }).then(result => {
+      // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
+      // index can be mid-reset, and a session sweep or config restart can log the request out,
+      // in which case the _find answers with a login page instead of the find JSON. An index
+      // that is already resetting has nothing left to clean, so treat that as the end of the list.
+      const pageObjects = result?.saved_objects ?? [];
+      const all = [...found, ...pageObjects];
+      if (pageObjects.length === 0 || all.length >= (result.total ?? 0)) {
+        return cy.wrap(all, { log: false });
+      }
+      return this.findAllSavedObjects(credentials, group, page + 1, all);
     });
   }
 
@@ -69,6 +88,36 @@ export class KbnApiAdvancedClient extends KbnApiClient {
       });
 
     return waitUntilDown().then(() => this.waitForKibanaHealth(baseUrl, 90, 2000));
+  }
+
+  /**
+   * Waits until Kibana answers a request that ReadonlyREST authenticates. waitForKibanaHealth is not
+   * enough: /api/status answers also on a Kibana node whose ReadonlyREST part never answers a user
+   * request (RORDEV-2283). Such a node does not recover until it restarts, so the wait stays short.
+   *
+   * The wait finds a node that gives no answer within the request timeout. Behind the docker proxy
+   * the requests go to the replicas in turn, and the proxy waits longer than this timeout for an
+   * answer. The proxy sends a failed GET (refused, 502, 503 or 504) to the other replica, so the
+   * wait does not see a replica that fails in that way.
+   */
+  public waitForKibanaToAnswerUserRequests() {
+    const requestTimeoutMs = 10000;
+    const totalTimeoutMs = 45000;
+
+    return cy.task(
+      'waitForKibanaToAnswer',
+      {
+        url: `${requiredBaseUrl()}/api/spaces/space`,
+        headers: {
+          authorization: `Basic ${btoa(`${Cypress.env('login')}:${Cypress.env('password')}`)}`,
+          'kbn-xsrf': 'true'
+        },
+        answersInARow: 4,
+        requestTimeoutMs,
+        totalTimeoutMs
+      },
+      { timeout: totalTimeoutMs + requestTimeoutMs }
+    );
   }
 
   public waitForKibanaHealth(baseUrl: string, retries = 15, delay = 2000) {

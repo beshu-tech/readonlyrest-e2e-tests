@@ -78,9 +78,9 @@ export class EsApiAdvancedClient extends EsApiClient {
    * Prune, then wait until the report store is actually empty.
    *
    * pruneAllReportingIndices fires the deletes and returns. That is enough for a report that has
-   * already landed and not enough for one a previous attempt left QUEUED: exportToCsv returns when
-   * Kibana accepts the job, not when it writes it (see Discover.exportToCsv), so on a retry the
-   * earlier report can arrive just after the prune and make the next count assertion fail with the
+   * already landed and not enough for one a previous test left QUEUED: exportToCsv returns when
+   * Kibana accepts the job, not when it writes it (see Discover.exportToCsv), so the earlier report
+   * can arrive in the next test just after the prune and make its count assertion fail with the
    * "Too many elements found" this is meant to prevent.
    *
    * Polling closes that window rather than sealing it. A report queued after the last poll can

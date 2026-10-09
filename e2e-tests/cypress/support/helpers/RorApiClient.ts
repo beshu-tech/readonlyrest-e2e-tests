@@ -7,6 +7,12 @@ export class RorApiClient {
         payload: {
           settings: `${yamlContent}`
         }
+      }).then(response => {
+        // ReadonlyREST answers a rejected config with HTTP 200 and status "ko", and keeps the
+        // settings it had. Loading the settings that are already active is also a "ko".
+        const result = response as unknown as { status: string; message: string };
+        const loaded = result.status === 'ok' || result.message === 'Current settings are already loaded';
+        expect(loaded, `${fixtureYamlFileName} loaded: ${result.message}`).to.equal(true);
       });
     });
   }

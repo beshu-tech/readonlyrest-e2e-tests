@@ -65,8 +65,6 @@ jobs:
           mode: ${{ github.event.inputs.mode }}
           ror_es: ${{ github.event.inputs.ror_es_version }}
           ror_kbn: ${{ github.event.inputs.ror_kbn_version }}
-          # One attempt: a person is waiting on this run, and a retry only doubles that wait.
-          max_attempts: '1'
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
           electron_extra_launch_args: '--disable-gpu'
 
@@ -88,3 +86,4 @@ jobs:
           bucket: ${{ vars.ROR_S3_BUCKET }}
           region: ${{ vars.ROR_S3_REGION }}
           path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
+          redact: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}

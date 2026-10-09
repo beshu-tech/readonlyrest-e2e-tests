@@ -1,4 +1,5 @@
 import { RorMenu } from './RorMenu';
+import { recurse } from 'cypress-recurse';
 import { SecuritySettings } from './SecuritySettings';
 
 export class ActivationKeys {
@@ -31,5 +32,38 @@ export class ActivationKeys {
     cy.log('Delete license');
     SecuritySettings.getIframeBody().contains('Delete').click();
     SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').click({ force: true });
+  }
+
+  /**
+   * Runs an action that changes the edition, then waits until ROR KBN deleted the sessions.
+   *
+   * ROR KBN answers the change before it deletes the sessions (RORDEV-2302). Until then the old
+   * session still works, and a login made in between can be deleted with the others.
+   * The sessions are deleted with their index, so the wait is for that index to go. With no index
+   * (no login since the last deletion) there is nothing to wait for.
+   */
+  static changeEditionAndWaitForLogout(action: () => void) {
+    ActivationKeys.sessionIndexStatus().then(statusBefore => {
+      action();
+      if (statusBefore === 200) {
+        recurse(
+          () => ActivationKeys.sessionIndexStatus(),
+          status => status === 404,
+          { limit: 60, delay: 500, timeout: 40000, log: 'the sessions are deleted' }
+        );
+      }
+    });
+  }
+
+  private static sessionIndexStatus() {
+    const [user, pass] = Cypress.env().kibanaUserCredentials.split(':');
+    return cy
+      .request({
+        url: `${Cypress.env().elasticsearchUrl}/.readonlyrest_kbn_sessions`,
+        auth: { user, pass },
+        failOnStatusCode: false,
+        log: false
+      })
+      .its('status');
   }
 }

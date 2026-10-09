@@ -30,6 +30,11 @@ const formatLoggerData = (data: unknown) =>
   });
 
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
+  // The error of the first failed wait for Kibana answers. A node that does not answer user requests
+  // stays so until it restarts (RORDEV-2283), and CI does not restart it. So the later specs of
+  // this suite run fail at once with this error, and do not wait again.
+  let kibanaAnswerFailure: string | undefined;
+
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
       const { method, url, headers, body, failOnStatusCode, allowTransportError } = options;
@@ -210,36 +215,51 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     generateJwt(payload: object): string {
       return generateJwt(payload);
     },
-    async clearDownloads() {
-      const downloadsFolder = path.join('cypress', 'downloads');
-      console.log('🧹 Starting to clear the downloads folder:', downloadsFolder);
+    // A status below 500 counts as an answer, a refusal too. No answer within requestTimeoutMs, or a
+    // 5xx, starts the count again. A refused connection or a 5xx comes back at once, so the next
+    // request waits a second: that keeps a stopped Kibana from getting thousands of requests.
+    async waitForKibanaToAnswer(options: KibanaAnswerWaitOptions): Promise<null> {
+      if (kibanaAnswerFailure) {
+        throw new Error(`Kibana did not answer in an earlier spec of this suite run. ${kibanaAnswerFailure}`);
+      }
+      const { url, headers, answersInARow, requestTimeoutMs, totalTimeoutMs } = options;
+      const pauseAfterFailureMs = 1000;
+      const agent: Agent = new Agent({ rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' });
+      const deadline = Date.now() + totalTimeoutMs;
+      const outcomes: string[] = [];
+      let answers = 0;
 
-      try {
-        await fs.promises.rm(downloadsFolder, { recursive: true, force: true });
-        console.log('✅ Downloads folder cleared successfully.');
-
-        await fs.promises.mkdir(downloadsFolder, { recursive: true });
-        console.log('📁 Created a new empty downloads folder.');
-      } catch (err) {
-        console.error('❌ Error while clearing the downloads folder:', err);
+      while (answers < answersInARow) {
+        const timeLeft = deadline - Date.now();
+        if (timeLeft <= 0) {
+          kibanaAnswerFailure =
+            `Kibana did not answer ${answersInARow} requests in a row within ${totalTimeoutMs} ms. ` +
+            `GET ${url}: ${outcomes.join(', ')}`;
+          throw new Error(kibanaAnswerFailure);
+        }
+        const startedAt = Date.now();
+        try {
+          const response = await fetch(url, { headers, agent, timeout: Math.min(requestTimeoutMs, timeLeft) });
+          await response.text();
+          outcomes.push(`${response.status} in ${Date.now() - startedAt} ms`);
+          answers = response.status < 500 ? answers + 1 : 0;
+        } catch (error) {
+          outcomes.push(`${(error as Error).message} after ${Date.now() - startedAt} ms`);
+          answers = 0;
+        }
+        if (answers === 0) {
+          await new Promise(resolve => setTimeout(resolve, Math.min(pauseAfterFailureMs, deadline - Date.now())));
+        }
       }
 
+      console.log(`Kibana answered ${answersInARow} requests in a row: GET ${url}: ${outcomes.join(', ')}`);
       return null;
-    },
-    async listDownloadedFiles() {
-      const downloadsFolder = path.join('cypress', 'downloads');
-      try {
-        return await fs.promises.readdir(downloadsFolder);
-      } catch {
-        return [];
-      }
     }
   });
 
-  // A retry hides a flake. Two tab-separated files keep the record, so a CI step can report it:
-  //   failed-specs.tsv   one row per failed spec: start time of this suite run, spec
-  //   retried-tests.tsv  one row per retried test: spec, title, attempts, final state
-  // Each suite run appends after each spec, so a run stopped at a timeout keeps its rows.
+  // failed-specs.tsv keeps one row per failed spec (start time of this suite run, spec), so that a
+  // CI step can report the failed specs. Each suite run appends after each spec, so a run stopped at
+  // a timeout keeps its rows.
   const resultsDir = path.resolve(config.projectRoot, '..', 'results');
   const suiteRunStarted = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   // A tab or a line break in a cell would split the row.
@@ -265,11 +285,6 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     if ((results.stats && results.stats.failures > 0) || results.error) {
       await appendRows('failed-specs.tsv', [[suiteRunStarted, specName]]);
     }
-
-    const retried = (results.tests || [])
-      .filter(test => (test.attempts || []).length > 1)
-      .map(test => [specName, (test.title || []).join(' > '), test.attempts.length, test.state]);
-    await appendRows('retried-tests.tsv', retried);
   };
 
   // Discard the video for specs that finished with all tests passing.
@@ -307,6 +322,14 @@ interface HttpCallOptions {
   failOnStatusCode?: boolean;
   // For endpoints that restart the server they answer from, so the reply is lost by design.
   allowTransportError?: boolean;
+}
+
+interface KibanaAnswerWaitOptions {
+  url: string;
+  headers: { [key: string]: string };
+  answersInARow: number;
+  requestTimeoutMs: number;
+  totalTimeoutMs: number;
 }
 
 interface FileToUpload {

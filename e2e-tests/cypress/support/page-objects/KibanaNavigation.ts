@@ -1,6 +1,9 @@
 import { PageNotFound } from './PageNotFound';
 
 export class KibanaNavigation {
+  // The link must come from the navigation. An unscoped cy.contains() can match a page link with the
+  // same text (Home shows "Stack Management" and "Dev Tools" links), and that click leaves the
+  // navigation open over the next page.
   static openPage(page: string | RegExp) {
     cy.log('open page');
     KibanaNavigation.openKibanaNavigation();
@@ -8,11 +11,11 @@ export class KibanaNavigation {
     cy.get('[data-test-subj="collapsibleNav"]').find(`[title="${page}"]`).first().click();
   }
 
+  // The link must come from the Stack Management navigation. A search in the whole page can also
+  // find a landing card, a breadcrumb or a toast with the same text.
   static openSubPage(page: string) {
     cy.log('open sub-page');
-    cy.findByRole('link', {
-      name: page
-    }).click();
+    cy.get('[data-test-subj=mgtSideBarNav]').findByRole('link', { name: page }).click();
   }
 
   static openKibanaNavigation() {

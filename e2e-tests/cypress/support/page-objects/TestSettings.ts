@@ -162,7 +162,8 @@ export class TestSettings {
   static setDefaultData() {
     cy.log('Set default data');
     TestSettings.open();
-    TestSettings.changeTtlValue('50', 'Seconds');
+    // Long enough for a slow test: an ACL that expires mid-test changes the page the test clicks.
+    TestSettings.changeTtlValue('10', 'Minutes');
     TestSettings.loadCurrentSettings();
     TestSettings.pressSaveTestSettingsButton();
   }

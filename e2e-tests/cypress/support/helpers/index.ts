@@ -26,3 +26,10 @@ export function isJsonString(str: string) {
 }
 
 export const userCredentials: BasicCredentials = `${Cypress.env().login}:${Cypress.env().password}`;
+
+// Pastes the text into the element: one paste event, with no key events.
+export function pasteText(element: HTMLElement, text: string) {
+  const clipboardData = new DataTransfer();
+  clipboardData.setData('text/plain', text);
+  element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
+}

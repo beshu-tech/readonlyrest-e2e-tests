@@ -1,3 +1,4 @@
+import { pasteText } from '../helpers';
 import { SecuritySettings } from './SecuritySettings';
 
 export class Editor {
@@ -22,16 +23,7 @@ export class Editor {
       .eq(0)
       .focus()
       .type(`${selectAllKeys}{backspace}`, { force: true })
-      .then($el => {
-        const clipboardData = new DataTransfer();
-        const pasteEvent = new ClipboardEvent('paste', {
-          bubbles: true,
-          cancelable: true,
-          clipboardData
-        });
-        clipboardData.setData('text/plain', config);
-        $el[0].dispatchEvent(pasteEvent);
-      });
+      .then($el => pasteText($el[0], config));
   }
 
   static replaceValues(findValue: string, newValue: string) {
