@@ -22,11 +22,27 @@ import { userCredentials } from '../support/helpers';
   });
 
   afterEach(() => {
-    cy.kbnPost({
-      endpoint: 'api/ror/license?overwrite=true',
-      credentials: userCredentials,
-      payload: { license: `${Cypress.env().enterpriseActivationKey}` }
+    // Back to the env key. Wait for the logout only when that changes the edition, so that it
+    // cannot log out the next test. The page goes first: a Kibana page that loses its session
+    // during the wait fails the hook with an uncaught error.
+    cy.window().then(win => {
+      win.location.href = 'about:blank';
     });
+    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: userCredentials }).then(
+      before => {
+        const restore = () =>
+          cy.kbnPost({
+            endpoint: 'api/ror/license?overwrite=true',
+            credentials: userCredentials,
+            payload: { license: `${Cypress.env().enterpriseActivationKey}` }
+          });
+        if (before.license.edition === 'kbn_ent') {
+          restore();
+        } else {
+          ActivationKeys.changeEditionAndWaitForLogout(restore);
+        }
+      }
+    );
   });
 
   it('should log the user out when a new activation key changes the license edition', () => {
