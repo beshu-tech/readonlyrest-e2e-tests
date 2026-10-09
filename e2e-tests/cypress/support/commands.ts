@@ -246,6 +246,16 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
   }
 
   /**
+   * Kibana 9 cancels a search when the page leaves it. When the search has no async search id yet,
+   * the search interceptor (search_interceptor.ts, `id = id ?? response.id; await
+   * sendCancelRequest()`) builds the cancel path with no id, and buildPath throws. Nothing awaits
+   * that call, so it surfaces as an unhandled rejection. Only that rejection is ignored.
+   */
+  if (promise && err.message.includes('Missing required path parameter: id')) {
+    return false;
+  }
+
+  /**
    * Don't fail test when these specific errors from kibana platform
    */
   if (
