@@ -139,17 +139,14 @@ export class RoAndRoStrictKibanaAccessAssertions {
     IndexPattern.rowEditItemButtonsHidden();
   }
 
+  // Kibana 9.4.0 to 9.5.3 loads the spaces chunks seconds after the page, and the space selector shows
+  // when they are loaded. A wait for the chunk request fails when the page before the tenancy change
+  // loaded the chunks already: the new page then takes them from the browser cache.
   private static changeTenancyAndAwaitSpaces(tenancyName: string) {
-    const shouldAwaitSpacesPlugin = semver.gte(getKibanaVersion(), '9.4.0') && semver.lte(getKibanaVersion(), '9.5.3');
-
-    if (shouldAwaitSpacesPlugin) {
-      cy.intercept('*/bundles/plugin/spaces/1.0.0/spaces.chunk*').as('spacesPlugin');
-    }
-
     RorMenu.changeTenancy(tenancyName);
 
-    if (shouldAwaitSpacesPlugin) {
-      cy.wait('@spacesPlugin');
+    if (semver.gte(getKibanaVersion(), '9.4.0') && semver.lte(getKibanaVersion(), '9.5.3')) {
+      cy.get('[data-test-subj="spacesNavSelector"]').should('be.visible');
     }
   }
 }
