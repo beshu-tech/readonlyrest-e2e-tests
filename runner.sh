@@ -173,12 +173,23 @@ if [[ "$MODE" == "e2e" ]]; then
 
   mkdir -p results
 
+  # A caller with a time cap gives it in E2E_TIME_CAP_SECONDS. The suite then stops 5 minutes
+  # before the cap, so that the summary and the stack logs below still get written. At the cap the
+  # caller kills this script, and the EXIT trap deletes the stack with its logs.
+  SUITE_TIMEOUT=()
+  if [[ -n "${E2E_TIME_CAP_SECONDS:-}" ]]; then
+    SUITE_TIMEOUT=(timeout --kill-after=60 "$((E2E_TIME_CAP_SECONDS - SECONDS - 300))")
+  fi
+
   # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the
   # suite's status, not tee's.
   set +e
-  time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
+  time "${SUITE_TIMEOUT[@]}" ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
   E2E_STATUS=${PIPESTATUS[0]}
   set -e
+  if [[ $E2E_STATUS -eq 124 || $E2E_STATUS -eq 137 ]]; then
+    echo "::error title=E2E%3A ELK $ELK_VERSION on $ENV_NAME::The suite did not end before the time cap, and it was stopped."
+  fi
 
   write_summary
 

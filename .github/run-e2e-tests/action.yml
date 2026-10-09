@@ -57,6 +57,8 @@ runs:
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
+        # The same cap as timeout_minutes, so that runner.sh stops the suite in time to collect its logs.
+        E2E_TIME_CAP_SECONDS: 4500
     - name: Put the E2E summary on the run summary page
       # The runner writes the file only when the suite ran, on a pass as well as on a failure.
       if: always()
