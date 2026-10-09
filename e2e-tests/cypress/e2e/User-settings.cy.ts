@@ -18,9 +18,9 @@ import { Loader } from '../support/page-objects/Loader';
 //    bootstrap, not by ROR.
 //
 // Registered with `Cypress.on` at spec scope, not `cy.on` inside a test: `cy.on` listeners are torn
-// down when the test body ends, so a rejection arriving during the `afterEach` below would fail the
-// hook and skip the rest of the suite. Spec scope covers hooks while keeping the suppression out of
-// every other spec.
+// down when the test body ends, so a rejection that arrives in a hook would fail the hook and skip
+// the rest of the suite. Spec scope covers hooks while keeping the suppression out of every other
+// spec.
 Cypress.on('uncaught:exception', err => {
   if (
     err.message.includes('ChunkLoadError') ||
@@ -35,10 +35,6 @@ Cypress.on('uncaught:exception', err => {
 describe('User settings', () => {
   beforeEach(() => {
     Login.initialization();
-  });
-
-  afterEach(() => {
-    cy.clearCookies();
   });
 
   it('should verify user settings change', () => {

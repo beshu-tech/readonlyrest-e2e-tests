@@ -1,5 +1,6 @@
 import { Loader } from './Loader';
 import { requiredBaseUrl } from '../helpers';
+import { sessionEndCompleted } from '../sessionEnd';
 
 type Credentials = { username: string; password: string };
 export class Login {
@@ -47,6 +48,7 @@ export class Login {
 
   static fillLoginPageWith(username?: string, password?: string) {
     cy.get('#form-username', { timeout: 30000 }).should('be.visible');
+    sessionEndCompleted();
 
     if (username) {
       cy.get('#form-username').type(username);

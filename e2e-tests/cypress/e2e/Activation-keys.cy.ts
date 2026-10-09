@@ -12,8 +12,7 @@ import { userCredentials } from '../support/helpers';
 // from the index every activationKeyRefreshInterval (10m default), and independently wipes *all*
 // shared sessions when it notices an edition change (readonlyrestkbn preKibanaProxy.ts
 // verifyLicenseChange -> sessionManager.deleteAllSessions()). A single client's requests can land
-// on nodes disagreeing about the current edition right after this test flips it, which is the same
-// class of issue Kibana-config.cy.ts hit and skipped for the same reason. The eck-* environments
+// on nodes disagreeing about the current edition right after this test flips it. The eck-* environments
 // run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
 (Cypress.env().envName === 'elk-ror' ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {

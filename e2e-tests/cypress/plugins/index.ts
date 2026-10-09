@@ -6,12 +6,15 @@ import FormData from 'form-data';
 import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 let embeddedServer: ReturnType<typeof https.createServer> | null = null;
 const EMBEDDED_SERVER_PORT = 8080;
 const ROOT_DIR = path.join(__dirname, '..', '..', '..');
 const FIXTURES_DIR = path.join(__dirname, '..', 'fixtures');
 const JWT_SECRET = 'a-string-secret-at-least-256-bits-long';
+const ELK_ROR_DIR = path.join(ROOT_DIR, 'environments', 'elk-ror');
 
 const generateJwt = (payload: object): string => {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -210,6 +213,22 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     generateJwt(payload: object): string {
       return generateJwt(payload);
     },
+    // Docker environment only. Without a fixture, it puts back the kibana.yml of the environment.
+    async setKibanaConfig({ fixture }: { fixture: string | null }): Promise<null> {
+      const configFile = fixture
+        ? path.join(FIXTURES_DIR, fixture)
+        : path.join(ELK_ROR_DIR, 'conf', 'kbn', 'kibana.yml');
+      try {
+        const { stdout } = await promisify(execFile)(path.join(ELK_ROR_DIR, 'set-kibana-config.sh'), [configFile]);
+        console.log(stdout);
+      } catch (error) {
+        const { stdout, stderr } = error as { stdout?: string; stderr?: string };
+        throw new Error(
+          `set-kibana-config.sh failed for ${configFile}: ${(error as Error).message}\n${stdout}\n${stderr}`
+        );
+      }
+      return null;
+    },
     async clearDownloads() {
       const downloadsFolder = path.join('cypress', 'downloads');
       console.log('🧹 Starting to clear the downloads folder:', downloadsFolder);
@@ -236,35 +255,40 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     }
   });
 
-  // A retried test that passed leaves no trace in the run output. This lists every retried test
-  // on the GitHub run summary, so the flaky ones can be named. GITHUB_STEP_SUMMARY is unset outside
-  // Actions, and then this does nothing.
-  const reportRetriedTests = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
-    const summaryFile = process.env.GITHUB_STEP_SUMMARY;
-    if (!summaryFile || !results || !results.tests) return;
-
-    const retried = results.tests
-      .map(test => ({
-        title: (test.title || []).join(' > '),
-        attempts: (test.attempts || []).length,
-        state: test.state
-      }))
-      .filter(test => test.attempts > 1);
-
-    if (retried.length === 0) return;
-
-    const rows = retried
-      .map(test => `| \`${path.basename(spec.relative)}\` | ${test.title} | ${test.attempts} | ${test.state} |`)
-      .join('\n');
-
+  // A retry hides a flake. Two tab-separated files keep the record, so a CI step can report it:
+  //   failed-specs.tsv   one row per failed spec: start time of this suite run, spec
+  //   retried-tests.tsv  one row per retried test: spec, title, attempts, final state
+  // Each suite run appends after each spec, so a run stopped at a timeout keeps its rows.
+  const resultsDir = path.resolve(config.projectRoot, '..', 'results');
+  const suiteRunStarted = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  // A tab or a line break in a cell would split the row.
+  const cell = (text: string) => text.replace(/[\t\r\n]+/g, ' ');
+  const appendRows = async (file: string, rows: (string | number)[][]) => {
+    if (rows.length === 0) return;
     try {
+      await fs.promises.mkdir(resultsDir, { recursive: true });
       await fs.promises.appendFile(
-        summaryFile,
-        `\n<!-- retries -->\n| spec | test | attempts | final |\n| --- | --- | --- | --- |\n${rows}\n`
+        path.join(resultsDir, file),
+        rows.map(row => row.map(value => cell(String(value))).join('\t') + '\n').join('')
       );
     } catch {
       // A broken report must never fail a suite that passed.
     }
+  };
+  const reportFlakes = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
+    if (!results) return;
+    const specName = path.basename(spec.relative);
+
+    // The same count gives the ✖ in the "Run Finished" table. `error` is a spec-level error, which
+    // can come without a failed test.
+    if ((results.stats && results.stats.failures > 0) || results.error) {
+      await appendRows('failed-specs.tsv', [[suiteRunStarted, specName]]);
+    }
+
+    const retried = (results.tests || [])
+      .filter(test => (test.attempts || []).length > 1)
+      .map(test => [specName, (test.title || []).join(' > '), test.attempts.length, test.state]);
+    await appendRows('retried-tests.tsv', retried);
   };
 
   // Discard the video for specs that finished with all tests passing.
@@ -274,7 +298,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
   on('after:spec', async (spec, results) => {
     // Cypress keeps one handler per event name: a second `on('after:spec')` replaces the first.
     // So both jobs live in this one handler.
-    await reportRetriedTests(spec, results);
+    await reportFlakes(spec, results);
 
     if (!results || !results.video) return;
     // Keep the video if the spec had ANY failure. Prefer the stable
