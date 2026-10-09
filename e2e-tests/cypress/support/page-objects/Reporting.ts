@@ -15,7 +15,7 @@ export class Reporting {
     cy.contains('No reports have been created').should('be.visible');
   }
 
-  static verifySavedReport(reportNames: string[]) {
+  static verifySavedReport(reportNames: (string | RegExp)[]) {
     cy.log('verifySavedReport');
     reportNames.forEach(reportName => {
       cy.contains(reportName).should('be.visible');
@@ -61,7 +61,7 @@ export class Reporting {
     cy.url().should('include', expectedUrl);
   }
 
-  static removeReport(reportName: string) {
+  static removeReport(reportName: string | RegExp) {
     cy.log('remove report');
     cy.get('[data-test-subj=reportJobRow]')
       .contains(reportName)

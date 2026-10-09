@@ -23,6 +23,11 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       const oldFormatReportingIndex = `.reporting${index}-2025-02-02`;
       const newFormatReportingIndex = `.kibana-reporting-${index}`;
       const newFormatReportingName = 'new format reporting index doc';
+      // Kibana 8 can give a report made right after the save the title "Untitled Discover session"
+      // (see Reporting.verifyReportsCount), so on 8 either title is the new report.
+      const newFormatReportTitle = semver.lt(getKibanaVersion(), '9.0.0')
+        ? new RegExp(`${newFormatReportingName}|Untitled Discover session`)
+        : newFormatReportingName;
       let oldFormatReportingName: string;
 
       beforeEach(() => {
@@ -58,8 +63,8 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         // The export returns when the report is queued, and the list loads only once.
         esApiAdvancedClient.waitForReportingSegmentsDocsCount(index, 1);
         Reporting.openReportingPage('kibanaNavigation');
-        Reporting.verifySavedReport([newFormatReportingName, oldFormatReportingName]);
-        Reporting.removeReport(newFormatReportingName);
+        Reporting.verifySavedReport([newFormatReportTitle, oldFormatReportingName]);
+        Reporting.removeReport(newFormatReportTitle);
         Reporting.verifySavedReport([oldFormatReportingName]);
         Reporting.removeReport(oldFormatReportingName);
         Reporting.verifySavedReport([]);
@@ -82,7 +87,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         // Let the second report land before asserting all three are listed.
         esApiAdvancedClient.waitForReportingSegmentsDocsCount(index, 2);
         Reporting.openReportingPage('kibanaNavigation');
-        Reporting.verifySavedReport([newFormatReportingName, newFormatReportingName, oldFormatReportingName]);
+        Reporting.verifySavedReport([newFormatReportTitle, newFormatReportTitle, oldFormatReportingName]);
       });
     });
   });

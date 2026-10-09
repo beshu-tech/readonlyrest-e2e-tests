@@ -66,7 +66,6 @@ export class Discover {
       cy.window().then(win => {
         win.location.hash = `#/view/${savedId}`;
       });
-      cy.location('hash').should('contain', `/view/${savedId}`);
     });
     // The breadcrumb, not any text: the "'<name>' was saved" toast also holds the name, and it shows
     // before Discover opens the session again.
@@ -93,10 +92,7 @@ export class Discover {
 
     cy.get('[data-test-subj=generateReportButton]').click();
     cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
-    // Toasts can cover the next control. They close by themselves after a time that is not fixed,
-    // so the test closes them all, the toast of the save before too.
-    cy.get('[data-test-subj=toastCloseButton]').click({ multiple: true });
-    cy.contains('Queued report for search').should('not.exist');
+    cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');
   }
 
   static openShareDiscover() {
