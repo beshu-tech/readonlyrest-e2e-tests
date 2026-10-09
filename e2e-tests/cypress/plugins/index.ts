@@ -30,6 +30,11 @@ const formatLoggerData = (data: unknown) =>
   });
 
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
+  // The error of the first failed wait for Kibana answers. A node that does not answer user requests
+  // stays so until it restarts (RORDEV-2283), and CI does not restart it. So the later specs of
+  // this suite run fail at once with this error, and do not wait again.
+  let kibanaAnswerFailure: string | undefined;
+
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
       const { method, url, headers, body, failOnStatusCode, allowTransportError } = options;
@@ -238,6 +243,9 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     // 5xx, starts the count again. A refused connection or a 5xx comes back at once, so the next
     // request waits a second: that keeps a stopped Kibana from getting thousands of requests.
     async waitForKibanaToAnswer(options: KibanaAnswerWaitOptions): Promise<null> {
+      if (kibanaAnswerFailure) {
+        throw new Error(`Kibana did not answer in an earlier spec of this suite run. ${kibanaAnswerFailure}`);
+      }
       const { url, headers, answersInARow, requestTimeoutMs, totalTimeoutMs } = options;
       const pauseAfterFailureMs = 1000;
       const agent: Agent = new Agent({ rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' });
@@ -248,10 +256,10 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       while (answers < answersInARow) {
         const timeLeft = deadline - Date.now();
         if (timeLeft <= 0) {
-          throw new Error(
+          kibanaAnswerFailure =
             `Kibana did not answer ${answersInARow} requests in a row within ${totalTimeoutMs} ms. ` +
-              `GET ${url}: ${outcomes.join(', ')}`
-          );
+            `GET ${url}: ${outcomes.join(', ')}`;
+          throw new Error(kibanaAnswerFailure);
         }
         const startedAt = Date.now();
         try {
