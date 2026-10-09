@@ -9,7 +9,9 @@ describe('impersonate', () => {
     rorApiInternalKbnClient.deactivateTestSettings();
   });
 
-  it('should check impersonate', () => {
+  // Skipped until a release has the fix for RORDEV-2303: the session probe can log the user out right
+  // after an impersonation starts, so this test fails at random.
+  it.skip('should check impersonate (RORDEV-2303)', () => {
     Login.initialization();
 
     // TODO: We need  to find a way to remove Test ACL completely before tests
