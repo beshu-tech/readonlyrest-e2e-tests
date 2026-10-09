@@ -17,6 +17,7 @@
 import './commands';
 import { installClipboardCapture, resetClipboardCapture } from './clipboardCapture';
 import { kbnApiAdvancedClient } from './helpers/KbnApiAdvancedClient';
+import { rorApiClient } from './helpers/RorApiClient';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
@@ -28,6 +29,10 @@ beforeEach(resetClipboardCapture);
 // A spec that starts on a Kibana that does not answer user requests fails at its first login, and
 // the cause stays hidden. Fail here instead, with the cause in the error.
 before(() => kbnApiAdvancedClient.waitForKibanaToAnswerUserRequests());
+
+// Every spec starts on the default ReadonlyREST settings. A spec that changes them restores them in
+// an after hook, and a failed hook leaves the change for every later spec.
+before(() => rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml'));
 
 /// <reference types="cypress" />
 
