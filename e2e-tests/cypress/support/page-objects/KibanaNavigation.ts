@@ -11,11 +11,11 @@ export class KibanaNavigation {
     cy.get('[data-test-subj="collapsibleNav"]').find(`[title="${page}"]`).first().click();
   }
 
+  // The link must come from the Stack Management navigation. A search in the whole page can also
+  // find a landing card, a breadcrumb or a toast with the same text.
   static openSubPage(page: string) {
     cy.log('open sub-page');
-    cy.findByRole('link', {
-      name: page
-    }).click();
+    cy.get('[data-test-subj=mgtSideBarNav]').findByRole('link', { name: page }).click();
   }
 
   static openKibanaNavigation() {
