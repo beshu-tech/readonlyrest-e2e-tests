@@ -32,6 +32,8 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         // test's reports too. Prune first, then add the fixture - the prune also clears
         // `.reporting*` docs, so the two steps must stay in this order.
         esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
+        // The saved search of a previous test makes the same title ask for a duplicate confirm.
+        kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
         cy.fixture('old_format_reporting_doc.json').then(oldFormatReportingDoc => {
           oldFormatReportingName = oldFormatReportingDoc.payload.title;
           esApiClient.addDocument(oldFormatReportingIndex, oldFormatReportingDoc.id, oldFormatReportingDoc);
@@ -53,6 +55,8 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         Discover.createIndexPattern('reporting_sample');
         Discover.saveReport(newFormatReportingName);
         Discover.exportToCsv();
+        // The export returns when the report is queued, and the list loads only once.
+        esApiAdvancedClient.waitForReportingSegmentsDocsCount(index, 1);
         Reporting.openReportingPage('kibanaNavigation');
         Reporting.verifySavedReport([newFormatReportingName, oldFormatReportingName]);
         Reporting.removeReport(newFormatReportingName);
