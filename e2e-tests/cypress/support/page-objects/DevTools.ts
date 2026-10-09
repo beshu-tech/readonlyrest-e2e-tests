@@ -81,25 +81,48 @@ export class DevTools {
   // Kibana 8.16 to 9.1 can mount the Console again after it shows (RORDEV-2282). The new mount
   // replaces the editor and fills it with its start text, so a request entered before that is lost
   // or lands inside the start text. So the request goes in again until the editor holds only it.
+  // The paste goes to the textarea of the editor that shows now, not to the focused element: a new
+  // mount between a click and the paste removes the textarea that had the focus, and then no element
+  // has it.
   private static enterRequestIntoMonacoEditor(request: string, attempt = 1) {
     cy.get('[data-test-subj="clearConsoleInput"]').click();
-    cy.get('[data-test-subj="consoleMonacoEditor"]').click();
-    DevTools.pasteIntoFocusedEditor(request);
+    DevTools.monacoTextarea()
+      .focus()
+      .then($textarea => pasteText($textarea[0], request));
     // Monaco draws the pasted lines on a later frame, so the check polls for up to 2 s.
     recurse(
       () => DevTools.monacoEditorText(),
       text => text === request,
       { limit: 20, delay: 100, doNotFail: true, yield: 'value', log: false }
     ).then(text => {
-      if (text !== request && attempt < DevTools.ENTER_ATTEMPTS) {
-        DevTools.enterRequestIntoMonacoEditor(request, attempt + 1);
-      } else {
-        expect(text, 'Console editor text').to.equal(request);
+      if (text !== request) {
+        DevTools.enterRequestAgain(request, attempt, text);
+        return;
       }
+      // The send button shows only while the editor has the focus. A new mount can also come after
+      // the check above, so the text is read again after the focus.
+      DevTools.monacoTextarea().focus();
+      DevTools.monacoEditorText().then(textBeforeSend => {
+        if (textBeforeSend !== request) {
+          DevTools.enterRequestAgain(request, attempt, textBeforeSend);
+        }
+      });
     });
   }
 
+  private static enterRequestAgain(request: string, attempt: number, text: string) {
+    if (attempt < DevTools.ENTER_ATTEMPTS) {
+      DevTools.enterRequestIntoMonacoEditor(request, attempt + 1);
+    } else {
+      expect(text, 'Console editor text').to.equal(request);
+    }
+  }
+
   private static readonly ENTER_ATTEMPTS = 3;
+
+  private static monacoTextarea() {
+    return cy.get('[data-test-subj="consoleMonacoEditor"] textarea');
+  }
 
   // Monaco positions its line elements; their DOM order is not the line order.
   private static monacoEditorText() {
