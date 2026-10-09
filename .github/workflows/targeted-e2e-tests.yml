@@ -1,4 +1,7 @@
 name: Targeted E2E Tests
+# A caller that dispatches this workflow finds its run by this title: a dispatch returns no run id.
+# readonlyrest_kbn builds the same text in dispatch_e2e_tests, so change both together.
+run-name: Targeted E2E ${{ inputs.elk_version }} ${{ inputs.env }} ${{ inputs.ror_kbn_version }}
 
 on:
   workflow_dispatch:
