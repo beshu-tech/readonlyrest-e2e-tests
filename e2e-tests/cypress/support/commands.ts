@@ -1,6 +1,8 @@
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
+import * as semver from 'semver';
 import { capture as clipboardCapture } from './clipboardCapture';
+import { getKibanaVersion } from './helpers';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -237,9 +239,9 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
    * Kibana 7.17 Discover opens a saved search right after the save and runs its search again. When
    * its own URL state update cancels that search, it throws the cancellation as an uncaught
    * AbortError. A cancelled search is not a failure; an assertion on its result still fails a test
-   * that needs it.
+   * that needs it. Only Kibana 7 needs this, so on 8 and later an uncaught AbortError still fails.
    */
-  if (err.name === 'AbortError') {
+  if (err.name === 'AbortError' && semver.lt(getKibanaVersion(), '8.0.0')) {
     return false;
   }
 
