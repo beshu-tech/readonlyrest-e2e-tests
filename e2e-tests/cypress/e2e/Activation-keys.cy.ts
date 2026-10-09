@@ -2,6 +2,11 @@ import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
 import { userCredentials } from '../support/helpers';
 
+// The logout shows up only after the next session probe, which runs every
+// readonlyrest_kbn.sessions_probe_interval_seconds (30 s by default). That is longer than the 20 s
+// default timeout.
+const LOGOUT_TIMEOUT = { timeout: 45000 };
+
 /**
  * Keys resolve in the order index -> env -> file -> bundled Free key. Loading a key through the UI
  * writes it to the index, which hides the env one; deleting it there uncovers the env one again.
@@ -33,12 +38,12 @@ import { userCredentials } from '../support/helpers';
     // Enterprise (env) -> Free (index).
     ActivationKeys.changeLicenseToFree();
 
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', LOGOUT_TIMEOUT).should('contain', '/login');
   });
 
   it('should keep the sessions when a new activation key has the same license edition', () => {
     ActivationKeys.changeLicenseToFree();
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', LOGOUT_TIMEOUT).should('contain', '/login');
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
     Login.initialization({ finishUrl: '/app/home' });
@@ -56,7 +61,7 @@ import { userCredentials } from '../support/helpers';
 
   it('should log the user out when a deleted activation key uncovers a different license edition', () => {
     ActivationKeys.changeLicenseToFree();
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', LOGOUT_TIMEOUT).should('contain', '/login');
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
     Login.initialization({ finishUrl: '/app/home' });
@@ -65,6 +70,6 @@ import { userCredentials } from '../support/helpers';
     // Free (index) -> Enterprise (env).
     ActivationKeys.deleteLicense();
 
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', LOGOUT_TIMEOUT).should('contain', '/login');
   });
 });
