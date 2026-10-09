@@ -90,15 +90,19 @@ upload_one() {
   "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
-# A text file can hold a CI secret. Each occurrence of REDACT_VALUE becomes <redacted>, and a file
-# that still holds it after that is not uploaded at all.
+# Any file can hold a CI secret, whatever its name. In a text file (no NUL byte) each occurrence of
+# REDACT_VALUE becomes <redacted>. A file that still holds it after that is not uploaded at all.
 REDACT_VALUE=${REDACT_VALUE:-}
+holds_secret() {
+  [ -n "$REDACT_VALUE" ] && grep -qF -- "$REDACT_VALUE" "$1" 2>/dev/null
+}
 redact() {
   local FILE=$1
-  [ -n "$REDACT_VALUE" ] || return 0
-  grep -qF -- "$REDACT_VALUE" "$FILE" 2>/dev/null || return 0
-  REDACT_VALUE="$REDACT_VALUE" perl -i -pe 's/\Q$ENV{REDACT_VALUE}\E/<redacted>/g' "$FILE"
-  ! grep -qF -- "$REDACT_VALUE" "$FILE"
+  holds_secret "$FILE" || return 0
+  if LC_ALL=C grep -qI -- '' "$FILE"; then
+    REDACT_VALUE="$REDACT_VALUE" perl -i -pe 's/\Q$ENV{REDACT_VALUE}\E/<redacted>/g' "$FILE"
+  fi
+  ! holds_secret "$FILE"
 }
 
 UPLOADED=0
@@ -119,12 +123,10 @@ while IFS= read -r -d '' FILE; do
 
   REL=${FILE#"$SOURCE_DIR"/}
   MIME=$(mime_of "$FILE")
-  if [[ "$MIME" == text/* || "$MIME" == application/json || "$MIME" == application/xml || "$FILE" == *.md || "$FILE" == *.tsv ]]; then
-    if ! redact "$FILE"; then
-      echo "WARNING: $REL still holds the secret after redaction; not uploaded"
-      SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
-      continue
-    fi
+  if ! redact "$FILE"; then
+    echo "WARNING: $REL holds the secret; not uploaded"
+    SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
+    continue
   fi
   if upload_one "$FILE" "${S3_PATH}${REL}" "$MIME"; then
     UPLOADED=$((UPLOADED + 1))
