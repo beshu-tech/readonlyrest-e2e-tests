@@ -63,7 +63,7 @@ runs:
       shell: bash
       run: |
         [ -f results/e2e-summary.md ] && cat results/e2e-summary.md >> "$GITHUB_STEP_SUMMARY" || true
-    - name: Annotate the failed specs and the retried tests
+    - name: Annotate the failed specs
       if: always()
       shell: bash
       run: .github/scripts/report-e2e-flakes.sh results "ELK $ELK_VERSION on $ENV"

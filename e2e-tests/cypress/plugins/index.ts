@@ -281,10 +281,9 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     }
   });
 
-  // A retry hides a flake. Two tab-separated files keep the record, so a CI step can report it:
-  //   failed-specs.tsv   one row per failed spec: start time of this suite run, spec
-  //   retried-tests.tsv  one row per retried test: spec, title, attempts, final state
-  // Each suite run appends after each spec, so a run stopped at a timeout keeps its rows.
+  // failed-specs.tsv keeps one row per failed spec (start time of this suite run, spec), so that a
+  // CI step can report the failed specs. Each suite run appends after each spec, so a run stopped at
+  // a timeout keeps its rows.
   const resultsDir = path.resolve(config.projectRoot, '..', 'results');
   const suiteRunStarted = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   // A tab or a line break in a cell would split the row.
@@ -310,11 +309,6 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     if ((results.stats && results.stats.failures > 0) || results.error) {
       await appendRows('failed-specs.tsv', [[suiteRunStarted, specName]]);
     }
-
-    const retried = (results.tests || [])
-      .filter(test => (test.attempts || []).length > 1)
-      .map(test => [specName, (test.title || []).join(' > '), test.attempts.length, test.state]);
-    await appendRows('retried-tests.tsv', retried);
   };
 
   // Discard the video for specs that finished with all tests passing.
