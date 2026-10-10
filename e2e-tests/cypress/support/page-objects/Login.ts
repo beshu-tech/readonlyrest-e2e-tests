@@ -56,7 +56,8 @@ export class Login {
       cy.get('#form-password').type(password);
     }
 
-    cy.get('#form-submit').click({ force: true });
+    // The login page disables the button while a login request runs.
+    cy.get('#form-submit').should('not.be.disabled').click();
   }
 
   static verifyLoginPageTitle(title: string) {

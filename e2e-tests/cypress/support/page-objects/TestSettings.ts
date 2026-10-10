@@ -107,7 +107,11 @@ export class TestSettings {
     const postSettings = interceptNext('postSettings', { method: 'POST', url: '/pkp/api/settings' });
     const deleteTestSettings = interceptNext('deleteTestSettings', { method: 'DELETE', url: '/pkp/api/test' });
     const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
-    SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Save').click({ force: true });
+    SecuritySettings.getIframeBody()
+      .find('[class=euiModalFooter]')
+      .contains('button', 'Save')
+      .should('not.be.disabled')
+      .click();
 
     cy.waitForResponse(postTestSettings).then(response => {
       expect(response.statusCode).to.eq(200);
@@ -127,7 +131,11 @@ export class TestSettings {
     cy.log('Save Test ACL modal before permanent promote failed');
 
     const postSettings = interceptNext('postSettings', { method: 'POST', url: '/pkp/api/settings' });
-    SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Reject').click({ force: true });
+    SecuritySettings.getIframeBody()
+      .find('[class=euiModalFooter]')
+      .contains('button', 'Reject')
+      .should('not.be.disabled')
+      .click();
 
     cy.waitForResponse(postSettings).then(response => {
       expect(response.statusCode).to.eq(200);
@@ -142,7 +150,11 @@ export class TestSettings {
     const deleteTestSettings = interceptNext('deleteTestSettings', { method: 'DELETE', url: '/pkp/api/test' });
     const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
     cy.log('Save Test ACL modal before permanent promote');
-    SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Reject').click({ force: true });
+    SecuritySettings.getIframeBody()
+      .find('[class=euiModalFooter]')
+      .contains('button', 'Reject')
+      .should('not.be.disabled')
+      .click();
 
     cy.waitForResponse(postSettings).then(response => {
       expect(response.statusCode).to.eq(200);

@@ -25,8 +25,7 @@ export class Discover {
       ? interceptNext('createDiscoverSession', { method: 'POST', url: '**/api/content_management/rpc/create' })
       : undefined;
 
-    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('not.be.disabled');
-    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
+    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('not.be.disabled').click();
     Discover.verifySearchSaved(reportName);
 
     if (createDiscoverSession) {
@@ -274,7 +273,7 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.contains('Next step').click();
     cy.get('[data-test-subj=createIndexPatternTimeFieldSelect]').select('@timestamp');
     const indexPattern = interceptNext('indexPattern', { url: '/s/default/api/saved_objects/index-pattern' });
-    cy.get('[data-test-subj=createIndexPatternButton]').click({ force: true });
+    cy.get('[data-test-subj=createIndexPatternButton]').should('not.be.disabled').click();
     cy.wait(indexPattern);
   };
 
@@ -283,9 +282,9 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName);
     cy.contains('Select a timestamp field for use with the global time filter.');
     cy.get('[data-test-subj=timestampField]').click();
-    cy.contains('@timestamp').click({ force: true });
+    cy.contains('[role="option"]', '@timestamp').click();
     const indexPattern = interceptNext('indexPattern', { url: '/s/default/api/saved_objects/index-pattern' });
-    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
+    cy.get('[data-test-subj=saveIndexPatternButton]').should('not.be.disabled').click();
     cy.wait(indexPattern);
   };
 
@@ -306,13 +305,13 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
 
     cy.contains('Select a timestamp field for use with the global time filter.');
     cy.get('[data-test-subj=timestampField]').click();
-    cy.contains('@timestamp').click({ force: true });
+    cy.contains('[role="option"]', '@timestamp').click();
 
     const indexPattern = semver.gte(getKibanaVersion(), '8.9.0')
       ? interceptNext('indexPattern', { url: '/s/default/api/kibana/management/saved_objects/**' })
       : interceptNext('indexPattern', { url: '/s/default/api/saved_objects/**' });
 
-    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
+    cy.get('[data-test-subj=saveIndexPatternButton]').should('not.be.disabled').click();
 
     cy.wait(indexPattern);
   };
