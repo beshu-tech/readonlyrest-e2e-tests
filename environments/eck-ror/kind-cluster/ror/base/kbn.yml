@@ -34,5 +34,13 @@ spec:
               value: "${ROR_ACTIVATION_KEY}"
             - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
               value: "yes"
+            # Kibana 9.4.6 exhausts a 768 MB heap. The docker environment gives it 1280 MB too.
             - name: NODE_OPTIONS
-              value: "--max-old-space-size=768"
+              value: "--max-old-space-size=1280"
+          # The default limit is 1 GiB on ECK 2.x and 2 GiB on ECK 3.5. The pod peaked at 1.06 GiB with a
+          # 768 MB heap. 2 GiB holds the 1280 MB heap and the rest of the node process, on each ECK.
+          resources:
+            requests:
+              memory: 2Gi
+            limits:
+              memory: 2Gi
