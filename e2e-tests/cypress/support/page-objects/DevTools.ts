@@ -104,8 +104,29 @@ export class DevTools {
       DevTools.monacoEditorText().then(textBeforeSend => {
         if (textBeforeSend !== request) {
           DevTools.enterRequestAgain(request, attempt, textBeforeSend);
+          return;
         }
+        DevTools.enterRequestAgainIfSendButtonHidden(request, attempt);
       });
+    });
+  }
+
+  // A debounced handler of the cursor, scroll and content events shows the send button, and only
+  // while the editor has the text focus. A new mount after the paste gives no such event, so the
+  // button stays hidden. The paste of the next attempt is such an event. On the last attempt the
+  // click reports the hidden button.
+  private static enterRequestAgainIfSendButtonHidden(request: string, attempt: number) {
+    const isVisible = ($button: JQuery<HTMLElement>) => Cypress.dom.isVisible($button[0]);
+    recurse(() => cy.get('[data-test-subj="sendRequestButton"]', { log: false }), isVisible, {
+      limit: 20,
+      delay: 100,
+      doNotFail: true,
+      yield: 'value',
+      log: false
+    }).then($button => {
+      if (!isVisible($button) && attempt < DevTools.ENTER_ATTEMPTS) {
+        DevTools.enterRequestIntoMonacoEditor(request, attempt + 1);
+      }
     });
   }
 
