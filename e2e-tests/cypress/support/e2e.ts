@@ -40,8 +40,10 @@ declare global {
       esDelete<T = unknown>(options: EsRequestOptions): Chainable<T>;
       esResponse<T = unknown>(options: ResponseOptions<EsRequestOptions>): Chainable<HttpResponse<T>>;
       shouldHaveStyle(property: string, value: string): Chainable<Element>;
-      getByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
-      findByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
+      getByDataTestSubj(
+        value: string,
+        options?: Partial<Loggable & Timeoutable & Withinable & Shadow>
+      ): Chainable<JQuery<HTMLElement>>;
       getValueFromClipboard(): Chainable<string>;
       urlShouldMatch(urlPattern: string): Chainable<string>;
       waitForResponse(alias: `@${string}`): Chainable<{ statusCode: number }>;

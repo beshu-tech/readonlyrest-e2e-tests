@@ -6,7 +6,7 @@ export class KibanaNavigation {
   // The link must come from the navigation. An unscoped cy.contains() can match a page link with the
   // same text (Home shows "Stack Management" and "Dev Tools" links), and that click leaves the
   // navigation open over the next page.
-  static openPage(page: string | RegExp) {
+  static openPage(page: string) {
     cy.log('open page');
     KibanaNavigation.openKibanaNavigation();
 

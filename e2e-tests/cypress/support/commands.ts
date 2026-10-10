@@ -135,14 +135,7 @@ Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, propert
   });
 });
 
-Cypress.Commands.add('getByDataTestSubj', (selector: string) => {
-  return cy.get(`[data-test-subj="${selector}"]`);
-});
-
-Cypress.Commands.add('findByDataTestSubj', { prevSubject: 'element' }, (subject, value: string) => {
-  const el = subject.find(`[data-test-subj="${value}"]`);
-  return cy.wrap(el);
-});
+Cypress.Commands.add('getByDataTestSubj', (value, options) => cy.get(`[data-test-subj="${value}"]`, options));
 
 Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   const baseUrl = (Cypress.config().baseUrl ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
