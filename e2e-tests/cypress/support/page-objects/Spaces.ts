@@ -1,5 +1,6 @@
 import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
+import { isHiddenByCss } from '../helpers/hiddenByCss';
 
 export class Spaces {
   static removeSpace(spaceName: string) {
@@ -73,8 +74,11 @@ export class Spaces {
     cy.get('[data-test-subj=solutionViewSelect]').click();
   }
 
+  // ROR hides the option with CSS, so the option exists with display: none.
   static verifySolutionViewSecurityOptionIsHidden() {
-    cy.get('[data-test-subj=solutionViewSecurityOption]').should('not.be.visible');
+    cy.get('[data-test-subj=solutionViewSecurityOption]').should($option => {
+      expect(isHiddenByCss($option), 'Security option or a parent of it with display: none').to.equal(true);
+    });
   }
 
   static verifySolutionViewOptionsAreVisible(...testSubjs: string[]) {

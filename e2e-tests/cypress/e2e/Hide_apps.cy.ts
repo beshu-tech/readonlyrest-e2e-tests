@@ -58,12 +58,12 @@ describe('hidden apps', () => {
         Spaces.navigateToCreateSpacePage();
         Spaces.openSolutionViewDropdown();
 
-        Spaces.verifySolutionViewSecurityOptionIsHidden();
         Spaces.verifySolutionViewOptionsAreVisible(
           'solutionViewEsOption',
           'solutionViewObltOption',
           'solutionViewClassicOption'
         );
+        Spaces.verifySolutionViewSecurityOptionIsHidden();
       }
     );
   });
