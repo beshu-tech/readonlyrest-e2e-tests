@@ -53,7 +53,7 @@ export class KibanaNavigation {
 
   // ROR 1.71.0 hides no navigation link of a hidden app on these Kibana versions. The route stays
   // blocked. Remove the range when a release has the fix of RORDEV-2305.
-  private static readonly HIDDEN_APPS_NAV_DEFECT = '>=9.5.0';
+  private static readonly HIDDEN_APPS_NAV_DEFECT = '>=9.4.0';
 
   static checkIfNotExists(page: string) {
     cy.log('checkIfNotExists');

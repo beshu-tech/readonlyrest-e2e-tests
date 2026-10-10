@@ -53,9 +53,14 @@ export class Home {
     });
     // The wait covers the full Kibana load that the visit starts.
     cy.get('[data-test-subj="homeTab-sampleData"]', { timeout: 80000 }).should('exist');
-    // Kibana 8.x shows the data set cards in a closed accordion.
+    // Kibana 8.x shows the data set cards in an accordion. A click on an open accordion closes it.
     if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.4.0')) {
-      cy.getByDataTestSubj('showSampleDataButton').click();
+      cy.getByDataTestSubj('showSampleDataButton').then($button => {
+        if ($button.attr('aria-expanded') !== 'true') {
+          cy.wrap($button).click();
+        }
+      });
+      cy.getByDataTestSubj('showSampleDataButton').should('have.attr', 'aria-expanded', 'true');
     }
     cy.getByDataTestSubj('sampleDataSetCardecommerce').scrollIntoView().should('be.visible');
     cy.getByDataTestSubj('launchSampleDataSetecommerce').should('exist');

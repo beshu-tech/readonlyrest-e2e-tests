@@ -203,6 +203,8 @@ Cypress.on('uncaught:exception', (err, _runnable, promise) => {
     err.message.includes('ResizeObserver loop limit exceeded') ||
     err.message.includes('ResizeObserver loop completed with undelivered notifications.') || // kibana 8.11.0 and above throws this error
     err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
+    err.message.includes('__kbnSharedDeps__ is not defined') || // the same: a bundle that did not load, on a page that loses its session at logout
+    err.message.includes('__kbnBundles__ does not have a module defined') || // the same
     err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
     (kibanaVersion.gte('8.7.0') && err.message.includes("Cannot read properties of undefined (reading 'includes')")) || // kibana 8.7.0 and later
     (kibanaVersion.lt('8.0.0') && err.message.includes("Cannot read properties of undefined (reading 'type')")) || // kibana 7.x throws this error when run with ECK
