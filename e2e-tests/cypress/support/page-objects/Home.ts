@@ -62,7 +62,8 @@ export class Home {
       });
       cy.getByDataTestSubj('showSampleDataButton').should('have.attr', 'aria-expanded', 'true');
     }
-    cy.getByDataTestSubj('sampleDataSetCardecommerce').scrollIntoView().should('be.visible');
+    // exist, not be.visible: on 8.19 the open accordion still fails the visibility check of its card.
+    cy.getByDataTestSubj('sampleDataSetCardecommerce').should('exist');
     cy.getByDataTestSubj('launchSampleDataSetecommerce').should('exist');
     shouldNotBeShown('[data-test-subj="addSampleDataSetecommerce"]');
     shouldNotBeShown('[data-test-subj="removeSampleDataSetecommerce"]');

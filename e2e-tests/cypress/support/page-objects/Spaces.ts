@@ -54,7 +54,8 @@ export class Spaces {
   static createNewSpace(spaceName: string) {
     cy.log('Create new space');
     Spaces.navigateToCreateSpacePage();
-    cy.get('[data-test-subj=addSpaceName]').type(spaceName);
+    // Kibana 7.17 renders the form disabled until it has loaded the features.
+    cy.get('[data-test-subj=addSpaceName]').should('not.be.disabled').type(spaceName);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
 
     if (kibanaVersion.gte('8.18.0')) {

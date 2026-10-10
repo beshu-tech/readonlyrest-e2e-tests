@@ -44,8 +44,10 @@ export class RoAndRoStrictKibanaAccessAssertions {
     }
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
-    Dashboard.writeControlsNotShown();
+    // Panels first: on Kibana 9.4, closing the app menu while the panels still render throws React
+    // error #185 (maximum update depth) and leaves the page blank.
     Dashboard.waitForPanelsRendered();
+    Dashboard.writeControlsNotShown();
 
     cy.log('Verify Lens panel renders without error');
     cy.get('[data-test-subj="embeddableError"]').should('not.exist');
