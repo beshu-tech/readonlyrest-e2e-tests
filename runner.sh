@@ -169,6 +169,10 @@ echo -e "Running environment...\n"
 time ./environments/$ENV_NAME/start.sh --cluster-type "$CLUSTER_TYPE" --es "$ELK_VERSION" --kbn "$ELK_VERSION" $OPTIONAL_ECK_ARG $OPTIONAL_ROR_ES_ARG $OPTIONAL_ROR_KBN_ARG $OPTIONAL_MODE_ARG
 
 if [[ "$MODE" == "e2e" ]]; then
+  # TEMPORARY (RORDEV-2283): remove with the scripts it calls when the tested ReadonlyREST KBN
+  # release has the RORDEV-2283 fix (readonlyrest_kbn#1105).
+  ./environments/"$ENV_NAME"/restart-unanswering-kibana.sh
+
   echo -e "Running E2E tests...\n"
 
   mkdir -p results
