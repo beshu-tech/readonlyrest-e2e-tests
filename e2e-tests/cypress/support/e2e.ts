@@ -18,6 +18,7 @@ import './commands';
 import { installClipboardCapture, resetClipboardCapture } from './clipboardCapture';
 import { kbnApiAdvancedClient } from './helpers/KbnApiAdvancedClient';
 import { rorApiClient } from './helpers/RorApiClient';
+import type { HttpResponse } from './types';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
@@ -71,6 +72,13 @@ declare global {
         failOnStatusCode?: boolean;
         headers?: { [key: string]: string };
       }): Chainable<T>;
+      kbnGetResponse<T = unknown>({
+        endpoint,
+        credentials
+      }: {
+        endpoint: string;
+        credentials: string;
+      }): Chainable<HttpResponse<T>>;
       kbnPost<T = Subject>({
         endpoint,
         credentials,

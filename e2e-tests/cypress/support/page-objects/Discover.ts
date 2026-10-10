@@ -1,5 +1,6 @@
 import * as semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
+import { TopNav } from './TopNav';
 import { getKibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
 
@@ -119,23 +120,18 @@ export class Discover {
     }
   }
 
-  static optionsButtonNotExist() {
-    cy.log('Options button Not exist');
-    if (semver.gte(getKibanaVersion(), '8.8.0')) {
-      cy.findByText(/options/i).should('not.be.visible');
-    } else {
-      cy.findByText(/options/i).should('not.exist');
+  // Kibana 9.4 and later always puts New and Open in the overflow popover of the top menu. Open is
+  // allowed, so it proves that the popover holds the items.
+  static writeControlsNotShown() {
+    cy.log('Discover write controls not shown');
+    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+      TopNav.overflowButtonExists();
     }
-  }
-
-  static newButtonNotExist() {
-    cy.log('New button Not exist');
-    cy.findByText(/new/i).should('not.exist');
-  }
-
-  static saveButtonNotExist() {
-    cy.log('Save button Not exist');
-    cy.findByText('Save').should('not.exist');
+    TopNav.checkControlsNotShown(
+      'shareTopNavButton',
+      ['discoverNewButton', 'discoverSaveButton', 'interactiveSaveMenuItem', 'discoverOptionsButton'],
+      'discoverOpenButton'
+    );
   }
 
   static openDataViewPage = () => {

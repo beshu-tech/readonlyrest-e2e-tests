@@ -1,4 +1,6 @@
 import { PageNotFound } from './PageNotFound';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
+import { isHiddenByCss } from '../helpers/hiddenByCss';
 
 export class KibanaNavigation {
   // The link must come from the navigation. An unscoped cy.contains() can match a page link with the
@@ -29,11 +31,19 @@ export class KibanaNavigation {
     cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
-  static checkIfNotVisible(page: string) {
-    cy.log('checkIfNotVisible');
+  // ROR hides an app link with CSS on the link or on its group. The visible link first proves that
+  // the navigation is open.
+  static checkIfHidden(page: string, visiblePage = 'Discover') {
+    cy.log('checkIfHidden');
+    cy.get('[data-test-subj=collapsibleNav]')
+      .contains(new RegExp(`^${visiblePage}$`))
+      .scrollIntoView()
+      .should('be.visible');
     cy.get('[data-test-subj=collapsibleNav]')
       .contains(new RegExp(`^${page}$`))
-      .should('not.be.visible');
+      .should($link => {
+        expect(isHiddenByCss($link), `${page} link or a parent of it with display: none`).to.equal(true);
+      });
   }
 
   static checkIfNotExists(page: string) {
@@ -79,7 +89,7 @@ export class KibanaNavigation {
         });
     } else {
       cy.get('[data-test-subj="mgtSideBarNav"]')
-        .get(`[data-test-subj=${section}]`)
+        .find(`[data-test-subj=${section}]`)
         .siblings()
         .eq(0)
         .children()
@@ -87,10 +97,35 @@ export class KibanaNavigation {
     }
   }
 
-  static verifyKibanaNavigationLinkItemHref(href: string) {
-    cy.log('verifyKibanaNavigationLinkItemHref');
+  // Counts the links in all sections, so a section that the per-section checks do not name cannot add
+  // links. A link that ROR hides with CSS does not count.
+  static checkStackManagementShownLinksCount(count: number) {
+    cy.log('check the count of shown Stack Management links');
+    cy.get('[data-test-subj="mgtSideBarNav"]')
+      .find('.euiSideNavItem a')
+      .should($links => {
+        const shownLinks = $links.filter((_, link) => !isHiddenByCss(Cypress.$(link)));
+        expect(shownLinks.length, 'shown Stack Management links').to.equal(count);
+      });
+  }
+
+  // ROR copies the tenancy of the page URL into each link. The values are compared decoded, because
+  // the page URL and a link can encode the same tenancy in different ways.
+  static verifyNavigationLinkHasPageTenancy(appPath: string) {
+    cy.log('verifyNavigationLinkHasPageTenancy');
     KibanaNavigation.openKibanaNavigation();
 
-    cy.get(`a[href*="${href}"]`);
+    cy.location('href').then(pageHref => {
+      const pageTenancy = new URL(pageHref).searchParams.get(TENANCY_QUERY_STRING_KEY);
+      expect(pageTenancy, 'tenancy of the page URL').to.be.a('string').and.have.length.greaterThan(0);
+
+      cy.get('[data-test-subj=collapsibleNav]')
+        .find(`a[href*="${appPath}?"]`)
+        .first()
+        .should($link => {
+          const linkTenancy = new URL($link.prop('href')).searchParams.get(TENANCY_QUERY_STRING_KEY);
+          expect(linkTenancy, `tenancy of the ${appPath} link`).to.equal(pageTenancy);
+        });
+    });
   }
 }

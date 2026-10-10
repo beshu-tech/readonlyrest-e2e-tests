@@ -72,7 +72,10 @@ describe('Index management', () => {
     IndexManagement.selectDeleteActionFromContextMenu();
 
     IndexManagement.clickConfirmDeleteIndexButton();
-    IndexManagement.verifyIndexExists(testIndexName);
+    IndexManagement.verifyIndexNotListed(testIndexName);
+    esApiClient.indices().then(indices => {
+      expect(indices.map(index => index.index)).not.to.include(testIndexName);
+    });
   });
 
   it('should verify empty data streams page', () => {

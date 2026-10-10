@@ -20,7 +20,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Settings.setSettingsData(fixtureYamlFileName);
     Login.initialization();
     RoAndRoStrictKibanaAccessAssertions.changeTenancyAndAwaitSpaces('template');
-    Home.loadSampleDataButtonHidden();
+    Home.sampleDataControlsHidden();
 
     cy.log('Verify Dashboard features');
     // From 9.3 the dashboards listing no longer issues `POST /content_management/rpc/search`, so the
@@ -47,8 +47,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     }
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
-    Dashboard.editButtonNotExist();
-    Dashboard.cloneButtonNotExist();
+    Dashboard.writeControlsNotShown();
     Dashboard.waitForPanelsRendered();
 
     cy.log('Verify Lens panel renders without error');
@@ -60,9 +59,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     cy.log('Verify Discover features');
     KibanaNavigation.openPage('Discover');
     SubHeader.readonlyDiscoverBadgeVisible();
-    Discover.optionsButtonNotExist();
-    Discover.newButtonNotExist();
-    Discover.saveButtonNotExist();
+    Discover.writeControlsNotShown();
 
     cy.log('Verify discover Link sharing');
     Tenancy.getTenancyFromUrl().then(tenancy => {
@@ -98,12 +95,10 @@ export class RoAndRoStrictKibanaAccessAssertions {
 
       KibanaNavigation.openPage('Canvas');
       Canvas.openItem(0);
+      cy.wait('@canvasResolve');
       SubHeader.readonlyBadgeVisible();
       SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
-      Canvas.addElementButtonNotExist();
-      Canvas.editButtonNotExist();
-      Canvas.workPadSettingsNotExist();
-      cy.wait('@canvasResolve');
+      Canvas.writeControlsNotShown();
     }
 
     KibanaNavigation.openPage('Stack Management');
@@ -124,7 +119,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
       KibanaNavigation.openSubPage('Index Patterns');
     }
 
-    cy.findByText(/create index pattern/i).should('not.exist');
+    IndexPattern.createButtonHidden();
     IndexPattern.openItem(0);
     SubHeader.readonlyBadgeVisible();
     if (semver.gte(getKibanaVersion(), '8.0.0')) {

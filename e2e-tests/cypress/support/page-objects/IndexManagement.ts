@@ -25,13 +25,16 @@ export class IndexManagement {
   static searchIndices(indexName: string) {
     cy.log(`Search for index: ${indexName}`);
 
+    IndexManagement.searchInput().clear().type(indexName);
+  }
+
+  private static searchInput() {
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.get('[data-test-subj="indicesSearch"]').type(indexName);
-    } else {
-      cy.get(
-        'input[aria-label="This is a search bar. As you type, the results lower in the page will automatically filter."]'
-      ).type(indexName);
+      return cy.get('[data-test-subj="indicesSearch"]');
     }
+    return cy.get(
+      'input[aria-label="This is a search bar. As you type, the results lower in the page will automatically filter."]'
+    );
   }
 
   static openIndex(indexName: string) {
@@ -94,11 +97,11 @@ export class IndexManagement {
     cy.get('[data-test-subj="confirmModalConfirmButton"]').should('not.be.disabled').click();
   }
 
-  static verifyIndexExists(indexName: string) {
-    cy.log(`Search for index: ${indexName}`);
+  static verifyIndexNotListed(indexName: string) {
+    cy.log(`Verify that the index list does not show: ${indexName}`);
 
+    IndexManagement.searchIndices(indexName);
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.get('[data-test-subj="indicesSearch"]').type(indexName);
       cy.contains('No indices found').should('be.visible');
     } else {
       cy.contains('No indices to show').should('be.visible');
@@ -107,13 +110,21 @@ export class IndexManagement {
 
   static openDataStreams() {
     cy.log('Open Data Streams');
+    cy.intercept({ method: 'GET', pathname: '/api/index_management/data_streams' }, req => {
+      delete req.headers['if-none-match'];
+    }).as('dataStreamsList');
 
     cy.get('[data-test-subj="data_streamsTab"]').click();
   }
 
+  // The empty-page text alone also shows when the list request fails.
   static verifyDataStreamsEmptyPage() {
     cy.log('Verify data streams empty page');
 
+    cy.wait('@dataStreamsList').then(({ response }) => {
+      expect(response?.statusCode, 'data streams list status').to.equal(200);
+      expect(response?.body, 'data streams list').to.be.an('array').that.has.length(0);
+    });
     cy.contains('[data-test-subj="title"]', "You don't have any data streams yet");
   }
 }

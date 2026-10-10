@@ -6,6 +6,7 @@ import FormData from 'form-data';
 import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
+import type { HttpResponse } from '../support/types';
 
 let embeddedServer: ReturnType<typeof https.createServer> | null = null;
 const EMBEDDED_SERVER_PORT = 8080;
@@ -37,7 +38,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
 
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<any> {
-      const { method, url, headers, body, failOnStatusCode, allowTransportError } = options;
+      const { method, url, headers, body, failOnStatusCode, allowTransportError, fullResponse } = options;
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
@@ -45,7 +46,13 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       });
 
       try {
-        const response: Response = await fetch(url, { method, headers, body: body ?? undefined, agent });
+        const response: Response = await fetch(url, {
+          method,
+          headers,
+          body: body ?? undefined,
+          agent,
+          redirect: fullResponse ? 'manual' : 'follow'
+        });
 
         if (!response.ok && failOnStatusCode) {
           throw new Error(
@@ -59,6 +66,14 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
         console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(data)}`);
+        if (fullResponse) {
+          const responseHeaders: { [key: string]: string } = {};
+          response.headers.forEach((value, name) => {
+            responseHeaders[name] = value;
+          });
+          const fullHttpResponse: HttpResponse = { status: response.status, headers: responseHeaders, body: data };
+          return fullHttpResponse;
+        }
         return data;
       } catch (error) {
         if (allowTransportError) {
@@ -322,6 +337,9 @@ interface HttpCallOptions {
   failOnStatusCode?: boolean;
   // For endpoints that restart the server they answer from, so the reply is lost by design.
   allowTransportError?: boolean;
+  // Answer the status, headers and body, and do not follow redirects, so that a redirect to the login
+  // page stays visible.
+  fullResponse?: boolean;
 }
 
 interface KibanaAnswerWaitOptions {

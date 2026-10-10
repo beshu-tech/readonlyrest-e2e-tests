@@ -1,5 +1,6 @@
 import semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
+import { TopNav } from './TopNav';
 import { getKibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
 import { ListingTable } from './ListingTable';
@@ -23,14 +24,14 @@ export class Dashboard {
     });
   }
 
-  static editButtonNotExist() {
-    cy.log('Edit button Not exist');
-    cy.findByText(/edit/i).should('not.exist');
-  }
-
-  static cloneButtonNotExist() {
-    cy.log('Clone button Not exist');
-    cy.findByText(/clone/i).should('not.exist');
+  // Kibana 7.x names the copy action "Clone", and 8.x and later name it "Duplicate".
+  static writeControlsNotShown() {
+    cy.log('Dashboard write controls not shown');
+    TopNav.checkControlsNotShown('shareTopNavButton', [
+      'dashboardEditMode',
+      'dashboardClone',
+      'dashboardInteractiveSaveMenuItem'
+    ]);
   }
 
   static verifyDashboardExists(dashboardName: string) {

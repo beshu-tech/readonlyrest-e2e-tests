@@ -7,6 +7,7 @@ import { Discover } from '../support/page-objects/Discover';
 import { getKibanaVersion, userCredentials as defaultUserCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SearchSessions } from '../support/page-objects/SearchSessions';
+import { itOnKibana } from '../support/helpers/itOnKibana';
 
 const userCredentials = 'user4:dev';
 
@@ -33,18 +34,17 @@ describe('Discover tests', () => {
     Discover.toastErrorNotVisible('Error fetching fields for data view');
   });
 
-  // Search sessions feature is removed for version 9.0.0 and above
-  if (semver.lt(getKibanaVersion(), '9.0.0'))
-    it('should allow to save and open discover session', () => {
-      Login.initialization();
-      Home.loadSampleData();
-      KibanaNavigation.openPage('Discover');
-      Discover.openSaveSessionPanel();
-      Discover.pressSaveSessionButton();
-      Discover.pressManageSessionsButton();
+  // Kibana 9.0.0 removes the search sessions feature.
+  itOnKibana('<9.0.0', 'should allow to save and open discover session', () => {
+    Login.initialization();
+    Home.loadSampleData();
+    KibanaNavigation.openPage('Discover');
+    Discover.openSaveSessionPanel();
+    Discover.pressSaveSessionButton();
+    Discover.pressManageSessionsButton();
 
-      SearchSessions.numberOfVisibleSearchSessions(1);
-      SearchSessions.openSelectedSearchSession(0);
-      Discover.verifyDiscoverFromSearchSessionCorrectlyRestored();
-    });
+    SearchSessions.numberOfVisibleSearchSessions(1);
+    SearchSessions.openSelectedSearchSession(0);
+    Discover.verifyDiscoverFromSearchSessionCorrectlyRestored();
+  });
 });

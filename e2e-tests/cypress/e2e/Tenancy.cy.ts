@@ -37,9 +37,7 @@ describe('Tenancy', () => {
       Tenancy.checkTenancyNameInBadge('template', 'rw');
       RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
       Tenancy.checkTenancyNameInBadge('infosec', 'a');
-      KibanaNavigation.verifyKibanaNavigationLinkItemHref(
-        `${Cypress.config().baseUrl}/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=`
-      );
+      KibanaNavigation.verifyNavigationLinkHasPageTenancy('/s/default/app/discover');
       KibanaNavigation.openHomepage();
       RorMenu.openRorMenu();
       RorMenu.pressLogoutButton();
@@ -134,7 +132,7 @@ describe('Tenancy', () => {
       Spaces.verifyCurrentSpace(newSpace);
     });
 
-    it('should hide correct Kibana navigation items on tenancy switch', () => {
+    it('should hide the Stack Management link in the infosec tenancy', () => {
       const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
@@ -143,7 +141,7 @@ describe('Tenancy', () => {
       });
 
       KibanaNavigation.openKibanaNavigation();
-      KibanaNavigation.checkIfNotVisible('Stack Management');
+      KibanaNavigation.checkIfHidden('Stack Management');
     });
   });
 
@@ -277,10 +275,10 @@ describe('Tenancy', () => {
     cy.url().should('include', `nextUrl=`);
     cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
 
+    RorMenu.interceptIdentity();
     Login.fillLoginPageWith('kibana', 'kibana');
     Loader.loading();
-    RorMenu.openRorMenu();
-    RorMenu.verifyNoTenantAvailable();
+    RorMenu.verifyIdentityTenancyIsNot('kibana', 'infosec_group');
   });
 
   it('should redirect to page-not-found instead of carrying stale tenancy to a saved-object page after logout', () => {

@@ -1,6 +1,7 @@
 import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
+import { isHiddenByCss } from '../helpers/hiddenByCss';
 import { ManageSpaces } from './ManageSpaces';
 
 export class Spaces {
@@ -70,8 +71,11 @@ export class Spaces {
     cy.get('[data-test-subj=solutionViewSelect]').click();
   }
 
+  // ROR hides the option with CSS, so the option exists with display: none.
   static verifySolutionViewSecurityOptionIsHidden() {
-    cy.get('[data-test-subj=solutionViewSecurityOption]').should('not.be.visible');
+    cy.get('[data-test-subj=solutionViewSecurityOption]').should($option => {
+      expect(isHiddenByCss($option), 'Security option or a parent of it with display: none').to.equal(true);
+    });
   }
 
   static verifySolutionViewOptionsAreVisible(...testSubjs: string[]) {
