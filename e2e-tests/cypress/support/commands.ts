@@ -119,7 +119,6 @@ function uploadFile(
 
 Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, property, value) => {
   cy.wrap(subject).should($el => {
-    expect($el).to.exist;
     expect($el.length).to.be.at.least(1);
 
     const win = $el[0].ownerDocument.defaultView;
@@ -162,7 +161,7 @@ Cypress.Commands.add(
     }) as unknown as Cypress.Chainable<{ statusCode: number }>
 );
 
-Cypress.on('uncaught:exception', (err, runnable, promise) => {
+Cypress.on('uncaught:exception', (err, _runnable, promise) => {
   /**
    * Kibana keeps polling in the background (task manager, alerting, telemetry) while a test tears
    * down. When the previous test's page is being logged out, one of those fetches can answer

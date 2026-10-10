@@ -39,7 +39,7 @@ declare global {
       esPut<T = unknown>(options: EsRequestOptions): Chainable<T>;
       esDelete<T = unknown>(options: EsRequestOptions): Chainable<T>;
       esResponse<T = unknown>(options: ResponseOptions<EsRequestOptions>): Chainable<HttpResponse<T>>;
-      shouldHaveStyle(property: string, value: string): Chainable<Element>;
+      shouldHaveStyle(property: string, value: string): Chainable<Subject>;
       getByDataTestSubj(
         value: string,
         options?: Partial<Loggable & Timeoutable & Withinable & Shadow>

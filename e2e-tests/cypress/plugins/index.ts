@@ -37,7 +37,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
   let kibanaAnswerFailure: string | undefined;
 
   on('task', {
-    async httpCall(options: HttpCallOptions): Promise<any> {
+    async httpCall(options: HttpCallOptions): Promise<unknown> {
       const { method, url, headers, body, failOnStatusCode, allowTransportError, fullResponse } = options;
 
       const agent: Agent = new Agent({
@@ -93,7 +93,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         throw error;
       }
     },
-    async uploadFile(options: UploadFileOptions): Promise<any> {
+    async uploadFile(options: UploadFileOptions): Promise<unknown> {
       const { url, headers, file } = options;
 
       const agent: Agent = new Agent({
@@ -161,7 +161,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
               try {
                 const json = JSON.parse(data);
                 resolve(json.status?.overall?.level || json.status.overall.state || 'unknown');
-              } catch (e) {
+              } catch {
                 resolve('parse-error');
               }
             });
@@ -335,7 +335,7 @@ interface KibanaAnswerWaitOptions {
 
 interface FileToUpload {
   fileName: string;
-  fileBinaryContent: any;
+  fileBinaryContent: string;
 }
 
 interface UploadFileOptions {

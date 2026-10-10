@@ -93,7 +93,7 @@ export class Observability {
     return this.waitWithRefreshButtonClick({
       targetSelector: kibanaVersion.gte('8.0.0') ? '[data-test-subj="apmServiceListAppLink"]' : '.euiLink',
       checkFn: $el => {
-        const matches = $el.filter((i, el) => el.textContent.includes(appName));
+        const matches = $el.filter((_, el) => el.textContent.includes(appName));
         return matches.length > 0;
       }
     });
@@ -103,7 +103,7 @@ export class Observability {
     return this.waitWithRefreshButtonClick({
       targetSelector: kibanaVersion.gte('8.0.0') ? '[data-test-subj="apmErrorDetailsLink"]' : '.euiLink',
       checkFn: $el => {
-        const matches = $el.filter((i, el) => el.innerText.includes(name));
+        const matches = $el.filter((_, el) => el.innerText.includes(name));
 
         return matches.length > 0;
       }

@@ -146,12 +146,11 @@ export class Reporting {
     ).then(dataStreams => {
       const sortedStreams = [...dataStreams].sort((a, b) => a.index.localeCompare(b.index));
 
-      sortedStreams.forEach(
-        (dataStream, segmentIndex) =>
-          expect(
-            dataStream.index.endsWith(`00000${segmentIndex + 1}`),
-            `Expected index "${dataStream.index}" to end with "00000${segmentIndex + 1}"`
-          ).to.be.true
+      sortedStreams.forEach((dataStream, segmentIndex) =>
+        expect(
+          dataStream.index.endsWith(`00000${segmentIndex + 1}`),
+          `Expected index "${dataStream.index}" to end with "00000${segmentIndex + 1}"`
+        ).to.equal(true)
       );
     });
   }

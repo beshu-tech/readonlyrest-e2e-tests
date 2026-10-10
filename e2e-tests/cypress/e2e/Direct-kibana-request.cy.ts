@@ -51,7 +51,7 @@ describe('Direct kibana request', () => {
         const actual = result.saved_objects.some(
           saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
         );
-        expect(actual).to.be.false;
+        expect(actual).to.equal(false);
       });
     };
 
