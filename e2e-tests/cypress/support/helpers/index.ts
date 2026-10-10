@@ -42,3 +42,9 @@ export function pasteText(element: HTMLElement, text: string) {
   clipboardData.setData('text/plain', text);
   element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
 }
+
+// Leaves the Kibana page. Cypress then waits for no request of that page.
+export const stopApp = () =>
+  cy.window({ log: false }).then(win => {
+    win.location.href = 'about:blank';
+  });

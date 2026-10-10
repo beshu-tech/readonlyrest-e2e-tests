@@ -5,6 +5,7 @@
  */
 
 import { rorApiClient } from '../support/helpers/RorApiClient';
+import { Settings } from '../support/page-objects/Settings';
 
 // api_only users — allowed_api_paths enforcement is active
 const apiOnlyExactUser = 'api_only_restricted_user:dev';
@@ -15,7 +16,7 @@ const apiOnlyRorUser = 'api_only_ror_user:dev';
 
 describe('allowed_api_paths enforcement for api_only users', () => {
   before(() => rorApiClient.configureRorIndexMainSettings('allowedApiPathsSettings.yaml'));
-  after(() => rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml'));
+  after(() => Settings.restoreDefaultSettings());
 
   describe('exact /api/ path', () => {
     it('allows direct API calls to paths listed in allowed_api_paths', () => {

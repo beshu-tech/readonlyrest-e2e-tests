@@ -5,7 +5,7 @@ import { admin } from '../support/helpers/credentials';
 
 describe('sanity check ro_strict kibana access', () => {
   afterEach(() => {
-    Settings.setSettingsData('defaultSettings.yaml');
+    Settings.restoreDefaultSettings();
     kbnApiClient.deleteSampleData('ecommerce', admin, 'template_group');
   });
 
