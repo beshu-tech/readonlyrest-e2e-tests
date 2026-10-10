@@ -3,9 +3,20 @@ set -e
 
 cd "$(dirname "$0")"
 
+source ./kind-pins.sh
+source ../common/retry.sh
+
 if ! command -v kind &> /dev/null; then
-  echo "Cannot find 'kind' tool. Please follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
+  echo "Cannot find 'kind' tool. Run ./install-kind.sh <directory on your PATH>, or follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
   exit 1
+fi
+
+# The pinned node image works only with the pinned kind. Another kind gets its own default image.
+KIND_IMAGE_ARGS=()
+if [[ "$(kind version | awk '{print $2}')" == "$KIND_VERSION" ]]; then
+  KIND_IMAGE_ARGS=(--image "$KIND_NODE_IMAGE")
+else
+  echo "WARNING: kind is $(kind version), not $KIND_VERSION. The node image is not pinned. Run ./install-kind.sh to get $KIND_VERSION."
 fi
 
 if ! command -v docker &> /dev/null; then
@@ -142,7 +153,7 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
 fi
 
 echo "CONFIGURING K8S CLUSTER ..."
-kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml
+kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml "${KIND_IMAGE_ARGS[@]}"
 docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"

@@ -33,6 +33,12 @@ runs:
   steps:
     - name: Restore the yarn and Cypress caches
       uses: ./.github/cypress-cache
+    - name: Install the pinned kind
+      if: startsWith(inputs.env, 'eck-')
+      shell: bash
+      run: |
+        ./environments/eck-ror/install-kind.sh "$RUNNER_TEMP/kind-bin"
+        echo "$RUNNER_TEMP/kind-bin" >> "$GITHUB_PATH"
     - name: Run E2E tests
       # One attempt: a second suite run turns a flaky spec green and hides its cause. The action
       # only gives the time cap, which a composite action step cannot set by itself.
