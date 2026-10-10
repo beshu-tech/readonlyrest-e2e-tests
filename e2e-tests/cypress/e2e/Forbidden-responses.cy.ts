@@ -31,23 +31,6 @@ const cleanUp = () => {
   Settings.setSettingsData('defaultSettings.yaml');
   // deleteDataViews() 404s on 7.x.
   kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
-  // Tags live in the creator's tenant.
-  cy.kbnGet<{ tags?: Array<{ id: string; name: string }> }>({
-    endpoint: 'api/saved_objects_tagging/tags',
-    credentials: userCredentials,
-    failOnStatusCode: false
-  }).then(result => {
-    // A logged-out Kibana answers with a login page, not the tags JSON; treat it as no tags.
-    (result?.tags ?? [])
-      .filter(tag => tag.name === forbiddenTagName || tag.name === forbiddenAssignTagName)
-      .forEach(tag =>
-        cy.kbnDelete({
-          endpoint: `api/saved_objects_tagging/tags/${tag.id}`,
-          credentials: userCredentials,
-          failOnStatusCode: false
-        })
-      );
-  });
 };
 
 describe('Forbidden responses', () => {

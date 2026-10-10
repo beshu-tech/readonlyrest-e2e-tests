@@ -1,7 +1,6 @@
 import { BasicCredentials, KbnApiClient } from './KbnApiClient';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
-  // Deletes the index patterns, searches, visualizations, dashboards and urls. Tags stay.
   public deleteSavedObjects(credentials: string, group?: string): void {
     cy.log(`Get all saved objects for the ${credentials}`);
     this.getSavedObjects(credentials, group).then(result => {
