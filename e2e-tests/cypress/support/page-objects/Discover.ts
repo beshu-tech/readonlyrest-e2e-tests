@@ -200,10 +200,6 @@ export class Discover {
       ? `/s/default/internal/search/ese**`
       : `/s/default/internal/bsearch**`;
 
-    // Wait for any pending searches (e.g. from data view switch) to complete before
-    // setting up the intercept, so that @search only captures the Today-triggered request.
-    cy.waitForNetworkIdle('POST', searchUrl, 500, { timeout: 15000 });
-
     const search = interceptNext('search', { method: 'POST', url: searchUrl });
 
     if (semver.gte(getKibanaVersion(), '9.5.0')) {

@@ -57,7 +57,6 @@ describe('Tenancy', () => {
       });
 
       kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
-      cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
       KibanaNavigation.openPage('Discover');
       if (semver.gte(getKibanaVersion(), '8.0.0')) {
         cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');
