@@ -1,6 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { TestSettings } from '../support/page-objects/TestSettings';
 import { Settings } from '../support/page-objects/Settings';
+import { rorApiClient } from '../support/helpers/RorApiClient';
 
 describe('Test ACL', () => {
   beforeEach(() => {
@@ -14,22 +15,17 @@ describe('Test ACL', () => {
   it('should Test ACL', () => {
     cy.log('should check invalidate settings functionality');
     TestSettings.pressInvalidateFileTestSettings();
+    rorApiClient.getRorTestSettingsStatus().should('equal', 'TEST_SETTINGS_INVALIDATED');
 
     cy.log('should check promote as permanent settings functionality when success');
     TestSettings.pressSaveTestSettingsButton();
-
-    /**
-     * TODO: Uncomment all toast based assertions and try to make this check non-deterministic
-     */
+    rorApiClient.getRorTestSettingsStatus().should('equal', 'TEST_SETTINGS_PRESENT');
 
     cy.log('should check load current settings functionality');
-    // Settings.successfulLoadFromFileToast().should('be.visible');
     Settings.closeToastMessages();
-    // Settings.successfulLoadFromFileToast().should('not.be.visible');
     TestSettings.loadCurrentSettings();
     TestSettings.pressLoadCurrentSettingsButton();
     Settings.unsavedChangesModalVisible();
     TestSettings.loadChangesAnywayToast();
-    // Settings.successfulLoadFromFileToast().should('be.visible');
   });
 });

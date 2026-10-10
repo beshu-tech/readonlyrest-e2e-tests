@@ -1,13 +1,10 @@
+import { interceptNext } from '../helpers/interceptNext';
 import { rorApiClient } from '../helpers/RorApiClient';
-import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 
 export class Settings {
   static open() {
-    cy.log('Open settings');
-    RorMenu.openRorMenu();
-    RorMenu.openEditSecuritySettings();
-    SecuritySettings.getIframeBody().find('#settings').click();
+    SecuritySettings.openTab('settings');
   }
 
   static pressReloadFromFileSettingsButton() {
@@ -16,18 +13,18 @@ export class Settings {
 
   static discardChanges() {
     cy.log('Discard changes');
-    cy.intercept('GET', '/pkp/api/settings').as('getSettings');
+    const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
     SecuritySettings.getIframeBody().contains('Discard changes').click();
-    cy.waitForResponse('@getSettings').then(response => {
+    cy.waitForResponse(getSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
 
   static reloadFromFileSettings() {
     cy.log('Press reload from file test settings');
-    cy.intercept('GET', '/pkp/api/settings/file').as('reloadFromFileSettings');
+    const getSettingsFile = interceptNext('getSettingsFile', { method: 'GET', url: '/pkp/api/settings/file' });
     Settings.pressReloadFromFileSettingsButton();
-    cy.waitForResponse('@reloadFromFileSettings').then(response => {
+    cy.waitForResponse(getSettingsFile).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -58,31 +55,6 @@ export class Settings {
   static reloadChangesAnywayToast() {
     cy.log('Reload changes anyway');
     return SecuritySettings.getIframeBody().contains('Reload anyway').click();
-  }
-
-  static successfulLoadFromFileToast() {
-    cy.log('Successful load from file toast');
-    return SecuritySettings.getIframeBody().contains('Loaded default ACL from readonlyrest.yml');
-  }
-
-  static currentSettingsAlreadyLoadedToast() {
-    cy.log('Current settings already loaded toast');
-    return SecuritySettings.getIframeBody().contains('Current ACL are already loaded');
-  }
-
-  static successfulReloadConfigurationToast() {
-    cy.log('Successful reload configuration toast');
-    return SecuritySettings.getIframeBody().contains('Reloaded configuration');
-  }
-
-  static successfulSavedConfigurationToast() {
-    cy.log('Successful saved configuration toast');
-    return SecuritySettings.getIframeBody().contains('saved');
-  }
-
-  static malformedSavedConfigurationToast() {
-    cy.log('Malformed saved configuration toast');
-    return SecuritySettings.getIframeBody().contains('Malformed settings');
   }
 
   static setSettingsData(fixtureYamlSettingsFileName: string) {

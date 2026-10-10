@@ -35,8 +35,16 @@ spec:
                     secretKeyRef:
                       name: eck-ror-kibana-user
                       key: ${ROR_ECK_KIBANA_USER_SECRET_KEY}
+                # The heap is the one the docker environment pins.
                 - name: ES_JAVA_OPTS
-                  value: "-Dcom.readonlyrest.settings.loading.attempts.count=0 -Dcom.readonlyrest.settings.loading.delay=0s"
+                  value: "-Xms1g -Xmx1g -Dcom.readonlyrest.settings.loading.attempts.count=0 -Dcom.readonlyrest.settings.loading.delay=0s"
+              # The ECK default limit is 2 GiB, and the pod peaked at 1.87 GiB with this heap. 3 GiB gives
+              # the JVM and the plugin room outside the heap.
+              resources:
+                requests:
+                  memory: 3Gi
+                limits:
+                  memory: 3Gi
               volumeMounts:
                 - name: config-ror
                   mountPath: /usr/share/elasticsearch/config/readonlyrest.yml

@@ -201,7 +201,7 @@ const customKibanaIndexName = '.kibana_custom';
       });
 
       it('should verify custom reporting index', () => {
-        SampleData.createSampleData(docsIndex, 1);
+        SampleData.createSampleData(docsIndex);
         Login.initialization();
 
         Discover.openDataViewPage();

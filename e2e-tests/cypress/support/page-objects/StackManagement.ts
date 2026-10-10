@@ -3,13 +3,13 @@ import { KibanaNavigation } from './KibanaNavigation';
 export class StackManagement {
   static openReportingPage() {
     KibanaNavigation.openPage('Stack Management');
-    cy.contains('Reporting').click();
+    KibanaNavigation.openSubPage('Reporting');
   }
 
   static openSavedObjectsPage() {
     cy.log('open saved objects page');
     KibanaNavigation.openPage('Stack Management');
-    cy.contains('Saved Objects').click();
+    KibanaNavigation.openSubPage('Saved Objects');
   }
 
   static openAlertsPage() {

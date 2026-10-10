@@ -20,6 +20,10 @@ inputs:
   secret_access_key:
     description: 'S3 secret access key'
     required: true
+  redact:
+    description: 'A CI secret to remove from every text file before the upload. Any other file that holds it is not uploaded.'
+    required: false
+    default: ''
   results_dir:
     description: 'Cypress results directory to upload (videos/ and screenshots/ live here)'
     required: false
@@ -39,6 +43,7 @@ runs:
         ROR_S3_PATH_E2E_REPORTS: ${{ inputs.path_prefix }}/build_${{ github.run_id }}
         RESULTS_DIR: ${{ inputs.results_dir }}
         S3_SUBFOLDER: ${{ matrix.env }}/${{ matrix.version }}
+        REDACT_VALUE: ${{ inputs.redact }}
       run: |
         echo "::add-mask::${ROR_S3_ACCESS_KEY_ID}"
         echo "::add-mask::${ROR_S3_SECRET_ACCESS_KEY}"

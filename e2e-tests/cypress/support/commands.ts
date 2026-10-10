@@ -1,153 +1,105 @@
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
 import { capture as clipboardCapture } from './clipboardCapture';
+import { kibanaVersion } from './helpers';
+import { describeBody } from './helpers/KbnApiClient';
+import type { HttpResponse } from './types';
+import { kibana } from './helpers/credentials';
 
-Cypress.Commands.add(
-  'kbnPost',
-  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) => {
-    cy.kbnRequest({
-      method: 'POST',
-      endpoint,
-      credentials,
-      payload,
-      currentGroupHeader,
-      headers,
-      impersonating
-    });
-  }
-);
+const IMPORT_ATTEMPTS = 5;
+const IMPORT_RETRY_DELAY_MS = 2000;
 
-Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
-  cy.esRequest({
-    method: 'POST',
-    endpoint,
-    credentials,
-    payload
-  })
-);
+/**
+ * Right after a Kibana restart, ROR can answer the import with its login page and a 2xx status. An
+ * import that never ran must not pass, so the answer must be the import JSON with success: true.
+ * A login page or other non-JSON answer gets a few more attempts. A JSON answer with success: false is
+ * a real import error and fails at once. Only an import with overwrite=true gets more attempts, because
+ * it gives the same result when it runs twice.
+ */
+Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }) => {
+  const upload = (attempt: number): Cypress.Chainable<unknown> =>
+    uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
+      'kbn-xsrf': 'true',
+      ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {})
+    }).then((body: unknown) => {
+      if (typeof body === 'object' && body !== null) {
+        if ((body as { success?: unknown }).success !== true) {
+          throw new Error(`Import of ${fixtureFilename} to ${endpoint} failed. Body: ${describeBody(body)}`);
+        }
+        return cy.wrap(body, { log: false });
+      }
+      if (attempt >= IMPORT_ATTEMPTS || !endpoint.includes('overwrite=true')) {
+        throw new Error(
+          `Import of ${fixtureFilename} to ${endpoint} did not answer with JSON after ${attempt} attempts. ` +
+            `Body: ${describeBody(body)}`
+        );
+      }
+      cy.log(`Import of ${fixtureFilename} answered with no JSON, attempt ${attempt} of ${IMPORT_ATTEMPTS}`);
+      return cy.wait(IMPORT_RETRY_DELAY_MS, { log: false }).then(() => upload(attempt + 1));
+    }) as Cypress.Chainable<unknown>;
 
-Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) =>
-  cy.kbnRequest({
-    method: 'PUT',
-    endpoint,
-    credentials,
-    payload
-  })
-);
-
-Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
-  cy.esRequest({
-    method: 'PUT',
-    endpoint,
-    credentials,
-    payload
-  })
-);
-
-Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }, ...args) =>
-  uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
-    'kbn-xsrf': 'true',
-    ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {})
-  })
-);
-
-Cypress.Commands.add(
-  'kbnGet',
-  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode, headers }, ...args) =>
-    cy.kbnRequest({
-      method: 'GET',
-      endpoint,
-      credentials,
-      currentGroupHeader,
-      impersonating,
-      failOnStatusCode,
-      headers
-    }) as Cypress.Chainable<unknown>
-);
-
-Cypress.Commands.add(
-  'esGet',
-  ({ endpoint, credentials }, ...args) =>
-    cy.esRequest({
-      method: 'GET',
-      endpoint,
-      credentials
-    }) as Cypress.Chainable<unknown>
-);
-
-Cypress.Commands.add(
-  'kbnDelete',
-  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode }, ...args) =>
-    cy.kbnRequest({
-      method: 'DELETE',
-      endpoint,
-      credentials,
-      currentGroupHeader,
-      impersonating,
-      failOnStatusCode
-    }) as Cypress.Chainable<unknown>
-);
-
-Cypress.Commands.add(
-  'esDelete',
-  ({ endpoint, credentials, failOnStatusCode }, ...args) =>
-    cy.esRequest({
-      method: 'DELETE',
-      endpoint,
-      credentials,
-      failOnStatusCode
-    }) as Cypress.Chainable<unknown>
-);
-
-Cypress.Commands.add(
-  'kbnRequest',
-  ({ method, endpoint, credentials, payload, currentGroupHeader, impersonating, failOnStatusCode, headers }) => {
-    const customHeaders: { [key: string]: string } = { 'kbn-xsrf': 'true', ...headers };
-    if (currentGroupHeader) {
-      customHeaders['x-ror-tenancy-id'] = currentGroupHeader;
-    }
-
-    if (impersonating) {
-      customHeaders['x-ror-impersonating'] = impersonating;
-    }
-
-    httpCall(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders, failOnStatusCode);
-  }
-);
-
-Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload, failOnStatusCode }) => {
-  httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload, undefined, failOnStatusCode);
+  return upload(1);
 });
 
-function httpCall(
-  method: string,
-  url: string,
-  credentials: string,
-  payload?: string | object,
-  headers?: { [key: string]: string },
-  failOnStatusCode = true
-): Cypress.Chainable<any> {
-  const options = {
+type RequestFamily = 'kbn' | 'es';
+type RequestOptions = Cypress.EsRequestOptions & {
+  method: string;
+  currentGroupHeader?: string;
+  impersonating?: string;
+};
+
+function httpCall(family: RequestFamily, options: RequestOptions, fullResponse = false): Cypress.Chainable<unknown> {
+  const {
     method,
-    url,
+    endpoint,
+    credentials,
+    payload,
+    failOnStatusCode = true,
+    headers,
+    currentGroupHeader,
+    impersonating
+  } = options;
+  const baseUrl = family === 'kbn' ? Cypress.config().baseUrl : Cypress.env().elasticsearchUrl;
+  return cy.task('httpCall', {
+    method,
+    url: `${baseUrl}/${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
-      authorization: `Basic ${btoa(credentials)}`,
-      ...headers
+      authorization: `Basic ${btoa(credentials ?? kibana)}`,
+      ...(family === 'kbn' ? { 'kbn-xsrf': 'true' } : {}),
+      ...headers,
+      ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {}),
+      ...(impersonating ? { 'x-ror-impersonating': impersonating } : {})
     },
     body: payload ? JSON.stringify(payload) : null,
-    failOnStatusCode
-  };
-
-  return cy.task('httpCall', options);
+    failOnStatusCode: fullResponse ? false : failOnStatusCode,
+    fullResponse
+  });
 }
+
+(['Get', 'Post', 'Put', 'Delete'] as const).forEach(verb => {
+  const method = verb.toUpperCase();
+  Cypress.Commands.add(`kbn${verb}`, (options: Cypress.KbnRequestOptions) => httpCall('kbn', { ...options, method }));
+  Cypress.Commands.add(`es${verb}`, (options: Cypress.EsRequestOptions) => httpCall('es', { ...options, method }));
+});
+
+// Yields the status, the headers and the body, and never fails on the status. It does not follow a
+// redirect, so that a redirect to the login page stays visible.
+Cypress.Commands.add(
+  'kbnResponse',
+  ({ method = 'GET', ...options }) => httpCall('kbn', { ...options, method }, true) as Cypress.Chainable<HttpResponse>
+);
+Cypress.Commands.add(
+  'esResponse',
+  ({ method = 'GET', ...options }) => httpCall('es', { ...options, method }, true) as Cypress.Chainable<HttpResponse>
+);
 
 function uploadFile(
   url: string,
   credentials: string,
   fixtureFilename: string,
   headers?: { [key: string]: string }
-): Cypress.Chainable<any> {
+): Cypress.Chainable<unknown> {
   return cy.fixture(fixtureFilename, 'binary').then(fileContent => {
     const options = {
       url,
@@ -167,7 +119,6 @@ function uploadFile(
 
 Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, property, value) => {
   cy.wrap(subject).should($el => {
-    expect($el).to.exist;
     expect($el.length).to.be.at.least(1);
 
     const win = $el[0].ownerDocument.defaultView;
@@ -183,14 +134,7 @@ Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, propert
   });
 });
 
-Cypress.Commands.add('getByDataTestSubj', (selector: string) => {
-  return cy.get(`[data-test-subj="${selector}"]`);
-});
-
-Cypress.Commands.add('findByDataTestSubj', { prevSubject: 'element' }, (subject, value: string) => {
-  const el = subject.find(`[data-test-subj="${value}"]`);
-  return cy.wrap(el);
-});
+Cypress.Commands.add('getByDataTestSubj', (value, options) => cy.get(`[data-test-subj="${value}"]`, options));
 
 Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   const baseUrl = (Cypress.config().baseUrl ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -217,13 +161,13 @@ Cypress.Commands.add(
     }) as unknown as Cypress.Chainable<{ statusCode: number }>
 );
 
-Cypress.on('uncaught:exception', (err, runnable, promise) => {
+Cypress.on('uncaught:exception', (err, _runnable, promise) => {
   /**
    * Kibana keeps polling in the background (task manager, alerting, telemetry) while a test tears
-   * down. When the previous attempt's page is being logged out, one of those fetches can answer
+   * down. When the previous test's page is being logged out, one of those fetches can answer
    * with a gateway status. Nothing in the app awaits that promise, so it surfaces as an unhandled
    * rejection and fails whichever hook is running - usually an afterEach, which then skips the rest
-   * of the cleanup and poisons every following retry (RORDEV: Sanity-check "Too many elements
+   * of the cleanup and poisons every following test (RORDEV: Sanity-check "Too many elements
    * found. Found '2', expected '1'").
    *
    * Only unhandled rejections are ignored here, never an error a test action waits on: `promise` is
@@ -234,20 +178,41 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
   }
 
   /**
-   * Don't fail test when these specific errors from kibana platform
+   * Kibana 7.17 Discover opens a saved search right after the save and runs its search again. When
+   * its own URL state update cancels that search, it throws the cancellation as an uncaught
+   * AbortError. A cancelled search is not a failure; an assertion on its result still fails a test
+   * that needs it. Only Kibana 7 needs this, so on 8 and later an uncaught AbortError still fails.
    */
+  if (err.name === 'AbortError' && kibanaVersion.lt('8.0.0')) {
+    return false;
+  }
+
+  /**
+   * Kibana 9 cancels a search when the page leaves it. When the search has no async search id yet,
+   * the search interceptor (search_interceptor.ts, `id = id ?? response.id; await
+   * sendCancelRequest()`) builds the cancel path with no id, and buildPath throws. Nothing awaits
+   * that call, so it surfaces as an unhandled rejection. Only that rejection is ignored.
+   */
+  if (promise && err.message.includes('Missing required path parameter: id')) {
+    return false;
+  }
+
+  // Kibana errors that do not fail a test. A filter with a version gate or a `promise` check holds only
+  // on the Kibana versions, or for the unhandled rejection, that its comment names.
   if (
     err.message.includes('ResizeObserver loop limit exceeded') ||
     err.message.includes('ResizeObserver loop completed with undelivered notifications.') || // kibana 8.11.0 and above throws this error
     err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
+    err.message.includes('__kbnSharedDeps__ is not defined') || // the same: a bundle that did not load, on a page that loses its session at logout
+    err.message.includes('__kbnBundles__ does not have a module defined') || // the same
     err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
-    err.message.includes("Cannot read properties of undefined (reading 'includes')") || // kibana 8.7.0 throws this error
-    err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
+    (kibanaVersion.gte('8.7.0') && err.message.includes("Cannot read properties of undefined (reading 'includes')")) || // kibana 8.7.0 and later
+    (kibanaVersion.lt('8.0.0') && err.message.includes("Cannot read properties of undefined (reading 'type')")) || // kibana 7.x throws this error when run with ECK
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
-    err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
+    (promise && kibanaVersion.gte('9.0.0-beta1') && err.message.includes('Not Found')) || // kibana 9.0.0-beta1 and later: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
     err.message.includes('Loading chunk') || // kibana 9.3.2 fails to fetch lazily loaded plugin chunks; affects every spec, so it stays global
-    err.message.includes("Cannot read properties of undefined (reading 'id')") || // kibana 9.x Discover throws when opening with no data views in the tenant
+    (kibanaVersion.gte('9.0.0') && err.message.includes("Cannot read properties of undefined (reading 'id')")) || // kibana 9.x Discover throws when opening with no data views in the tenant
     err.message.includes('endpoint is ignored by ReadonlyREST plugin') // unsupportedEndpointsFilter.ts intercepts Kibana security endpoints with 501; some callers lack try-catch
   ) {
     return false;

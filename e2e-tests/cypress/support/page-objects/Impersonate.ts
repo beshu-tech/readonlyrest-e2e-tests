@@ -2,21 +2,15 @@ import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
 import { rorApiClient } from '../helpers/RorApiClient';
+import { interceptNext } from '../helpers/interceptNext';
 
 export class Impersonate {
   static open() {
-    cy.log('Open Impersonate');
-    RorMenu.openRorMenu();
-    RorMenu.openEditSecuritySettings();
-    Impersonate.clickImpersonateTab();
+    SecuritySettings.openTab('impersonate');
   }
 
   static clickImpersonateTab() {
-    cy.log('Click impersonate tab');
-    SecuritySettings.waitForIframeContent();
-    SecuritySettings.getIframeBody()
-      .findByRole('tab', { name: /impersonation/i })
-      .click();
+    SecuritySettings.tab('impersonate').click();
   }
 
   static getServiceByIndex(index: number) {
@@ -83,7 +77,6 @@ export class Impersonate {
 
   static addEditMockUser(username: string, groups: string[] = []) {
     cy.log('Fill Edit Mock Service');
-    cy.intercept('POST', '/pkp/api/authmock').as('PostAuthMock');
     SecuritySettings.getIframeBody().contains('Add user').click();
     SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').as('confirmButton');
     cy.get('@confirmButton').should('be.disabled');
@@ -101,20 +94,10 @@ export class Impersonate {
   }
 
   static saveEditMockUsers() {
-    cy.intercept('POST', '/pkp/api/test/authmock').as('authMockSave');
+    const authMockSave = interceptNext('authMockSave', { method: 'POST', url: '/pkp/api/test/authmock' });
     cy.get('@confirmButton').should('not.be.disabled');
     cy.get('@confirmButton').click();
-    cy.wait('@authMockSave');
-  }
-
-  static backFromInitializeTestSettings() {
-    cy.log('Back from initialize Test ACL');
-    SecuritySettings.getIframeBody().contains('Back').click();
-  }
-
-  static initializeTestSettings() {
-    cy.log('Initialize Test ACL');
-    SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').click();
+    cy.wait(authMockSave);
   }
 
   static checkIfExpiredModal() {
@@ -125,21 +108,6 @@ export class Impersonate {
   static backFromExpiredTestSettings() {
     cy.log('Back from initialize Test ACL');
     SecuritySettings.getIframeBody().contains('Back').click();
-  }
-
-  static reactivateOldTestSettings() {
-    cy.log('Reactivate old Test ACL');
-    SecuritySettings.getIframeBody().contains('Reactivate old Test ACL').click();
-  }
-
-  static startOverFromCurrentSettings() {
-    cy.log('Start over from current settings');
-    SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').click();
-  }
-
-  static openImpersonateDialog() {
-    cy.log('Open impersonate dialog');
-    SecuritySettings.getIframeBody().findByTestId('impersonate-button').click();
   }
 
   static impersonateUserFromTheList(index: number, rowIndex: number, username: string) {
@@ -171,7 +139,7 @@ export class Impersonate {
   static finishImpersonation() {
     cy.log('finish impersonation');
     RorMenu.openRorMenu();
-    cy.contains('Finish impersonation').click();
+    RorMenu.getPanel().contains('Finish impersonation').click();
     Loader.loading();
   }
 
