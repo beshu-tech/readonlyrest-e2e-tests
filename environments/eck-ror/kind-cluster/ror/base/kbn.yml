@@ -25,6 +25,7 @@ spec:
     spec:
       containers:
         - name: kibana
+          imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: false
             runAsUser: 0

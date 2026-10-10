@@ -183,6 +183,14 @@ docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
 docker exec eck-ror-control-plane chmod +x bootstrap-eck.sh
 docker exec eck-ror-control-plane ./bootstrap-eck.sh /eck-manifests
 
+ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
+# The kubelet pulls with no retry of ours, and a failed pull waits in back-off. The host pulls with
+# retries instead, and kind copies the images into the workers, where ES and Kibana run.
+retry 3 docker pull "$ROR_ES_IMAGE"
+retry 3 docker pull "$ROR_KBN_IMAGE"
+kind load docker-image "$ROR_ES_IMAGE" "$ROR_KBN_IMAGE" --name eck-ror --nodes eck-ror-worker,eck-ror-worker2
+
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
 echo "Cluster type: $CLUSTER_TYPE"
 
