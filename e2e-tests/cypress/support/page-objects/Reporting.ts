@@ -1,8 +1,7 @@
-import * as semver from 'semver';
 import { recurse } from 'cypress-recurse';
 import { RorMenu } from './RorMenu';
 import { StackManagement } from './StackManagement';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 import { esApiAdvancedClient } from '../helpers/EsApiAdvancedClient';
 import { KibanaToast } from './KibanaToast';
 import type { Interception } from 'cypress/types/net-stubbing';
@@ -64,7 +63,7 @@ export class Reporting {
   static verifyIfReportingPageAfterRefresh() {
     cy.log('Verify if reporting page open after refresh');
     // Kibana 8.19 and 9.1+ redirect the reporting page to /exports. 9.0 keeps the bare path.
-    const expectedUrl = semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
+    const expectedUrl = kibanaVersion.has91Features()
       ? `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting/exports`
       : `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`;
 
@@ -82,7 +81,7 @@ export class Reporting {
       .closest('[data-test-subj=reportJobRow]')
       .find('[type=checkbox]')
       .click();
-    if (semver.gte(getKibanaVersion(), '9.3.0')) {
+    if (kibanaVersion.gte('9.3.0')) {
       KibanaToast.closeToastMessage();
     }
     cy.get('[data-test-subj=deleteReportButton]').click();
@@ -113,7 +112,7 @@ export class Reporting {
       cy.stub(win, 'open').as('openReport');
     });
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.get('[data-test-subj="reportJobRow"]').eq(0).find('[data-test-subj^="reportDownloadLink-"]').click();
     } else {
       cy.get('[data-test-subj="reportJobRow"]').eq(0).find('[aria-label="Download report"]').click();

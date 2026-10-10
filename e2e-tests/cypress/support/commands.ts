@@ -1,8 +1,7 @@
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
-import * as semver from 'semver';
 import { capture as clipboardCapture } from './clipboardCapture';
-import { getKibanaVersion } from './helpers';
+import { kibanaVersion } from './helpers';
 import { describeBody } from './helpers/KbnApiClient';
 import type { HttpResponse } from './types';
 import { kibana } from './helpers/credentials';
@@ -192,7 +191,7 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
    * AbortError. A cancelled search is not a failure; an assertion on its result still fails a test
    * that needs it. Only Kibana 7 needs this, so on 8 and later an uncaught AbortError still fails.
    */
-  if (err.name === 'AbortError' && semver.lt(getKibanaVersion(), '8.0.0')) {
+  if (err.name === 'AbortError' && kibanaVersion.lt('8.0.0')) {
     return false;
   }
 

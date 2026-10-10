@@ -1,7 +1,6 @@
-import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { DevTools } from '../support/page-objects/DevTools';
-import { getKibanaVersion } from '../support/helpers';
+import { getKibanaVersion, kibanaVersion } from '../support/helpers';
 
 describe('Dev tools', () => {
   beforeEach(() => {
@@ -24,7 +23,7 @@ describe('Dev tools', () => {
 
     cy.log('should verify GET _search with bad JSON is rejected');
     const badJsonRequest = 'GET _search\n{\n  "query": { BAD_JSON\n    "match_all": {}\n  }\n}';
-    if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
+    if (kibanaVersion.has91Features()) {
       DevTools.trySendRequest(badJsonRequest);
       DevTools.verifyIfContainsErrorsMessage();
     } else {

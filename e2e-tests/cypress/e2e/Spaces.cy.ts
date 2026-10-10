@@ -1,7 +1,5 @@
-import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Spaces } from '../support/page-objects/Spaces';
 import { ManageSpaces } from '../support/page-objects/ManageSpaces';

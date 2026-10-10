@@ -1,7 +1,6 @@
-import semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
 import { TopNav } from './TopNav';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
 import { ListingTable } from './ListingTable';
 
@@ -46,7 +45,7 @@ export class Dashboard {
 
   static openDashboard() {
     cy.log('Open dashboard');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       KibanaNavigation.openPage('Dashboards');
     } else {
       KibanaNavigation.openPage('Dashboard');
@@ -57,14 +56,14 @@ export class Dashboard {
     cy.log('openShareDiscoverUrl');
     cy.getByDataTestSubj('shareTopNavButton').click();
 
-    if (semver.lt(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.lt('8.0.0')) {
       cy.getByDataTestSubj('sharePanel-Permalinks').click();
     }
   }
 
   static clickCopyLinkButton() {
     cy.log('clickCopyLinkButton');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       const generateShortUrl = interceptNext('generateShortUrl', {
         method: 'POST',
         pathname: '/s/default/api/short_url'
@@ -78,7 +77,7 @@ export class Dashboard {
 
   static clickEmbedTab() {
     cy.log('clickEmbedTab');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.getByDataTestSubj('embed').click();
     } else {
       cy.getByDataTestSubj('sharePanel-Embedcode').click();
@@ -87,7 +86,7 @@ export class Dashboard {
 
   static clickCopyEmbedCodeButton() {
     cy.log('clickCopyEmbedCodeButton');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.getByDataTestSubj('copyEmbedUrlButton').click();
     } else {
       cy.getByDataTestSubj('copyShareUrlButton').click();
@@ -96,7 +95,7 @@ export class Dashboard {
 
   static backToShareDashboard() {
     cy.log('backToShareDashboard');
-    if (semver.lt(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.lt('8.0.0')) {
       cy.getByDataTestSubj('contextMenuPanelTitleButton').click();
     }
   }

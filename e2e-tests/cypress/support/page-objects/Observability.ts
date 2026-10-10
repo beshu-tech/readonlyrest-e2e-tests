@@ -1,6 +1,5 @@
-import * as semver from 'semver';
 import { recurse } from 'cypress-recurse';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 
 export class Observability {
   static APM_DATA_INDEXES_WILDCARD = '.ds-*-apm*';
@@ -54,7 +53,7 @@ export class Observability {
     timeout?: number;
     interval?: number;
   }): Cypress.Chainable<JQuery<HTMLElement>> {
-    const refreshButtonSelector = semver.gte(getKibanaVersion(), '8.0.0')
+    const refreshButtonSelector = kibanaVersion.gte('8.0.0')
       ? '[data-test-subj="querySubmitButton"]'
       : '[data-test-subj="superDatePickerApplyTimeButton"]';
 
@@ -92,7 +91,7 @@ export class Observability {
 
   static waitForApmApp(appName: string) {
     return this.waitWithRefreshButtonClick({
-      targetSelector: semver.gte(getKibanaVersion(), '8.0.0') ? '[data-test-subj="apmServiceListAppLink"]' : '.euiLink',
+      targetSelector: kibanaVersion.gte('8.0.0') ? '[data-test-subj="apmServiceListAppLink"]' : '.euiLink',
       checkFn: $el => {
         const matches = $el.filter((i, el) => el.textContent.includes(appName));
         return matches.length > 0;
@@ -102,7 +101,7 @@ export class Observability {
 
   static waitForErrorTransaction(name: string) {
     return this.waitWithRefreshButtonClick({
-      targetSelector: semver.gte(getKibanaVersion(), '8.0.0') ? '[data-test-subj="apmErrorDetailsLink"]' : '.euiLink',
+      targetSelector: kibanaVersion.gte('8.0.0') ? '[data-test-subj="apmErrorDetailsLink"]' : '.euiLink',
       checkFn: $el => {
         const matches = $el.filter((i, el) => el.innerText.includes(name));
 

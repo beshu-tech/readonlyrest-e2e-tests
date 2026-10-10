@@ -1,7 +1,6 @@
-import * as semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
 import { TopNav } from './TopNav';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
 
 export class Discover {
@@ -9,7 +8,7 @@ export class Discover {
     cy.log('createIndexPattern');
     createKibanaIndexPattern(indexPatternName);
 
-    if (semver.lt(getKibanaVersion(), '8.8.0')) {
+    if (kibanaVersion.lt('8.8.0')) {
       KibanaNavigation.openPage('Discover');
     }
 
@@ -22,7 +21,7 @@ export class Discover {
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
 
-    const createDiscoverSession = semver.gte(getKibanaVersion(), '9.0.0')
+    const createDiscoverSession = kibanaVersion.gte('9.0.0')
       ? interceptNext('createDiscoverSession', { method: 'POST', url: '**/api/content_management/rpc/create' })
       : undefined;
 
@@ -76,15 +75,15 @@ export class Discover {
   static exportToCsv() {
     cy.log('exportToCsv');
 
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+    if (kibanaVersion.gte('9.4.0')) {
       cy.getByDataTestSubj('app-menu-overflow-button').click();
       cy.getByDataTestSubj('exportTopNavButton').click();
       cy.getByDataTestSubj('exportMenuItem-CSV').click();
-    } else if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
+    } else if (kibanaVersion.has91Features()) {
       cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
       cy.get('[data-test-subj=shareTopNavButton]').click();
-      if (semver.gte(getKibanaVersion(), '8.15.0')) {
+      if (kibanaVersion.gte('8.15.0')) {
         cy.get('[data-test-subj=export]').click();
       } else {
         cy.get('[data-test-subj=sharePanel-CSVReports]').click();
@@ -100,7 +99,7 @@ export class Discover {
     cy.log('openShareDiscoverUrl');
     cy.getByDataTestSubj('shareTopNavButton').click();
 
-    if (semver.lt(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.lt('8.0.0')) {
       cy.getByDataTestSubj('sharePanel-Permalinks').click();
     }
   }
@@ -108,7 +107,7 @@ export class Discover {
   static clickCopyLinkButton(accessLevel: 'admin' | 'rw' | 'ro' | 'ro_strict') {
     cy.log('clickCopyLinkButton');
 
-    if (semver.gte(getKibanaVersion(), '8.0.0') && ['admin', 'rw'].includes(accessLevel)) {
+    if (kibanaVersion.gte('8.0.0') && ['admin', 'rw'].includes(accessLevel)) {
       const generateShortUrl = interceptNext('generateShortUrl', {
         method: 'POST',
         pathname: '/s/default/api/short_url'
@@ -124,7 +123,7 @@ export class Discover {
   // allowed, so it proves that the popover holds the items.
   static writeControlsNotShown() {
     cy.log('Discover write controls not shown');
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+    if (kibanaVersion.gte('9.4.0')) {
       TopNav.overflowButtonExists();
     }
     TopNav.checkControlsNotShown(
@@ -136,7 +135,7 @@ export class Discover {
 
   static openDataViewPage = () => {
     cy.log('open data view page');
-    if (semver.gte(getKibanaVersion(), '8.1.0')) {
+    if (kibanaVersion.gte('8.1.0')) {
       KibanaNavigation.openPage('Stack Management');
       KibanaNavigation.openSubPage('Data Views');
     } else {
@@ -146,7 +145,7 @@ export class Discover {
 
   static verifyIndexPatternSwitchLink = (indexPatternName: string) => {
     cy.log('verify Index Pattern Switch Link');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.get('[data-test-subj*=detail-link]').contains(indexPatternName);
     } else {
       cy.get('[data-test-subj=indexPattern-switch-link]').contains(indexPatternName);
@@ -163,7 +162,7 @@ export class Discover {
 
   static verifyDocument = (row: number, indexPatternName: string) => {
     cy.log('verify Document');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.contains('[data-test-subj="discoverCellDescriptionList"]', indexPatternName).eq(row).should('be.visible');
     } else {
       cy.get('[data-test-subj="docTableExpandToggleColumn"]').eq(row).click();
@@ -173,13 +172,11 @@ export class Discover {
 
   static selectTodayDataRange = () => {
     cy.log('Select Today Data Range');
-    const searchUrl = semver.gte(getKibanaVersion(), '9.0.0')
-      ? `/s/default/internal/search/ese**`
-      : `/s/default/internal/bsearch**`;
+    const searchUrl = kibanaVersion.gte('9.0.0') ? `/s/default/internal/search/ese**` : `/s/default/internal/bsearch**`;
 
     const search = interceptNext('search', { method: 'POST', url: searchUrl });
 
-    if (semver.gte(getKibanaVersion(), '9.5.0')) {
+    if (kibanaVersion.gte('9.5.0')) {
       cy.getByDataTestSubj('dateRangePickerControlButton').click();
       cy.getByDataTestSubj('dateRangePickerPresetItem-Today').click();
     } else {
@@ -204,7 +201,7 @@ export class Discover {
   static verifyIndexTitle = (indexPatternName: string) => {
     cy.log('Verify Index title');
 
-    if (semver.gte(getKibanaVersion(), '9.2.0')) {
+    if (kibanaVersion.gte('9.2.0')) {
       cy.contains('[data-test-subj="indexPatternTitle"]', indexPatternName).as('indexPatternTitle').scrollIntoView();
       cy.get('@indexPatternTitle').should('be.visible');
     } else {
@@ -231,7 +228,7 @@ export class Discover {
   static verifyDiscoverFromSearchSessionCorrectlyRestored = () => {
     cy.log('Verify Discover from search session');
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.contains(/You are viewing cached data from a specific time range/i).should('be.visible');
     } else {
       cy.getByDataTestSubj('searchSessionIndicator').should('be.visible');
@@ -272,7 +269,7 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
       .click();
     cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName); // regular index pattern field
 
-    if (semver.gte(getKibanaVersion(), '8.4.0')) {
+    if (kibanaVersion.gte('8.4.0')) {
       cy.get('[data-test-subj=createIndexPatternTitleInput]').type(indexPatternName); // Added title field in 8.4.0
     }
 
@@ -280,7 +277,7 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.get('[data-test-subj=timestampField]').click();
     cy.contains('[role="option"]', '@timestamp').click();
 
-    const indexPattern = semver.gte(getKibanaVersion(), '8.9.0')
+    const indexPattern = kibanaVersion.gte('8.9.0')
       ? interceptNext('indexPattern', { url: '/s/default/api/kibana/management/saved_objects/**' })
       : interceptNext('indexPattern', { url: '/s/default/api/saved_objects/**' });
 
@@ -289,11 +286,11 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.wait(indexPattern);
   };
 
-  if (semver.gte(getKibanaVersion(), '8.0.0')) {
+  if (kibanaVersion.gte('8.0.0')) {
     return createIdentityForKibanaForAndAbove8_0_0();
   }
 
-  if (semver.gte(getKibanaVersion(), '7.15.1')) {
+  if (kibanaVersion.gte('7.15.1')) {
     return createIdentityForKibanaForAndAbove7_15_1();
   }
 

@@ -1,10 +1,9 @@
-import semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { Home } from '../support/page-objects/Home';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Discover } from '../support/page-objects/Discover';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SearchSessions } from '../support/page-objects/SearchSessions';
 import { itOnKibana } from '../support/helpers/itOnKibana';
@@ -14,7 +13,7 @@ const user4 = user(4);
 
 describe('Discover tests', () => {
   beforeEach(() => {
-    if (semver.lt(getKibanaVersion(), '9.0.0')) {
+    if (kibanaVersion.lt('9.0.0')) {
       kbnApiAdvancedClient.deleteSearchSessions(admin);
     }
   });
@@ -27,7 +26,7 @@ describe('Discover tests', () => {
     Login.initialization({ credentials: user4 });
     Home.loadSampleData();
     KibanaNavigation.openPage('Discover');
-    if (semver.lt(getKibanaVersion(), '9.0.0')) {
+    if (kibanaVersion.lt('9.0.0')) {
       Discover.discoverSearchCompleted();
     }
     Discover.verifyDocumentWithTodayRange(0, 'kibana_sample_data_ecommerce');

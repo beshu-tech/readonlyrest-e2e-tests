@@ -1,4 +1,3 @@
-import semver from 'semver/preload';
 import { Login } from '../support/page-objects/Login';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { RorMenu } from '../support/page-objects/RorMenu';
@@ -7,7 +6,7 @@ import { Loader } from '../support/page-objects/Loader';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import type { GetObject } from '../support/helpers/KbnApiClient';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { IndexManagement } from '../support/page-objects/IndexManagement';
 import { TENANCY_QUERY_STRING_KEY, X_ROR_TENANCY } from '../support/types';
@@ -57,14 +56,14 @@ describe('Tenancy', () => {
 
       kbnApiClient.loadSampleData('ecommerce', admin, 'template_group');
       KibanaNavigation.openPage('Discover');
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      if (kibanaVersion.gte('8.0.0')) {
         cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');
       } else {
         cy.get('[data-test-subj="indexPattern-switch-link"]', { timeout: 30000 }).should('exist');
       }
       Discover.openShareDiscover();
       Discover.clickCopyLinkButton('admin');
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      if (kibanaVersion.gte('8.0.0')) {
         cy.getValueFromClipboard()
           .should('contain', 'https://localhost:5601/s/default/app/r/s')
           .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
@@ -80,7 +79,7 @@ describe('Tenancy', () => {
       Dashboard.openShareDashboard();
       Dashboard.clickCopyLinkButton();
 
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      if (kibanaVersion.gte('8.0.0')) {
         cy.getValueFromClipboard()
           .should('contain', 'https://localhost:5601/s/default/app/r/s')
           .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
@@ -90,13 +89,13 @@ describe('Tenancy', () => {
           `https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/`
         );
       }
-      if (semver.lt(getKibanaVersion(), '8.0.0')) {
+      if (kibanaVersion.lt('8.0.0')) {
         Dashboard.backToShareDashboard();
       }
       Dashboard.clickEmbedTab();
       Dashboard.clickCopyEmbedCodeButton();
 
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      if (kibanaVersion.gte('8.0.0')) {
         cy.getValueFromClipboard().should(
           'contain',
           `<iframe src="https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/view/`

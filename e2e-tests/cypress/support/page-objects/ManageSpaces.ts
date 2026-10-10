@@ -1,5 +1,4 @@
-import * as semver from 'semver';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 import { Popover } from './Popover';
 
 export class ManageSpaces {
@@ -16,7 +15,7 @@ export class ManageSpaces {
 
   static openEditSpacePage(spaceId: string, spaceName: string) {
     ManageSpaces.openSpacesManagementPage();
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+    if (kibanaVersion.gte('8.16.0')) {
       cy.getByDataTestSubj(`${spaceId}-hyperlink`).click();
     } else {
       // The closing spaces popover also lists the space by name, so the lookup stays in the grid.

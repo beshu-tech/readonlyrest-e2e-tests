@@ -1,17 +1,16 @@
-import * as semver from 'semver';
 import { recurse } from 'cypress-recurse';
 import { KibanaNavigation } from './KibanaNavigation';
-import { getKibanaVersion, pasteText } from '../helpers';
+import { kibanaVersion, pasteText } from '../helpers';
 
 export class DevTools {
   static openDevTools() {
     cy.log('Open Dev tools');
-    if (semver.gte(getKibanaVersion(), '8.16.0') && semver.lt(getKibanaVersion(), '9.2.0')) {
+    if (kibanaVersion.gte('8.16.0') && kibanaVersion.lt('9.2.0')) {
       DevTools.markConsoleTourAsDone();
     }
     KibanaNavigation.openPage('Dev Tools');
 
-    if (semver.lt(getKibanaVersion(), '8.16.0')) {
+    if (kibanaVersion.lt('8.16.0')) {
       cy.get('[data-test-subj="help-close-button"]').click();
     }
   }
@@ -60,10 +59,10 @@ export class DevTools {
 
   // Enters the request and clicks send. The Console does not send a request with errors.
   static trySendRequest(request: string) {
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+    if (kibanaVersion.gte('8.16.0')) {
       DevTools.enterRequestIntoMonacoEditor(request);
       cy.get('[data-test-subj="sendRequestButton"]').click();
-    } else if (semver.lte(getKibanaVersion(), '7.9.0')) {
+    } else if (kibanaVersion.lte('7.9.0')) {
       cy.get('#ConAppEditor').click();
       cy.get('#ConAppInputTextarea').clear({ force: true });
       DevTools.pasteIntoFocusedEditor(request);
@@ -153,7 +152,7 @@ export class DevTools {
   static verifyResponseInConsole(value: string) {
     cy.log('verify response in console');
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.contains('[data-test-subj="consoleMonacoOutput"]', value);
     } else {
       cy.contains('[data-test-subj="response-editor"]', value);

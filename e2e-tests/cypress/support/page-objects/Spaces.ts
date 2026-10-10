@@ -1,5 +1,4 @@
-import * as semver from 'semver';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
 import { isHiddenByCss } from '../helpers/hiddenByCss';
 import { ManageSpaces } from './ManageSpaces';
@@ -14,7 +13,7 @@ export class Spaces {
     });
 
     ManageSpaces.openSpacesManagementPage();
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+    if (kibanaVersion.gte('8.16.0')) {
       cy.get(`[id="${spaceNameLowerCaseAndDash}-actions"]`).click();
       cy.get(`[data-test-subj="${spaceNameLowerCaseAndDash}-deleteSpace"]`).click();
     } else {
@@ -53,7 +52,7 @@ export class Spaces {
     cy.get('[data-test-subj=addSpaceName]').type(spaceName);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
 
-    if (semver.gte(getKibanaVersion(), '8.18.0')) {
+    if (kibanaVersion.gte('8.18.0')) {
       cy.get('[data-test-subj="solutionViewSelect"]').click();
       cy.get('[data-test-subj="solutionViewClassicOption"]').click();
     }
@@ -84,7 +83,7 @@ export class Spaces {
 
   static openSpace(spaceId: string) {
     cy.log('Open space');
-    const spaceItem = semver.gte(getKibanaVersion(), '8.0.0')
+    const spaceItem = kibanaVersion.gte('8.0.0')
       ? `[data-test-subj="${spaceId}-selectableSpaceItem"]`
       : `[data-test-subj="${spaceId}-gotoSpace"]`;
     ManageSpaces.openSpacesNavSelector(spaceItem);
@@ -93,9 +92,9 @@ export class Spaces {
 
   static verifyCurrentSpace(spaceName: string) {
     cy.log('Verify current space');
-    if (semver.gte(getKibanaVersion(), '9.0.0')) {
+    if (kibanaVersion.gte('9.0.0')) {
       cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');
-    } else if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    } else if (kibanaVersion.gte('8.0.0')) {
       cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('exist');
     } else {
       cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');

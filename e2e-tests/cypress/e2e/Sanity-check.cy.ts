@@ -1,10 +1,9 @@
-import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { Discover } from '../support/page-objects/Discover';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
@@ -46,14 +45,14 @@ describe('sanity check', () => {
     // exportToCsv returns once the report is queued, not written - wait for it to be
     // refresh-visible in ES before checking the UI list, which fetches once on load
     // and won't retry a request (see RORDEV-2091).
-    if (semver.gte(getKibanaVersion(), '8.15.0')) {
+    if (kibanaVersion.gte('8.15.0')) {
       esApiAdvancedClient.waitForReportingSegmentsDocsCount('.kibana_admins_group', 1);
     }
     Reporting.openReportingPage('kibanaNavigation');
     // On <9.0.0 the report's title can still be "Untitled Discover session" instead of
     // 'admin_search' due to a Kibana title-binding race. The reopen step in
     // Discover.saveReport makes the title reliable on >=9.0.0, so retain title coverage there.
-    if (semver.gte(getKibanaVersion(), '9.0.0')) {
+    if (kibanaVersion.gte('9.0.0')) {
       Reporting.verifySavedReport(['admin_search']);
     } else {
       Reporting.verifyReportsCount(1);
@@ -62,17 +61,17 @@ describe('sanity check', () => {
 
     cy.log('Change tenancy, and initialize it');
     // Kibana 8.19 and 9.1+ redirect the reporting page to /exports. 9.0 keeps the bare path.
-    const finishUrl = semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
+    const finishUrl = kibanaVersion.has91Features()
       ? '/app/management/insightsAndAlerting/reporting/exports'
       : '/app/management/insightsAndAlerting/reporting';
 
     RorMenu.changeTenancy('Infosec', finishUrl);
 
-    if (semver.gte(getKibanaVersion(), '8.8.0')) {
+    if (kibanaVersion.gte('8.8.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
       RorMenu.openDataViewsPage();
       Discover.createIndexPattern('sa');
-    } else if (semver.gte(getKibanaVersion(), '8.1.0')) {
+    } else if (kibanaVersion.gte('8.1.0')) {
       Reporting.noReportsCreatedCheck('rorMenu');
       RorMenu.openDataViewsPage();
       Discover.openDataViewPage();
@@ -104,7 +103,7 @@ describe('sanity check', () => {
     RorMenu.pressLogoutButton();
     Login.fillLoginPageWith(admin);
 
-    if (semver.gte(getKibanaVersion(), '8.7.0')) {
+    if (kibanaVersion.gte('8.7.0')) {
       Loader.loading(
         "/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
       );

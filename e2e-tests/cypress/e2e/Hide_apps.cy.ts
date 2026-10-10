@@ -1,10 +1,9 @@
-import semver from 'semver';
 import { Settings } from '../support/page-objects/Settings';
 import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Spaces } from '../support/page-objects/Spaces';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { PageNotFound } from '../support/page-objects/PageNotFound';
 import { SearchApps } from '../support/page-objects/SearchApps';
 import { Loader } from '../support/page-objects/Loader';
@@ -30,7 +29,7 @@ describe('hidden apps', () => {
       KibanaNavigation.checkStackManagementSectionElementsCount('kibana', 2);
       KibanaNavigation.checkStackManagementShownLinksCount(3);
       KibanaNavigation.checkIfStackManagementSubPageVisible('Reporting');
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      if (kibanaVersion.gte('8.0.0')) {
         KibanaNavigation.checkIfStackManagementSubPageVisible('Data Views');
       } else {
         KibanaNavigation.checkIfStackManagementSubPageVisible('Index Patterns');

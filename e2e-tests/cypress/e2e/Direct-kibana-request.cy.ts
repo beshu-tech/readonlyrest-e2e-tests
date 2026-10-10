@@ -1,5 +1,4 @@
-import * as semver from 'semver';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { admin, BasicCredentials, user } from '../support/helpers/credentials';
@@ -84,7 +83,7 @@ describe('Direct kibana request', () => {
     };
 
     verifySavedObjects();
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       verifyDataViews();
     }
   });
@@ -92,7 +91,7 @@ describe('Direct kibana request', () => {
   it('should create short URL with x-ror-tenancy-id header', () => {
     rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
 
-    const createShortUrl = semver.gte(getKibanaVersion(), '8.0.0')
+    const createShortUrl = kibanaVersion.gte('8.0.0')
       ? kbnApiClient.createShortUrl(
           {
             locatorId: 'DISCOVER_APP_LOCATOR',
@@ -149,7 +148,7 @@ describe('Direct kibana request', () => {
     kbnApiAdvancedClient.deleteSavedObjects(user1);
     kbnApiAdvancedClient.deleteSavedObjects(admin);
     kbnApiAdvancedClient.deleteSavedObjects(admin, 'template_group');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       kbnApiAdvancedClient.deleteDataViews(user1);
       kbnApiAdvancedClient.deleteDataViews(admin);
       kbnApiAdvancedClient.deleteDataViews(admin, 'template_group');

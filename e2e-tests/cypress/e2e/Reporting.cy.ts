@@ -1,7 +1,6 @@
-import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { esApiClient } from '../support/helpers/EsApiClient';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Reporting } from '../support/page-objects/Reporting';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
@@ -17,7 +16,7 @@ const testData = [
 
 const reportingSampleIndex = 'reporting_sample_index';
 
-if (semver.gte(getKibanaVersion(), '8.15.0')) {
+if (kibanaVersion.gte('8.15.0')) {
   testData.forEach(({ credentials, index }) => {
     describe(`Reporting tests for ${accountOf(credentials)}`, () => {
       const oldFormatReportingIndex = `.reporting${index}-2025-02-02`;
@@ -25,7 +24,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       const newFormatReportingName = 'new format reporting index doc';
       // Kibana 8 can give a report made right after the save the title "Untitled Discover session"
       // (see Reporting.verifyReportsCount), so on 8 either title is the new report.
-      const newFormatReportTitle = semver.lt(getKibanaVersion(), '9.0.0')
+      const newFormatReportTitle = kibanaVersion.lt('9.0.0')
         ? new RegExp(`${newFormatReportingName}|Untitled Discover session`)
         : newFormatReportingName;
       let oldFormatReportingName: string;

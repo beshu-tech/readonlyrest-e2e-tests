@@ -1,8 +1,7 @@
-import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { UserSettings } from '../support/page-objects/UserSettings';
 import { SecuritySettings } from '../support/page-objects/SecuritySettings';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Loader } from '../support/page-objects/Loader';
 import { admin, kibana } from '../support/helpers/credentials';
@@ -47,7 +46,7 @@ describe('User settings', () => {
     UserSettings.open();
 
     // Register the intercept before triggering any reload so we don't miss the CSS request
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+    if (kibanaVersion.gte('8.16.0')) {
       cy.intercept('**/*legacy_dark_theme.min.css').as('darkMode');
     } else {
       cy.intercept('**/*dark.css').as('darkMode');

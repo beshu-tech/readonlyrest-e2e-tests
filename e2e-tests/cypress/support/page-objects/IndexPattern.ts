@@ -1,5 +1,4 @@
-import * as semver from 'semver';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 import { shouldNotBeShown } from '../helpers/hiddenByCss';
 import { ListingTable } from './ListingTable';
 
@@ -15,7 +14,7 @@ export class IndexPattern {
     cy.log('Delete Index pattern button hidden');
     cy.getByDataTestSubj('indexPatternTitle').should('be.visible');
     shouldNotBeShown('[data-test-subj="deleteIndexPatternButton"]');
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+    if (kibanaVersion.gte('9.4.0')) {
       shouldNotBeShown('[data-test-subj="moreActionsButton"]');
     }
   }
@@ -24,7 +23,7 @@ export class IndexPattern {
   static createButtonHidden() {
     cy.log('Create index pattern button hidden');
     cy.getByDataTestSubj('indexPatternTable').should('be.visible');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       shouldNotBeShown('[data-test-subj="createDataViewButton"]');
     } else {
       shouldNotBeShown('[data-test-subj="createIndexPatternButton"]');
@@ -33,7 +32,7 @@ export class IndexPattern {
 
   static addIndexButtonHidden() {
     cy.log('Add index button hidden');
-    if (semver.gte(getKibanaVersion(), '7.17.15')) {
+    if (kibanaVersion.gte('7.17.15')) {
       cy.get('[data-test-subj=addField]').should('not.exist');
     } else {
       cy.get('[data-test-subj=addField]').should('not.be.visible');
