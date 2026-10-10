@@ -28,10 +28,12 @@ on:
 env:
   APPLY_RESOURCE_LIMITS: "auto"
 
+# Each runs-on reads a JSON label list from a repo variable that Doppler syncs (project ror_ci,
+# config prd), so a runner change needs no commit. The fallback applies while the variable is unset.
 jobs:
   e2e-tests:
     name: "🔬 E2E Tests"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5

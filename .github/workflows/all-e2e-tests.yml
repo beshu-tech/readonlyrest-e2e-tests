@@ -26,6 +26,8 @@ env:
   ECK_3X: eck-3.5.0
   ECK_2X: eck-2.16.1
 
+# Each runs-on reads a JSON label list from a repo variable that Doppler syncs (project ror_ci,
+# config prd), so a runner change needs no commit. The fallback applies while the variable is unset.
 jobs:
   # ==========================================
   # PLAN
@@ -34,7 +36,7 @@ jobs:
   # dev images are built from the branch under test, or from develop on the cron.
   plan:
     name: "🧮 Plan"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 5
     outputs:
       images: ${{ steps.plan.outputs.images }}
@@ -70,7 +72,7 @@ jobs:
     name: "🔬 E2E Tests (released plugins)"
     needs: plan
     if: contains(needs.plan.outputs.images, 'prod')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -125,7 +127,7 @@ jobs:
     name: "🏗️ Prepare dev images"
     needs: plan
     if: contains(needs.plan.outputs.images, 'dev')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 90
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
@@ -161,7 +163,7 @@ jobs:
   dev-e2e-tests:
     name: "🧪 E2E Tests (pre-build plugins)"
     needs: [plan, prepare-dev-images]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
