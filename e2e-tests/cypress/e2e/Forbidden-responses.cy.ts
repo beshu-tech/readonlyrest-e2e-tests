@@ -158,7 +158,7 @@ describe('Forbidden responses', () => {
       cy.contains('[data-test-subj="globalToastList"]', "Deleted '").should('not.exist');
     });
 
-    it('shows a danger toast instead of leaving an unhandled rejection when an index pattern delete is forbidden on its edit page', () => {
+    it('shows a danger toast and keeps the edit page open when an index pattern delete is forbidden', () => {
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-edit-page-delete',
         credentials: userCredentials,
