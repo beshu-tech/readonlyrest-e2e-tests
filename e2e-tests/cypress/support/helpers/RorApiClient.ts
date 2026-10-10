@@ -15,6 +15,14 @@ export class RorApiClient {
     });
   }
 
+  // Test settings stay active until their TTL ends, also after the spec that loaded them. Invalidating
+  // settings that are not active also answers "OK".
+  public invalidateTestSettings() {
+    cy.esDelete<{ status: string; message: string }>({ endpoint: '_readonlyrest/admin/config/test' }).then(result => {
+      expect(result.status, `Test ACL invalidated: ${result.message}`).to.equal('OK');
+    });
+  }
+
   // ReadonlyREST answers a rejected Test ACL with HTTP 200 and status "FAILED", and keeps the
   // settings it had. Loading the settings that are already active is also a "FAILED".
   public configureRorIndexTestSettings(fixtureYamlFileName: string, ttlInSeconds: number): Cypress.Chainable<void> {

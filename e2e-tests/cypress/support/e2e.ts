@@ -13,9 +13,12 @@ beforeEach(resetClipboardCapture);
 // the cause stays hidden. Fail here instead, with the cause in the error.
 before(() => kbnApiAdvancedClient.waitForKibanaToAnswerUserRequests());
 
-// Every spec starts on the default ReadonlyREST settings. A spec that changes them restores them in
-// an after hook, and a failed hook leaves the change for every later spec.
-before(() => rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml'));
+// Every spec starts on the default ReadonlyREST settings and with no Test ACL. A spec that changes
+// them restores them in an after hook, and a failed hook leaves the change for every later spec.
+before(() => {
+  rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+  rorApiClient.invalidateTestSettings();
+});
 
 /// <reference types="cypress" />
 

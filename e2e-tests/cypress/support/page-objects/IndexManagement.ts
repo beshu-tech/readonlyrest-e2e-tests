@@ -109,7 +109,8 @@ export class IndexManagement {
 
   static openDataStreams() {
     cy.log('Open Data Streams');
-    cy.intercept({ method: 'GET', pathname: '/api/index_management/data_streams' }, req => {
+    // The path has the space prefix, for example /s/default/api/index_management/data_streams.
+    cy.intercept({ method: 'GET', pathname: '**/api/index_management/data_streams' }, req => {
       delete req.headers['if-none-match'];
     }).as('dataStreamsList');
 
