@@ -131,7 +131,7 @@ describe('Tenancy', () => {
       Spaces.verifyCurrentSpace(newSpace);
     });
 
-    it('should hide correct Kibana navigation items on tenancy switch', () => {
+    it('should hide the Stack Management link in the infosec tenancy', () => {
       const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
@@ -140,7 +140,7 @@ describe('Tenancy', () => {
       });
 
       KibanaNavigation.openKibanaNavigation();
-      KibanaNavigation.checkIfNotVisible('Stack Management');
+      KibanaNavigation.checkIfHidden('Stack Management');
     });
   });
 

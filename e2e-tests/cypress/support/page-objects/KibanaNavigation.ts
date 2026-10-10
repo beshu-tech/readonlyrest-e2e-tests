@@ -29,11 +29,24 @@ export class KibanaNavigation {
     cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
-  static checkIfNotVisible(page: string) {
-    cy.log('checkIfNotVisible');
+  // ROR hides an app link with injected CSS: display none on the link or on its group. The check
+  // looks for that, not for "not visible": Cypress also calls a link "not visible" when it is below
+  // the scroll area of the navigation. The visible link first proves that the navigation is open.
+  static checkIfHidden(page: string, visiblePage = 'Discover') {
+    cy.log('checkIfHidden');
+    cy.get('[data-test-subj=collapsibleNav]')
+      .contains(new RegExp(`^${visiblePage}$`))
+      .scrollIntoView()
+      .should('be.visible');
     cy.get('[data-test-subj=collapsibleNav]')
       .contains(new RegExp(`^${page}$`))
-      .should('not.be.visible');
+      .should($link => {
+        const hiddenElements = $link
+          .parents()
+          .addBack()
+          .filter((_, el) => Cypress.$(el).css('display') === 'none');
+        expect(hiddenElements.length, `${page} link or a parent of it with display: none`).to.be.greaterThan(0);
+      });
   }
 
   static checkIfNotExists(page: string) {

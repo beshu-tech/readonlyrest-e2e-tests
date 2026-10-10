@@ -90,7 +90,7 @@ describe('sanity check', () => {
 
     cy.log('Verify the hidden apps feature');
     KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfNotVisible('Stack Management');
+    KibanaNavigation.checkIfHidden('Stack Management');
     KibanaNavigation.checkIfNotExists('Dev Tools');
     KibanaNavigation.checkIfRouteNotReachable(
       `/s/default/app/management?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`
