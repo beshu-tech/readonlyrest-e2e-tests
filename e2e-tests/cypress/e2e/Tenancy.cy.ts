@@ -7,23 +7,24 @@ import { Loader } from '../support/page-objects/Loader';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import type { GetObject } from '../support/helpers/KbnApiClient';
-import { getKibanaVersion, userCredentials } from '../support/helpers';
+import { getKibanaVersion } from '../support/helpers';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { IndexManagement } from '../support/page-objects/IndexManagement';
 import { TENANCY_QUERY_STRING_KEY, X_ROR_TENANCY } from '../support/types';
 import { Spaces } from '../support/page-objects/Spaces';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { UserSettings } from '../support/page-objects/UserSettings';
+import { admin, kibana } from '../support/helpers/credentials';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
     beforeEach(() => {
-      kbnApiAdvancedClient.resetSpaces(userCredentials, 'template_group');
+      kbnApiAdvancedClient.resetSpaces(admin, 'template_group');
     });
 
     afterEach(() => {
-      kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
-      kbnApiAdvancedClient.tryResetSpaces(userCredentials, 'template_group');
+      kbnApiClient.deleteSampleData('ecommerce', admin, 'template_group');
+      kbnApiAdvancedClient.tryResetSpaces(admin, 'template_group');
     });
 
     it('should open correct tenancy when URL contains tenancy query string', () => {
@@ -41,7 +42,7 @@ describe('Tenancy', () => {
       KibanaNavigation.openHomepage();
       RorMenu.openRorMenu();
       RorMenu.pressLogoutButton();
-      Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
+      Login.fillLoginPageWith(admin);
       Loader.loading();
       Tenancy.checkTenancyNameInBadge('administrators', 'a');
     });
@@ -54,7 +55,7 @@ describe('Tenancy', () => {
         spacePrefix: ''
       });
 
-      kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
+      kbnApiClient.loadSampleData('ecommerce', admin, 'template_group');
       KibanaNavigation.openPage('Discover');
       if (semver.gte(getKibanaVersion(), '8.0.0')) {
         cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');
@@ -195,7 +196,7 @@ describe('Tenancy', () => {
     // Each marker exists only in its own tenancy.
     const deleteMarkers = () => {
       Object.values(tenancies).forEach(({ group, marker }) => {
-        kbnApiClient.deleteSavedObject({ type: 'index-pattern', id: marker }, userCredentials, group);
+        kbnApiClient.deleteSavedObject({ type: 'index-pattern', id: marker }, admin, group);
       });
     };
 
@@ -203,7 +204,7 @@ describe('Tenancy', () => {
       Object.values(tenancies).forEach(({ group, fixture }) => {
         cy.kbnImport({
           endpoint: 'api/saved_objects/_import?overwrite=true',
-          credentials: userCredentials,
+          credentials: admin,
           fixtureFilename: fixture,
           currentGroupHeader: group
         });
@@ -276,7 +277,7 @@ describe('Tenancy', () => {
     cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
 
     RorMenu.interceptIdentity();
-    Login.fillLoginPageWith('kibana', 'kibana');
+    Login.fillLoginPageWith(kibana);
     Loader.loading();
     RorMenu.verifyIdentityTenancyIsNot('kibana', 'infosec_group');
   });
@@ -299,7 +300,7 @@ describe('Tenancy', () => {
     cy.url().should('include', `nextUrl=`);
     cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
 
-    Login.fillLoginPageWith('kibana', 'kibana');
+    Login.fillLoginPageWith(kibana);
     Loader.loading(`/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
     cy.url().should('include', '/app/page-not-found');
   });

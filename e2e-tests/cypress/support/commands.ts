@@ -5,6 +5,7 @@ import { capture as clipboardCapture } from './clipboardCapture';
 import { getKibanaVersion } from './helpers';
 import { describeBody } from './helpers/KbnApiClient';
 import type { HttpResponse } from './types';
+import { kibana } from './helpers/credentials';
 
 const IMPORT_ATTEMPTS = 5;
 const IMPORT_RETRY_DELAY_MS = 2000;
@@ -65,7 +66,7 @@ function httpCall(family: RequestFamily, options: RequestOptions, fullResponse =
     url: `${baseUrl}/${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
-      authorization: `Basic ${btoa(credentials ?? Cypress.env().kibanaUserCredentials)}`,
+      authorization: `Basic ${btoa(credentials ?? kibana)}`,
       ...(family === 'kbn' ? { 'kbn-xsrf': 'true' } : {}),
       ...headers,
       ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {}),

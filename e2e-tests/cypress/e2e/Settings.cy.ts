@@ -2,6 +2,7 @@ import { Login } from '../support/page-objects/Login';
 import { Settings } from '../support/page-objects/Settings';
 import { Editor } from '../support/page-objects/Editor';
 import { rorApiClient } from '../support/helpers/RorApiClient';
+import { kibana } from '../support/helpers/credentials';
 
 describe('settings', () => {
   it('should check settings', () => {
@@ -25,9 +26,7 @@ describe('settings', () => {
   });
 
   it('should save settings and verify success response from request when user without group logging in', () => {
-    const [username, password] = Cypress.env().kibanaUserCredentials.split(':');
-
-    Login.initialization({ credentials: { username, password } });
+    Login.initialization({ credentials: kibana });
     Settings.open();
     Settings.clickSaveButton();
   });

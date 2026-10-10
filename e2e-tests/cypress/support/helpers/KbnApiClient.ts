@@ -1,3 +1,5 @@
+import { accountOf, BasicCredentials } from './credentials';
+
 export class KbnApiClient {
   public getDataViews(credentials: BasicCredentials, group?: string): Cypress.Chainable<DataViews> {
     return cy
@@ -200,11 +202,6 @@ export interface ShortUrlPayload {
 export interface ShortUrlResponse {
   id: string;
 }
-
-export type BasicCredentials = `${string}:${string}`;
-
-// CI keeps its logs, so a message names the account and never the pair.
-const accountOf = (credentials: string): string => credentials.split(':')[0];
 
 const inTenancy = (group?: string): string => (group ? ` in ${group}` : '');
 

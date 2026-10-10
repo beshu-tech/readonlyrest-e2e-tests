@@ -4,27 +4,27 @@ import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { Home } from '../support/page-objects/Home';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Discover } from '../support/page-objects/Discover';
-import { getKibanaVersion, userCredentials as defaultUserCredentials } from '../support/helpers';
+import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SearchSessions } from '../support/page-objects/SearchSessions';
 import { itOnKibana } from '../support/helpers/itOnKibana';
+import { admin, user } from '../support/helpers/credentials';
 
-const userCredentials = 'user4:dev';
+const user4 = user(4);
 
 describe('Discover tests', () => {
   beforeEach(() => {
     if (semver.lt(getKibanaVersion(), '9.0.0')) {
-      kbnApiAdvancedClient.deleteSearchSessions(defaultUserCredentials);
+      kbnApiAdvancedClient.deleteSearchSessions(admin);
     }
   });
 
   afterEach(() => {
-    kbnApiClient.deleteSampleData('ecommerce', userCredentials);
+    kbnApiClient.deleteSampleData('ecommerce', user4);
   });
 
   it('should allow to see discover page when user has access only for specific indices', () => {
-    const [username, password] = userCredentials.split(':');
-    Login.initialization({ credentials: { username, password } });
+    Login.initialization({ credentials: user4 });
     Home.loadSampleData();
     KibanaNavigation.openPage('Discover');
     if (semver.lt(getKibanaVersion(), '9.0.0')) {

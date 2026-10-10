@@ -1,13 +1,14 @@
 import { recurse } from 'cypress-recurse';
-import { BasicCredentials, KbnApiClient, SavedObject, Space } from './KbnApiClient';
+import { KbnApiClient, SavedObject, Space } from './KbnApiClient';
+import { accountOf, admin, BasicCredentials } from './credentials';
 import { requiredBaseUrl } from './index';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
   public deleteSavedObjects(credentials: string, group?: string): void {
-    cy.log(`Get all saved objects for the ${credentials}`);
+    cy.log(`Get all saved objects for ${accountOf(credentials)}`);
     this.findAllSavedObjects(credentials, group).then(savedObjects => {
       savedObjects.forEach(savedObject => {
-        cy.log(`Remove ${savedObject.id} saved object for ${credentials}`);
+        cy.log(`Remove ${savedObject.id} saved object for ${accountOf(credentials)}`);
         // Best effort: an object listed a moment ago can already be gone (404). Losing that
         // race must not fail cleanup.
         this.deleteSavedObject(savedObject, credentials, group, { failOnStatusCode: false });
@@ -38,10 +39,10 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   }
 
   public deleteDataViews(credentials: BasicCredentials, group?: string) {
-    cy.log(`get all data_views for the ${credentials}`);
+    cy.log(`get all data_views for ${accountOf(credentials)}`);
     this.getDataViews(credentials, group).then(result => {
       result.data_view.forEach(dataView => {
-        cy.log(`Remove ${dataView.id} saved object for ${credentials}`);
+        cy.log(`Remove ${dataView.id} saved object for ${accountOf(credentials)}`);
         this.deleteDataView(dataView.id, credentials, group);
       });
     });
@@ -195,7 +196,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
       {
         url: `${requiredBaseUrl()}/api/spaces/space`,
         headers: {
-          authorization: `Basic ${btoa(`${Cypress.env('login')}:${Cypress.env('password')}`)}`,
+          authorization: `Basic ${btoa(admin)}`,
           'kbn-xsrf': 'true'
         },
         answersInARow: 4,

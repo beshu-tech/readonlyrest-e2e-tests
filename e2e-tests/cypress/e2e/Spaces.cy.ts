@@ -1,22 +1,23 @@
 import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { getKibanaVersion, userCredentials } from '../support/helpers';
+import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Spaces } from '../support/page-objects/Spaces';
 import { ManageSpaces } from '../support/page-objects/ManageSpaces';
 import { itOnKibana } from '../support/helpers/itOnKibana';
+import { admin } from '../support/helpers/credentials';
 
 const SPACE_NAME = 'Test space';
 
 describe('Spaces', () => {
   beforeEach(() => {
-    kbnApiAdvancedClient.resetSpaces(userCredentials);
+    kbnApiAdvancedClient.resetSpaces(admin);
     Login.initialization();
   });
 
   afterEach(() => {
-    kbnApiAdvancedClient.tryResetSpaces(userCredentials);
+    kbnApiAdvancedClient.tryResetSpaces(admin);
   });
 
   it('should successfully set feature visibility for default space', () => {

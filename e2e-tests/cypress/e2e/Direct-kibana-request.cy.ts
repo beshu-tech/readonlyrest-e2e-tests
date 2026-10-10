@@ -2,12 +2,11 @@ import * as semver from 'semver';
 import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
-import type { BasicCredentials } from '../support/helpers/KbnApiClient';
+import { admin, BasicCredentials, user } from '../support/helpers/credentials';
 import { rorApiClient } from '../support/helpers/RorApiClient';
 
 describe('Direct kibana request', () => {
-  const user1: BasicCredentials = 'user1:dev';
-  const admin: BasicCredentials = 'admin:dev';
+  const user1 = user(1);
 
   beforeEach(() => {
     clearDirectKibanaRequestState();

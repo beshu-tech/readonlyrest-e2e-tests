@@ -8,18 +8,18 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecyclesPolicies';
 import { SampleData } from '../support/helpers/SampleData';
+import { accountOf, admin, kibana } from '../support/helpers/credentials';
 
-const kibanaUser: [string, string] = Cypress.env().kibanaUserCredentials.split(':');
-const nonTenantUser = { username: kibanaUser[0], password: kibanaUser[1], index: '.kibana' };
-const tenantUser = { username: Cypress.env().login, password: Cypress.env().password, index: '.kibana_admins_group' };
-
-const testData: { username: string; password: string; index: string }[] = [nonTenantUser, tenantUser];
+const testData = [
+  { credentials: kibana, index: '.kibana' },
+  { credentials: admin, index: '.kibana_admins_group' }
+];
 
 const reportingSampleIndex = 'reporting_sample_index';
 
 if (semver.gte(getKibanaVersion(), '8.15.0')) {
-  testData.forEach(({ username, password, index }) => {
-    describe(`Reporting tests for ${username}`, () => {
+  testData.forEach(({ credentials, index }) => {
+    describe(`Reporting tests for ${accountOf(credentials)}`, () => {
       const oldFormatReportingIndex = `.reporting${index}-2025-02-02`;
       const newFormatReportingIndex = `.kibana-reporting-${index}`;
       const newFormatReportingName = 'new format reporting index doc';
@@ -38,7 +38,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         // `.reporting*` docs, so the two steps must stay in this order.
         esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
         // The saved search of a previous test makes the same title ask for a duplicate confirm.
-        kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
+        kbnApiAdvancedClient.deleteSavedObjects(credentials);
         cy.fixture('old_format_reporting_doc.json').then(oldFormatReportingDoc => {
           oldFormatReportingName = oldFormatReportingDoc.payload.title;
           esApiClient.addDocument(oldFormatReportingIndex, oldFormatReportingDoc.id, oldFormatReportingDoc);
@@ -47,14 +47,14 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       });
 
       afterEach(() => {
-        kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
+        kbnApiAdvancedClient.deleteSavedObjects(credentials);
         esApiAdvancedClient.pruneAllReportingIndices();
         esApiClient.deleteIndex(oldFormatReportingIndex);
         esApiClient.deleteIndex(reportingSampleIndex);
       });
 
       it(`should correctly display all reports from both the old reporting index and the new reporting data stream`, () => {
-        Login.initialization({ credentials: { username, password } });
+        Login.initialization({ credentials });
         SampleData.createSampleData(reportingSampleIndex);
         Discover.openDataViewPage();
         Discover.createIndexPattern('reporting_sample');
@@ -73,7 +73,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
       });
 
       it('should display all reports from all reporting data stream segments', () => {
-        Login.initialization({ credentials: { username, password } });
+        Login.initialization({ credentials });
         SampleData.createSampleData(reportingSampleIndex);
         Discover.openDataViewPage();
         Discover.createIndexPattern('reporting_sample');
@@ -92,10 +92,10 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
     });
   });
 } else {
-  testData.forEach(({ username, password, index }) => {
+  testData.forEach(({ credentials, index }) => {
     const reportingName = `report for ${index} index`;
 
-    describe(`Reporting tests for ${username}`, () => {
+    describe(`Reporting tests for ${accountOf(credentials)}`, () => {
       // Inside the describe, not beside it. A hook registered outside attaches to the spec's ROOT
       // suite, so testData's two entries give two copies that run before and after EVERY test in
       // the file, including the >=8.15 suite, which does its own pruning.
@@ -107,17 +107,17 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
         esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
         // On Kibana 7, Discover offers "Create index pattern" only when no index pattern exists.
         // Earlier specs can leave one: the APM plugin adds `apm_static_index_pattern_id` to .kibana.
-        kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
+        kbnApiAdvancedClient.deleteSavedObjects(credentials);
       });
 
       afterEach(() => {
-        kbnApiAdvancedClient.deleteSavedObjects(`${username}:${password}`);
+        kbnApiAdvancedClient.deleteSavedObjects(credentials);
         esApiAdvancedClient.pruneAllReportingIndices();
         esApiClient.deleteIndex(reportingSampleIndex);
       });
 
       it('should correctly display all reporting data', () => {
-        Login.initialization({ credentials: { username, password } });
+        Login.initialization({ credentials });
         SampleData.createSampleData(reportingSampleIndex);
         Discover.openDataViewPage();
         Discover.createIndexPattern('reporting_sample');

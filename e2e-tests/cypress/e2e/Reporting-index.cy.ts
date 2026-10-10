@@ -7,10 +7,9 @@ import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { getKibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
+import { admin } from '../support/helpers/credentials';
 
 describe('Reporting index', () => {
-  const admin = 'admin:dev';
-
   beforeEach(() => {
     Settings.setSettingsData('reportingSettings.yaml');
     Login.initialization();

@@ -1,10 +1,10 @@
 import { Loader } from './Loader';
 import { requiredBaseUrl } from '../helpers';
+import { admin, BasicCredentials } from '../helpers/credentials';
 
-type Credentials = { username: string; password: string };
 export class Login {
   static fillLoginPageWithWrongCredentials() {
-    Login.fillLoginPageWith('wrong_username', 'wrong_password');
+    Login.fillLoginPageWith('wrong_username:wrong_password');
   }
 
   static suppressPostLoginNotices() {
@@ -20,36 +20,27 @@ export class Login {
     visitedUrl,
     finishUrl,
     spacePrefix
-  }: { credentials?: Credentials; visitedUrl?: string; finishUrl?: string; spacePrefix?: string } = {}) {
+  }: { credentials?: BasicCredentials; visitedUrl?: string; finishUrl?: string; spacePrefix?: string } = {}) {
     Login.suppressPostLoginNotices();
     Login.signIn({ credentials, visitedUrl });
     Loader.loading(finishUrl, spacePrefix);
   }
 
   static signIn({
-    credentials = {
-      username: Cypress.env('login'),
-      password: Cypress.env('password')
-    },
+    credentials = admin,
     visitedUrl = requiredBaseUrl()
   }: {
-    credentials?: Credentials;
+    credentials?: BasicCredentials;
     visitedUrl?: string;
   } = {}) {
     cy.visit(visitedUrl);
-    Login.fillLoginPageWith(credentials.username, credentials.password);
+    Login.fillLoginPageWith(credentials);
   }
 
-  static fillLoginPageWith(username?: string, password?: string) {
-    cy.get('#form-username', { timeout: 30000 }).should('be.visible');
-
-    if (username) {
-      cy.get('#form-username').type(username);
-    }
-
-    if (password) {
-      cy.get('#form-password').type(password);
-    }
+  static fillLoginPageWith(credentials: BasicCredentials) {
+    const [username, password] = credentials.split(':');
+    cy.get('#form-username', { timeout: 30000 }).should('be.visible').type(username);
+    cy.get('#form-password').type(password, { log: false });
 
     // The login page disables the button while a login request runs.
     cy.get('#form-submit').should('not.be.disabled').click();

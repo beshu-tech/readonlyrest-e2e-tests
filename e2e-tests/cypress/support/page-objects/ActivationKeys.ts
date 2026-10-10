@@ -1,7 +1,7 @@
 import { RorMenu } from './RorMenu';
 import { recurse } from 'cypress-recurse';
 import { SecuritySettings } from './SecuritySettings';
-import { userCredentials } from '../helpers';
+import { admin } from '../helpers/credentials';
 
 export class ActivationKeys {
   static DEFAULT_ACTIVATION_KEY =
@@ -41,7 +41,7 @@ export class ActivationKeys {
   }
 
   static verifyEdition(edition: 'kbn_free' | 'kbn_ent') {
-    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: userCredentials })
+    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: admin })
       .its('license.edition')
       .should('equal', edition);
   }

@@ -1,7 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
-import { userCredentials } from '../support/helpers';
 import { EnvName } from '../support/types';
+import { admin } from '../support/helpers/credentials';
 
 /**
  * Keys resolve in the order index -> env -> file -> bundled Free key. Loading a key through the UI
@@ -33,21 +33,19 @@ const LOGOUT_TIMEOUT_MS = 45000;
     cy.window().then(win => {
       win.location.href = 'about:blank';
     });
-    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: userCredentials }).then(
-      before => {
-        const restore = () =>
-          cy.kbnPost({
-            endpoint: 'api/ror/license?overwrite=true',
-            credentials: userCredentials,
-            payload: { license: `${Cypress.env().enterpriseActivationKey}` }
-          });
-        if (before.license.edition === 'kbn_ent') {
-          restore();
-        } else {
-          ActivationKeys.changeEditionAndWaitForLogout(restore);
-        }
+    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: admin }).then(before => {
+      const restore = () =>
+        cy.kbnPost({
+          endpoint: 'api/ror/license?overwrite=true',
+          credentials: admin,
+          payload: { license: `${Cypress.env().enterpriseActivationKey}` }
+        });
+      if (before.license.edition === 'kbn_ent') {
+        restore();
+      } else {
+        ActivationKeys.changeEditionAndWaitForLogout(restore);
       }
-    );
+    });
   });
 
   it('should log the user out when a new activation key changes the license edition', () => {

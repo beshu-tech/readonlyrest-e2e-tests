@@ -4,13 +4,14 @@ import { Discover } from '../support/page-objects/Discover';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Reporting } from '../support/page-objects/Reporting';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { getKibanaVersion, userCredentials } from '../support/helpers';
+import { getKibanaVersion } from '../support/helpers';
 import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Tenancy } from '../support/page-objects/Tenancy';
+import { admin } from '../support/helpers/credentials';
 
 describe('sanity check', () => {
   beforeEach(() => {
@@ -27,9 +28,9 @@ describe('sanity check', () => {
   });
 
   afterEach(() => {
-    kbnApiAdvancedClient.deleteSampleData('ecommerce', userCredentials);
-    kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
-    kbnApiAdvancedClient.deleteSavedObjects('admin:dev', 'infosec_group');
+    kbnApiAdvancedClient.deleteSampleData('ecommerce', admin);
+    kbnApiAdvancedClient.deleteSavedObjects(admin);
+    kbnApiAdvancedClient.deleteSavedObjects(admin, 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
   });
 
@@ -101,7 +102,7 @@ describe('sanity check', () => {
     KibanaNavigation.openPage('Maps');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
-    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
+    Login.fillLoginPageWith(admin);
 
     if (semver.gte(getKibanaVersion(), '8.7.0')) {
       Loader.loading(

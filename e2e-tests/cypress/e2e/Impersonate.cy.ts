@@ -3,6 +3,7 @@ import { Impersonate } from '../support/page-objects/Impersonate';
 import { SecuritySettings } from '../support/page-objects/SecuritySettings';
 import { TestSettings } from '../support/page-objects/TestSettings';
 import { rorApiInternalKbnClient } from '../support/helpers/RorApiInternalKbnClient';
+import { admin } from '../support/helpers/credentials';
 
 describe('impersonate', () => {
   afterEach(() => {
@@ -113,7 +114,6 @@ describe('impersonate', () => {
 
   it('should check direct kibana request with x-ror-impersonating header', () => {
     const impersonatingUser1 = 'user1';
-    const admin = 'admin:dev';
 
     cy.log('should return 403 error when test settings are not configured');
     rorApiInternalKbnClient.getLicense({ impersonating: impersonatingUser1, credentials: admin }).then(response => {
