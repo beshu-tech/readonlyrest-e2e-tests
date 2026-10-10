@@ -1,14 +1,11 @@
 import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
+import { ListingTable } from './ListingTable';
 
 export class IndexPattern {
   static openItem(number: number) {
     cy.log('Open index pattern item');
-    cy.findAllByRole('row')
-      .eq(number + 1)
-      .within(() => {
-        cy.findByRole('link').click();
-      });
+    ListingTable.openItem(number);
   }
 
   static deleteIndexPatternButtonHidden() {

@@ -2,14 +2,11 @@ import semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
+import { ListingTable } from './ListingTable';
 
 export class Dashboard {
   static openItem(number: number) {
-    cy.findAllByRole('row')
-      .eq(number + 1)
-      .within(() => {
-        cy.findByRole('link').click();
-      });
+    ListingTable.openItem(number);
   }
 
   static editButtonNotExist() {

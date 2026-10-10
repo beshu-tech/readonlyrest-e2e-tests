@@ -18,8 +18,7 @@ export class SubHeader {
   }
 
   static breadcrumbsLastItem(text: string) {
-    cy.get('[data-test-subj="breadcrumb last"]').within(() => {
-      cy.findByText(text);
-    });
+    // One query chain: the breadcrumb renders again after navigation, and a retry then finds the new one.
+    cy.get('[data-test-subj="breadcrumb last"]').findByText(text);
   }
 }
