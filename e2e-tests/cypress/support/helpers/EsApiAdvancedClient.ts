@@ -36,9 +36,9 @@ export class EsApiAdvancedClient extends EsApiClient {
    * Prune, then wait until the report store is actually empty.
    *
    * pruneAllReportingIndices fires the deletes and returns. That is enough for a report that has
-   * already landed and not enough for one a previous attempt left QUEUED: exportToCsv returns when
-   * Kibana accepts the job, not when it writes it (see Discover.exportToCsv), so on a retry the
-   * earlier report can arrive just after the prune and make the next count assertion fail with the
+   * already landed and not enough for one a previous test left QUEUED: exportToCsv returns when
+   * Kibana accepts the job, not when it writes it (see Discover.exportToCsv), so the earlier report
+   * can arrive in the next test just after the prune and make its count assertion fail with the
    * "Too many elements found" this is meant to prevent.
    *
    * Polling closes that window rather than sealing it. A report queued after the last poll can
@@ -143,11 +143,9 @@ export class EsApiAdvancedClient extends EsApiClient {
     cy.log(`Deleting indices matching pattern ${pattern}...`);
     this.indices().then(result => {
       const regex = new RegExp(pattern);
-      const matchingIndices = result.filter(indexObj => regex.test(indexObj.index));
-      matchingIndices.forEach(matchingIndex => {
-        cy.log(`Deleting index ${matchingIndex.index}...`);
-        this.deleteIndex(matchingIndex.index);
-      });
+      result
+        .filter(indexObj => regex.test(indexObj.index))
+        .forEach(matchingIndex => this.deleteIndex(matchingIndex.index));
     });
   }
 
@@ -155,11 +153,9 @@ export class EsApiAdvancedClient extends EsApiClient {
     cy.log(`Deleting data streams matching pattern ${pattern}...`);
     this.dataStreams().then(result => {
       const regex = new RegExp(pattern);
-      const matchingIndices = result.data_streams.filter(indexObj => regex.test(indexObj.name));
-      matchingIndices.forEach(matchingIndex => {
-        cy.log(`Deleting index ${matchingIndex.name}...`);
-        this.deleteDataStream(matchingIndex.name);
-      });
+      result.data_streams
+        .filter(dataStream => regex.test(dataStream.name))
+        .forEach(matchingDataStream => this.deleteDataStream(matchingDataStream.name));
     });
   }
 }

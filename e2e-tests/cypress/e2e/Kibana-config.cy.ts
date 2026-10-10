@@ -79,8 +79,8 @@ const customKibanaIndexName = '.kibana_custom';
 
       RorMenu.pressLogoutButton();
       // Logging out keeps the current location as nextUrl, so this login lands back on the
-      // dashboards list rather than on the home page Loader.finish expects by default.
-      Login.initialization({ finishUrl: '/app/dashboards' });
+      // dashboards list rather than on the home page Loader.loading expects by default.
+      Login.initialization({ finishUrl: '/s/default/app/dashboards' });
       Dashboard.openDashboard();
       Dashboard.verifyDashboardNotExist('Look at my dashboard');
     });
@@ -160,8 +160,8 @@ const customKibanaIndexName = '.kibana_custom';
 
     it('should verify disabled multiTenancy', () => {
       // With multitenancy off there is no tenancy query string, so the default finish URL of
-      // Loader.finish ('/app/home?tenancy=*') never matches.
-      Login.initialization({ finishUrl: '/app/home' });
+      // Loader.loading ('/s/default/app/home?tenancy=*') never matches.
+      Login.initialization({ finishUrl: '/s/default/app/home' });
       RorMenu.openRorMenu();
       RorMenu.verifyNoTenantAvailable();
     });
@@ -201,7 +201,7 @@ const customKibanaIndexName = '.kibana_custom';
       });
 
       it('should verify custom reporting index', () => {
-        SampleData.createSampleData(docsIndex, 1);
+        SampleData.createSampleData(docsIndex);
         Login.initialization();
 
         Discover.openDataViewPage();

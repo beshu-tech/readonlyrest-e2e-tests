@@ -1,52 +1,63 @@
-import * as semver from 'semver';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
+import { interceptNext } from '../helpers/interceptNext';
+import { isHiddenByCss } from '../helpers/hiddenByCss';
+import { ManageSpaces } from './ManageSpaces';
 
 export class Spaces {
+  // The id that Kibana gives a new space with this name (toSpaceIdentifier in the spaces plugin).
+  static idOf(spaceName: string) {
+    return spaceName.toLowerCase().replace(/[^a-z0-9_]/g, '-');
+  }
+
   static removeSpace(spaceName: string) {
     cy.log('Remove space');
-    const spaceNameLowerCaseAndDash = spaceName.toLowerCase().replace(' ', '-');
+    const spaceId = Spaces.idOf(spaceName);
+    const deleteSpace = interceptNext('deleteSpace', {
+      method: 'DELETE',
+      url: `**/api/spaces/space/${spaceId}`
+    });
 
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.get('[data-test-subj=manageSpaces]').click({ force: true });
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.get(`[id="${spaceNameLowerCaseAndDash}-actions"]`).click();
-      cy.get(`[data-test-subj="${spaceNameLowerCaseAndDash}-deleteSpace"]`).click();
+    ManageSpaces.openSpacesManagementPage();
+    if (kibanaVersion.gte('8.16.0')) {
+      cy.get(`[id="${spaceId}-actions"]`).click();
+      cy.get(`[data-test-subj="${spaceId}-deleteSpace"]`).click();
     } else {
       cy.get(`[data-test-subj="${spaceName}-deleteSpace"]`).click();
     }
 
-    cy.intercept(`s/${spaceNameLowerCaseAndDash}/api/spaces/space/${spaceNameLowerCaseAndDash}`).as('deleteSpace');
-    cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
-    cy.waitForResponse('@deleteSpace').then(response => {
+    cy.get('[data-test-subj=confirmModalConfirmButton]').should('not.be.disabled').click();
+    cy.waitForResponse(deleteSpace).then(response => {
       expect([204]).to.include(response.statusCode);
     });
   }
 
-  static saveSpaceAndConfirm() {
-    cy.get('[data-test-subj=save-space-button]').click();
-    cy.get('body').then($body => {
-      if ($body.find('[data-test-subj=confirmModalConfirmButton]').length > 0) {
-        cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
-      }
+  /**
+   * Saves a change to the features of the current space. Kibana asks to confirm it, sends the
+   * update, goes back to the spaces list and then reloads the page. The URL is already that of the
+   * spaces list before the reload, so this waits for the reload to end before the next step.
+   */
+  static saveCurrentSpaceFeatures() {
+    const reloadMarker = 'rorE2eBeforeSpaceReload';
+    const updateSpace = interceptNext('updateSpace', { method: 'PUT', url: '**/api/spaces/space/*' });
+    cy.window().then(win => {
+      Object.assign(win, { [reloadMarker]: true });
     });
-  }
-
-  static openEditSpace(spaceName: string) {
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.get('[data-test-subj="manageSpaces"]').click();
-      cy.get(`[data-test-subj="${spaceName}-hyperlink"]`).click();
-    } else if (semver.gte(getKibanaVersion(), '8.4.0')) {
-      cy.get(`[data-test-subj="${spaceName}-editSpace"]`).click();
-    }
+    cy.get('[data-test-subj=save-space-button]').should('not.be.disabled').click();
+    cy.get('[data-test-subj=confirmModalConfirmButton]').should('not.be.disabled').click();
+    cy.waitForResponse(updateSpace).then(response => {
+      expect(response.statusCode).to.eq(200);
+    });
+    cy.window().should('not.have.property', reloadMarker);
+    cy.getByDataTestSubj('spaces-grid-page').should('exist');
   }
 
   static createNewSpace(spaceName: string) {
     cy.log('Create new space');
     Spaces.navigateToCreateSpacePage();
-    cy.get('[data-test-subj=addSpaceName]').type(spaceName);
+    Spaces.enterSpaceName(spaceName);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
 
-    if (semver.gte(getKibanaVersion(), '8.18.0')) {
+    if (kibanaVersion.gte('8.18.0')) {
       cy.get('[data-test-subj="solutionViewSelect"]').click();
       cy.get('[data-test-subj="solutionViewClassicOption"]').click();
     }
@@ -55,17 +66,24 @@ export class Spaces {
     cy.contains(`Space '${spaceName}' was saved.`);
   }
 
+  // Kibana 7.17 renders the create form again right after it shows, and the keys typed before that go
+  // to the field that is gone: the space was saved as "T" for "Test space". So the name goes in again
+  // until the field holds all of it.
+  private static enterSpaceName(spaceName: string, attempt = 1) {
+    cy.get('[data-test-subj=addSpaceName]').should('not.be.disabled').focus().clear().type(spaceName);
+    cy.get('[data-test-subj=addSpaceName]')
+      .invoke('val')
+      .then(value => {
+        if (value !== spaceName && attempt < 3) {
+          Spaces.enterSpaceName(spaceName, attempt + 1);
+        } else {
+          expect(value, 'space name field').to.equal(spaceName);
+        }
+      });
+  }
+
   static navigateToCreateSpacePage() {
-    cy.getByDataTestSubj('spacesNavSelector').click();
-    // EUI toggles this popover on click, and the first synthesized click sometimes
-    // lands while the header re-renders, leaving the popover shut. Toggle again if
-    // the entry is absent; the assertion then holds the real state.
-    cy.get('body').then($body => {
-      if ($body.find('[data-test-subj=manageSpaces]').length === 0) {
-        cy.getByDataTestSubj('spacesNavSelector').click();
-      }
-    });
-    cy.getByDataTestSubj('manageSpaces').should('exist').click({ force: true });
+    ManageSpaces.openSpacesManagementPage();
     cy.getByDataTestSubj('createSpace').click();
   }
 
@@ -73,32 +91,29 @@ export class Spaces {
     cy.get('[data-test-subj=solutionViewSelect]').click();
   }
 
+  // ROR hides the option with CSS, so the option exists with display: none.
   static verifySolutionViewSecurityOptionIsHidden() {
-    cy.get('[data-test-subj=solutionViewSecurityOption]').should('not.be.visible');
+    cy.get('[data-test-subj=solutionViewSecurityOption]').should($option => {
+      expect(isHiddenByCss($option), 'Security option or a parent of it with display: none').to.equal(true);
+    });
   }
 
   static verifySolutionViewOptionsAreVisible(...testSubjs: string[]) {
     testSubjs.forEach(subj => cy.get(`[data-test-subj="${subj}"]`).should('be.visible'));
   }
 
-  static openSpace(spaceName: string) {
+  static openSpace(spaceId: string) {
     cy.log('Open space');
-    cy.getByDataTestSubj('spacesNavSelector').click();
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.getByDataTestSubj(`${spaceName}-selectableSpaceItem`).click();
-    } else {
-      cy.getByDataTestSubj(`${spaceName}-gotoSpace`).click();
-    }
+    const spaceItem = kibanaVersion.gte('8.0.0')
+      ? `[data-test-subj="${spaceId}-selectableSpaceItem"]`
+      : `[data-test-subj="${spaceId}-gotoSpace"]`;
+    ManageSpaces.openSpacesNavSelector(spaceItem);
+    cy.get(spaceItem).click();
   }
 
   static verifyCurrentSpace(spaceName: string) {
     cy.log('Verify current space');
-    if (semver.gte(getKibanaVersion(), '9.0.0')) {
-      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');
-    } else if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('exist');
-    } else {
-      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');
-    }
+    const onKibana8 = kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0');
+    cy.getByDataTestSubj(`space-avatar-${spaceName}`).should(onKibana8 ? 'exist' : 'be.visible');
   }
 }

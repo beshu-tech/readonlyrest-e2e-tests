@@ -1,12 +1,12 @@
-import * as semver from 'semver';
-import { getKibanaVersion, userCredentials } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
+import { admin, BasicCredentials, user } from '../support/helpers/credentials';
 import { rorApiClient } from '../support/helpers/RorApiClient';
+import { Settings } from '../support/page-objects/Settings';
 
 describe('Direct kibana request', () => {
-  const user1 = 'user1:dev';
-  const admin = 'admin:dev';
+  const user1 = user(1);
 
   beforeEach(() => {
     clearDirectKibanaRequestState();
@@ -15,7 +15,7 @@ describe('Direct kibana request', () => {
 
   afterEach(() => {
     clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+    Settings.restoreDefaultSettings();
   });
 
   it('should check direct kibana request', () => {
@@ -52,7 +52,7 @@ describe('Direct kibana request', () => {
         const actual = result.saved_objects.some(
           saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
         );
-        expect(actual).to.be.false;
+        expect(actual).to.equal(false);
       });
     };
 
@@ -70,15 +70,21 @@ describe('Direct kibana request', () => {
         user1
       );
 
-      cy.log('get all data_views for user1 infosec group');
-      kbnApiAdvancedClient.getDataViews(userCredentials, 'infosec_group').then(result => {
-        const actual = result.data_view.some(saved_object => saved_object.id === 'logstash');
-        expect(actual).to.be.false;
-      });
+      const dataViewIds = (credentials: BasicCredentials, group?: string) =>
+        kbnApiAdvancedClient.getDataViews(credentials, group).then(result => result.data_view.map(view => view.id));
+
+      cy.log('Get data_views for user1 Administrators group');
+      dataViewIds(user1).should('include', 'logstash');
+
+      cy.log('Get data_views for admin Administrators group');
+      dataViewIds(admin).should('include', 'logstash');
+
+      cy.log('Get data_views for user1 infosec group');
+      dataViewIds(user1, 'infosec_group').should('not.include', 'logstash');
     };
 
     verifySavedObjects();
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       verifyDataViews();
     }
   });
@@ -86,7 +92,7 @@ describe('Direct kibana request', () => {
   it('should create short URL with x-ror-tenancy-id header', () => {
     rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
 
-    const createShortUrl = semver.gte(getKibanaVersion(), '8.0.0')
+    const createShortUrl = kibanaVersion.gte('8.0.0')
       ? kbnApiClient.createShortUrl(
           {
             locatorId: 'DISCOVER_APP_LOCATOR',
@@ -143,7 +149,7 @@ describe('Direct kibana request', () => {
     kbnApiAdvancedClient.deleteSavedObjects(user1);
     kbnApiAdvancedClient.deleteSavedObjects(admin);
     kbnApiAdvancedClient.deleteSavedObjects(admin, 'template_group');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       kbnApiAdvancedClient.deleteDataViews(user1);
       kbnApiAdvancedClient.deleteDataViews(admin);
       kbnApiAdvancedClient.deleteDataViews(admin, 'template_group');

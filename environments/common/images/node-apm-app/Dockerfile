@@ -11,7 +11,13 @@ WORKDIR /example-app
 
 # --before resolves the transitive versions as they were on that date. Without it, a release
 # published seconds before the build can fail it with ETARGET. Move the date to update.
-RUN npm install --no-audit --no-fund --before=2026-10-05 elastic-apm-node@4.18.0 express@5.2.1
+# The loop gives the install 3 attempts: the registry can drop a connection or answer 429.
+RUN attempt=1; \
+    until npm install --no-audit --no-fund --before=2026-10-05 elastic-apm-node@4.18.0 express@5.2.1; do \
+      [ "$attempt" -lt 3 ] || exit 1; \
+      sleep $((attempt * 10)); \
+      attempt=$((attempt + 1)); \
+    done
 
 COPY ./app.js /example-app
 

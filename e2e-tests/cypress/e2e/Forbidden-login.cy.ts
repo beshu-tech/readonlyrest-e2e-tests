@@ -1,5 +1,6 @@
 import { Login } from '../support/page-objects/Login';
 import { Settings } from '../support/page-objects/Settings';
+import { admin } from '../support/helpers/credentials';
 
 describe('Forbidden login test', () => {
   before(() => {
@@ -17,7 +18,7 @@ describe('Forbidden login test', () => {
 
     cy.get('#form-message').should('be.visible').and('contain.text', 'You shall not pass!');
 
-    Login.initialization({ credentials: { username: Cypress.env().login, password: Cypress.env().password } });
+    Login.initialization({ credentials: admin });
 
     cy.url().should('include', '/s/default/app/home');
   });

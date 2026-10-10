@@ -26,13 +26,15 @@ env:
   # https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/1362 is released.
   ELK_VERSIONS: "9.5.0 9.4.0 9.3.0 9.2.0 9.1.0 9.0.0 8.19.0 8.18.0 8.17.1 8.16.0 8.15.0 8.14.0 8.13.0 8.12.0 8.11.0 8.10.1 8.9.0 8.8.0 8.7.0 8.6.0 8.5.0 8.4.0 8.3.0 8.2.0 8.1.0 8.0.0 7.17.0 7.16.0 7.15.0 7.14.0 7.13.0 7.12.0 7.11.2 7.9.0"
 
+# Each runs-on reads a JSON label list from a repo variable that Doppler syncs (project ror_ci,
+# config prd), so a runner change needs no commit. The fallback applies while the variable is unset.
 jobs:
   # ==========================================
   # PLAN
   # ==========================================
   plan:
     name: "🧮 Plan"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 5
     outputs:
       images: ${{ steps.plan.outputs.images }}
@@ -63,7 +65,9 @@ jobs:
     name: "🚀 Bootstrap Tests (released plugins)"
     needs: plan
     if: contains(needs.plan.outputs.images, 'prod')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    # Two start-up attempts of 30 minutes each, plus the set-up steps.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -114,7 +118,7 @@ jobs:
     name: "🏗️ Prepare dev images"
     needs: plan
     if: contains(needs.plan.outputs.images, 'dev')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     # The pre-build runs build the whole list on one self-hosted runner, one version after the
     # other. The e2e list has 4 versions; this one has 34.
     timeout-minutes: 300
@@ -150,7 +154,9 @@ jobs:
   dev-bootstrap-tests:
     name: "🚀 Bootstrap Tests (pre-build plugins)"
     needs: [plan, prepare-dev-images]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    # Two start-up attempts of 30 minutes each, plus the set-up steps.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:

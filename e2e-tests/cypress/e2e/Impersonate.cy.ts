@@ -3,26 +3,17 @@ import { Impersonate } from '../support/page-objects/Impersonate';
 import { SecuritySettings } from '../support/page-objects/SecuritySettings';
 import { TestSettings } from '../support/page-objects/TestSettings';
 import { rorApiInternalKbnClient } from '../support/helpers/RorApiInternalKbnClient';
+import { admin } from '../support/helpers/credentials';
 
 describe('impersonate', () => {
   afterEach(() => {
     rorApiInternalKbnClient.deactivateTestSettings();
   });
 
-  it('should check impersonate', () => {
+  // Skipped until a release has the fix for RORDEV-2303: the session probe can log the user out right
+  // after an impersonation starts, so this test fails at random.
+  it.skip('should check impersonate (RORDEV-2303)', () => {
     Login.initialization();
-
-    // TODO: We need  to find a way to remove Test ACL completely before tests
-
-    // cy.log('back from initialize Test ACL into a test ACL tab');
-    // Impersonate.open();
-    // Impersonate.backFromInitializeTestSettings();
-    // SecuritySettings.checkActiveTab('Test ACL');
-    //
-    // cy.log('initialize Test ACL');
-    // Impersonate.open();
-    // Impersonate.initializeTestSettings();
-    // KibanaNavigation.openHomepage();
 
     cy.log('should check service lists rendering');
 
@@ -119,46 +110,31 @@ describe('impersonate', () => {
     Impersonate.checkIfExpiredModal();
     Impersonate.backFromExpiredTestSettings();
     SecuritySettings.checkActiveTab('Test ACL');
-
-    // cy.log('should reactivate old Test ACL');
-    // Impersonate.clickImpersonateTab();
-    // Impersonate.checkIfExpiredModal();
-    // Impersonate.initializeTestSettings();
-
-    // cy.log('should start over from current settings');
-    // TestSettings.clickTestSettingsTab();
-    // TestSettings.pressInvalidateFileTestSettings()
-    // Impersonate.clickImpersonateTab()
-    // Impersonate.checkIfExpiredModal();
-    // Impersonate.startOverFromCurrentSettings();
   });
 
   it('should check direct kibana request with x-ror-impersonating header', () => {
     const impersonatingUser1 = 'user1';
-    const admin = 'admin:dev';
 
     cy.log('should return 403 error when test settings are not configured');
-    rorApiInternalKbnClient
-      .getLicense({ impersonating: impersonatingUser1, failOnStatusCode: false, credentials: admin })
-      .then(result => {
-        expect(result.statusCode).to.eq(403);
-        expect(result.status).to.eq('TEST_SETTINGS_NOT_CONFIGURED');
-      });
+    rorApiInternalKbnClient.getLicense({ impersonating: impersonatingUser1, credentials: admin }).then(response => {
+      expect(response.status).to.eq(403);
+      expect(response.body.status).to.eq('TEST_SETTINGS_NOT_CONFIGURED');
+    });
 
     cy.log(
       'should return not sufficient access level error when impersonated user is not an admin or unrestricted access level'
     );
     Impersonate.setTestSettingsData();
-    rorApiInternalKbnClient
-      .getLicense({ impersonating: impersonatingUser1, failOnStatusCode: false, credentials: admin })
-      .then(result => {
-        expect(result.message).to.eq("You don't have sufficient permissions to perform this operation.");
-        expect(result.status).to.eq('FORBIDDEN');
-      });
+    rorApiInternalKbnClient.getLicense({ impersonating: impersonatingUser1, credentials: admin }).then(response => {
+      expect(response.status).to.eq(403);
+      expect(response.body.message).to.eq("You don't have sufficient permissions to perform this operation.");
+      expect(response.body.status).to.eq('FORBIDDEN');
+    });
 
     cy.log('should return data when the user has access to the license');
-    rorApiInternalKbnClient.getLicense({ failOnStatusCode: false, credentials: admin }).then(result => {
-      expect(['https://api.beshu.tech', 'https://portal.readonlyrest.com']).to.include(result.iss);
+    rorApiInternalKbnClient.getLicense({ credentials: admin }).then(response => {
+      expect(response.status).to.eq(200);
+      expect(['https://api.beshu.tech', 'https://portal.readonlyrest.com']).to.include(response.body.iss);
     });
   });
 });

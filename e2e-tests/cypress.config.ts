@@ -28,15 +28,9 @@ export default defineConfig({
   responseTimeout: 20000,
   pageLoadTimeout: 20000,
   taskTimeout: 20000,
-  // One retry. A test that needs it is a flake, and the retried-tests report names it. More
-  // retries would hide a test that fails two times out of three.
-  retries: {
-    openMode: 1,
-    runMode: 1
-  },
+  // No retries. A retry turns a flaky test green and hides its cause, so a flake must fail the run.
+  retries: 0,
   e2e: {
-    // We've imported your old cypress plugins here.
-    // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
       // The default webpack + ts-loader preprocessor needs TypeScript's classic Program API, which
       // TypeScript 7 does not ship. esbuild strips the TypeScript syntax without it.

@@ -1,52 +1,31 @@
+import { getIframeBody } from '../helpers/iframe';
+import { RorMenu } from './RorMenu';
+
+const IFRAME = '#readonlyrestIframe';
+
+// The tab ids of the ReadonlyREST app in the iframe.
+export type SecuritySettingsTab =
+  | 'settings'
+  | 'test_settings'
+  | 'impersonate'
+  | 'activation_keys'
+  | 'interactive_api'
+  | 'user_Settings';
+
 export class SecuritySettings {
-  private static getIframeDocument = () => {
-    return (
-      cy
-        .get('#readonlyrestIframe')
-        // Cypress yields jQuery element, which has the real
-        // DOM element under property "0".
-        // From the real DOM iframe element we can get
-        // the "document" element, it is stored in "contentDocument" property
-        // Cypress "its" command can access deep properties using dot notation
-        // https://on.cypress.io/its
-        .its('0.contentDocument')
-        .should('exist')
-    );
-  };
+  static getIframeBody = () => getIframeBody(IFRAME);
 
-  static getIframeBody = () => {
-    // get the document
-    return (
-      SecuritySettings.getIframeDocument()
-        // automatically retries until body is loaded
-        .its('body')
-        .should('not.be.undefined')
-        // wraps "body" DOM element to allow
-        // chaining more Cypress commands, like ".find(...)"
-        .then(cy.wrap)
-    );
-  };
+  // One query chain from the iframe element, so that each retry reads the current document. Until the
+  // app loads, the iframe holds an empty document, and a body taken from it never gets the tabs.
+  static tab(id: SecuritySettingsTab) {
+    return cy.get(IFRAME).its('0.contentDocument.body').find(`.euiTabs #${id}`);
+  }
 
-  static getIframeWindow = () => {
-    return cy.get('#readonlyrestIframe').its('0.contentWindow').should('exist');
-  };
-
-  static waitForIframeContent(selector = '.euiTabs', timeout = 15000) {
-    cy.get('#readonlyrestIframe').should('be.visible');
-
-    return cy.window().then({ timeout }, win => {
-      return new Cypress.Promise(resolve => {
-        const checkIframe = () => {
-          const iframe: HTMLIFrameElement | null = win.document.querySelector('#readonlyrestIframe');
-          if (iframe && iframe.contentDocument && iframe.contentDocument.querySelector(selector)) {
-            resolve();
-          } else {
-            setTimeout(checkIframe, 100);
-          }
-        };
-        checkIframe();
-      });
-    });
+  static openTab(id: SecuritySettingsTab) {
+    cy.log(`Open the ${id} tab of the security settings`);
+    RorMenu.openRorMenu();
+    RorMenu.openEditSecuritySettings();
+    SecuritySettings.tab(id).click();
   }
 
   static checkActiveTab(tab: string) {

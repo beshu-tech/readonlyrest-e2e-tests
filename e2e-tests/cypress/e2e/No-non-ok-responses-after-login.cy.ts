@@ -48,7 +48,9 @@ describe('No unexpected non-ok responses after login', () => {
     cy.wait(3000);
 
     cy.wrap(null).then(() => {
-      expect(nonOkResponses, `unexpected non-ok responses: ${JSON.stringify(nonOkResponses, null, 2)}`).to.be.empty;
+      expect(nonOkResponses, `unexpected non-ok responses: ${JSON.stringify(nonOkResponses, null, 2)}`).to.deep.equal(
+        []
+      );
     });
   });
 });

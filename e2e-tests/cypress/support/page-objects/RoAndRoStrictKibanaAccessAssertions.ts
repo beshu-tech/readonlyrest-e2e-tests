@@ -1,4 +1,3 @@
-import * as semver from 'semver';
 import { Settings } from './Settings';
 import { RorMenu } from './RorMenu';
 import { Home } from './Home';
@@ -8,11 +7,12 @@ import { SubHeader } from './SubHeader';
 import { Discover } from './Discover';
 import { Canvas } from './Canvas';
 import { IndexPattern } from './IndexPattern';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
 import { Tenancy } from './Tenancy';
 import { kbnApiClient } from '../helpers/KbnApiClient';
 import { Login } from './Login';
+import { Share } from './Share';
 
 export class RoAndRoStrictKibanaAccessAssertions {
   static runAssertions(fixtureYamlFileName: string, credentials: string) {
@@ -20,23 +20,20 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Settings.setSettingsData(fixtureYamlFileName);
     Login.initialization();
     RoAndRoStrictKibanaAccessAssertions.changeTenancyAndAwaitSpaces('template');
-    Home.loadSampleDataButtonHidden();
+    Home.sampleDataControlsHidden();
 
     cy.log('Verify Dashboard features');
     // From 9.3 the dashboards listing no longer issues `POST /content_management/rpc/search`, so the
     // 8.7+ branch below would wait for a request that never comes. 8.19 still issues it. The exact
     // release is unknown — this repo has no 9.0-9.2 e2e leg — so those versions stay on the branch
     // below rather than being moved on a guess.
-    //
-    // ROR KBN, where this file is synced from, tests only 9.4 / 8.19 / 7.17 and so has no 9.3
-    // coverage. This threshold is a local divergence and a sync will overwrite it.
-    if (semver.gte(getKibanaVersion(), '9.3.0')) {
+    if (kibanaVersion.gte('9.3.0')) {
       cy.intercept('GET', '/s/default/app/dashboards**').as('dashboardsApp');
       Tenancy.getTenancyFromUrl().then(tenancy => {
         cy.visit(`/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
       });
       cy.wait('@dashboardsApp', { timeout: 30000 }).its('response.statusCode').should('eq', 200);
-    } else if (semver.gte(getKibanaVersion(), '8.7.0')) {
+    } else if (kibanaVersion.gte('8.7.0')) {
       cy.intercept('POST', /\/content_management\/rpc\/search/).as('dashboardsSearch');
       Tenancy.getTenancyFromUrl().then(tenancy => {
         cy.visit(`/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
@@ -47,52 +44,39 @@ export class RoAndRoStrictKibanaAccessAssertions {
     }
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
-    Dashboard.editButtonNotExist();
-    Dashboard.cloneButtonNotExist();
-    cy.waitForNetworkIdle('*.pbf', 3000, {
-      timeout: 30000
-    });
+    // Panels first: on Kibana 9.4, closing the app menu while the panels still render throws React
+    // error #185 (maximum update depth) and leaves the page blank.
+    Dashboard.waitForPanelsRendered();
+    Dashboard.writeControlsNotShown();
 
     cy.log('Verify Lens panel renders without error');
     cy.get('[data-test-subj="embeddableError"]').should('not.exist');
-    if (semver.gte(getKibanaVersion(), '7.10.0')) {
+    if (kibanaVersion.gte('7.10.0')) {
       cy.get('[data-test-subj="lnsVisualizationContainer"]').should('exist');
     }
 
     cy.log('Verify Discover features');
     KibanaNavigation.openPage('Discover');
     SubHeader.readonlyDiscoverBadgeVisible();
-    Discover.optionsButtonNotExist();
-    Discover.newButtonNotExist();
-    Discover.saveButtonNotExist();
+    Discover.writeControlsNotShown();
 
     cy.log('Verify discover Link sharing');
     Tenancy.getTenancyFromUrl().then(tenancy => {
-      Discover.openShareDiscover();
-      Discover.clickCopyLinkButton('ro');
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        cy.getValueFromClipboard()
-          .should('contain', 'https://localhost:5601/s/default/app/r?l=DISCOVER_APP_LOCATOR')
-          .should('contain', `&${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
-      } else {
-        cy.getValueFromClipboard().should(
-          'contain',
-          `https://localhost:5601/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${tenancy}#`
-        );
-      }
+      Share.open();
+      Share.copyLinkAndCheck('discover', String(tenancy), { canWrite: false });
     });
 
     /*
      * It's deprecated and not visible in a Kibana 9.0.0 https://github.com/elastic/kibana/issues/200649
      */
-    if (semver.lt(getKibanaVersion(), '9.0.0')) {
+    if (kibanaVersion.lt('9.0.0')) {
       cy.log('Verify Canvas features');
 
-      if (semver.gte(getKibanaVersion(), '8.16.0')) {
+      if (kibanaVersion.gte('8.16.0')) {
         cy.intercept('/s/default/internal/canvas/fns').as('canvasResolve');
-      } else if (semver.gte(getKibanaVersion(), '8.9.0')) {
+      } else if (kibanaVersion.gte('8.9.0')) {
         cy.intercept('/s/default/internal/canvas/fns?compress=true').as('canvasResolve');
-      } else if (semver.gte(getKibanaVersion(), '7.17.15')) {
+      } else if (kibanaVersion.gte('7.17.15')) {
         cy.intercept('/s/default/api/canvas/fns?compress=true').as('canvasResolve');
       } else {
         cy.intercept('/s/default/internal/bsearch').as('canvasResolve');
@@ -100,18 +84,16 @@ export class RoAndRoStrictKibanaAccessAssertions {
 
       KibanaNavigation.openPage('Canvas');
       Canvas.openItem(0);
+      cy.wait('@canvasResolve');
       SubHeader.readonlyBadgeVisible();
       SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
-      Canvas.addElementButtonNotExist();
-      Canvas.editButtonNotExist();
-      Canvas.workPadSettingsNotExist();
-      cy.wait('@canvasResolve');
+      Canvas.writeControlsNotShown();
     }
 
     KibanaNavigation.openPage('Stack Management');
     cy.log('Verify navigation items');
 
-    const VISIBLE_STACK_MANAGEMENT_ITEMS = semver.gte(getKibanaVersion(), '8.0.0')
+    const VISIBLE_STACK_MANAGEMENT_ITEMS = kibanaVersion.gte('8.0.0')
       ? ['Reporting', 'Data Views', 'Saved Objects']
       : ['Reporting', 'Index Patterns', 'Saved Objects'];
     cy.get('.euiSideNavItem a').should('have.length', VISIBLE_STACK_MANAGEMENT_ITEMS.length);
@@ -120,16 +102,16 @@ export class RoAndRoStrictKibanaAccessAssertions {
     });
 
     cy.log('Verify Index Pattern features');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       KibanaNavigation.openSubPage('Data Views');
     } else {
       KibanaNavigation.openSubPage('Index Patterns');
     }
 
-    cy.findByText(/create index pattern/i).should('not.exist');
+    IndexPattern.createButtonHidden();
     IndexPattern.openItem(0);
     SubHeader.readonlyBadgeVisible();
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       SubHeader.breadcrumbsLastItem('Kibana Sample Data eCommerce');
     } else {
       SubHeader.breadcrumbsLastItem('kibana_sample_data_ecommerce');
@@ -139,17 +121,14 @@ export class RoAndRoStrictKibanaAccessAssertions {
     IndexPattern.rowEditItemButtonsHidden();
   }
 
+  // Kibana 9.4.0 to 9.5.3 loads the spaces chunks seconds after the page, and the space selector shows
+  // when they are loaded. A wait for the chunk request fails when the page before the tenancy change
+  // loaded the chunks already: the new page then takes them from the browser cache.
   private static changeTenancyAndAwaitSpaces(tenancyName: string) {
-    const shouldAwaitSpacesPlugin = semver.gte(getKibanaVersion(), '9.4.0') && semver.lte(getKibanaVersion(), '9.5.3');
-
-    if (shouldAwaitSpacesPlugin) {
-      cy.intercept('*/bundles/plugin/spaces/1.0.0/spaces.chunk*').as('spacesPlugin');
-    }
-
     RorMenu.changeTenancy(tenancyName);
 
-    if (shouldAwaitSpacesPlugin) {
-      cy.wait('@spacesPlugin');
+    if (kibanaVersion.gte('9.4.0') && kibanaVersion.lte('9.5.3')) {
+      cy.get('[data-test-subj="spacesNavSelector"]').should('be.visible');
     }
   }
 }
