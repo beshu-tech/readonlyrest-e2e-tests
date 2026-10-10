@@ -1,8 +1,8 @@
 #!/bin/bash
 # Turns the failure records of an e2e suite into GitHub annotations and a run-summary table.
 #
-# Usage: report-e2e-flakes.sh <results dir> <label>
-#   e.g. report-e2e-flakes.sh results "ELK 9.4.7 on docker"
+# Usage: report-failed-specs.sh <results dir> <label>
+#   e.g. report-failed-specs.sh results "ELK 9.4.7 on docker"
 #
 # It reads failed-specs.tsv, which the suite writes in the results directory: one row per failed
 # spec of each suite run, with the run start time and the spec.
@@ -11,8 +11,8 @@
 # checks list of a PR, so a reader sees the failed specs without opening the log.
 set -uo pipefail
 
-RESULTS_DIR="${1:?Usage: report-e2e-flakes.sh <results dir> <label>}"
-LABEL="${2:?Usage: report-e2e-flakes.sh <results dir> <label>}"
+RESULTS_DIR="${1:?Usage: report-failed-specs.sh <results dir> <label>}"
+LABEL="${2:?Usage: report-failed-specs.sh <results dir> <label>}"
 FAILED_SPECS="$RESULTS_DIR/failed-specs.tsv"
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 # GitHub keeps 10 warning annotations per step and drops the others without a sign.

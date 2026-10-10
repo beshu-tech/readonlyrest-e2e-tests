@@ -277,54 +277,37 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
   // a timeout keeps its rows.
   const resultsDir = path.resolve(config.projectRoot, '..', 'results');
   const suiteRunStarted = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-  // A tab or a line break in a cell would split the row.
-  const cell = (text: string) => text.replace(/[\t\r\n]+/g, ' ');
-  const appendRows = async (file: string, rows: (string | number)[][]) => {
-    if (rows.length === 0) return;
+  const recordFailedSpec = async (spec: Cypress.Spec) => {
+    // A tab or a line break in the spec name would split the row.
+    const row = [suiteRunStarted, path.basename(spec.relative)].map(cell => cell.replace(/[\t\r\n]+/g, ' '));
     try {
       await fs.promises.mkdir(resultsDir, { recursive: true });
-      await fs.promises.appendFile(
-        path.join(resultsDir, file),
-        rows.map(row => row.map(value => cell(String(value))).join('\t') + '\n').join('')
-      );
+      await fs.promises.appendFile(path.join(resultsDir, 'failed-specs.tsv'), row.join('\t') + '\n');
     } catch {
       // A broken report must never fail a suite that passed.
     }
   };
-  const reportFlakes = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
-    if (!results) return;
-    const specName = path.basename(spec.relative);
 
-    // The same count gives the ✖ in the "Run Finished" table. `error` is a spec-level error, which
-    // can come without a failed test.
-    if ((results.stats && results.stats.failures > 0) || results.error) {
-      await appendRows('failed-specs.tsv', [[suiteRunStarted, specName]]);
-    }
-  };
+  // The same count gives the ✖ in the "Run Finished" table. `error` is a spec-level error, which
+  // can come without a failed test.
+  const specFailed = (results: CypressCommandLine.RunResult) =>
+    (results.stats && results.stats.failures > 0) || Boolean(results.error);
 
-  // Discard the video for specs that finished with all tests passing.
-  // Combined with `videoCompression: false` in cypress.config.ts, this keeps
-  // failure-debug videos available while avoiding writing GBs of green-run
-  // videos to disk and uploading them as artifacts.
+  // Cypress keeps one handler per event name: a second `on('after:spec')` replaces the first.
+  // So both jobs live in this one handler.
   on('after:spec', async (spec, results) => {
-    // Cypress keeps one handler per event name: a second `on('after:spec')` replaces the first.
-    // So both jobs live in this one handler.
-    await reportFlakes(spec, results);
-
-    if (!results || !results.video) return;
-    // Keep the video if the spec had ANY failure. Prefer the stable
-    // `results.stats.failures` counter — in Cypress 14 the per-attempt
-    // `tests[].attempts[].state` field is no longer reliably populated, so the
-    // old `attempts[].state === 'failed'` check returned false even for failed
-    // specs and the failure video was wrongly deleted before upload.
-    const failures =
-      (results.stats && results.stats.failures > 0) ||
-      (results.tests || []).some(t => t.state === 'failed' || (t.attempts || []).some(a => a.state === 'failed'));
-    if (failures) return;
+    if (!results) return;
+    if (specFailed(results)) {
+      await recordFailedSpec(spec);
+      return;
+    }
+    // Keep the video of a failed spec only. With `videoCompression: false` in cypress.config.ts,
+    // the videos of passed specs would fill GBs of disk and artifacts.
+    if (!results.video) return;
     try {
       await fs.promises.unlink(results.video);
     } catch {
-      // best-effort cleanup; don't fail the run if the file is already gone
+      // The file can be gone already. A cleanup must not fail the run.
     }
   });
 };

@@ -69,7 +69,7 @@ runs:
     - name: Annotate the failed specs
       if: always()
       shell: bash
-      run: .github/scripts/report-e2e-flakes.sh results "ELK $ELK_VERSION on $ENV"
+      run: .github/scripts/report-failed-specs.sh results "ELK $ELK_VERSION on $ENV"
       env:
         ELK_VERSION: ${{ inputs.elk }}
         ENV: ${{ inputs.env }}
