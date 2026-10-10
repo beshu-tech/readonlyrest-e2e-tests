@@ -14,28 +14,40 @@ const forbiddenMessage = 'You shall not pass!';
 const forbiddenTagName = 'forbidden-tag-delete';
 const forbiddenAssignTagName = 'forbidden-tag-assign';
 
+// The objects use fixed ids, so the leftovers of a failed attempt make the next attempt fail. An
+// afterEach cannot promise a clean start on its own: a failed hook skips the rest of the cleanup.
+// So both hooks clean up. The cleanup must run under the default settings, because the forbidden
+// settings deny every delete.
+const cleanUp = () => {
+  Settings.setSettingsData('defaultSettings.yaml');
+  // deleteDataViews() 404s on 7.x; use _find instead.
+  kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
+  // Tags aren't covered by deleteSavedObjects; clean up separately, in the creator's tenant.
+  cy.kbnGet<{ tags?: Array<{ id: string; name: string }> }>({
+    endpoint: 'api/saved_objects_tagging/tags',
+    credentials: userCredentials,
+    failOnStatusCode: false
+  }).then(result => {
+    // A logged-out Kibana answers with a login page, not the tags JSON; treat it as no tags.
+    (result?.tags ?? [])
+      .filter(tag => tag.name === forbiddenTagName || tag.name === forbiddenAssignTagName)
+      .forEach(tag =>
+        cy.kbnDelete({
+          endpoint: `api/saved_objects_tagging/tags/${tag.id}`,
+          credentials: userCredentials,
+          failOnStatusCode: false
+        })
+      );
+  });
+};
+
 describe('Forbidden responses', () => {
+  beforeEach(() => {
+    cleanUp();
+  });
+
   afterEach(() => {
-    Settings.setSettingsData('defaultSettings.yaml');
-    // deleteDataViews() 404s on 7.x; use _find instead.
-    kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
-    // Tags aren't covered by deleteSavedObjects; clean up separately, in the creator's tenant.
-    cy.kbnGet<{ tags?: Array<{ id: string; name: string }> }>({
-      endpoint: 'api/saved_objects_tagging/tags',
-      credentials: userCredentials,
-      failOnStatusCode: false
-    }).then(result => {
-      // A logged-out Kibana answers with a login page, not the tags JSON; treat it as no tags.
-      (result?.tags ?? [])
-        .filter(tag => tag.name === forbiddenTagName || tag.name === forbiddenAssignTagName)
-        .forEach(tag =>
-          cy.kbnDelete({
-            endpoint: `api/saved_objects_tagging/tags/${tag.id}`,
-            credentials: userCredentials,
-            failOnStatusCode: false
-          })
-        );
-    });
+    cleanUp();
   });
 
   if (semver.gte(getKibanaVersion(), '8.0.0')) {
