@@ -27,10 +27,6 @@ export class SecuritySettings {
     );
   };
 
-  static getIframeWindow = () => {
-    return cy.get('#readonlyrestIframe').its('0.contentWindow').should('exist');
-  };
-
   static waitForIframeContent(selector = '.euiTabs', timeout = 15000) {
     cy.get('#readonlyrestIframe').should('be.visible');
 

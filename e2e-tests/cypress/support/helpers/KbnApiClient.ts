@@ -131,25 +131,6 @@ export class KbnApiClient {
     });
   }
 
-  public getAllSpaces(credentials: BasicCredentials, group?: string): Cypress.Chainable<Space[]> {
-    return cy
-      .kbnGet<Space[]>({
-        endpoint: `api/spaces/space`,
-        credentials,
-        currentGroupHeader: group
-      })
-      .then(spaces => {
-        // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
-        if (!Array.isArray(spaces)) {
-          throw new Error(
-            `api/spaces/space did not answer with a list of spaces for ${accountOf(credentials)}` +
-              `${inTenancy(group)}. Body: ${describeBody(spaces)}`
-          );
-        }
-        return spaces;
-      });
-  }
-
   public createShortUrl(
     payload: ShortUrlPayload,
     credentials: string,

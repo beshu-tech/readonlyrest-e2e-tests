@@ -44,11 +44,6 @@ export class Dashboard {
     cy.get('[data-test-subj*="dashboardListingTitleLink"]').contains(dashboardName).should('not.exist');
   }
 
-  static openDashboards() {
-    cy.log('Open dashboard');
-    KibanaNavigation.openPage('Dashboards');
-  }
-
   static openDashboard() {
     cy.log('Open dashboard');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {

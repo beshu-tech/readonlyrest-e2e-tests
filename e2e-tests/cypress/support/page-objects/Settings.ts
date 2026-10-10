@@ -61,31 +61,6 @@ export class Settings {
     return SecuritySettings.getIframeBody().contains('Reload anyway').click();
   }
 
-  static successfulLoadFromFileToast() {
-    cy.log('Successful load from file toast');
-    return SecuritySettings.getIframeBody().contains('Loaded default ACL from readonlyrest.yml');
-  }
-
-  static currentSettingsAlreadyLoadedToast() {
-    cy.log('Current settings already loaded toast');
-    return SecuritySettings.getIframeBody().contains('Current ACL are already loaded');
-  }
-
-  static successfulReloadConfigurationToast() {
-    cy.log('Successful reload configuration toast');
-    return SecuritySettings.getIframeBody().contains('Reloaded configuration');
-  }
-
-  static successfulSavedConfigurationToast() {
-    cy.log('Successful saved configuration toast');
-    return SecuritySettings.getIframeBody().contains('saved');
-  }
-
-  static malformedSavedConfigurationToast() {
-    cy.log('Malformed saved configuration toast');
-    return SecuritySettings.getIframeBody().contains('Malformed settings');
-  }
-
   static setSettingsData(fixtureYamlSettingsFileName: string) {
     cy.log('Set settings data from file ' + fixtureYamlSettingsFileName);
     rorApiClient.configureRorIndexMainSettings(fixtureYamlSettingsFileName);

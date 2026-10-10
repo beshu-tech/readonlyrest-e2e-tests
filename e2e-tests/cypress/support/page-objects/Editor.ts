@@ -2,18 +2,6 @@ import { pasteText } from '../helpers';
 import { SecuritySettings } from './SecuritySettings';
 
 export class Editor {
-  static changeConfig(config: string) {
-    cy.log('Change text');
-    const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
-    SecuritySettings.getIframeBody()
-      .findByRole('code')
-      .find('textarea')
-      .eq(0)
-      .focus()
-      .type(`${selectAllKeys}{backspace}`, { force: true })
-      .type(config, { force: true });
-  }
-
   static pasteConfig(config: string) {
     cy.log('paste config');
     const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';

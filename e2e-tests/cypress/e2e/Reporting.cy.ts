@@ -55,7 +55,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
 
       it(`should correctly display all reports from both the old reporting index and the new reporting data stream`, () => {
         Login.initialization({ credentials: { username, password } });
-        SampleData.createSampleData(reportingSampleIndex, 1);
+        SampleData.createSampleData(reportingSampleIndex);
         Discover.openDataViewPage();
         Discover.createIndexPattern('reporting_sample');
         Discover.saveReport(newFormatReportingName);
@@ -74,7 +74,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
 
       it('should display all reports from all reporting data stream segments', () => {
         Login.initialization({ credentials: { username, password } });
-        SampleData.createSampleData(reportingSampleIndex, 1);
+        SampleData.createSampleData(reportingSampleIndex);
         Discover.openDataViewPage();
         Discover.createIndexPattern('reporting_sample');
         Discover.saveReport(newFormatReportingName);
@@ -118,7 +118,7 @@ if (semver.gte(getKibanaVersion(), '8.15.0')) {
 
       it('should correctly display all reporting data', () => {
         Login.initialization({ credentials: { username, password } });
-        SampleData.createSampleData(reportingSampleIndex, 1);
+        SampleData.createSampleData(reportingSampleIndex);
         Discover.openDataViewPage();
         Discover.createIndexPattern('reporting_sample');
         Discover.saveReport(reportingName);

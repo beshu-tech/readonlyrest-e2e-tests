@@ -75,15 +75,6 @@ declare global {
         impersonating?: string;
         headers?: { [key: string]: string };
       }): Chainable<T>;
-      kbnPut({
-        endpoint,
-        credentials,
-        payload
-      }: {
-        endpoint: string;
-        credentials: string;
-        payload?: Payload;
-      }): Chainable<Subject>;
       kbnImport({
         endpoint,
         credentials,

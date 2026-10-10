@@ -29,15 +29,6 @@ Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
   })
 );
 
-Cypress.Commands.add('kbnPut', ({ endpoint, credentials, payload }, ...args) =>
-  cy.kbnRequest({
-    method: 'PUT',
-    endpoint,
-    credentials,
-    payload
-  })
-);
-
 Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
   cy.esRequest({
     method: 'PUT',

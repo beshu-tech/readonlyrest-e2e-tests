@@ -14,18 +14,6 @@ describe('impersonate', () => {
   it.skip('should check impersonate (RORDEV-2303)', () => {
     Login.initialization();
 
-    // TODO: We need  to find a way to remove Test ACL completely before tests
-
-    // cy.log('back from initialize Test ACL into a test ACL tab');
-    // Impersonate.open();
-    // Impersonate.backFromInitializeTestSettings();
-    // SecuritySettings.checkActiveTab('Test ACL');
-    //
-    // cy.log('initialize Test ACL');
-    // Impersonate.open();
-    // Impersonate.initializeTestSettings();
-    // KibanaNavigation.openHomepage();
-
     cy.log('should check service lists rendering');
 
     Impersonate.setTestSettingsData();
@@ -121,18 +109,6 @@ describe('impersonate', () => {
     Impersonate.checkIfExpiredModal();
     Impersonate.backFromExpiredTestSettings();
     SecuritySettings.checkActiveTab('Test ACL');
-
-    // cy.log('should reactivate old Test ACL');
-    // Impersonate.clickImpersonateTab();
-    // Impersonate.checkIfExpiredModal();
-    // Impersonate.initializeTestSettings();
-
-    // cy.log('should start over from current settings');
-    // TestSettings.clickTestSettingsTab();
-    // TestSettings.pressInvalidateFileTestSettings()
-    // Impersonate.clickImpersonateTab()
-    // Impersonate.checkIfExpiredModal();
-    // Impersonate.startOverFromCurrentSettings();
   });
 
   it('should check direct kibana request with x-ror-impersonating header', () => {

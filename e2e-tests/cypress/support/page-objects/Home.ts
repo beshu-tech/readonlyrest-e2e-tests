@@ -45,18 +45,6 @@ export class Home {
     cy.wait('@saveSampleData');
   }
 
-  static removeSampleData() {
-    cy.log('Remove sample data');
-
-    cy.intercept('DELETE', '/s/default/api/sample_data/ecommerce').as('deleteSampleData');
-
-    KibanaNavigation.openPage('Home');
-    cy.findByText(/try sample data/i).click();
-    cy.findByText(/remove/i).click();
-
-    cy.wait('@deleteSampleData');
-  }
-
   // The add and remove controls exist only on the sample data tab. The card and its "View data"
   // control prove that the tab is rendered with the installed data set.
   static sampleDataControlsHidden() {

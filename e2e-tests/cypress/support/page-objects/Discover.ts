@@ -153,17 +153,6 @@ export class Discover {
     }
   };
 
-  static selectDataView(dataView: string) {
-    const searchUrl = semver.gte(getKibanaVersion(), '9.0.0')
-      ? '/s/default/internal/search/ese**'
-      : '/s/default/internal/bsearch?compress=true';
-
-    const dataViewSearch = interceptNext('dataViewSearch', { method: 'POST', url: searchUrl });
-    cy.getByDataTestSubj('discover-dataView-switch-link').click();
-    cy.contains('[data-test-subj="fullText"]', dataView).click();
-    cy.wait(dataViewSearch);
-  }
-
   static verifyDocumentWithTodayRange = (row: number, indexPatternName: string) => {
     cy.log('verify Document with Today Range');
 

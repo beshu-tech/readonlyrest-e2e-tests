@@ -1,5 +1,3 @@
-import Chainable = Cypress.Chainable;
-
 export class EsApiClient {
   public deleteIndexDocsByQuery(index: string): void {
     cy.esPost({
@@ -31,13 +29,6 @@ export class EsApiClient {
   public deleteDataStream(index: string): void {
     cy.esDelete({
       endpoint: `_data_stream/${index}`,
-      credentials: Cypress.env().kibanaUserCredentials
-    });
-  }
-
-  public documentsForIndex(index: string): Chainable<DocumentsForIndex> {
-    return cy.esGet<DocumentsForIndex>({
-      endpoint: `${index}/_search`,
       credentials: Cypress.env().kibanaUserCredentials
     });
   }
@@ -92,13 +83,6 @@ export class EsApiClient {
     });
   }
 
-  public getIndexSettings(index: string): Cypress.Chainable<any> {
-    return cy.esGet({
-      endpoint: `${index}/_settings`,
-      credentials: Cypress.env().kibanaUserCredentials
-    });
-  }
-
   public rolloverIndex(index: string): void {
     cy.esPost({
       endpoint: `${index}/_rollover`,
@@ -120,7 +104,3 @@ export interface GetDataStreams {
     name: string;
   }[];
 }
-
-type DocumentsForIndex = {
-  hits: { hits: { _source: { currentGroup: { id: string; value: string }; kibanaIndex: string } }[] };
-};

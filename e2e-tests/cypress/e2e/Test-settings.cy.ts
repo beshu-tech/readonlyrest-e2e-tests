@@ -21,18 +21,11 @@ describe('Test ACL', () => {
     TestSettings.pressSaveTestSettingsButton();
     rorApiClient.getRorTestSettingsStatus().should('equal', 'TEST_SETTINGS_PRESENT');
 
-    /**
-     * TODO: Uncomment all toast based assertions and try to make this check non-deterministic
-     */
-
     cy.log('should check load current settings functionality');
-    // Settings.successfulLoadFromFileToast().should('be.visible');
     Settings.closeToastMessages();
-    // Settings.successfulLoadFromFileToast().should('not.be.visible');
     TestSettings.loadCurrentSettings();
     TestSettings.pressLoadCurrentSettingsButton();
     Settings.unsavedChangesModalVisible();
     TestSettings.loadChangesAnywayToast();
-    // Settings.successfulLoadFromFileToast().should('be.visible');
   });
 });

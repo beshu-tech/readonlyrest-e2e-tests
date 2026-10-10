@@ -40,11 +40,6 @@ export class Login {
     Login.fillLoginPageWith(credentials.username, credentials.password);
   }
 
-  static hasLicenseChangedMessage() {
-    cy.log('has license changed message');
-    cy.contains(/The licensing edition has been changed./i);
-  }
-
   static fillLoginPageWith(username?: string, password?: string) {
     cy.get('#form-username', { timeout: 30000 }).should('be.visible');
 
@@ -64,10 +59,5 @@ export class Login {
     cy.log('Verify login page title');
 
     cy.contains(title);
-  }
-
-  static visitWithSessionCookie(cookieValue: string, url: string) {
-    cy.setCookie('rorCookie', cookieValue);
-    cy.visit(url);
   }
 }

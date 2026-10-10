@@ -16,15 +16,6 @@ export function requiredBaseUrl(): string {
   return baseUrl;
 }
 
-export function isJsonString(str: string) {
-  try {
-    JSON.parse(str);
-  } catch (e) {
-    return false;
-  }
-  return true;
-}
-
 export const userCredentials: BasicCredentials = `${Cypress.env().login}:${Cypress.env().password}`;
 
 // Pastes the text into the element: one paste event, with no key events.

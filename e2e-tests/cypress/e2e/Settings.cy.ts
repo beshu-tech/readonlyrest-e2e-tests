@@ -9,35 +9,19 @@ describe('settings', () => {
     Settings.open();
     Settings.reloadFromFileSettings();
 
-    /**
-     * TODO: Uncomment all toast based assertions and try to make this check non-deterministic
-     */
-
     cy.log('should check reload from file settings functionality');
-    // Settings.successfulLoadFromFileToast().should('be.visible');
-    // Settings.closeToastMessages();
-    // Settings.successfulLoadFromFileToast().should('not.be.visible');
     Settings.pressReloadFromFileSettingsButton();
     Settings.unsavedChangesModalVisible();
     Settings.reloadChangesAnywayToast();
-    // Settings.successfulLoadFromFileToast().should('be.visible');
 
     cy.log('should check discard changes functionality');
-    // Settings.successfulLoadFromFileToast().should('be.visible');
-    // Settings.closeToastMessages();
-    // Settings.successfulLoadFromFileToast().should('not.be.visible');
     Settings.discardChanges();
-    // Settings.successfulReloadConfigurationToast().should('not.be.visible');
-
-    cy.log('should check save changes functionality when no changes provided');
-    // Settings.currentSettingsAlreadyLoadedToast().should('be.visible');
 
     cy.log('should check save changes functionality when success');
     const changedBlockName = `PERSONAL_GRP${Cypress._.random(0, 1e6)}`;
     Editor.replaceValues('PERSONAL_GRP', changedBlockName);
     Settings.clickSaveButton();
     rorApiClient.getRorIndexMainSettings().should('contain', `name: ${changedBlockName}`);
-    // Settings.successfulSavedConfigurationToast().should('be.visible');
   });
 
   it('should save settings and verify success response from request when user without group logging in', () => {

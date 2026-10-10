@@ -107,16 +107,6 @@ export class Impersonate {
     cy.wait(authMockSave);
   }
 
-  static backFromInitializeTestSettings() {
-    cy.log('Back from initialize Test ACL');
-    SecuritySettings.getIframeBody().contains('Back').click();
-  }
-
-  static initializeTestSettings() {
-    cy.log('Initialize Test ACL');
-    SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').click();
-  }
-
   static checkIfExpiredModal() {
     cy.log('Check if expired modal');
     SecuritySettings.getIframeBody().contains('Test ACL expired').click();
@@ -125,21 +115,6 @@ export class Impersonate {
   static backFromExpiredTestSettings() {
     cy.log('Back from initialize Test ACL');
     SecuritySettings.getIframeBody().contains('Back').click();
-  }
-
-  static reactivateOldTestSettings() {
-    cy.log('Reactivate old Test ACL');
-    SecuritySettings.getIframeBody().contains('Reactivate old Test ACL').click();
-  }
-
-  static startOverFromCurrentSettings() {
-    cy.log('Start over from current settings');
-    SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').click();
-  }
-
-  static openImpersonateDialog() {
-    cy.log('Open impersonate dialog');
-    SecuritySettings.getIframeBody().findByTestId('impersonate-button').click();
   }
 
   static impersonateUserFromTheList(index: number, rowIndex: number, username: string) {

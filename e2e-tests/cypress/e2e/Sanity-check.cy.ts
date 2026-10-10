@@ -22,7 +22,7 @@ describe('sanity check', () => {
     // UntilEmpty, not the bare prune: the previous test can leave a report queued but not yet
     // written, and the bare prune would return before it lands.
     esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
-    SampleData.createSampleData('sample_index', 1);
+    SampleData.createSampleData('sample_index');
     Login.initialization();
   });
 
