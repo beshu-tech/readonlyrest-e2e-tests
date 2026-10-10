@@ -50,6 +50,29 @@ export class RorApiClient {
       });
     });
   }
+
+  // The main settings that ReadonlyREST keeps in its index, as YAML.
+  public getRorIndexMainSettings(): Cypress.Chainable<string> {
+    return cy
+      .esGet<{ status: string; message: string }>({
+        endpoint: '_readonlyrest/admin/config',
+        credentials: Cypress.env().kibanaUserCredentials
+      })
+      .then(response => {
+        expect(response.status, `index settings status: ${response.message}`).to.equal('ok');
+        return response.message;
+      });
+  }
+
+  // Status is TEST_SETTINGS_PRESENT, TEST_SETTINGS_INVALIDATED or TEST_SETTINGS_NOT_CONFIGURED.
+  public getRorTestSettingsStatus(): Cypress.Chainable<string> {
+    return cy
+      .esGet<{ status: string }>({
+        endpoint: '_readonlyrest/admin/config/test',
+        credentials: Cypress.env().kibanaUserCredentials
+      })
+      .its('status');
+  }
 }
 
 export const rorApiClient = new RorApiClient();

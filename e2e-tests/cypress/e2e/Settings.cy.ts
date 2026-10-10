@@ -1,6 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { Settings } from '../support/page-objects/Settings';
 import { Editor } from '../support/page-objects/Editor';
+import { rorApiClient } from '../support/helpers/RorApiClient';
 
 describe('settings', () => {
   it('should check settings', () => {
@@ -32,8 +33,10 @@ describe('settings', () => {
     // Settings.currentSettingsAlreadyLoadedToast().should('be.visible');
 
     cy.log('should check save changes functionality when success');
-    Editor.replaceValues('PERSONAL_GRP', `PERSONAL_GRP${Cypress._.random(0, 1e6)}`);
+    const changedBlockName = `PERSONAL_GRP${Cypress._.random(0, 1e6)}`;
+    Editor.replaceValues('PERSONAL_GRP', changedBlockName);
     Settings.clickSaveButton();
+    rorApiClient.getRorIndexMainSettings().should('contain', `name: ${changedBlockName}`);
     // Settings.successfulSavedConfigurationToast().should('be.visible');
   });
 
