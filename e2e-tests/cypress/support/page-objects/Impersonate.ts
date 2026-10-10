@@ -171,7 +171,7 @@ export class Impersonate {
   static finishImpersonation() {
     cy.log('finish impersonation');
     RorMenu.openRorMenu();
-    cy.contains('Finish impersonation').click();
+    RorMenu.getPanel().contains('Finish impersonation').click();
     Loader.loading();
   }
 
