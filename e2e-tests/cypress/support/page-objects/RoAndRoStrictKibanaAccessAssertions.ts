@@ -121,7 +121,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
       KibanaNavigation.openSubPage('Index Patterns');
     }
 
-    cy.findByText(/create index pattern/i).should('not.exist');
+    IndexPattern.createButtonHidden();
     IndexPattern.openItem(0);
     SubHeader.readonlyBadgeVisible();
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
