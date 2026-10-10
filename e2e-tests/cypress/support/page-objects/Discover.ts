@@ -95,30 +95,6 @@ export class Discover {
     cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');
   }
 
-  static openShareDiscover() {
-    cy.log('openShareDiscoverUrl');
-    cy.getByDataTestSubj('shareTopNavButton').click();
-
-    if (kibanaVersion.lt('8.0.0')) {
-      cy.getByDataTestSubj('sharePanel-Permalinks').click();
-    }
-  }
-
-  static clickCopyLinkButton(accessLevel: 'admin' | 'rw' | 'ro' | 'ro_strict') {
-    cy.log('clickCopyLinkButton');
-
-    if (kibanaVersion.gte('8.0.0') && ['admin', 'rw'].includes(accessLevel)) {
-      const generateShortUrl = interceptNext('generateShortUrl', {
-        method: 'POST',
-        pathname: '/s/default/api/short_url'
-      });
-      cy.getByDataTestSubj('copyShareUrlButton').click();
-      cy.wait(generateShortUrl);
-    } else {
-      cy.getByDataTestSubj('copyShareUrlButton').click();
-    }
-  }
-
   // Kibana 9.4 and later always puts New and Open in the overflow popover of the top menu. Open is
   // allowed, so it proves that the popover holds the items.
   static writeControlsNotShown() {

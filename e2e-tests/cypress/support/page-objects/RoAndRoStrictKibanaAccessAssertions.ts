@@ -12,6 +12,7 @@ import { TENANCY_QUERY_STRING_KEY } from '../types';
 import { Tenancy } from './Tenancy';
 import { kbnApiClient } from '../helpers/KbnApiClient';
 import { Login } from './Login';
+import { Share } from './Share';
 
 export class RoAndRoStrictKibanaAccessAssertions {
   static runAssertions(fixtureYamlFileName: string, credentials: string) {
@@ -59,18 +60,8 @@ export class RoAndRoStrictKibanaAccessAssertions {
 
     cy.log('Verify discover Link sharing');
     Tenancy.getTenancyFromUrl().then(tenancy => {
-      Discover.openShareDiscover();
-      Discover.clickCopyLinkButton('ro');
-      if (kibanaVersion.gte('8.0.0')) {
-        cy.getValueFromClipboard()
-          .should('contain', 'https://localhost:5601/s/default/app/r?l=DISCOVER_APP_LOCATOR')
-          .should('contain', `&${TENANCY_QUERY_STRING_KEY}=${tenancy}`);
-      } else {
-        cy.getValueFromClipboard().should(
-          'contain',
-          `https://localhost:5601/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${tenancy}#`
-        );
-      }
+      Share.open();
+      Share.copyLinkAndCheck('discover', String(tenancy), { canWrite: false });
     });
 
     /*
