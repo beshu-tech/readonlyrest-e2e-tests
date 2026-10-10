@@ -68,7 +68,6 @@ jobs:
           ror_es: ${{ github.event.inputs.ror_es_version }}
           ror_kbn: ${{ github.event.inputs.ror_kbn_version }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          electron_extra_launch_args: '--disable-gpu'
 
       - name: Stop Docker memory monitor
         if: always()

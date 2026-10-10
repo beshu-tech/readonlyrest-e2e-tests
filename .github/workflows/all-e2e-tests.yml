@@ -109,7 +109,6 @@ jobs:
           elk: ${{ matrix.version }}
           mode: prod
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          electron_extra_launch_args: '--disable-gpu'
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor

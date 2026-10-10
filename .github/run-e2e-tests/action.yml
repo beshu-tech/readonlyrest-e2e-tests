@@ -23,10 +23,6 @@ inputs:
     description: 'Goes into the Kibana image tag as <elk>-ror-<this>: a ROR version like 1.69.1, or a pre-build run tag. Empty means "latest", the released plugin.'
     required: false
     default: ''
-  electron_extra_launch_args:
-    description: 'Extra Electron flags for the browser Cypress starts.'
-    required: false
-    default: ''
 
 runs:
   using: 'composite'
@@ -57,7 +53,6 @@ runs:
           ./runner.sh "${PARAMS[@]}"
       env:
         ROR_ACTIVATION_KEY: ${{ inputs.activation_key }}
-        ELECTRON_EXTRA_LAUNCH_ARGS: ${{ inputs.electron_extra_launch_args }}
         ENV: ${{ inputs.env }}
         ELK_VERSION: ${{ inputs.elk }}
         ROR_ES_VERSION: ${{ inputs.ror_es }}
