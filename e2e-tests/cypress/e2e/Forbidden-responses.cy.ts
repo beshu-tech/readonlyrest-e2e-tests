@@ -44,6 +44,7 @@ const cleanUp = () => {
 describe('Forbidden responses', () => {
   beforeEach(() => {
     cleanUp();
+    Settings.setSettingsData('forbiddenResponsesSettings.yaml');
   });
 
   afterEach(() => {
@@ -52,7 +53,6 @@ describe('Forbidden responses', () => {
 
   if (semver.gte(getKibanaVersion(), '8.0.0')) {
     it('keeps a saved object selected instead of hanging when bulk-delete is forbidden', () => {
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-bulk-delete', title: 'r*', name: 'Forbidden bulk delete' } },
         userCredentials
@@ -75,7 +75,6 @@ describe('Forbidden responses', () => {
     it('shows only "Forbidden", never the configured message, when a dashboard delete is forbidden', () => {
       // error.message is response.statusText ("Forbidden"), not the body; addError isn't
       // patched like addDanger is. Known gap, not fixed.
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-dashboard-listing-delete',
         credentials: userCredentials,
@@ -109,7 +108,6 @@ describe('Forbidden responses', () => {
       // dropping a row Elasticsearch never actually deleted.
       cy.on('uncaught:exception', () => false);
 
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       // No data-view API on 7.x; use the generic saved objects API.
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-single-delete',
@@ -132,7 +130,6 @@ describe('Forbidden responses', () => {
       // Same rethrow as the list-page test above: no fake "Deleted '...'" success toast anymore.
       cy.on('uncaught:exception', () => false);
 
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-inspect-delete',
         credentials: userCredentials,
@@ -158,7 +155,6 @@ describe('Forbidden responses', () => {
       // No catch here; ROR's toast is the only feedback, page just stays open.
       cy.on('uncaught:exception', () => false);
 
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-edit-page-delete',
         credentials: userCredentials,
@@ -180,7 +176,6 @@ describe('Forbidden responses', () => {
     it("shows only Kibana's own generic error text, never the configured message, when a dashboard delete from the listing is forbidden", () => {
       // Same statusText bug as the 8.x/9.x dashboard test above; a plain object is passed
       // here, so the plugin's toast-error patch doesn't apply either. Known gap, not fixed.
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-dashboard-listing-delete-7x',
         credentials: userCredentials,
@@ -208,7 +203,6 @@ describe('Forbidden responses', () => {
     // No catch anywhere in Kibana; the uncaught rejection here is expected, not a failure.
     cy.on('uncaught:exception', () => false);
 
-    Settings.setSettingsData('forbiddenResponsesSettings.yaml');
     // Tag lives in the creator's tenant; admin can't see it.
     cy.kbnPost({
       endpoint: 'api/saved_objects_tagging/tags/create',
@@ -233,7 +227,6 @@ describe('Forbidden responses', () => {
     // Same expected uncaught rejection as the tag delete test above.
     cy.on('uncaught:exception', () => false);
 
-    Settings.setSettingsData('forbiddenResponsesSettings.yaml');
     cy.kbnPost({
       endpoint: 'api/saved_objects_tagging/tags/create',
       credentials: userCredentials,
@@ -264,7 +257,6 @@ describe('Forbidden responses', () => {
       // No catch on 8.x; ROR's interceptor is the only feedback.
       cy.on('uncaught:exception', () => false);
 
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-data-view-delete-8x', title: 'r*', name: 'Forbidden data view delete 8x' } },
         userCredentials
@@ -283,7 +275,6 @@ describe('Forbidden responses', () => {
   // Only 9.x's flyout passes a bare Error with no title/text.
   if (semver.gte(getKibanaVersion(), '9.0.0')) {
     it('fills the empty delete-data-view toast with the forbidden message', () => {
-      Settings.setSettingsData('forbiddenResponsesSettings.yaml');
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-data-view-delete', title: 'r*', name: 'Forbidden data view delete' } },
         userCredentials
