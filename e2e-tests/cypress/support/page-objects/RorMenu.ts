@@ -1,3 +1,4 @@
+import { interceptNext } from '../helpers/interceptNext';
 import { Loader } from './Loader';
 import { Popover } from './Popover';
 
@@ -37,9 +38,9 @@ export class RorMenu {
   }
 
   static openEditSecuritySettings() {
-    cy.intercept('GET', '/pkp/api/settings').as('getSettings');
-    cy.get(RorMenu.PANEL).contains('Edit security settings').click({ force: true });
-    cy.waitForResponse('@getSettings').then(response => {
+    const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
+    RorMenu.getPanel().contains('button', 'Edit security settings').click();
+    cy.waitForResponse(getSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }

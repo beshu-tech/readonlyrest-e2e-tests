@@ -1,6 +1,7 @@
 import semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
+import { interceptNext } from '../helpers/interceptNext';
 
 export class Dashboard {
   static openItem(number: number) {
@@ -57,9 +58,12 @@ export class Dashboard {
   static clickCopyLinkButton() {
     cy.log('clickCopyLinkButton');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.intercept({ method: 'POST', pathname: '/s/default/api/short_url' }).as('generateShortUrl');
+      const generateShortUrl = interceptNext('generateShortUrl', {
+        method: 'POST',
+        pathname: '/s/default/api/short_url'
+      });
       cy.getByDataTestSubj('copyShareUrlButton').click();
-      cy.wait('@generateShortUrl');
+      cy.wait(generateShortUrl);
     } else {
       cy.getByDataTestSubj('copyShareUrlButton').click();
     }

@@ -1,3 +1,5 @@
+import type { RouteMatcherOptions } from 'cypress/types/net-stubbing';
+
 let routeCount = 0;
 
 /**
@@ -8,9 +10,9 @@ let routeCount = 0;
  * those routes, so a later wait gets a copy of an old request and does not wait. A new alias for
  * each route prevents that.
  */
-export const interceptNext = (method: string, url: string | RegExp, name: string): `@${string}` => {
+export const interceptNext = (name: string, route: RouteMatcherOptions): `@${string}` => {
   routeCount += 1;
   const alias = `${name}-${routeCount}`;
-  cy.intercept(method, url).as(alias);
+  cy.intercept(route).as(alias);
   return `@${alias}`;
 };

@@ -7,7 +7,10 @@ export class Spaces {
   static removeSpace(spaceName: string) {
     cy.log('Remove space');
     const spaceNameLowerCaseAndDash = spaceName.toLowerCase().replace(' ', '-');
-    const deleteSpace = interceptNext('DELETE', `**/api/spaces/space/${spaceNameLowerCaseAndDash}`, 'deleteSpace');
+    const deleteSpace = interceptNext('deleteSpace', {
+      method: 'DELETE',
+      url: `**/api/spaces/space/${spaceNameLowerCaseAndDash}`
+    });
 
     ManageSpaces.openSpacesManagementPage();
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
@@ -30,7 +33,7 @@ export class Spaces {
    */
   static saveCurrentSpaceFeatures() {
     const reloadMarker = 'rorE2eBeforeSpaceReload';
-    const updateSpace = interceptNext('PUT', '**/api/spaces/space/*', 'updateSpace');
+    const updateSpace = interceptNext('updateSpace', { method: 'PUT', url: '**/api/spaces/space/*' });
     cy.window().then(win => {
       Object.assign(win, { [reloadMarker]: true });
     });

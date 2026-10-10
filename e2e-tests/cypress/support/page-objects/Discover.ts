@@ -1,6 +1,7 @@
 import * as semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
+import { interceptNext } from '../helpers/interceptNext';
 
 export class Discover {
   static createIndexPattern(indexPatternName: string) {
@@ -20,16 +21,16 @@ export class Discover {
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
 
-    if (semver.gte(getKibanaVersion(), '9.0.0')) {
-      cy.intercept('POST', '**/api/content_management/rpc/create').as('createDiscoverSession');
-    }
+    const createDiscoverSession = semver.gte(getKibanaVersion(), '9.0.0')
+      ? interceptNext('createDiscoverSession', { method: 'POST', url: '**/api/content_management/rpc/create' })
+      : undefined;
 
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('not.be.disabled');
     cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
     Discover.verifySearchSaved(reportName);
 
-    if (semver.gte(getKibanaVersion(), '9.0.0')) {
-      Discover.reopenSavedDiscoverSession(reportName);
+    if (createDiscoverSession) {
+      Discover.reopenSavedDiscoverSession(reportName, createDiscoverSession);
     }
   }
 
@@ -57,9 +58,9 @@ export class Discover {
    * (e.g. Reporting.cy.ts), and the extra full page loads from cy.visit() were heavy enough to
    * crash the Electron renderer on memory-constrained CI runners.
    */
-  private static reopenSavedDiscoverSession(reportName: string) {
+  private static reopenSavedDiscoverSession(reportName: string, createDiscoverSession: `@${string}`) {
     cy.log('reopenSavedDiscoverSession');
-    cy.wait('@createDiscoverSession').then(({ response }) => {
+    cy.wait(createDiscoverSession).then(({ response }) => {
       const savedId = response?.body?.result?.result?.item?.id;
       if (!savedId) return;
 
@@ -108,9 +109,12 @@ export class Discover {
     cy.log('clickCopyLinkButton');
 
     if (semver.gte(getKibanaVersion(), '8.0.0') && ['admin', 'rw'].includes(accessLevel)) {
-      cy.intercept({ method: 'POST', pathname: '/s/default/api/short_url' }).as('generateShortUrl');
+      const generateShortUrl = interceptNext('generateShortUrl', {
+        method: 'POST',
+        pathname: '/s/default/api/short_url'
+      });
       cy.getByDataTestSubj('copyShareUrlButton').click();
-      cy.wait('@generateShortUrl');
+      cy.wait(generateShortUrl);
     } else {
       cy.getByDataTestSubj('copyShareUrlButton').click();
     }
@@ -167,10 +171,10 @@ export class Discover {
       ? '/s/default/internal/search/ese**'
       : '/s/default/internal/bsearch?compress=true';
 
-    cy.intercept('POST', searchUrl).as('dataViewSearch');
+    const dataViewSearch = interceptNext('dataViewSearch', { method: 'POST', url: searchUrl });
     cy.getByDataTestSubj('discover-dataView-switch-link').click();
     cy.contains('[data-test-subj="fullText"]', dataView).click();
-    cy.wait('@dataViewSearch');
+    cy.wait(dataViewSearch);
   }
 
   static verifyDocumentWithTodayRange = (row: number, indexPatternName: string) => {
@@ -201,7 +205,7 @@ export class Discover {
     // setting up the intercept, so that @search only captures the Today-triggered request.
     cy.waitForNetworkIdle('POST', searchUrl, 500, { timeout: 15000 });
 
-    cy.intercept('POST', searchUrl).as('search');
+    const search = interceptNext('search', { method: 'POST', url: searchUrl });
 
     if (semver.gte(getKibanaVersion(), '9.5.0')) {
       cy.getByDataTestSubj('dateRangePickerControlButton').click();
@@ -211,7 +215,7 @@ export class Discover {
       cy.getByDataTestSubj('superDatePickerCommonlyUsed_Today').click();
     }
 
-    cy.wait('@search');
+    cy.wait(search);
   };
 
   static toastErrorNotVisible = (message: string) => {
@@ -269,9 +273,9 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName);
     cy.contains('Next step').click();
     cy.get('[data-test-subj=createIndexPatternTimeFieldSelect]').select('@timestamp');
-    cy.intercept('/s/default/api/saved_objects/index-pattern').as('indexPattern');
+    const indexPattern = interceptNext('indexPattern', { url: '/s/default/api/saved_objects/index-pattern' });
     cy.get('[data-test-subj=createIndexPatternButton]').click({ force: true });
-    cy.wait('@indexPattern');
+    cy.wait(indexPattern);
   };
 
   const createIdentityForKibanaForAndAbove7_15_1 = () => {
@@ -280,9 +284,9 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.contains('Select a timestamp field for use with the global time filter.');
     cy.get('[data-test-subj=timestampField]').click();
     cy.contains('@timestamp').click({ force: true });
-    cy.intercept('/s/default/api/saved_objects/index-pattern').as('indexPattern');
+    const indexPattern = interceptNext('indexPattern', { url: '/s/default/api/saved_objects/index-pattern' });
     cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
-    cy.wait('@indexPattern');
+    cy.wait(indexPattern);
   };
 
   const createIdentityForKibanaForAndAbove8_0_0 = () => {
@@ -304,15 +308,13 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.get('[data-test-subj=timestampField]').click();
     cy.contains('@timestamp').click({ force: true });
 
-    if (semver.gte(getKibanaVersion(), '8.9.0')) {
-      cy.intercept('/s/default/api/kibana/management/saved_objects/**').as('indexPattern');
-    } else {
-      cy.intercept('/s/default/api/saved_objects/**').as('indexPattern');
-    }
+    const indexPattern = semver.gte(getKibanaVersion(), '8.9.0')
+      ? interceptNext('indexPattern', { url: '/s/default/api/kibana/management/saved_objects/**' })
+      : interceptNext('indexPattern', { url: '/s/default/api/saved_objects/**' });
 
     cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
 
-    cy.wait('@indexPattern');
+    cy.wait(indexPattern);
   };
 
   if (semver.gte(getKibanaVersion(), '8.0.0')) {
