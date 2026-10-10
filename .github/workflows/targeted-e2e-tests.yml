@@ -34,6 +34,9 @@ jobs:
   e2e-tests:
     name: "🔬 E2E Tests"
     runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    # The suite step stops at 75 minutes. The other 25 cover the set-up steps and the upload. The
+    # default of 360 minutes keeps a hung step on the runner for 6 hours.
+    timeout-minutes: 100
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
