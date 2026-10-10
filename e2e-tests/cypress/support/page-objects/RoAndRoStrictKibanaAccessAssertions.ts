@@ -97,12 +97,10 @@ export class RoAndRoStrictKibanaAccessAssertions {
 
       KibanaNavigation.openPage('Canvas');
       Canvas.openItem(0);
+      cy.wait('@canvasResolve');
       SubHeader.readonlyBadgeVisible();
       SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
-      Canvas.addElementButtonNotExist();
-      Canvas.editButtonNotExist();
-      Canvas.workPadSettingsNotExist();
-      cy.wait('@canvasResolve');
+      Canvas.writeControlsNotShown();
     }
 
     KibanaNavigation.openPage('Stack Management');
