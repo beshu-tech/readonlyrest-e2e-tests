@@ -1,3 +1,4 @@
+import { interceptNext } from '../helpers/interceptNext';
 import { rorApiClient } from '../helpers/RorApiClient';
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
@@ -16,18 +17,18 @@ export class Settings {
 
   static discardChanges() {
     cy.log('Discard changes');
-    cy.intercept('GET', '/pkp/api/settings').as('getSettings');
+    const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
     SecuritySettings.getIframeBody().contains('Discard changes').click();
-    cy.waitForResponse('@getSettings').then(response => {
+    cy.waitForResponse(getSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
 
   static reloadFromFileSettings() {
     cy.log('Press reload from file test settings');
-    cy.intercept('GET', '/pkp/api/settings/file').as('reloadFromFileSettings');
+    const getSettingsFile = interceptNext('getSettingsFile', { method: 'GET', url: '/pkp/api/settings/file' });
     Settings.pressReloadFromFileSettingsButton();
-    cy.waitForResponse('@reloadFromFileSettings').then(response => {
+    cy.waitForResponse(getSettingsFile).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }

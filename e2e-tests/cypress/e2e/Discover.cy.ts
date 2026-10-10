@@ -4,20 +4,21 @@ import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { Home } from '../support/page-objects/Home';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Discover } from '../support/page-objects/Discover';
-import { getKibanaVersion } from '../support/helpers';
-import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { getKibanaVersion, userCredentials as defaultUserCredentials } from '../support/helpers';
+import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SearchSessions } from '../support/page-objects/SearchSessions';
 
 const userCredentials = 'user4:dev';
-const tenantIndex = '.kibana_admins_group';
-const indexWithSearchSessions = semver.lt(getKibanaVersion(), '8.0.0')
-  ? `${tenantIndex}_${getKibanaVersion()}_001`
-  : `${tenantIndex}_analytics_${getKibanaVersion()}_001`;
 
 describe('Discover tests', () => {
+  beforeEach(() => {
+    if (semver.lt(getKibanaVersion(), '9.0.0')) {
+      kbnApiAdvancedClient.deleteSearchSessions(defaultUserCredentials);
+    }
+  });
+
   afterEach(() => {
     kbnApiClient.deleteSampleData('ecommerce', userCredentials);
-    esApiAdvancedClient.deleteIndex(indexWithSearchSessions);
   });
 
   it('should allow to see discover page when user has access only for specific indices', () => {

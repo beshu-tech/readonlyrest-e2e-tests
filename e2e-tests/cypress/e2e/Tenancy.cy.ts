@@ -17,9 +17,13 @@ import { UserSettings } from '../support/page-objects/UserSettings';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
+    beforeEach(() => {
+      kbnApiAdvancedClient.resetSpaces(userCredentials, 'template_group');
+    });
+
     afterEach(() => {
       kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
-      kbnApiAdvancedClient.deleteAllSpaces(userCredentials, 'template_group');
+      kbnApiAdvancedClient.tryResetSpaces(userCredentials, 'template_group');
     });
 
     it('should open correct tenancy when URL contains tenancy query string', () => {
@@ -53,7 +57,6 @@ describe('Tenancy', () => {
       });
 
       kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
-      cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
       KibanaNavigation.openPage('Discover');
       if (semver.gte(getKibanaVersion(), '8.0.0')) {
         cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');

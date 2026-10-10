@@ -10,21 +10,19 @@ const SPACE_NAME = 'Test space';
 
 describe('Spaces', () => {
   beforeEach(() => {
+    kbnApiAdvancedClient.resetSpaces(userCredentials);
     Login.initialization();
   });
 
   afterEach(() => {
-    kbnApiAdvancedClient.deleteAllSpaces(userCredentials);
+    kbnApiAdvancedClient.tryResetSpaces(userCredentials);
   });
 
   it('should successfully set feature visibility for default space', () => {
-    cy.log('Navigate to default space management');
-    ManageSpaces.openSpaceViaNavSelector('Default');
-
     cy.log('Set feature visibility to hidden');
-    Spaces.openEditSpace('default');
+    ManageSpaces.openEditSpacePage('default', 'Default');
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
-    Spaces.saveSpaceAndConfirm();
+    Spaces.saveCurrentSpaceFeatures();
 
     cy.log('Check if feature in space hidden');
     cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/kibana/spaces/`);
@@ -32,22 +30,10 @@ describe('Spaces', () => {
     KibanaNavigation.openKibanaNavigation();
     KibanaNavigation.checkIfNotExists('Analytics');
 
-    const clearAllChanges = () => {
-      cy.log('Navigate to default space management');
-      ManageSpaces.openSpaceViaNavSelector('Default');
-
-      cy.log('Clear all changes');
-      if (semver.gte(getKibanaVersion(), '8.16.0')) {
-        cy.get('[data-test-subj="manageSpaces"]').click();
-        cy.get('[data-test-subj="default-hyperlink"]').click();
-      } else if (semver.gte(getKibanaVersion(), '8.4.0')) {
-        cy.get('[data-test-subj=Default-editSpace]').click();
-      }
-      cy.get('#featureCategoryCheckbox_kibana').check();
-      Spaces.saveSpaceAndConfirm();
-    };
-
-    clearAllChanges();
+    cy.log('Clear all changes');
+    ManageSpaces.openEditSpacePage('default', 'Default');
+    cy.get('#featureCategoryCheckbox_kibana').check();
+    Spaces.saveCurrentSpaceFeatures();
   });
 
   if (semver.gte(getKibanaVersion(), '9.1.0')) {
@@ -58,14 +44,7 @@ describe('Spaces', () => {
       Spaces.createNewSpace(SPACE_NAME);
 
       cy.log('Switch to newly created space');
-      cy.get('[data-test-subj=spacesNavSelector]').click();
-      ManageSpaces.getManageButtonInNavSelector().should('be.visible');
-
-      if (semver.gte(getKibanaVersion(), '8.4.0')) {
-        cy.get('[data-test-subj=test-space-selectableSpaceItem]', { timeout: 10000 }).click();
-      } else {
-        cy.get('a[href*="/s/test-space/spaces/enter"]', { timeout: 10000 }).should('be.visible').click({ force: true });
-      }
+      Spaces.openSpace('test-space');
       cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
       cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
 
@@ -79,10 +58,7 @@ describe('Spaces', () => {
   }
 
   it('should hide space permission tab and not permit to navigate to it', () => {
-    cy.log('Navigate to default space management');
-    ManageSpaces.openSpaceViaNavSelector('Default');
-
-    Spaces.openEditSpace('default');
+    ManageSpaces.openEditSpacePage('default', 'Default');
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
       cy.log('check if space manage permissions tab hidden');
       cy.contains('a[role="tab"]', /general settings/i).should('be.visible');

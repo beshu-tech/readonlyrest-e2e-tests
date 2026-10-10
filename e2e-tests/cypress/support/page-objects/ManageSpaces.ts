@@ -1,18 +1,27 @@
 import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
+import { Popover } from './Popover';
 
 export class ManageSpaces {
-  static openSpaceViaNavSelector(spaceName: string) {
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    ManageSpaces.getManageButtonInNavSelector().click({ force: true });
-    cy.contains(spaceName).click();
+  static openSpacesNavSelector(openSelector = '[data-test-subj=manageSpaces]') {
+    Popover.open('[data-test-subj=spacesNavSelector]', openSelector);
   }
 
-  static getManageButtonInNavSelector() {
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
-      return cy.getByDataTestSubj('manageSpaces');
-    }
+  static openSpacesManagementPage() {
+    ManageSpaces.openSpacesNavSelector();
+    cy.getByDataTestSubj('manageSpaces').click();
+    cy.location('pathname').should('contain', '/management/kibana/spaces');
+    cy.getByDataTestSubj('spaces-grid-page').should('exist');
+  }
 
-    return cy.contains('Manage spaces');
+  static openEditSpacePage(spaceId: string, spaceName: string) {
+    ManageSpaces.openSpacesManagementPage();
+    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+      cy.getByDataTestSubj(`${spaceId}-hyperlink`).click();
+    } else {
+      // The closing spaces popover also lists the space by name, so the lookup stays in the grid.
+      cy.getByDataTestSubj('spaces-grid-page').contains('a', spaceName).click();
+    }
+    cy.location('pathname').should('contain', `/management/kibana/spaces/edit/${spaceId}`);
   }
 }

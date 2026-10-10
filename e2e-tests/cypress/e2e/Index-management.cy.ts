@@ -13,6 +13,8 @@ const adminUserCredentials = 'admin:dev';
 describe('Index management', () => {
   beforeEach(() => {
     if (semver.gte(getKibanaVersion(), '8.0.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
+      // A test that stopped before its afterEach can leave this data view behind.
+      kbnApiClient.deleteDataView('r', adminUserCredentials, undefined, { failOnStatusCode: false });
       kbnApiClient.createDataView(
         {
           data_view: {
@@ -36,7 +38,7 @@ describe('Index management', () => {
     });
 
     if (semver.gte(getKibanaVersion(), '8.0.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
-      kbnApiClient.deleteDataView('r', adminUserCredentials);
+      kbnApiClient.deleteDataView('r', adminUserCredentials, undefined, { failOnStatusCode: false });
     }
   });
 

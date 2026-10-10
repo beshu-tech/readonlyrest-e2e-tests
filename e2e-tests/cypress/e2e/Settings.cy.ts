@@ -42,9 +42,6 @@ describe('settings', () => {
 
     Login.initialization({ credentials: { username, password } });
     Settings.open();
-    cy.intercept('POST', '/pkp/api/settings').as('saveSettings');
     Settings.clickSaveButton();
-
-    cy.wait('@saveSettings').its('response.statusCode').should('equal', 200);
   });
 });

@@ -3,6 +3,7 @@ import 'cypress-network-idle';
 import * as semver from 'semver';
 import { capture as clipboardCapture } from './clipboardCapture';
 import { getKibanaVersion } from './helpers';
+import { describeBody } from './helpers/KbnApiClient';
 
 Cypress.Commands.add(
   'kbnPost',
@@ -46,12 +47,40 @@ Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
   })
 );
 
-Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }, ...args) =>
-  uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
-    'kbn-xsrf': 'true',
-    ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {})
-  })
-);
+const IMPORT_ATTEMPTS = 5;
+const IMPORT_RETRY_DELAY_MS = 2000;
+
+/**
+ * Right after a Kibana restart, ROR can answer the import with its login page and a 2xx status. An
+ * import that never ran must not pass, so the answer must be the import JSON with success: true.
+ * A login page or other non-JSON answer gets a few more attempts. A JSON answer with success: false is
+ * a real import error and fails at once. Only an import with overwrite=true gets more attempts, because
+ * it gives the same result when it runs twice.
+ */
+Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }, ...args) => {
+  const upload = (attempt: number): Cypress.Chainable<unknown> =>
+    uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
+      'kbn-xsrf': 'true',
+      ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {})
+    }).then((body: unknown) => {
+      if (typeof body === 'object' && body !== null) {
+        if ((body as { success?: unknown }).success !== true) {
+          throw new Error(`Import of ${fixtureFilename} to ${endpoint} failed. Body: ${describeBody(body)}`);
+        }
+        return cy.wrap(body, { log: false });
+      }
+      if (attempt >= IMPORT_ATTEMPTS || !endpoint.includes('overwrite=true')) {
+        throw new Error(
+          `Import of ${fixtureFilename} to ${endpoint} did not answer with JSON after ${attempt} attempts. ` +
+            `Body: ${describeBody(body)}`
+        );
+      }
+      cy.log(`Import of ${fixtureFilename} answered with no JSON, attempt ${attempt} of ${IMPORT_ATTEMPTS}`);
+      return cy.wait(IMPORT_RETRY_DELAY_MS, { log: false }).then(() => upload(attempt + 1));
+    }) as Cypress.Chainable<unknown>;
+
+  return upload(1);
+});
 
 Cypress.Commands.add(
   'kbnGet',

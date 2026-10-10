@@ -25,13 +25,14 @@ export class ActivationKeys {
       .find('[name="activationToken"]')
       .invoke('attr', 'value', ActivationKeys.DEFAULT_ACTIVATION_KEY)
       .trigger('input');
-    SecuritySettings.getIframeBody().contains('Activate').click({ force: true });
+    // Activate is the confirm button of the modal. It stays disabled until the key field has a value.
+    SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').should('not.be.disabled').click();
   }
 
   static deleteLicense() {
     cy.log('Delete license');
     SecuritySettings.getIframeBody().contains('Delete').click();
-    SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').click({ force: true });
+    SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').should('not.be.disabled').click();
   }
 
   /**

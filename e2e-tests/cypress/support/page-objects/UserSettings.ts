@@ -28,6 +28,8 @@ export class UserSettings {
 
     SecuritySettings.getIframeBody().find(`[data-testid="${userSettings}"]`).as('userSettingsElement');
 
+    // EuiButtonGroup puts the test subject on a screen-reader-only radio input, which Cypress sees as
+    // hidden. The label over it is the visible part, so the click on the input needs force.
     cy.get(`@userSettingsElement`).find(`[data-test-subj="${value}"]`).as('userSettingsValue').click({ force: true });
 
     cy.get('@userSettingsValue').should('be.checked');

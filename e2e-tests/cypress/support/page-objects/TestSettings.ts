@@ -1,3 +1,4 @@
+import { interceptNext } from '../helpers/interceptNext';
 import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 
@@ -6,9 +7,9 @@ export class TestSettings {
     cy.log('Open Test ACL');
     RorMenu.openRorMenu();
     RorMenu.openEditSecuritySettings();
-    cy.intercept('GET', '/pkp/api/test').as('getTestSettings');
+    const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
     TestSettings.clickTestSettingsTab();
-    cy.waitForResponse('@getTestSettings').then(response => {
+    cy.waitForResponse(getTestSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -34,24 +35,24 @@ export class TestSettings {
 
   static loadCurrentSettings() {
     cy.log('Load current settings');
-    cy.intercept('GET', '/pkp/api/settings').as('loadCurrentSettings');
+    const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
     TestSettings.pressLoadCurrentSettingsButton();
-    cy.waitForResponse('@loadCurrentSettings').then(response => {
+    cy.waitForResponse(getSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
 
   static pressInvalidateFileTestSettings() {
     cy.log('Press invalidate file Test ACL');
-    cy.intercept('DELETE', '/pkp/api/test').as('invalidateTestSettings');
-    cy.intercept('GET', '/pkp/api/settings/file').as('getTestSettings');
+    const deleteTestSettings = interceptNext('deleteTestSettings', { method: 'DELETE', url: '/pkp/api/test' });
+    const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
     SecuritySettings.getIframeBody()
       .findByRole('button', { name: /Deactivate/ })
       .click();
-    cy.waitForResponse('@invalidateTestSettings').then(response => {
+    cy.waitForResponse(deleteTestSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@getTestSettings').then(response => {
+    cy.waitForResponse(getTestSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
 
@@ -63,9 +64,9 @@ export class TestSettings {
 
   static pressSaveTestSettingsButton() {
     cy.log('Press save Test ACL button');
-    cy.intercept('POST', '/pkp/api/test').as('postTestSettings');
+    const postTestSettings = interceptNext('postTestSettings', { method: 'POST', url: '/pkp/api/test' });
     SecuritySettings.getIframeBody().contains('Save').click();
-    cy.waitForResponse('@postTestSettings').then(response => {
+    cy.waitForResponse(postTestSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
   }
@@ -78,18 +79,18 @@ export class TestSettings {
 
   static promoteAsPermanent() {
     cy.log('promote as permanent');
-    cy.intercept('POST', '/pkp/api/settings').as('postSettings');
-    cy.intercept('DELETE', '/pkp/api/test').as('invalidateTestSettings');
-    cy.intercept('GET', '/pkp/api/settings/file').as('getTestSettings');
+    const postSettings = interceptNext('postSettings', { method: 'POST', url: '/pkp/api/settings' });
+    const deleteTestSettings = interceptNext('deleteTestSettings', { method: 'DELETE', url: '/pkp/api/test' });
+    const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
     TestSettings.pressPromoteAsPermanentButton();
 
-    cy.waitForResponse('@postSettings').then(response => {
+    cy.waitForResponse(postSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@invalidateTestSettings').then(response => {
+    cy.waitForResponse(deleteTestSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@getTestSettings').then(response => {
+    cy.waitForResponse(getTestSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -102,22 +103,26 @@ export class TestSettings {
   static saveTestSettingsBeforePermanentPromote() {
     cy.log('Save Test ACL modal before permanent promote');
 
-    cy.intercept('POST', '/pkp/api/test').as('postTestSettings');
-    cy.intercept('POST', '/pkp/api/settings').as('postSettings');
-    cy.intercept('DELETE', '/pkp/api/test').as('invalidateTestSettings');
-    cy.intercept('GET', '/pkp/api/settings/file').as('getTestSettings');
-    SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Save').click({ force: true });
+    const postTestSettings = interceptNext('postTestSettings', { method: 'POST', url: '/pkp/api/test' });
+    const postSettings = interceptNext('postSettings', { method: 'POST', url: '/pkp/api/settings' });
+    const deleteTestSettings = interceptNext('deleteTestSettings', { method: 'DELETE', url: '/pkp/api/test' });
+    const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
+    SecuritySettings.getIframeBody()
+      .find('[class=euiModalFooter]')
+      .contains('button', 'Save')
+      .should('not.be.disabled')
+      .click();
 
-    cy.waitForResponse('@postTestSettings').then(response => {
+    cy.waitForResponse(postTestSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@postSettings').then(response => {
+    cy.waitForResponse(postSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@invalidateTestSettings').then(response => {
+    cy.waitForResponse(deleteTestSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@getTestSettings').then(response => {
+    cy.waitForResponse(getTestSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
@@ -125,10 +130,14 @@ export class TestSettings {
   static saveTestSettingsBeforePermanentPromoteFailed() {
     cy.log('Save Test ACL modal before permanent promote failed');
 
-    cy.intercept('POST', '/pkp/api/settings').as('postSettings');
-    SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Reject').click({ force: true });
+    const postSettings = interceptNext('postSettings', { method: 'POST', url: '/pkp/api/settings' });
+    SecuritySettings.getIframeBody()
+      .find('[class=euiModalFooter]')
+      .contains('button', 'Reject')
+      .should('not.be.disabled')
+      .click();
 
-    cy.waitForResponse('@postSettings').then(response => {
+    cy.waitForResponse(postSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
     // Settings.currentSettingsAlreadyLoadedToast().should('be.visible');
@@ -137,19 +146,23 @@ export class TestSettings {
   static rejectSaveTestSettingsBeforePermanentPromote() {
     cy.log('Reject save Test ACL modal before permanent promote');
 
-    cy.intercept('POST', '/pkp/api/settings').as('postSettings');
-    cy.intercept('DELETE', '/pkp/api/test').as('invalidateTestSettings');
-    cy.intercept('GET', '/pkp/api/settings/file').as('getTestSettings');
+    const postSettings = interceptNext('postSettings', { method: 'POST', url: '/pkp/api/settings' });
+    const deleteTestSettings = interceptNext('deleteTestSettings', { method: 'DELETE', url: '/pkp/api/test' });
+    const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
     cy.log('Save Test ACL modal before permanent promote');
-    SecuritySettings.getIframeBody().find('[class=euiModalFooter]').contains('Reject').click({ force: true });
+    SecuritySettings.getIframeBody()
+      .find('[class=euiModalFooter]')
+      .contains('button', 'Reject')
+      .should('not.be.disabled')
+      .click();
 
-    cy.waitForResponse('@postSettings').then(response => {
+    cy.waitForResponse(postSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@invalidateTestSettings').then(response => {
+    cy.waitForResponse(deleteTestSettings).then(response => {
       expect(response.statusCode).to.eq(200);
     });
-    cy.waitForResponse('@getTestSettings').then(response => {
+    cy.waitForResponse(getTestSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }

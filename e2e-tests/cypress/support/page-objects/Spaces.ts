@@ -1,13 +1,18 @@
 import * as semver from 'semver';
 import { getKibanaVersion } from '../helpers';
+import { interceptNext } from '../helpers/interceptNext';
+import { ManageSpaces } from './ManageSpaces';
 
 export class Spaces {
   static removeSpace(spaceName: string) {
     cy.log('Remove space');
     const spaceNameLowerCaseAndDash = spaceName.toLowerCase().replace(' ', '-');
+    const deleteSpace = interceptNext('deleteSpace', {
+      method: 'DELETE',
+      url: `**/api/spaces/space/${spaceNameLowerCaseAndDash}`
+    });
 
-    cy.get('[data-test-subj=spacesNavSelector]').click();
-    cy.get('[data-test-subj=manageSpaces]').click({ force: true });
+    ManageSpaces.openSpacesManagementPage();
     if (semver.gte(getKibanaVersion(), '8.16.0')) {
       cy.get(`[id="${spaceNameLowerCaseAndDash}-actions"]`).click();
       cy.get(`[data-test-subj="${spaceNameLowerCaseAndDash}-deleteSpace"]`).click();
@@ -15,29 +20,30 @@ export class Spaces {
       cy.get(`[data-test-subj="${spaceName}-deleteSpace"]`).click();
     }
 
-    cy.intercept(`s/${spaceNameLowerCaseAndDash}/api/spaces/space/${spaceNameLowerCaseAndDash}`).as('deleteSpace');
-    cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
-    cy.waitForResponse('@deleteSpace').then(response => {
+    cy.get('[data-test-subj=confirmModalConfirmButton]').should('not.be.disabled').click();
+    cy.waitForResponse(deleteSpace).then(response => {
       expect([204]).to.include(response.statusCode);
     });
   }
 
-  static saveSpaceAndConfirm() {
-    cy.get('[data-test-subj=save-space-button]').click();
-    cy.get('body').then($body => {
-      if ($body.find('[data-test-subj=confirmModalConfirmButton]').length > 0) {
-        cy.get('[data-test-subj=confirmModalConfirmButton]').click({ force: true });
-      }
+  /**
+   * Saves a change to the features of the current space. Kibana asks to confirm it, sends the
+   * update, goes back to the spaces list and then reloads the page. The URL is already that of the
+   * spaces list before the reload, so this waits for the reload to end before the next step.
+   */
+  static saveCurrentSpaceFeatures() {
+    const reloadMarker = 'rorE2eBeforeSpaceReload';
+    const updateSpace = interceptNext('updateSpace', { method: 'PUT', url: '**/api/spaces/space/*' });
+    cy.window().then(win => {
+      Object.assign(win, { [reloadMarker]: true });
     });
-  }
-
-  static openEditSpace(spaceName: string) {
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.get('[data-test-subj="manageSpaces"]').click();
-      cy.get(`[data-test-subj="${spaceName}-hyperlink"]`).click();
-    } else if (semver.gte(getKibanaVersion(), '8.4.0')) {
-      cy.get(`[data-test-subj="${spaceName}-editSpace"]`).click();
-    }
+    cy.get('[data-test-subj=save-space-button]').should('not.be.disabled').click();
+    cy.get('[data-test-subj=confirmModalConfirmButton]').should('not.be.disabled').click();
+    cy.waitForResponse(updateSpace).then(response => {
+      expect(response.statusCode).to.eq(200);
+    });
+    cy.window().should('not.have.property', reloadMarker);
+    cy.getByDataTestSubj('spaces-grid-page').should('exist');
   }
 
   static createNewSpace(spaceName: string) {
@@ -56,16 +62,7 @@ export class Spaces {
   }
 
   static navigateToCreateSpacePage() {
-    cy.getByDataTestSubj('spacesNavSelector').click();
-    // EUI toggles this popover on click, and the first synthesized click sometimes
-    // lands while the header re-renders, leaving the popover shut. Toggle again if
-    // the entry is absent; the assertion then holds the real state.
-    cy.get('body').then($body => {
-      if ($body.find('[data-test-subj=manageSpaces]').length === 0) {
-        cy.getByDataTestSubj('spacesNavSelector').click();
-      }
-    });
-    cy.getByDataTestSubj('manageSpaces').should('exist').click({ force: true });
+    ManageSpaces.openSpacesManagementPage();
     cy.getByDataTestSubj('createSpace').click();
   }
 
@@ -81,14 +78,13 @@ export class Spaces {
     testSubjs.forEach(subj => cy.get(`[data-test-subj="${subj}"]`).should('be.visible'));
   }
 
-  static openSpace(spaceName: string) {
+  static openSpace(spaceId: string) {
     cy.log('Open space');
-    cy.getByDataTestSubj('spacesNavSelector').click();
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.getByDataTestSubj(`${spaceName}-selectableSpaceItem`).click();
-    } else {
-      cy.getByDataTestSubj(`${spaceName}-gotoSpace`).click();
-    }
+    const spaceItem = semver.gte(getKibanaVersion(), '8.0.0')
+      ? `[data-test-subj="${spaceId}-selectableSpaceItem"]`
+      : `[data-test-subj="${spaceId}-gotoSpace"]`;
+    ManageSpaces.openSpacesNavSelector(spaceItem);
+    cy.get(spaceItem).click();
   }
 
   static verifyCurrentSpace(spaceName: string) {

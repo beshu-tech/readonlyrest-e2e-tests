@@ -1,10 +1,8 @@
+import { ListingTable } from './ListingTable';
+
 export class Canvas {
   static openItem(number: number) {
-    cy.findAllByRole('row')
-      .eq(number + 1)
-      .within(() => {
-        cy.findByRole('link').click();
-      });
+    ListingTable.openItem(number);
   }
 
   static addElementButtonNotExist() {

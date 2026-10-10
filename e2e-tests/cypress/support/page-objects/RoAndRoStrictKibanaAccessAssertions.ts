@@ -49,9 +49,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
     Dashboard.editButtonNotExist();
     Dashboard.cloneButtonNotExist();
-    cy.waitForNetworkIdle('*.pbf', 3000, {
-      timeout: 30000
-    });
+    Dashboard.waitForPanelsRendered();
 
     cy.log('Verify Lens panel renders without error');
     cy.get('[data-test-subj="embeddableError"]').should('not.exist');

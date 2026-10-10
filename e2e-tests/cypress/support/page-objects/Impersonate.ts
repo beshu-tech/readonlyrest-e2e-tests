@@ -2,6 +2,7 @@ import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 import { Loader } from './Loader';
 import { rorApiClient } from '../helpers/RorApiClient';
+import { interceptNext } from '../helpers/interceptNext';
 
 export class Impersonate {
   static open() {
@@ -83,7 +84,6 @@ export class Impersonate {
 
   static addEditMockUser(username: string, groups: string[] = []) {
     cy.log('Fill Edit Mock Service');
-    cy.intercept('POST', '/pkp/api/authmock').as('PostAuthMock');
     SecuritySettings.getIframeBody().contains('Add user').click();
     SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').as('confirmButton');
     cy.get('@confirmButton').should('be.disabled');
@@ -101,10 +101,10 @@ export class Impersonate {
   }
 
   static saveEditMockUsers() {
-    cy.intercept('POST', '/pkp/api/test/authmock').as('authMockSave');
+    const authMockSave = interceptNext('authMockSave', { method: 'POST', url: '/pkp/api/test/authmock' });
     cy.get('@confirmButton').should('not.be.disabled');
     cy.get('@confirmButton').click();
-    cy.wait('@authMockSave');
+    cy.wait(authMockSave);
   }
 
   static backFromInitializeTestSettings() {
@@ -171,7 +171,7 @@ export class Impersonate {
   static finishImpersonation() {
     cy.log('finish impersonation');
     RorMenu.openRorMenu();
-    cy.contains('Finish impersonation').click();
+    RorMenu.getPanel().contains('Finish impersonation').click();
     Loader.loading();
   }
 

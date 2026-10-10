@@ -1,14 +1,26 @@
 import semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
+import { interceptNext } from '../helpers/interceptNext';
+import { ListingTable } from './ListingTable';
 
 export class Dashboard {
   static openItem(number: number) {
-    cy.findAllByRole('row')
-      .eq(number + 1)
-      .within(() => {
-        cy.findByRole('link').click();
-      });
+    ListingTable.openItem(number);
+  }
+
+  /**
+   * Waits until each panel of the open dashboard finished rendering. Kibana reporting and Kibana's own
+   * tests use the same attributes: the viewport gives the panel count in data-shared-items-count, and
+   * each panel sets data-render-complete="true" when it is done.
+   */
+  static waitForPanelsRendered() {
+    cy.get('[data-shared-items-count]', { timeout: 30000 }).should($viewport => {
+      const panelCount = Number($viewport.attr('data-shared-items-count'));
+      expect(panelCount, 'panel count').to.be.greaterThan(0);
+      const renderedCount = $viewport.closest('body').find('[data-render-complete="true"]').length;
+      expect(renderedCount, 'rendered panels').to.be.at.least(panelCount);
+    });
   }
 
   static editButtonNotExist() {
@@ -57,9 +69,12 @@ export class Dashboard {
   static clickCopyLinkButton() {
     cy.log('clickCopyLinkButton');
     if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.intercept({ method: 'POST', pathname: '/s/default/api/short_url' }).as('generateShortUrl');
+      const generateShortUrl = interceptNext('generateShortUrl', {
+        method: 'POST',
+        pathname: '/s/default/api/short_url'
+      });
       cy.getByDataTestSubj('copyShareUrlButton').click();
-      cy.wait('@generateShortUrl');
+      cy.wait(generateShortUrl);
     } else {
       cy.getByDataTestSubj('copyShareUrlButton').click();
     }

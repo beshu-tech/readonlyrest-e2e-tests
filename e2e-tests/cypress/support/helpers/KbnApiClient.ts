@@ -19,19 +19,33 @@ export class KbnApiClient {
   }
 
   public createDataView(dataView: object, credentials: string, group?: string): void {
-    cy.kbnPost({
+    cy.kbnPost<{ data_view?: DataView }>({
       endpoint: 'api/data_views/data_view',
       credentials,
       currentGroupHeader: group,
       payload: dataView
+    }).then(result => {
+      // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
+      if (typeof result?.data_view?.id !== 'string') {
+        throw new Error(
+          `api/data_views/data_view did not answer with the new data view for ${accountOf(credentials)}` +
+            `${inTenancy(group)}. Body: ${describeBody(result)}`
+        );
+      }
     });
   }
 
-  public deleteDataView(dataViewId: string, credentials: string, group?: string): void {
+  public deleteDataView(
+    dataViewId: string,
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
     cy.kbnDelete({
       endpoint: `api/data_views/data_view/${dataViewId}`,
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
     });
   }
 
@@ -64,10 +78,18 @@ export class KbnApiClient {
   }
 
   public loadSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
-    cy.kbnPost({
+    cy.kbnPost<{ elasticsearchIndicesCreated?: Record<string, number> }>({
       endpoint: `api/sample_data/${sampleDatasetName}`,
       credentials,
       currentGroupHeader: group
+    }).then(result => {
+      // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
+      if (typeof result?.elasticsearchIndicesCreated !== 'object') {
+        throw new Error(
+          `api/sample_data/${sampleDatasetName} did not answer with the created indices for ${accountOf(credentials)}` +
+            `${inTenancy(group)}. Body: ${describeBody(result)}`
+        );
+      }
     });
   }
 
@@ -79,11 +101,33 @@ export class KbnApiClient {
     });
   }
 
-  public deleteSpace(spaceName: string, credentials: string, group?: string): void {
+  public deleteSpace(
+    spaceId: string,
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
     cy.kbnDelete({
-      endpoint: `api/spaces/space/${spaceName}`,
+      endpoint: `api/spaces/space/${spaceId}`,
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
+    });
+  }
+
+  public updateSpace(
+    space: Space,
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
+    cy.kbnRequest({
+      method: 'PUT',
+      endpoint: `api/spaces/space/${space.id}`,
+      credentials,
+      currentGroupHeader: group,
+      payload: space,
+      failOnStatusCode
     });
   }
 
@@ -156,13 +200,16 @@ export interface GetObject {
   total: number;
 }
 
-interface Space {
+export interface Space {
   id: string;
   name: string;
-  initials: string;
-  color: string;
+  description?: string;
+  initials?: string;
+  color?: string;
   disabledFeatures: string[];
-  imageUrl: string;
+  imageUrl?: string;
+  solution?: string;
+  _reserved?: boolean;
 }
 
 export interface ShortUrlPayload {
@@ -177,11 +224,11 @@ export interface ShortUrlResponse {
 export type BasicCredentials = `${string}:${string}`;
 
 // CI keeps its logs, so a message names the account and never the pair.
-const accountOf = (credentials: BasicCredentials): string => credentials.split(':')[0];
+const accountOf = (credentials: string): string => credentials.split(':')[0];
 
 const inTenancy = (group?: string): string => (group ? ` in ${group}` : '');
 
-const describeBody = (data: unknown): string => {
+export const describeBody = (data: unknown): string => {
   const shown = typeof data === 'string' ? data : JSON.stringify(data) ?? String(data);
   return shown.length > 2000 ? `${shown.slice(0, 2000)}…` : shown;
 };

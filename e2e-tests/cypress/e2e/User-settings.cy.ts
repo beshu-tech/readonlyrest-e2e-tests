@@ -52,8 +52,9 @@ describe('User settings', () => {
       cy.intercept('**/*dark.css').as('darkMode');
     }
 
+    // The test subject is on the screen-reader-only radio input of an EuiButtonGroup, so the click needs force.
     SecuritySettings.getIframeBody().find('[data-test-subj="dark"]').click({ force: true });
-    SecuritySettings.getIframeBody().find('button').contains('Reload page').click({ force: true });
+    SecuritySettings.getIframeBody().contains('button', 'Reload page').should('be.visible').click();
 
     cy.reload();
 
