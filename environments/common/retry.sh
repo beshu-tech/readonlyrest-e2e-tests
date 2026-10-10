@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced, not executed.
 #
 # retry <attempts> <command> [args...]

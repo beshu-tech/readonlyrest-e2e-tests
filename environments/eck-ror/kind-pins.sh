@@ -1,3 +1,4 @@
+# shellcheck shell=bash disable=SC2034 # The scripts that source this file read the values.
 # Sourced, not executed.
 #
 # A kind node image works only with the kind release that built it. Move these pins together, with
