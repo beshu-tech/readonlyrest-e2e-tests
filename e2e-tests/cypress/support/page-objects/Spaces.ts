@@ -4,18 +4,23 @@ import { isHiddenByCss } from '../helpers/hiddenByCss';
 import { ManageSpaces } from './ManageSpaces';
 
 export class Spaces {
+  // The id that Kibana gives a new space with this name (toSpaceIdentifier in the spaces plugin).
+  static idOf(spaceName: string) {
+    return spaceName.toLowerCase().replace(/[^a-z0-9_]/g, '-');
+  }
+
   static removeSpace(spaceName: string) {
     cy.log('Remove space');
-    const spaceNameLowerCaseAndDash = spaceName.toLowerCase().replace(' ', '-');
+    const spaceId = Spaces.idOf(spaceName);
     const deleteSpace = interceptNext('deleteSpace', {
       method: 'DELETE',
-      url: `**/api/spaces/space/${spaceNameLowerCaseAndDash}`
+      url: `**/api/spaces/space/${spaceId}`
     });
 
     ManageSpaces.openSpacesManagementPage();
     if (kibanaVersion.gte('8.16.0')) {
-      cy.get(`[id="${spaceNameLowerCaseAndDash}-actions"]`).click();
-      cy.get(`[data-test-subj="${spaceNameLowerCaseAndDash}-deleteSpace"]`).click();
+      cy.get(`[id="${spaceId}-actions"]`).click();
+      cy.get(`[data-test-subj="${spaceId}-deleteSpace"]`).click();
     } else {
       cy.get(`[data-test-subj="${spaceName}-deleteSpace"]`).click();
     }
@@ -92,12 +97,7 @@ export class Spaces {
 
   static verifyCurrentSpace(spaceName: string) {
     cy.log('Verify current space');
-    if (kibanaVersion.gte('9.0.0')) {
-      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');
-    } else if (kibanaVersion.gte('8.0.0')) {
-      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('exist');
-    } else {
-      cy.getByDataTestSubj(`space-avatar-${spaceName}`).should('be.visible');
-    }
+    const onKibana8 = kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0');
+    cy.getByDataTestSubj(`space-avatar-${spaceName}`).should(onKibana8 ? 'exist' : 'be.visible');
   }
 }

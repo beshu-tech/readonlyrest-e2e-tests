@@ -41,7 +41,7 @@ describe('Spaces', () => {
     Spaces.createNewSpace(SPACE_NAME);
 
     cy.log('Switch to newly created space');
-    Spaces.openSpace('test-space');
+    Spaces.openSpace(Spaces.idOf(SPACE_NAME));
     cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
     cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
 
