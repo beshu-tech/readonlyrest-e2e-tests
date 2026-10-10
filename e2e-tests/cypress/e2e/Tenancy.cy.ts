@@ -17,9 +17,13 @@ import { UserSettings } from '../support/page-objects/UserSettings';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
+    beforeEach(() => {
+      kbnApiAdvancedClient.resetSpaces(userCredentials, 'template_group');
+    });
+
     afterEach(() => {
       kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
-      kbnApiAdvancedClient.deleteAllSpaces(userCredentials, 'template_group');
+      kbnApiAdvancedClient.tryResetSpaces(userCredentials, 'template_group');
     });
 
     it('should open correct tenancy when URL contains tenancy query string', () => {

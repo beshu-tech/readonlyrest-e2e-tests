@@ -1,4 +1,5 @@
-import { BasicCredentials, KbnApiClient, SavedObject } from './KbnApiClient';
+import { recurse } from 'cypress-recurse';
+import { BasicCredentials, KbnApiClient, SavedObject, Space } from './KbnApiClient';
 import { requiredBaseUrl } from './index';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
@@ -46,15 +47,52 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
-  public deleteAllSpaces(credentials: BasicCredentials, group?: string): void {
-    cy.log(`Delete all spaces`);
-    this.getAllSpaces(credentials, group).then(spaces => {
-      spaces
-        .filter(space => space.id !== 'default')
-        .forEach(space => {
-          this.deleteSpace(space.id, credentials, group);
-        });
+  /**
+   * Deletes every space but the default one, and makes every feature of the default space visible.
+   * A request can fail for a short time, for example with a 403 while ROR reloads its settings. So
+   * each request is best effort, and the check of the result repeats them until it passes.
+   */
+  public resetSpaces(credentials: BasicCredentials, group?: string): void {
+    cy.log(`Reset spaces${group ? ` in ${group}` : ''}`);
+    recurse(
+      () => {
+        this.tryResetSpaces(credentials, group);
+        return this.findSpaces(credentials, group);
+      },
+      spaces =>
+        spaces !== undefined && spaces.every(space => space.id === 'default' && space.disabledFeatures.length === 0),
+      {
+        delay: 1000,
+        timeout: 30000,
+        log: false,
+        error: `Spaces did not reset${group ? ` in ${group}` : ''}`
+      }
+    );
+  }
+
+  /** One pass of resetSpaces that does not fail the test. Use it where a failure must not stop the rest of a hook. */
+  public tryResetSpaces(credentials: BasicCredentials, group?: string): void {
+    this.findSpaces(credentials, group).then(spaces => {
+      (spaces ?? []).forEach(space => {
+        if (space.id !== 'default') {
+          this.deleteSpace(space.id, credentials, group, { failOnStatusCode: false });
+        } else if (space.disabledFeatures.length > 0) {
+          this.updateSpace(defaultSpaceWithAllFeatures(space), credentials, group, { failOnStatusCode: false });
+        }
+      });
     });
+  }
+
+  // Yields undefined when the answer is not a list of spaces: an error status, or the login page.
+  private findSpaces(credentials: BasicCredentials, group?: string): Cypress.Chainable<Space[] | undefined> {
+    return cy
+      .kbnGet<unknown>({
+        endpoint: 'api/spaces/space',
+        credentials,
+        currentGroupHeader: group,
+        failOnStatusCode: false
+      })
+      .then(body => cy.wrap(Array.isArray(body) ? (body as Space[]) : undefined, { log: false }));
   }
 
   /**
@@ -149,5 +187,27 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     return poll();
   }
 }
+
+// PUT replaces the whole space and rejects unknown fields, so this sends only the fields it knows.
+const defaultSpaceWithAllFeatures = ({
+  id,
+  name,
+  description,
+  color,
+  initials,
+  imageUrl,
+  solution,
+  _reserved
+}: Space) => ({
+  id,
+  name,
+  description,
+  color,
+  initials,
+  imageUrl,
+  solution,
+  _reserved,
+  disabledFeatures: []
+});
 
 export const kbnApiAdvancedClient = new KbnApiAdvancedClient();

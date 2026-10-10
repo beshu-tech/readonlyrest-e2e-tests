@@ -10,11 +10,12 @@ const SPACE_NAME = 'Test space';
 
 describe('Spaces', () => {
   beforeEach(() => {
+    kbnApiAdvancedClient.resetSpaces(userCredentials);
     Login.initialization();
   });
 
   afterEach(() => {
-    kbnApiAdvancedClient.deleteAllSpaces(userCredentials);
+    kbnApiAdvancedClient.tryResetSpaces(userCredentials);
   });
 
   it('should successfully set feature visibility for default space', () => {

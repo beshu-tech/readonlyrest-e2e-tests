@@ -27,11 +27,17 @@ export class KbnApiClient {
     });
   }
 
-  public deleteDataView(dataViewId: string, credentials: string, group?: string): void {
+  public deleteDataView(
+    dataViewId: string,
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
     cy.kbnDelete({
       endpoint: `api/data_views/data_view/${dataViewId}`,
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
     });
   }
 
@@ -79,11 +85,33 @@ export class KbnApiClient {
     });
   }
 
-  public deleteSpace(spaceName: string, credentials: string, group?: string): void {
+  public deleteSpace(
+    spaceId: string,
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
     cy.kbnDelete({
-      endpoint: `api/spaces/space/${spaceName}`,
+      endpoint: `api/spaces/space/${spaceId}`,
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
+    });
+  }
+
+  public updateSpace(
+    space: Space,
+    credentials: string,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
+    cy.kbnRequest({
+      method: 'PUT',
+      endpoint: `api/spaces/space/${space.id}`,
+      credentials,
+      currentGroupHeader: group,
+      payload: space,
+      failOnStatusCode
     });
   }
 
@@ -156,13 +184,16 @@ export interface GetObject {
   total: number;
 }
 
-interface Space {
+export interface Space {
   id: string;
   name: string;
-  initials: string;
-  color: string;
+  description?: string;
+  initials?: string;
+  color?: string;
   disabledFeatures: string[];
-  imageUrl: string;
+  imageUrl?: string;
+  solution?: string;
+  _reserved?: boolean;
 }
 
 export interface ShortUrlPayload {
