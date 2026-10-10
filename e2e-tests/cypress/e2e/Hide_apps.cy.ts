@@ -12,7 +12,7 @@ import { itOnKibana } from '../support/helpers/itOnKibana';
 
 describe('hidden apps', () => {
   afterEach(() => {
-    Settings.setSettingsData('defaultSettings.yaml');
+    Settings.restoreDefaultSettings();
   });
 
   context('Stack Management navigation', () => {

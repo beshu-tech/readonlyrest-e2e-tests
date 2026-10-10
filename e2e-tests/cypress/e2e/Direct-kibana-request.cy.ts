@@ -3,6 +3,7 @@ import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { admin, BasicCredentials, user } from '../support/helpers/credentials';
 import { rorApiClient } from '../support/helpers/RorApiClient';
+import { Settings } from '../support/page-objects/Settings';
 
 describe('Direct kibana request', () => {
   const user1 = user(1);
@@ -14,7 +15,7 @@ describe('Direct kibana request', () => {
 
   afterEach(() => {
     clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+    Settings.restoreDefaultSettings();
   });
 
   it('should check direct kibana request', () => {

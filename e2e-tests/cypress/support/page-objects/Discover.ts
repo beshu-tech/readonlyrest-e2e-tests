@@ -92,7 +92,9 @@ export class Discover {
 
     cy.get('[data-test-subj=generateReportButton]').click();
     cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
-    cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');
+    // Kibana closes the toast after notifications:lifetime:info (5 s). A slow browser runs that timer
+    // late, so the wait is twice the 10 s of the check above.
+    cy.contains('Queued report for search', { timeout: 20000 }).should('not.exist');
   }
 
   // Kibana 9.4 and later always puts New and Open in the overflow popover of the top menu. Open is
@@ -257,6 +259,11 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
       ? interceptNext('indexPattern', { url: '/s/default/api/kibana/management/saved_objects/**' })
       : interceptNext('indexPattern', { url: '/s/default/api/saved_objects/**' });
 
+    // The title check runs async, and the form saves nothing while it runs. Kibana 8.15 and later
+    // mark it with data-is-validating, as Kibana's own tests wait for it.
+    cy.get('[data-test-subj=createIndexPatternTitleInput]').should($input => {
+      expect($input.attr('data-is-validating') ?? '0', 'title validation').to.equal('0');
+    });
     cy.get('[data-test-subj=saveIndexPatternButton]').should('not.be.disabled').click();
 
     cy.wait(indexPattern);

@@ -19,7 +19,7 @@ describe('Reporting index', () => {
     if (kibanaVersion.gte('8.0.0')) {
       kbnApiAdvancedClient.deleteDataViews(admin, 'infosec_group');
     }
-    Settings.setSettingsData('defaultSettings.yaml');
+    Settings.restoreDefaultSettings();
   });
 
   it('should correctly match index pattern when audit index_template contains .reporting', () => {
