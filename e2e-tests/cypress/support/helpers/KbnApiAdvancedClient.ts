@@ -83,6 +83,55 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
+  /**
+   * Deletes the search sessions that the account can see in its tenancy. A search session is a saved
+   * object of a hidden type, so the saved objects API does not list it. The search session API does.
+   */
+  public deleteSearchSessions(credentials: BasicCredentials, group?: string): void {
+    cy.log(`Delete search sessions${group ? ` in ${group}` : ''}`);
+    recurse(
+      () =>
+        this.findSearchSessionIds(credentials, group).then(ids => {
+          (ids ?? []).forEach(id => {
+            cy.kbnRequest({
+              method: 'DELETE',
+              endpoint: `internal/session/${id}`,
+              credentials,
+              currentGroupHeader: group,
+              headers: SEARCH_SESSION_API_HEADERS,
+              failOnStatusCode: false
+            });
+          });
+          return cy.wrap(ids, { log: false });
+        }),
+      ids => ids !== undefined && ids.length === 0,
+      {
+        delay: 1000,
+        timeout: 30000,
+        log: false,
+        error: `Search sessions were not deleted${group ? ` in ${group}` : ''}`
+      }
+    );
+  }
+
+  // Yields undefined when the answer is not the JSON of a search session list.
+  private findSearchSessionIds(credentials: BasicCredentials, group?: string): Cypress.Chainable<string[] | undefined> {
+    return cy
+      .kbnRequest({
+        method: 'POST',
+        endpoint: 'internal/session/_find',
+        credentials,
+        currentGroupHeader: group,
+        headers: SEARCH_SESSION_API_HEADERS,
+        payload: { page: 1, perPage: 100 },
+        failOnStatusCode: false
+      })
+      .then(body => {
+        const sessions = (body as { saved_objects?: Array<{ id: string }> } | undefined)?.saved_objects;
+        return cy.wrap(Array.isArray(sessions) ? sessions.map(session => session.id) : undefined, { log: false });
+      });
+  }
+
   // Yields undefined when the answer is not a list of spaces: an error status, or the login page.
   private findSpaces(credentials: BasicCredentials, group?: string): Cypress.Chainable<Space[] | undefined> {
     return cy
@@ -187,6 +236,9 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     return poll();
   }
 }
+
+// Kibana 8 and later version the search session API. Kibana 7 ignores the header.
+const SEARCH_SESSION_API_HEADERS = { 'elastic-api-version': '1' };
 
 // PUT replaces the whole space and rejects unknown fields, so this sends only the fields it knows.
 const defaultSpaceWithAllFeatures = ({
