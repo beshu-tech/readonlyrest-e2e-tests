@@ -138,23 +138,23 @@ describe('Forbidden responses', () => {
   if (semver.lt(getKibanaVersion(), '8.0.0')) {
     it('shows a danger toast and keeps the object instead of faking a delete when an inspect-page delete is forbidden', () => {
       cy.kbnPost({
-        endpoint: 'api/saved_objects/index-pattern/forbidden-inspect-delete',
+        endpoint: 'api/saved_objects/dashboard/forbidden-inspect-delete',
         credentials: userCredentials,
-        payload: { attributes: { title: 'forbidden-inspect-delete*' } }
+        payload: { attributes: { title: 'Forbidden inspect delete', panelsJSON: '[]', optionsJSON: '{}' } }
       });
 
       Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
       StackManagement.openSavedObjectsPage();
       // Actions sit behind a collapsed menu; the popover renders outside the row.
-      cy.contains('tr', 'forbidden-inspect-delete*').find('[data-test-subj="euiCollapsedItemActionsButton"]').click();
+      cy.contains('tr', 'Forbidden inspect delete').find('[data-test-subj="euiCollapsedItemActionsButton"]').click();
+      // An index pattern opens its own edit page here. A dashboard opens the generic inspect page.
       cy.get('[data-test-subj="savedObjectsTableAction-inspect"]').click();
-      // Index patterns redirect "inspect" straight to their own management page, not a
-      // generic saved-object inspect view; the delete trigger there is the trash icon.
-      cy.get('[data-test-subj="deleteIndexPatternButton"]').click();
+      cy.get('[data-test-subj="savedObjectEditDelete"]').click();
       cy.get('[data-test-subj="confirmModalConfirmButton"]').click();
 
       cy.contains('[data-test-subj="globalToastList"]', 'Object could not be deleted');
       cy.contains('[data-test-subj="globalToastList"]', forbiddenMessage);
+      cy.location('pathname').should('include', 'forbidden-inspect-delete');
       cy.contains('[data-test-subj="globalToastList"]', "Deleted '").should('not.exist');
     });
 
