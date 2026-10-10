@@ -5,14 +5,28 @@ import { StackManagement } from './StackManagement';
 import { getKibanaVersion } from '../helpers';
 import { esApiAdvancedClient } from '../helpers/EsApiAdvancedClient';
 import { KibanaToast } from './KibanaToast';
+import type { Interception } from 'cypress/types/net-stubbing';
 
 type OpenBy = 'rorMenu' | 'kibanaNavigation';
 
 export class Reporting {
+  // The empty-list text alone also shows when the list request fails, so every list answer of the
+  // page must be a 200 with no reports.
   static noReportsCreatedCheck(openBy: OpenBy) {
     cy.log('noReportsCreatedCheck');
+    cy.intercept({ method: 'GET', pathname: /\/(api|internal)\/reporting\/jobs\/list$/ }, req => {
+      delete req.headers['if-none-match'];
+    }).as('reportsList');
     this.openReportingPage(openBy);
     cy.contains('No reports have been created').should('be.visible');
+    cy.get<Interception[]>('@reportsList.all').should(interceptions => {
+      const answered = interceptions.filter(interception => interception.response);
+      expect(answered.length, 'answered report list requests').to.be.greaterThan(0);
+      answered.forEach(({ response }) => {
+        expect(response?.statusCode, 'report list status').to.equal(200);
+        expect(response?.body, 'report list').to.be.an('array').that.has.length(0);
+      });
+    });
   }
 
   static verifySavedReport(reportNames: (string | RegExp)[]) {
