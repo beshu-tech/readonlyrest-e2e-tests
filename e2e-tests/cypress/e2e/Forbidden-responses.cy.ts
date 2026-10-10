@@ -51,7 +51,8 @@ describe('Forbidden responses', () => {
     cleanUp();
   });
 
-  if (semver.gte(getKibanaVersion(), '8.0.0')) {
+  // _bulk_delete exists from Kibana 8.7.0.
+  if (semver.gte(getKibanaVersion(), '8.7.0')) {
     it('keeps a saved object selected instead of hanging when bulk-delete is forbidden', () => {
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-bulk-delete', title: 'r*', name: 'Forbidden bulk delete' } },
@@ -101,14 +102,15 @@ describe('Forbidden responses', () => {
     });
   }
 
-  if (semver.lt(getKibanaVersion(), '8.0.0')) {
+  // Kibana before 8.7.0 deletes one saved object at a time, through the single-delete patch.
+  if (semver.lt(getKibanaVersion(), '8.7.0')) {
     it('shows a danger toast and keeps the row instead of faking a delete when a single saved-object delete is forbidden', () => {
       // ROR's patch rethrows after the toast: Kibana's own Promise.all has no catch, so the
       // delete stays visibly unresolved (isDeleting stuck true) rather than faking success and
       // dropping a row Elasticsearch never actually deleted.
       cy.on('uncaught:exception', () => false);
 
-      // No data-view API on 7.x; use the generic saved objects API.
+      // No data-view API on 7.x; the generic saved objects API works on every version.
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-single-delete',
         credentials: userCredentials,
@@ -125,7 +127,9 @@ describe('Forbidden responses', () => {
       cy.contains('[data-test-subj="globalToastList"]', forbiddenMessage);
       cy.contains('[data-test-subj~="savedObjectsTableRow"]', 'forbidden-single-delete').should('exist');
     });
+  }
 
+  if (semver.lt(getKibanaVersion(), '8.0.0')) {
     it('shows a danger toast and keeps the object instead of faking a delete when an inspect-page delete is forbidden', () => {
       // Same rethrow as the list-page test above: no fake "Deleted '...'" success toast anymore.
       cy.on('uncaught:exception', () => false);
@@ -251,20 +255,26 @@ describe('Forbidden responses', () => {
     cy.contains('[data-test-subj="globalToastList"]', forbiddenMessage);
   });
 
-  // 7.x deletes from the edit page, not the list.
-  if (semver.satisfies(getKibanaVersion(), '>=8.0.0 <9.0.0')) {
+  // Before 8.7.0 the single-delete patch covers the data view delete. From 9.2.0 Kibana catches it.
+  if (semver.satisfies(getKibanaVersion(), '>=8.7.0 <9.2.0')) {
     it('shows a danger toast instead of staying silent when a data view delete is forbidden', () => {
-      // No catch on 8.x; ROR's interceptor is the only feedback.
+      // No catch before 9.2.0; ROR's interceptor is the only feedback.
       cy.on('uncaught:exception', () => false);
 
       kbnApiClient.createDataView(
-        { data_view: { id: 'forbidden-data-view-delete-8x', title: 'r*', name: 'Forbidden data view delete 8x' } },
+        {
+          data_view: {
+            id: 'forbidden-data-view-delete-interceptor',
+            title: 'r*',
+            name: 'Forbidden data view delete interceptor'
+          }
+        },
         userCredentials
       );
 
       Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
       Discover.openDataViewPage();
-      cy.contains('tr', 'Forbidden data view delete 8x').find('[data-test-subj="action-delete"]').click();
+      cy.contains('tr', 'Forbidden data view delete interceptor').find('[data-test-subj="action-delete"]').click();
       cy.get('[data-test-subj="confirmModalConfirmButton"]').click();
 
       cy.contains('[data-test-subj="globalToastList"]', 'Data view could not be deleted');
@@ -272,8 +282,8 @@ describe('Forbidden responses', () => {
     });
   }
 
-  // Only 9.x's flyout passes a bare Error with no title/text.
-  if (semver.gte(getKibanaVersion(), '9.0.0')) {
+  // Only the flyout of 9.2.0 and later passes a bare Error with no title/text.
+  if (semver.gte(getKibanaVersion(), '9.2.0')) {
     it('fills the empty delete-data-view toast with the forbidden message', () => {
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-data-view-delete', title: 'r*', name: 'Forbidden data view delete' } },
