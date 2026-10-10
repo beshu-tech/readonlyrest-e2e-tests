@@ -105,11 +105,8 @@ describe('Forbidden responses', () => {
   // Kibana before 8.7.0 deletes one saved object at a time, through the single-delete patch.
   if (semver.lt(getKibanaVersion(), '8.7.0')) {
     it('shows a danger toast and keeps the row instead of faking a delete when a single saved-object delete is forbidden', () => {
-      // ROR's patch rethrows after the toast: Kibana's own Promise.all has no catch, so the
-      // delete stays visibly unresolved (isDeleting stuck true) rather than faking success and
-      // dropping a row Elasticsearch never actually deleted.
-      cy.on('uncaught:exception', () => false);
-
+      // On the list page ROR's patch resolves after the toast, so the table re-fetches the
+      // objects and shows again the row that Elasticsearch did not delete.
       // No data-view API on 7.x; the generic saved objects API works on every version.
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-single-delete',
