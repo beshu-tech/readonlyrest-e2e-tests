@@ -20,7 +20,7 @@ describe('allowed_api_paths enforcement for api_only users', () => {
 
   describe('exact /api/ path', () => {
     it('allows direct API calls to paths listed in allowed_api_paths', () => {
-      apiGet('api/spaces/space', apiOnlyExactUser).then(expectSpacesResponseIncludesDefault);
+      expectSpacesIncludeDefault('api/spaces/space', apiOnlyExactUser);
     });
 
     it('blocks direct API calls to paths not listed in allowed_api_paths', () => {
@@ -30,7 +30,7 @@ describe('allowed_api_paths enforcement for api_only users', () => {
 
   describe('regexp /api/ path', () => {
     it('allows API calls to any path matching the regexp in allowed_api_paths', () => {
-      apiGet('api/spaces/space', apiOnlyRegexpUser).then(expectSpacesResponseIncludesDefault);
+      expectSpacesIncludeDefault('api/spaces/space', apiOnlyRegexpUser);
     });
 
     it('blocks API calls to paths not matching the regexp in allowed_api_paths', () => {
@@ -40,7 +40,7 @@ describe('allowed_api_paths enforcement for api_only users', () => {
 
   describe('space-aware /api/ path', () => {
     it('allows API calls to the exact space-prefixed path listed in allowed_api_paths', () => {
-      apiGet('s/default/api/spaces/space', apiOnlySpaceUser).then(expectSpacesResponseIncludesDefault);
+      expectSpacesIncludeDefault('s/default/api/spaces/space', apiOnlySpaceUser);
     });
 
     it('blocks API calls to the root /api/ form when only a space-prefixed pattern is configured', () => {
@@ -54,11 +54,10 @@ describe('allowed_api_paths enforcement for api_only users', () => {
 
   describe('Kibana internal /internal/ paths', () => {
     // FIXME: Kibana does not serve /internal/spaces/get_all — it answers 404 on every version in the
-    // matrix. The call still proves the allowlist let it past ReadonlyREST (a blocked request comes
-    // back as ROR's forbidden envelope, not as Kibana's 404), which is why this asserts only that.
-    // Point it at an /internal/ route that exists and it can use expectAllowed like the rest.
+    // matrix. Kibana's JSON 404 still proves the allowlist let it past ReadonlyREST: a blocked request
+    // comes back as ROR's 403. Point it at an /internal/ route that exists and it can check a 200.
     it('allows calls to /internal/ paths matching the allowed_api_paths entry', () => {
-      expectNotBlocked('internal/spaces/get_all', apiOnlyInternalUser);
+      expectKibanaNotFound('internal/spaces/get_all', apiOnlyInternalUser);
     });
 
     it('blocks calls to /internal/ paths not listed in allowed_api_paths', () => {
@@ -72,7 +71,7 @@ describe('allowed_api_paths enforcement for api_only users', () => {
 
   describe('ReadonlyREST public API /api/ror/ paths', () => {
     it('allows calls to /api/ror/ paths matching the allowed_api_paths entry', () => {
-      expectAllowed('api/ror/user/tenants', apiOnlyRorUser);
+      expectTenantsList('api/ror/user/tenants', apiOnlyRorUser);
     });
 
     it('blocks calls to /api/ror/ paths not listed in allowed_api_paths', () => {
@@ -98,45 +97,37 @@ function assertRor403(response: unknown) {
   expect(response).to.have.property('status', 'forbidden');
 }
 
-// Only that ReadonlyREST let the request reach Kibana. It says nothing about what Kibana then did
-// with it, so prefer assertRequestSucceeded wherever the endpoint actually serves something.
-function assertNotBlockedByRor(response: unknown) {
-  const body = response as Record<string, unknown> | null;
-  expect(body, `ReadonlyREST blocked the request: ${JSON.stringify(body)}`).to.not.have.property('status', 'forbidden');
-}
-
-// The requests run with failOnStatusCode: false and kbnGet yields the body only, so the HTTP status
-// is not visible here — whatever the body carries is. Both layers put a code in it on failure
-// (ReadonlyREST as `status_code`, Kibana core as `statusCode`), but ReadonlyREST's own API also puts
-// one there on success — /api/ror/user/tenants answers { statusCode: 200, status: 'SUCCESS', ... }.
-// So it is the value that decides, not the presence of the field; a body with no code at all is the
-// resource itself and therefore fine.
-function assertRequestSucceeded(response: unknown) {
-  const body = response as Record<string, unknown> | null;
-  const shown = JSON.stringify(body);
-
-  assertNotBlockedByRor(response);
-  expect(statusCodeOf(body), `the request did not succeed: ${shown}`).to.be.lessThan(400);
-}
-
-function statusCodeOf(body: Record<string, unknown> | null): number {
-  const code = body?.status_code ?? body?.statusCode;
-  return typeof code === 'number' ? code : 200;
-}
-
 function expectBlocked(endpoint: string, credentials: string) {
   return apiGet(endpoint, credentials).then(assertRor403);
 }
 
-function expectAllowed(endpoint: string, credentials: string) {
-  return apiGet(endpoint, credentials).then(assertRequestSucceeded);
+// The status and the content type tell Kibana's JSON answer from a redirect to the login page or a
+// text error, which carry no status code in the body.
+function expectJsonAnswer<T>(endpoint: string, credentials: string, status: number) {
+  return cy
+    .kbnGetResponse<T>({ endpoint, credentials })
+    .then(response => {
+      const shown = `${response.status} ${JSON.stringify(response.body)}`;
+      expect(response.status, `GET ${endpoint} status: ${shown}`).to.equal(status);
+      expect(response.headers['content-type'], `GET ${endpoint} content type`).to.include('application/json');
+    })
+    .its('body');
 }
 
-function expectNotBlocked(endpoint: string, credentials: string) {
-  return apiGet(endpoint, credentials).then(assertNotBlockedByRor);
+function expectSpacesIncludeDefault(endpoint: string, credentials: string) {
+  expectJsonAnswer<Array<{ id: string }>>(endpoint, credentials, 200).then(spaces => {
+    expect(spaces.map(space => space.id)).to.include('default');
+  });
 }
 
-function expectSpacesResponseIncludesDefault(response: unknown) {
-  const spaces = response as Array<{ id: string }>;
-  expect(spaces.map(s => s.id)).to.include('default');
+function expectTenantsList(endpoint: string, credentials: string) {
+  expectJsonAnswer<{ tenants?: unknown }>(endpoint, credentials, 200).then(body => {
+    expect(body.tenants, 'tenants').to.be.an('array');
+  });
+}
+
+function expectKibanaNotFound(endpoint: string, credentials: string) {
+  expectJsonAnswer<{ statusCode?: number }>(endpoint, credentials, 404).then(body => {
+    expect(body.statusCode, 'status code in the Kibana answer').to.equal(404);
+  });
 }

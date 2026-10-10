@@ -67,6 +67,17 @@ Cypress.Commands.add(
     }) as Cypress.Chainable<unknown>
 );
 
+Cypress.Commands.add('kbnGetResponse', ({ endpoint, credentials }) =>
+  cy.task('httpCall', {
+    method: 'GET',
+    url: `${Cypress.config().baseUrl}/${endpoint}`,
+    headers: { 'kbn-xsrf': 'true', authorization: `Basic ${btoa(credentials)}` },
+    body: null,
+    failOnStatusCode: false,
+    fullResponse: true
+  })
+);
+
 Cypress.Commands.add(
   'esGet',
   ({ endpoint, credentials }, ...args) =>
