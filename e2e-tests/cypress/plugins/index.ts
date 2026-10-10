@@ -6,6 +6,7 @@ import FormData from 'form-data';
 import { inspect } from 'util';
 import path from 'node:path';
 import * as fs from 'node:fs';
+import type { HttpResponse } from '../support/types';
 
 let embeddedServer: ReturnType<typeof https.createServer> | null = null;
 const EMBEDDED_SERVER_PORT = 8080;
@@ -30,9 +31,14 @@ const formatLoggerData = (data: unknown) =>
   });
 
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
+  // The error of the first failed wait for Kibana answers. A node that does not answer user requests
+  // stays so until it restarts (RORDEV-2283), and CI does not restart it. So the later specs of
+  // this suite run fail at once with this error, and do not wait again.
+  let kibanaAnswerFailure: string | undefined;
+
   on('task', {
-    async httpCall(options: HttpCallOptions): Promise<any> {
-      const { method, url, headers, body, failOnStatusCode, allowTransportError } = options;
+    async httpCall(options: HttpCallOptions): Promise<unknown> {
+      const { method, url, headers, body, failOnStatusCode, allowTransportError, fullResponse } = options;
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
@@ -40,7 +46,13 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       });
 
       try {
-        const response: Response = await fetch(url, { method, headers, body: body ?? undefined, agent });
+        const response: Response = await fetch(url, {
+          method,
+          headers,
+          body: body ?? undefined,
+          agent,
+          redirect: fullResponse ? 'manual' : 'follow'
+        });
 
         if (!response.ok && failOnStatusCode) {
           throw new Error(
@@ -54,6 +66,14 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
         console.log(`Response: ${method} ${url}: HTTP STATUS ${response.status}; Body: ${formatLoggerData(data)}`);
+        if (fullResponse) {
+          const responseHeaders: { [key: string]: string } = {};
+          response.headers.forEach((value, name) => {
+            responseHeaders[name] = value;
+          });
+          const fullHttpResponse: HttpResponse = { status: response.status, headers: responseHeaders, body: data };
+          return fullHttpResponse;
+        }
         return data;
       } catch (error) {
         if (allowTransportError) {
@@ -73,7 +93,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         throw error;
       }
     },
-    async uploadFile(options: UploadFileOptions): Promise<any> {
+    async uploadFile(options: UploadFileOptions): Promise<unknown> {
       const { url, headers, file } = options;
 
       const agent: Agent = new Agent({
@@ -141,7 +161,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
               try {
                 const json = JSON.parse(data);
                 resolve(json.status?.overall?.level || json.status.overall.state || 'unknown');
-              } catch (e) {
+              } catch {
                 resolve('parse-error');
               }
             });
@@ -210,91 +230,84 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
     generateJwt(payload: object): string {
       return generateJwt(payload);
     },
-    async clearDownloads() {
-      const downloadsFolder = path.join('cypress', 'downloads');
-      console.log('🧹 Starting to clear the downloads folder:', downloadsFolder);
+    // A status below 500 counts as an answer, a refusal too. No answer within requestTimeoutMs, or a
+    // 5xx, starts the count again. A refused connection or a 5xx comes back at once, so the next
+    // request waits a second: that keeps a stopped Kibana from getting thousands of requests.
+    async waitForKibanaToAnswer(options: KibanaAnswerWaitOptions): Promise<null> {
+      if (kibanaAnswerFailure) {
+        throw new Error(`Kibana did not answer in an earlier spec of this suite run. ${kibanaAnswerFailure}`);
+      }
+      const { url, headers, answersInARow, requestTimeoutMs, totalTimeoutMs } = options;
+      const pauseAfterFailureMs = 1000;
+      const agent: Agent = new Agent({ rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' });
+      const deadline = Date.now() + totalTimeoutMs;
+      const outcomes: string[] = [];
+      let answers = 0;
 
-      try {
-        await fs.promises.rm(downloadsFolder, { recursive: true, force: true });
-        console.log('✅ Downloads folder cleared successfully.');
-
-        await fs.promises.mkdir(downloadsFolder, { recursive: true });
-        console.log('📁 Created a new empty downloads folder.');
-      } catch (err) {
-        console.error('❌ Error while clearing the downloads folder:', err);
+      while (answers < answersInARow) {
+        const timeLeft = deadline - Date.now();
+        if (timeLeft <= 0) {
+          kibanaAnswerFailure =
+            `Kibana did not answer ${answersInARow} requests in a row within ${totalTimeoutMs} ms. ` +
+            `GET ${url}: ${outcomes.join(', ')}`;
+          throw new Error(kibanaAnswerFailure);
+        }
+        const startedAt = Date.now();
+        try {
+          const response = await fetch(url, { headers, agent, timeout: Math.min(requestTimeoutMs, timeLeft) });
+          await response.text();
+          outcomes.push(`${response.status} in ${Date.now() - startedAt} ms`);
+          answers = response.status < 500 ? answers + 1 : 0;
+        } catch (error) {
+          outcomes.push(`${(error as Error).message} after ${Date.now() - startedAt} ms`);
+          answers = 0;
+        }
+        if (answers === 0) {
+          await new Promise(resolve => setTimeout(resolve, Math.min(pauseAfterFailureMs, deadline - Date.now())));
+        }
       }
 
+      console.log(`Kibana answered ${answersInARow} requests in a row: GET ${url}: ${outcomes.join(', ')}`);
       return null;
-    },
-    async listDownloadedFiles() {
-      const downloadsFolder = path.join('cypress', 'downloads');
-      try {
-        return await fs.promises.readdir(downloadsFolder);
-      } catch {
-        return [];
-      }
     }
   });
 
-  // A retry hides a flake. Two tab-separated files keep the record, so a CI step can report it:
-  //   failed-specs.tsv   one row per failed spec: start time of this suite run, spec
-  //   retried-tests.tsv  one row per retried test: spec, title, attempts, final state
-  // Each suite run appends after each spec, so a run stopped at a timeout keeps its rows.
+  // failed-specs.tsv keeps one row per failed spec (start time of this suite run, spec), so that a
+  // CI step can report the failed specs. Each suite run appends after each spec, so a run stopped at
+  // a timeout keeps its rows.
   const resultsDir = path.resolve(config.projectRoot, '..', 'results');
   const suiteRunStarted = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-  // A tab or a line break in a cell would split the row.
-  const cell = (text: string) => text.replace(/[\t\r\n]+/g, ' ');
-  const appendRows = async (file: string, rows: (string | number)[][]) => {
-    if (rows.length === 0) return;
+  const recordFailedSpec = async (spec: Cypress.Spec) => {
+    // A tab or a line break in the spec name would split the row.
+    const row = [suiteRunStarted, path.basename(spec.relative)].map(cell => cell.replace(/[\t\r\n]+/g, ' '));
     try {
       await fs.promises.mkdir(resultsDir, { recursive: true });
-      await fs.promises.appendFile(
-        path.join(resultsDir, file),
-        rows.map(row => row.map(value => cell(String(value))).join('\t') + '\n').join('')
-      );
+      await fs.promises.appendFile(path.join(resultsDir, 'failed-specs.tsv'), row.join('\t') + '\n');
     } catch {
       // A broken report must never fail a suite that passed.
     }
   };
-  const reportFlakes = async (spec: Cypress.Spec, results: CypressCommandLine.RunResult) => {
-    if (!results) return;
-    const specName = path.basename(spec.relative);
 
-    // The same count gives the ✖ in the "Run Finished" table. `error` is a spec-level error, which
-    // can come without a failed test.
-    if ((results.stats && results.stats.failures > 0) || results.error) {
-      await appendRows('failed-specs.tsv', [[suiteRunStarted, specName]]);
-    }
+  // The same count gives the ✖ in the "Run Finished" table. `error` is a spec-level error, which
+  // can come without a failed test.
+  const specFailed = (results: CypressCommandLine.RunResult) =>
+    (results.stats && results.stats.failures > 0) || Boolean(results.error);
 
-    const retried = (results.tests || [])
-      .filter(test => (test.attempts || []).length > 1)
-      .map(test => [specName, (test.title || []).join(' > '), test.attempts.length, test.state]);
-    await appendRows('retried-tests.tsv', retried);
-  };
-
-  // Discard the video for specs that finished with all tests passing.
-  // Combined with `videoCompression: false` in cypress.config.ts, this keeps
-  // failure-debug videos available while avoiding writing GBs of green-run
-  // videos to disk and uploading them as artifacts.
+  // Cypress keeps one handler per event name: a second `on('after:spec')` replaces the first.
+  // So both jobs live in this one handler.
   on('after:spec', async (spec, results) => {
-    // Cypress keeps one handler per event name: a second `on('after:spec')` replaces the first.
-    // So both jobs live in this one handler.
-    await reportFlakes(spec, results);
-
-    if (!results || !results.video) return;
-    // Keep the video if the spec had ANY failure. Prefer the stable
-    // `results.stats.failures` counter — in Cypress 14 the per-attempt
-    // `tests[].attempts[].state` field is no longer reliably populated, so the
-    // old `attempts[].state === 'failed'` check returned false even for failed
-    // specs and the failure video was wrongly deleted before upload.
-    const failures =
-      (results.stats && results.stats.failures > 0) ||
-      (results.tests || []).some(t => t.state === 'failed' || (t.attempts || []).some(a => a.state === 'failed'));
-    if (failures) return;
+    if (!results) return;
+    if (specFailed(results)) {
+      await recordFailedSpec(spec);
+      return;
+    }
+    // Keep the video of a failed spec only. With `videoCompression: false` in cypress.config.ts,
+    // the videos of passed specs would fill GBs of disk and artifacts.
+    if (!results.video) return;
     try {
       await fs.promises.unlink(results.video);
     } catch {
-      // best-effort cleanup; don't fail the run if the file is already gone
+      // The file can be gone already. A cleanup must not fail the run.
     }
   });
 };
@@ -307,11 +320,22 @@ interface HttpCallOptions {
   failOnStatusCode?: boolean;
   // For endpoints that restart the server they answer from, so the reply is lost by design.
   allowTransportError?: boolean;
+  // Answer the status, headers and body, and do not follow redirects, so that a redirect to the login
+  // page stays visible.
+  fullResponse?: boolean;
+}
+
+interface KibanaAnswerWaitOptions {
+  url: string;
+  headers: { [key: string]: string };
+  answersInARow: number;
+  requestTimeoutMs: number;
+  totalTimeoutMs: number;
 }
 
 interface FileToUpload {
   fileName: string;
-  fileBinaryContent: any;
+  fileBinaryContent: string;
 }
 
 interface UploadFileOptions {

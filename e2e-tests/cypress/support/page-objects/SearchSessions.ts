@@ -9,6 +9,6 @@ export class SearchSessions {
     cy.log('Open selected search session from the list');
 
     cy.getByDataTestSubj('searchSessionsRow').eq(sessionRow).as('row');
-    cy.get('@row').findByDataTestSubj('sessionManagementNameCol').click();
+    cy.get('@row').find('[data-test-subj="sessionManagementNameCol"]').click();
   }
 }

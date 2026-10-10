@@ -2,8 +2,7 @@ import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Observability } from '../support/page-objects/Observability';
 import { esApiClient } from '../support/helpers/EsApiClient';
-import * as semver from 'semver';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 
 describe('Observability', () => {
   beforeEach(() => {
@@ -16,7 +15,7 @@ describe('Observability', () => {
 
   it('should verify APM functionality', () => {
     Observability.addSampleApmEvents();
-    if (semver.gte(getKibanaVersion(), '8.18.0')) {
+    if (kibanaVersion.gte('8.18.0')) {
       KibanaNavigation.openPage('Applications');
     } else {
       KibanaNavigation.openPage('APM');

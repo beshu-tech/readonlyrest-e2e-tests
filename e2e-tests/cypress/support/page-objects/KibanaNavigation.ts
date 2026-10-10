@@ -1,18 +1,24 @@
+import { kibanaVersion } from '../helpers';
 import { PageNotFound } from './PageNotFound';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
+import { isHiddenByCss } from '../helpers/hiddenByCss';
 
 export class KibanaNavigation {
-  static openPage(page: string | RegExp) {
+  // The link must come from the navigation. An unscoped cy.contains() can match a page link with the
+  // same text (Home shows "Stack Management" and "Dev Tools" links), and that click leaves the
+  // navigation open over the next page.
+  static openPage(page: string) {
     cy.log('open page');
     KibanaNavigation.openKibanaNavigation();
 
     cy.get('[data-test-subj="collapsibleNav"]').find(`[title="${page}"]`).first().click();
   }
 
+  // The link must come from the Stack Management navigation. A search in the whole page can also
+  // find a landing card, a breadcrumb or a toast with the same text.
   static openSubPage(page: string) {
     cy.log('open sub-page');
-    cy.findByRole('link', {
-      name: page
-    }).click();
+    cy.get('[data-test-subj=mgtSideBarNav]').findByRole('link', { name: page }).click();
   }
 
   static openKibanaNavigation() {
@@ -26,12 +32,28 @@ export class KibanaNavigation {
     cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
-  static checkIfNotVisible(page: string) {
-    cy.log('checkIfNotVisible');
+  // ROR hides an app link with CSS on the link or on its group. The visible link first proves that
+  // the navigation is open.
+  static checkIfHidden(page: string, visiblePage = 'Discover') {
+    cy.log('checkIfHidden');
+    cy.get('[data-test-subj=collapsibleNav]')
+      .contains(new RegExp(`^${visiblePage}$`))
+      .scrollIntoView()
+      .should('be.visible');
+    if (kibanaVersion.satisfies(KibanaNavigation.HIDDEN_APPS_NAV_DEFECT)) {
+      cy.log(`Skipped: ROR does not hide the ${page} link on this Kibana (RORDEV-2305)`);
+      return;
+    }
     cy.get('[data-test-subj=collapsibleNav]')
       .contains(new RegExp(`^${page}$`))
-      .should('not.be.visible');
+      .should($link => {
+        expect(isHiddenByCss($link), `${page} link or a parent of it with display: none`).to.equal(true);
+      });
   }
+
+  // ROR 1.71.0 hides no navigation link of a hidden app on these Kibana versions. The route stays
+  // blocked. Remove the range when a release has the fix of RORDEV-2305.
+  private static readonly HIDDEN_APPS_NAV_DEFECT = '>=9.4.0';
 
   static checkIfNotExists(page: string) {
     cy.log('checkIfNotExists');
@@ -76,7 +98,7 @@ export class KibanaNavigation {
         });
     } else {
       cy.get('[data-test-subj="mgtSideBarNav"]')
-        .get(`[data-test-subj=${section}]`)
+        .find(`[data-test-subj=${section}]`)
         .siblings()
         .eq(0)
         .children()
@@ -84,10 +106,35 @@ export class KibanaNavigation {
     }
   }
 
-  static verifyKibanaNavigationLinkItemHref(href: string) {
-    cy.log('verifyKibanaNavigationLinkItemHref');
+  // Counts the links in all sections, so a section that the per-section checks do not name cannot add
+  // links. A link that ROR hides with CSS does not count.
+  static checkStackManagementShownLinksCount(count: number) {
+    cy.log('check the count of shown Stack Management links');
+    cy.get('[data-test-subj="mgtSideBarNav"]')
+      .find('.euiSideNavItem a')
+      .should($links => {
+        const shownLinks = $links.filter((_, link) => !isHiddenByCss(Cypress.$(link)));
+        expect(shownLinks.length, 'shown Stack Management links').to.equal(count);
+      });
+  }
+
+  // ROR copies the tenancy of the page URL into each link. The values are compared decoded, because
+  // the page URL and a link can encode the same tenancy in different ways.
+  static verifyNavigationLinkHasPageTenancy(appPath: string) {
+    cy.log('verifyNavigationLinkHasPageTenancy');
     KibanaNavigation.openKibanaNavigation();
 
-    cy.get(`a[href*="${href}"]`);
+    cy.location('href').then(pageHref => {
+      const pageTenancy = new URL(pageHref).searchParams.get(TENANCY_QUERY_STRING_KEY);
+      expect(pageTenancy, 'tenancy of the page URL').to.be.a('string').and.have.length.greaterThan(0);
+
+      cy.get('[data-test-subj=collapsibleNav]')
+        .find(`a[href*="${appPath}?"]`)
+        .first()
+        .should($link => {
+          const linkTenancy = new URL($link.prop('href')).searchParams.get(TENANCY_QUERY_STRING_KEY);
+          expect(linkTenancy, `tenancy of the ${appPath} link`).to.equal(pageTenancy);
+        });
+    });
   }
 }

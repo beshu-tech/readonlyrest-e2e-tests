@@ -33,54 +33,12 @@ export class EsApiAdvancedClient extends EsApiClient {
   }
 
   /**
-   * Backdates every session so the cleanup task deletes it on its next pass, instead of waiting out
-   * session_timeout_minutes. `expiresAt` is the field the v1 session codec writes and the range
-   * query in server/SessionCleanupTaskManager.ts selects on: rename it there and this stops working.
-   *
-   * One backdate is not enough: the proxy rolls expiresAt forward on authenticated traffic
-   * (sessionManager.refreshSession), so a background Kibana request can rescue the document
-   * before the cleanup tick — or make this update a version-conflict no-op, which is why
-   * conflicts=proceed. The loop re-backdates until the sweep wins, bounded by `attempts`.
-   */
-  public expireAllSessionsUntilSwept(index: string, timeout = 20000, interval = 1500): Cypress.Chainable<number> {
-    return recurse(
-      () => {
-        this.expireAllSessions(index);
-        return this.findIndicesByPattern(index).then(result => {
-          const found = result.find(({ index: name }) => name === index);
-          return found ? Number.parseInt(found['docs.count'], 10) : 0;
-        });
-      },
-      count => count === 0,
-      {
-        timeout,
-        // The cleanup interval in the fixture is 1s, so each pass gives one tick a chance to run.
-        delay: interval,
-        log: count => cy.log(`Sessions left in ${index}: ${count}`),
-        error: `Sessions in ${index} survived repeated backdating`
-      }
-    );
-  }
-
-  private expireAllSessions(index: string): void {
-    cy.log(`Expiring all sessions in ${index}...`);
-    cy.esPost({
-      endpoint: `${index}/_update_by_query?refresh=true&conflicts=proceed`,
-      credentials: Cypress.env().kibanaUserCredentials,
-      payload: {
-        script: { source: 'ctx._source.expiresAt = 0' },
-        query: { match_all: {} }
-      }
-    });
-  }
-
-  /**
    * Prune, then wait until the report store is actually empty.
    *
    * pruneAllReportingIndices fires the deletes and returns. That is enough for a report that has
-   * already landed and not enough for one a previous attempt left QUEUED: exportToCsv returns when
-   * Kibana accepts the job, not when it writes it (see Discover.exportToCsv), so on a retry the
-   * earlier report can arrive just after the prune and make the next count assertion fail with the
+   * already landed and not enough for one a previous test left QUEUED: exportToCsv returns when
+   * Kibana accepts the job, not when it writes it (see Discover.exportToCsv), so the earlier report
+   * can arrive in the next test just after the prune and make its count assertion fail with the
    * "Too many elements found" this is meant to prevent.
    *
    * Polling closes that window rather than sealing it. A report queued after the last poll can
@@ -113,11 +71,6 @@ export class EsApiAdvancedClient extends EsApiClient {
         .filter(index => index.index.startsWith('.reporting') || index.index.startsWith('.ds-.kibana-reporting-'))
         .reduce((sum, index) => sum + Number.parseInt(index['docs.count'] ?? '0', 10), 0)
     );
-  }
-
-  public getAllReportingIndices() {
-    cy.log('Getting all reporting indices...');
-    return this.indices().then(result => result.filter(index => index.index.startsWith('.reporting')));
   }
 
   public getAllReportingDataStreamSegments(indexName: string) {
@@ -179,30 +132,6 @@ export class EsApiAdvancedClient extends EsApiClient {
         error: `Timeout waiting for docs.count of ${indexName} to be ${expectedCount}`
       }
     );
-  }
-
-  public deleteIndicesByPattern(pattern: string): void {
-    cy.log(`Deleting indices matching pattern ${pattern}...`);
-    this.indices().then(result => {
-      const regex = new RegExp(pattern);
-      const matchingIndices = result.filter(indexObj => regex.test(indexObj.index));
-      matchingIndices.forEach(matchingIndex => {
-        cy.log(`Deleting index ${matchingIndex.index}...`);
-        this.deleteIndex(matchingIndex.index);
-      });
-    });
-  }
-
-  public deleteDataStreamsByPattern(pattern: string): void {
-    cy.log(`Deleting data streams matching pattern ${pattern}...`);
-    this.dataStreams().then(result => {
-      const regex = new RegExp(pattern);
-      const matchingIndices = result.data_streams.filter(indexObj => regex.test(indexObj.name));
-      matchingIndices.forEach(matchingIndex => {
-        cy.log(`Deleting index ${matchingIndex.name}...`);
-        this.deleteDataStream(matchingIndex.name);
-      });
-    });
   }
 }
 

@@ -1,6 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
-import { userCredentials } from '../support/helpers';
+import { EnvName } from '../support/types';
+import { admin } from '../support/helpers/credentials';
 
 /**
  * Keys resolve in the order index -> env -> file -> bundled Free key. Loading a key through the UI
@@ -12,20 +13,38 @@ import { userCredentials } from '../support/helpers';
 // from the index every activationKeyRefreshInterval (10m default), and independently wipes *all*
 // shared sessions when it notices an edition change (readonlyrestkbn preKibanaProxy.ts
 // verifyLicenseChange -> sessionManager.deleteAllSessions()). A single client's requests can land
-// on nodes disagreeing about the current edition right after this test flips it, which is the same
-// class of issue Kibana-config.cy.ts hit and skipped for the same reason. The eck-* environments
-// run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
-(Cypress.env().envName === 'elk-ror' ? describe.skip : describe)('Activation key', () => {
+// on nodes disagreeing about the current edition right after this test flips it. The eck-*
+// environments run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
+// ROR KBN answers an edition change before it deletes the sessions (RORDEV-2302). A page that loads
+// in between keeps its session, and only the next session probe logs it out. The probe runs every
+// 30 s, so the logout can come up to 30 s after the change.
+const LOGOUT_TIMEOUT_MS = 45000;
+
+(Cypress.env().envName === EnvName.ELK_ROR ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {
     Login.initialization();
     ActivationKeys.open();
   });
 
   afterEach(() => {
-    cy.kbnPost({
-      endpoint: 'api/ror/license?overwrite=true',
-      credentials: userCredentials,
-      payload: { license: `${Cypress.env().enterpriseActivationKey}` }
+    // Back to the env key. Wait for the logout only when that changes the edition, so that it
+    // cannot log out the next test. The page goes first: a Kibana page that loses its session
+    // during the wait fails the hook with an uncaught error.
+    cy.window().then(win => {
+      win.location.href = 'about:blank';
+    });
+    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: admin }).then(before => {
+      const restore = () =>
+        cy.kbnPost({
+          endpoint: 'api/ror/license?overwrite=true',
+          credentials: admin,
+          payload: { license: `${Cypress.env().enterpriseActivationKey}` }
+        });
+      if (before.license.edition === 'kbn_ent') {
+        restore();
+      } else {
+        ActivationKeys.changeEditionAndWaitForLogout(restore);
+      }
     });
   });
 
@@ -33,38 +52,44 @@ import { userCredentials } from '../support/helpers';
     // Enterprise (env) -> Free (index).
     ActivationKeys.changeLicenseToFree();
 
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.verifyEdition('kbn_free');
   });
 
   it('should keep the sessions when a new activation key has the same license edition', () => {
     ActivationKeys.changeLicenseToFree();
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
-    Login.initialization({ finishUrl: '/app/home' });
+    Login.initialization({ finishUrl: '/s/default/app/home' });
     ActivationKeys.open();
 
     // Free (index) -> Free: the edition does not change, so the sessions stay.
     ActivationKeys.changeLicenseToFree();
+    ActivationKeys.verifyEdition('kbn_free');
 
-    // Reload instead of only reading the location: it sends the session cookie to the proxy again,
-    // so this fails if the sessions were dropped. Reading the location alone passes as soon as the
-    // page has not moved yet, which is also true when a logout is about to occur.
+    // A logout comes up to one session probe after the change. The wait gives the probe of the page
+    // that time, then the session index and a reload show that the sessions stay.
+    cy.wait(LOGOUT_TIMEOUT_MS);
+    cy.location('pathname').should('not.contain', '/login');
+    ActivationKeys.sessionIndexStatus().should('equal', 200);
+    // The reload sends the session cookie to the proxy again, so this fails if the sessions were dropped.
     cy.reload();
     cy.location('pathname').should('contain', '/s/default/app/home');
   });
 
   it('should log the user out when a deleted activation key uncovers a different license edition', () => {
     ActivationKeys.changeLicenseToFree();
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
-    Login.initialization({ finishUrl: '/app/home' });
+    Login.initialization({ finishUrl: '/s/default/app/home' });
     ActivationKeys.open();
 
     // Free (index) -> Enterprise (env).
     ActivationKeys.deleteLicense();
 
-    cy.location('pathname').should('contain', '/login');
+    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.verifyEdition('kbn_ent');
   });
 });

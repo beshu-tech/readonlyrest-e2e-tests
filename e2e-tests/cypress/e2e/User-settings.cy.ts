@@ -1,16 +1,16 @@
-import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { UserSettings } from '../support/page-objects/UserSettings';
 import { SecuritySettings } from '../support/page-objects/SecuritySettings';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Loader } from '../support/page-objects/Loader';
+import { admin, kibana } from '../support/helpers/credentials';
 
 // Unhandled rejections Kibana itself emits while re-bootstrapping after the theme reload below.
 // None of them are related to what these tests verify (that switching the theme loads the dark CSS
 // and that the remember-group setting survives logout):
 //
-//  - ChunkLoadError / Loading chunk: 8.x lazily loads plugin chunks (securitySolution,
+//  - ChunkLoadError: 8.x lazily loads plugin chunks (securitySolution,
 //    observability, enterpriseSearch) during the reload and some fail to arrive.
 //  - executing a cancelled action: a plugin store flushes a queue whose actions were cancelled by
 //    the in-flight remount.
@@ -24,7 +24,6 @@ import { Loader } from '../support/page-objects/Loader';
 Cypress.on('uncaught:exception', err => {
   if (
     err.message.includes('ChunkLoadError') ||
-    err.message.includes('Loading chunk') ||
     err.message.includes('executing a cancelled action') ||
     err.message.includes('toUpperCase is not a function')
   ) {
@@ -46,14 +45,15 @@ describe('User settings', () => {
     UserSettings.open();
 
     // Register the intercept before triggering any reload so we don't miss the CSS request
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
+    if (kibanaVersion.gte('8.16.0')) {
       cy.intercept('**/*legacy_dark_theme.min.css').as('darkMode');
     } else {
       cy.intercept('**/*dark.css').as('darkMode');
     }
 
+    // The test subject is on the screen-reader-only radio input of an EuiButtonGroup, so the click needs force.
     SecuritySettings.getIframeBody().find('[data-test-subj="dark"]').click({ force: true });
-    SecuritySettings.getIframeBody().find('button').contains('Reload page').click({ force: true });
+    SecuritySettings.getIframeBody().contains('button', 'Reload page').should('be.visible').click();
 
     cy.reload();
 
@@ -75,7 +75,7 @@ describe('User settings', () => {
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
     cy.url().should('include', `tenancy%3D`);
-    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
+    Login.fillLoginPageWith(admin);
     Loader.loading();
     RorMenu.openRorMenu();
     RorMenu.verifyCurrentTenant(selectedTenant);
@@ -86,7 +86,7 @@ describe('User settings', () => {
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
     cy.url().should('not.include', `tenancy%3D`);
-    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
+    Login.fillLoginPageWith(admin);
     Loader.loading();
     RorMenu.openRorMenu();
     RorMenu.verifyCurrentTenant('administrators');
@@ -99,9 +99,9 @@ describe('User settings', () => {
     UserSettings.changeUserSettingsValue('remember-group-after-logout-settings', 'enabled');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
-    Login.fillLoginPageWith('kibana', 'kibana');
+    RorMenu.interceptIdentity();
+    Login.fillLoginPageWith(kibana);
     Loader.loading();
-    RorMenu.openRorMenu();
-    RorMenu.verifyNoTenantAvailable();
+    RorMenu.verifyIdentityTenancyIsNot('kibana', 'infosec_group');
   });
 });

@@ -23,7 +23,8 @@
 #     caller carries both values to them, usually as job outputs.
 #   * a GitHub token for the plugin repo, in ROR_GH_TOKEN. The token must dispatch a workflow and
 #     read the runs of that repo. Both callers use this name, for the dispatch and for the wait.
-#   * an authenticated docker CLI in every waiting job. Each repo has its own docker-hub-auth.sh.
+#   * an authenticated docker CLI in every waiting job, so that the registry probes count against
+#     the ROR account. Each plugin repo logs in with a script of its own.
 #   * ROR_<ES|KBN>_WAIT_TIMEOUT_SECONDS, when one run builds several versions and thus takes longer
 #     than the default for one.
 #   * a title on the pre-build run, which the plugin repo owns:
@@ -92,9 +93,9 @@ ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS="${ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS
 # between two attempts.
 #
 # Every attempt costs one pull: `docker manifest inspect` sends a GET, and Docker Hub counts a GET
-# against the pull rate limit. The job logs in first, with .github/scripts/docker-hub-auth.sh, so the
-# pulls count against the ROR account (200 per 6h), not against the runner address (100 per 6h) that
-# all GitHub customers share.
+# against the pull rate limit. A caller in a plugin repo logs in first, so its pulls count against
+# the ROR account (200 per 6h). The jobs of this repo do not log in: their pulls count against the
+# runner address (100 per 6h), which all GitHub customers share.
 #
 # The pre-build run pushes every tag before it reports success, so the first attempt normally finds
 # the image. Four versions of two plugins therefore cost 8 pulls, or 24 if every image needs all

@@ -90,8 +90,24 @@ upload_one() {
   "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
+# Any file can hold a CI secret, whatever its name. In a text file (no NUL byte) each occurrence of
+# REDACT_VALUE becomes <redacted>. A file that still holds it after that is not uploaded at all.
+REDACT_VALUE=${REDACT_VALUE:-}
+holds_secret() {
+  [ -n "$REDACT_VALUE" ] && grep -qF -- "$REDACT_VALUE" "$1" 2>/dev/null
+}
+redact() {
+  local FILE=$1
+  holds_secret "$FILE" || return 0
+  if LC_ALL=C grep -qI -- '' "$FILE"; then
+    REDACT_VALUE="$REDACT_VALUE" perl -i -pe 's/\Q$ENV{REDACT_VALUE}\E/<redacted>/g' "$FILE"
+  fi
+  ! holds_secret "$FILE"
+}
+
 UPLOADED=0
 SKIPPED_EMPTY=0
+SKIPPED_SECRET=0
 FAILED=0
 DIAGNOSED=false
 
@@ -107,6 +123,11 @@ while IFS= read -r -d '' FILE; do
 
   REL=${FILE#"$SOURCE_DIR"/}
   MIME=$(mime_of "$FILE")
+  if ! redact "$FILE"; then
+    echo "WARNING: $REL holds the secret; not uploaded"
+    SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
+    continue
+  fi
   if upload_one "$FILE" "${S3_PATH}${REL}" "$MIME"; then
     UPLOADED=$((UPLOADED + 1))
     continue
@@ -125,7 +146,7 @@ while IFS= read -r -d '' FILE; do
   fi
 done < <(find "$SOURCE_DIR" -type f -print0)
 
-echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
+echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY skipped_secret=$SKIPPED_SECRET failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
   echo "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
 elif [ "$FAILED" -eq 0 ]; then

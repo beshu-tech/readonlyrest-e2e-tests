@@ -1,5 +1,4 @@
-import semver from 'semver';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 
 export class SubHeader {
   static readonlyBadgeVisible() {
@@ -9,7 +8,7 @@ export class SubHeader {
 
   static readonlyDiscoverBadgeVisible() {
     // Kibana 9.4 and later gives Discover its own read-only badge. Earlier versions show the shared one.
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+    if (kibanaVersion.gte('9.4.0')) {
       cy.log('Discover Read-only badge visible');
       cy.getByDataTestSubj('discover-readonly-badge').should('be.visible');
     } else {
@@ -18,8 +17,7 @@ export class SubHeader {
   }
 
   static breadcrumbsLastItem(text: string) {
-    cy.get('[data-test-subj="breadcrumb last"]').within(() => {
-      cy.findByText(text);
-    });
+    // One query chain: the breadcrumb renders again after navigation, and a retry then finds the new one.
+    cy.get('[data-test-subj="breadcrumb last"]').findByText(text);
   }
 }
