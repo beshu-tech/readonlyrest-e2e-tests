@@ -5,6 +5,7 @@ import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Spaces } from '../support/page-objects/Spaces';
 import { ManageSpaces } from '../support/page-objects/ManageSpaces';
+import { itOnKibana } from '../support/helpers/itOnKibana';
 
 const SPACE_NAME = 'Test space';
 
@@ -50,46 +51,41 @@ describe('Spaces', () => {
     clearAllChanges();
   });
 
-  if (semver.gte(getKibanaVersion(), '9.1.0')) {
-    // FIXME: for Kibana 9.1.0 there is a new .kibana_security_search index not handled on es side yet
-    it.skip('should create and navigate to new space with hidden features');
-  } else {
-    it('should create and navigate to new space with hidden features', () => {
-      Spaces.createNewSpace(SPACE_NAME);
+  // FIXME: for Kibana 9.1.0 there is a new .kibana_security_search index not handled on es side yet
+  itOnKibana('<9.1.0', 'should create and navigate to new space with hidden features', () => {
+    Spaces.createNewSpace(SPACE_NAME);
 
-      cy.log('Switch to newly created space');
-      cy.get('[data-test-subj=spacesNavSelector]').click();
-      ManageSpaces.getManageButtonInNavSelector().should('be.visible');
+    cy.log('Switch to newly created space');
+    cy.get('[data-test-subj=spacesNavSelector]').click();
+    ManageSpaces.getManageButtonInNavSelector().should('be.visible');
 
-      if (semver.gte(getKibanaVersion(), '8.4.0')) {
-        cy.get('[data-test-subj=test-space-selectableSpaceItem]', { timeout: 10000 }).click();
-      } else {
-        cy.get('a[href*="/s/test-space/spaces/enter"]', { timeout: 10000 }).should('be.visible').click({ force: true });
-      }
-      cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
-      cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
+    if (semver.gte(getKibanaVersion(), '8.4.0')) {
+      cy.get('[data-test-subj=test-space-selectableSpaceItem]', { timeout: 10000 }).click();
+    } else {
+      cy.get('a[href*="/s/test-space/spaces/enter"]', { timeout: 10000 }).should('be.visible').click({ force: true });
+    }
+    cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
+    cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
 
-      cy.log('Check if feature in space hidden');
-      KibanaNavigation.openHomepage();
-      KibanaNavigation.openKibanaNavigation();
-      KibanaNavigation.checkIfNotExists('Analytics');
+    cy.log('Check if feature in space hidden');
+    KibanaNavigation.openHomepage();
+    KibanaNavigation.openKibanaNavigation();
+    KibanaNavigation.checkIfNotExists('Analytics');
 
-      Spaces.removeSpace(SPACE_NAME);
-    });
-  }
+    Spaces.removeSpace(SPACE_NAME);
+  });
 
-  it('should hide space permission tab and not permit to navigate to it', () => {
+  // Kibana shows the space permissions tab from 8.16.0.
+  itOnKibana('>=8.16.0', 'should hide space permission tab and not permit to navigate to it', () => {
     cy.log('Navigate to default space management');
     ManageSpaces.openSpaceViaNavSelector('Default');
 
     Spaces.openEditSpace('default');
-    if (semver.gte(getKibanaVersion(), '8.16.0')) {
-      cy.log('check if space manage permissions tab hidden');
-      cy.contains('a[role="tab"]', /general settings/i).should('be.visible');
-      cy.contains('a[role="tab"]', /permissions/i).should('not.be.visible');
-      cy.log('check if space manage permissions tab not permitted');
-      cy.visit('/s/default/app/management/kibana/spaces/edit/default/roles');
-      cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/home`);
-    }
+    cy.log('check if space manage permissions tab hidden');
+    cy.contains('a[role="tab"]', /general settings/i).should('be.visible');
+    cy.contains('a[role="tab"]', /permissions/i).should('not.be.visible');
+    cy.log('check if space manage permissions tab not permitted');
+    cy.visit('/s/default/app/management/kibana/spaces/edit/default/roles');
+    cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/home`);
   });
 });

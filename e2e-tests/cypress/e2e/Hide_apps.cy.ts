@@ -9,6 +9,7 @@ import { PageNotFound } from '../support/page-objects/PageNotFound';
 import { SearchApps } from '../support/page-objects/SearchApps';
 import { Loader } from '../support/page-objects/Loader';
 import { Home } from '../support/page-objects/Home';
+import { itOnKibana } from '../support/helpers/itOnKibana';
 
 describe('hidden apps', () => {
   afterEach(() => {
@@ -47,23 +48,23 @@ describe('hidden apps', () => {
 
   context('Space solution view selector', () => {
     // Security is always pre-populated in APP_IDS_TO_BE_HIDDEN regardless of config; no explicit settings call needed
-    it('does not show the Security option in the solution view dropdown when creating a space', () => {
-      if (semver.lt(getKibanaVersion(), '8.18.0')) {
-        cy.log('Solution view selector not available before Kibana 8.18.0 — skipping');
-        return;
+    // Kibana shows the solution view selector from 8.18.0.
+    itOnKibana(
+      '>=8.18.0',
+      'does not show the Security option in the solution view dropdown when creating a space',
+      () => {
+        Login.initialization();
+        Spaces.navigateToCreateSpacePage();
+        Spaces.openSolutionViewDropdown();
+
+        Spaces.verifySolutionViewSecurityOptionIsHidden();
+        Spaces.verifySolutionViewOptionsAreVisible(
+          'solutionViewEsOption',
+          'solutionViewObltOption',
+          'solutionViewClassicOption'
+        );
       }
-
-      Login.initialization();
-      Spaces.navigateToCreateSpacePage();
-      Spaces.openSolutionViewDropdown();
-
-      Spaces.verifySolutionViewSecurityOptionIsHidden();
-      Spaces.verifySolutionViewOptionsAreVisible(
-        'solutionViewEsOption',
-        'solutionViewObltOption',
-        'solutionViewClassicOption'
-      );
-    });
+    );
   });
 
   context('Kibana global search', () => {
