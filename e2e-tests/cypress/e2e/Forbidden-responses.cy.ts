@@ -224,7 +224,7 @@ describe('Forbidden responses', () => {
     cy.contains('[data-test-subj="globalToastList"]', 'Root causes').should('not.exist');
   });
 
-  it('shows a danger toast instead of leaving the Save button spinning when a tag assignment is forbidden', () => {
+  it('shows a danger toast when a tag assignment is forbidden', () => {
     cy.kbnPost({
       endpoint: 'api/saved_objects_tagging/tags/create',
       credentials: userCredentials,
