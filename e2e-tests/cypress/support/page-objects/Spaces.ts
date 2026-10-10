@@ -54,8 +54,7 @@ export class Spaces {
   static createNewSpace(spaceName: string) {
     cy.log('Create new space');
     Spaces.navigateToCreateSpacePage();
-    // Kibana 7.17 renders the form disabled until it has loaded the features.
-    cy.get('[data-test-subj=addSpaceName]').should('not.be.disabled').type(spaceName);
+    Spaces.enterSpaceName(spaceName);
     cy.get('#featureCategoryCheckbox_kibana').uncheck();
 
     if (kibanaVersion.gte('8.18.0')) {
@@ -65,6 +64,22 @@ export class Spaces {
 
     cy.get('[data-test-subj=save-space-button]').click();
     cy.contains(`Space '${spaceName}' was saved.`);
+  }
+
+  // Kibana 7.17 renders the create form again right after it shows, and the keys typed before that go
+  // to the field that is gone: the space was saved as "T" for "Test space". So the name goes in again
+  // until the field holds all of it.
+  private static enterSpaceName(spaceName: string, attempt = 1) {
+    cy.get('[data-test-subj=addSpaceName]').should('not.be.disabled').focus().clear().type(spaceName);
+    cy.get('[data-test-subj=addSpaceName]')
+      .invoke('val')
+      .then(value => {
+        if (value !== spaceName && attempt < 3) {
+          Spaces.enterSpaceName(spaceName, attempt + 1);
+        } else {
+          expect(value, 'space name field').to.equal(spaceName);
+        }
+      });
   }
 
   static navigateToCreateSpacePage() {

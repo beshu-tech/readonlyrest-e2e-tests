@@ -99,8 +99,17 @@ describe('sanity check', () => {
 
   it('should check that logout functionality set nextUrl path as expected', () => {
     KibanaNavigation.openPage('Maps');
+    // The Maps page still loads tiles and bundles when the logout ends its session, and those
+    // requests fail on a page that is leaving. Only their unhandled rejections are ignored, and only
+    // until the login page shows.
+    let oldPageLeaving = true;
+    cy.on('uncaught:exception', (_error, _runnable, promise) => (promise && oldPageLeaving ? false : undefined));
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
+    cy.location('pathname').should('contain', '/login');
+    cy.then(() => {
+      oldPageLeaving = false;
+    });
     Login.fillLoginPageWith(admin);
 
     if (kibanaVersion.gte('8.7.0')) {
