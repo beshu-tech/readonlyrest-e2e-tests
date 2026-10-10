@@ -1,27 +1,9 @@
-// ***********************************************************
-// This example support/index.js is processed and
-// loaded automatically before your test files.
-//
-// This is a great place to put global configuration and
-// behavior that modifies Cypress.
-//
-// You can change the location of this file or turn off
-// automatically serving support files with the
-// 'supportFile' configuration option.
-//
-// You can read more here:
-// https://on.cypress.io/configuration
-// ***********************************************************
-
-// Import commands.js using ES2015 syntax:
 import './commands';
 import { installClipboardCapture, resetClipboardCapture } from './clipboardCapture';
 import { kbnApiAdvancedClient } from './helpers/KbnApiAdvancedClient';
 import { rorApiClient } from './helpers/RorApiClient';
 import type { HttpResponse } from './types';
 
-// Alternatively you can use CommonJS syntax:
-// require('./commands')
 // Record what the app copies, so the specs never depend on the OS clipboard - see
 // clipboardCapture.ts for why Chromium 138 makes that necessary.
 Cypress.on('window:before:load', installClipboardCapture);

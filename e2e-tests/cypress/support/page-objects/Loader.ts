@@ -74,8 +74,7 @@ export class Loader {
     //
     // Kibana swaps globalLoadingIndicator for its -hidden variant when loading completes, so the
     // presence of that element is the loading-finished marker. Chromium 138 (Cypress 15) does not
-    // always judge this header svg visible after a reload, so the assertion is `exist`, as in
-    // readonlyrest_kbn/automatic-tests.
+    // always judge this header svg visible after a reload, so the assertion is `exist`.
     cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('exist');
   }
 }

@@ -31,8 +31,6 @@ export default defineConfig({
   // No retries. A retry turns a flaky test green and hides its cause, so a flake must fail the run.
   retries: 0,
   e2e: {
-    // We've imported your old cypress plugins here.
-    // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
       // The default webpack + ts-loader preprocessor needs TypeScript's classic Program API, which
       // TypeScript 7 does not ship. esbuild strips the TypeScript syntax without it.

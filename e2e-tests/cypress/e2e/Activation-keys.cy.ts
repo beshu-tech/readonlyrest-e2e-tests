@@ -1,6 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
 import { userCredentials } from '../support/helpers';
+import { EnvName } from '../support/types';
 
 /**
  * Keys resolve in the order index -> env -> file -> bundled Free key. Loading a key through the UI
@@ -12,15 +13,14 @@ import { userCredentials } from '../support/helpers';
 // from the index every activationKeyRefreshInterval (10m default), and independently wipes *all*
 // shared sessions when it notices an edition change (readonlyrestkbn preKibanaProxy.ts
 // verifyLicenseChange -> sessionManager.deleteAllSessions()). A single client's requests can land
-// on nodes disagreeing about the current edition right after this test flips it, which is the same
-// class of issue Kibana-config.cy.ts hit and skipped for the same reason. The eck-* environments
-// run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
+// on nodes disagreeing about the current edition right after this test flips it. The eck-*
+// environments run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
 // ROR KBN answers an edition change before it deletes the sessions (RORDEV-2302). A page that loads
 // in between keeps its session, and only the next session probe logs it out. The probe runs every
 // 30 s, so the logout can come up to 30 s after the change.
 const LOGOUT_TIMEOUT_MS = 45000;
 
-(Cypress.env().envName === 'elk-ror' ? describe.skip : describe)('Activation key', () => {
+(Cypress.env().envName === EnvName.ELK_ROR ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {
     Login.initialization();
     ActivationKeys.open();

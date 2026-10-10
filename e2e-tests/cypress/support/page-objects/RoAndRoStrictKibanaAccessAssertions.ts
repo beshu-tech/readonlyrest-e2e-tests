@@ -27,9 +27,6 @@ export class RoAndRoStrictKibanaAccessAssertions {
     // 8.7+ branch below would wait for a request that never comes. 8.19 still issues it. The exact
     // release is unknown — this repo has no 9.0-9.2 e2e leg — so those versions stay on the branch
     // below rather than being moved on a guess.
-    //
-    // ROR KBN, where this file is synced from, tests only 9.4 / 8.19 / 7.17 and so has no 9.3
-    // coverage. This threshold is a local divergence and a sync will overwrite it.
     if (semver.gte(getKibanaVersion(), '9.3.0')) {
       cy.intercept('GET', '/s/default/app/dashboards**').as('dashboardsApp');
       Tenancy.getTenancyFromUrl().then(tenancy => {

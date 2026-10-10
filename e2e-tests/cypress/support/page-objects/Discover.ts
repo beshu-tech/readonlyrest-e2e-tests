@@ -136,20 +136,12 @@ export class Discover {
 
   static openDataViewPage = () => {
     cy.log('open data view page');
-
-    const openDataPageForKibanaForAndAbove8_1_0 = () => {
+    if (semver.gte(getKibanaVersion(), '8.1.0')) {
       KibanaNavigation.openPage('Stack Management');
       KibanaNavigation.openSubPage('Data Views');
-    };
-
-    const openDataPageForKibanaBefore7_18_1 = () => {
+    } else {
       KibanaNavigation.openPage('Discover');
-    };
-
-    if (semver.gte(getKibanaVersion(), '8.1.0')) {
-      return openDataPageForKibanaForAndAbove8_1_0();
     }
-    return openDataPageForKibanaBefore7_18_1();
   };
 
   static verifyIndexPatternSwitchLink = (indexPatternName: string) => {
