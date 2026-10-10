@@ -99,9 +99,9 @@ describe('User settings', () => {
     UserSettings.changeUserSettingsValue('remember-group-after-logout-settings', 'enabled');
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
+    RorMenu.interceptIdentity();
     Login.fillLoginPageWith('kibana', 'kibana');
     Loader.loading();
-    RorMenu.openRorMenu();
-    RorMenu.verifyNoTenantAvailable();
+    RorMenu.verifyIdentityTenancyIsNot('kibana', 'infosec_group');
   });
 });

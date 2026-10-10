@@ -105,9 +105,23 @@ export class RorMenu {
     cy.get('[data-testid="current-tenant"]').contains(tenancyName).should('be.visible');
   }
 
-  static verifyNoTenantAvailable() {
-    cy.log('Verify no tenant available');
+  // The ROR menu loads the identity of the page from /pkp/api/info when the page starts. Call this
+  // before the page loads. The request goes without If-None-Match, so the answer has a body.
+  static interceptIdentity() {
+    cy.intercept({ method: 'GET', pathname: '/pkp/api/info' }, req => {
+      delete req.headers['if-none-match'];
+    }).as('rorIdentity');
+  }
 
-    cy.get('[data-testid="current-tenant"]').should('not.exist');
+  // The menu shows no tenancy for a user without groups, so only the identity can show a stale one.
+  static verifyIdentityTenancyIsNot(username: string, staleGroupId: string) {
+    cy.log(`Verify that the tenancy of ${username} is not ${staleGroupId}`);
+
+    cy.wait('@rorIdentity').then(({ response }) => {
+      expect(response?.statusCode, 'GET /pkp/api/info status').to.equal(200);
+      const identity = response?.body?.identity as { username?: string; currentGroup?: { id: string } } | undefined;
+      expect(identity?.username, 'user of the page').to.equal(username);
+      expect(identity?.currentGroup?.id, 'tenancy of the page').not.to.equal(staleGroupId);
+    });
   }
 }

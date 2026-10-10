@@ -272,10 +272,10 @@ describe('Tenancy', () => {
     cy.url().should('include', `nextUrl=`);
     cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
 
+    RorMenu.interceptIdentity();
     Login.fillLoginPageWith('kibana', 'kibana');
     Loader.loading();
-    RorMenu.openRorMenu();
-    RorMenu.verifyNoTenantAvailable();
+    RorMenu.verifyIdentityTenancyIsNot('kibana', 'infosec_group');
   });
 
   it('should redirect to page-not-found instead of carrying stale tenancy to a saved-object page after logout', () => {
