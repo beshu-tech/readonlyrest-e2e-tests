@@ -47,8 +47,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     }
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
-    Dashboard.editButtonNotExist();
-    Dashboard.cloneButtonNotExist();
+    Dashboard.writeControlsNotShown();
     cy.waitForNetworkIdle('*.pbf', 3000, {
       timeout: 30000
     });
@@ -62,9 +61,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     cy.log('Verify Discover features');
     KibanaNavigation.openPage('Discover');
     SubHeader.readonlyDiscoverBadgeVisible();
-    Discover.optionsButtonNotExist();
-    Discover.newButtonNotExist();
-    Discover.saveButtonNotExist();
+    Discover.writeControlsNotShown();
 
     cy.log('Verify discover Link sharing');
     Tenancy.getTenancyFromUrl().then(tenancy => {
