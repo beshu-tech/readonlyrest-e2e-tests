@@ -29,9 +29,9 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
 // settings deny every delete.
 const cleanUp = () => {
   Settings.setSettingsData('defaultSettings.yaml');
-  // deleteDataViews() 404s on 7.x; use _find instead.
+  // deleteDataViews() 404s on 7.x.
   kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
-  // Tags aren't covered by deleteSavedObjects; clean up separately, in the creator's tenant.
+  // Tags live in the creator's tenant.
   cy.kbnGet<{ tags?: Array<{ id: string; name: string }> }>({
     endpoint: 'api/saved_objects_tagging/tags',
     credentials: userCredentials,
