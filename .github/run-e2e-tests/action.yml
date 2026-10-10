@@ -23,16 +23,18 @@ inputs:
     description: 'Goes into the Kibana image tag as <elk>-ror-<this>: a ROR version like 1.69.1, or a pre-build run tag. Empty means "latest", the released plugin.'
     required: false
     default: ''
-  electron_extra_launch_args:
-    description: 'Extra Electron flags for the browser Cypress starts.'
-    required: false
-    default: ''
 
 runs:
   using: 'composite'
   steps:
     - name: Restore the yarn and Cypress caches
       uses: ./.github/cypress-cache
+    - name: Install the pinned kind
+      if: startsWith(inputs.env, 'eck-')
+      shell: bash
+      run: |
+        ./environments/eck-ror/install-kind.sh "$RUNNER_TEMP/kind-bin"
+        echo "$RUNNER_TEMP/kind-bin" >> "$GITHUB_PATH"
     - name: Run E2E tests
       # One attempt: a second suite run turns a flaky spec green and hides its cause. The action
       # only gives the time cap, which a composite action step cannot set by itself.
@@ -51,7 +53,6 @@ runs:
           ./runner.sh "${PARAMS[@]}"
       env:
         ROR_ACTIVATION_KEY: ${{ inputs.activation_key }}
-        ELECTRON_EXTRA_LAUNCH_ARGS: ${{ inputs.electron_extra_launch_args }}
         ENV: ${{ inputs.env }}
         ELK_VERSION: ${{ inputs.elk }}
         ROR_ES_VERSION: ${{ inputs.ror_es }}

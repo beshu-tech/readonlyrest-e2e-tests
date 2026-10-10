@@ -26,6 +26,8 @@ env:
   ECK_3X: eck-3.5.0
   ECK_2X: eck-2.16.1
 
+# Each runs-on reads a JSON label list from a repo variable that Doppler syncs (project ror_ci,
+# config prd), so a runner change needs no commit. The fallback applies while the variable is unset.
 jobs:
   # ==========================================
   # PLAN
@@ -34,12 +36,19 @@ jobs:
   # dev images are built from the branch under test, or from develop on the cron.
   plan:
     name: "🧮 Plan"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 5
     outputs:
       images: ${{ steps.plan.outputs.images }}
       matrix: ${{ steps.plan.outputs.matrix }}
+      ror_versions: ${{ steps.ror-versions.outputs.versions || '{}' }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Check that every network step has a retry
+        run: ci/check-network-retries.sh
       - name: Choose the images and the environments
         id: plan
         env:
@@ -62,6 +71,20 @@ jobs:
             echo "images=$IMAGES"
             echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
           } >> "$GITHUB_OUTPUT"
+      # The released images carry a moving -ror-latest tag. One answer here gives every prod leg the
+      # same ROR version. When Docker Hub does not answer in time, the legs use the moving tag.
+      - name: Resolve the released ROR versions
+        id: ror-versions
+        if: contains(steps.plan.outputs.images, 'prod')
+        run: |
+          set -uo pipefail
+          # shellcheck disable=SC2086 # ELK_VERSIONS is a space-separated list.
+          if ! versions=$(timeout 120 ci/resolve-ror-latest.sh $ELK_VERSIONS); then
+            echo "::warning title=ROR version::Docker Hub did not answer in time. The prod legs use the moving -ror-latest tag."
+            versions='{}'
+          fi
+          echo "$versions"
+          echo "versions=$versions" >> "$GITHUB_OUTPUT"
 
   # ==========================================
   # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
@@ -70,7 +93,10 @@ jobs:
     name: "🔬 E2E Tests (released plugins)"
     needs: plan
     if: contains(needs.plan.outputs.images, 'prod')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    # The suite step stops at 75 minutes. The other 25 cover the set-up steps and the upload. The
+    # default of 360 minutes keeps a hung step on the runner for 6 hours.
+    timeout-minutes: 100
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -97,8 +123,9 @@ jobs:
           env: ${{ matrix.env }}
           elk: ${{ matrix.version }}
           mode: prod
+          ror_es: ${{ fromJSON(needs.plan.outputs.ror_versions)[matrix.version].es }}
+          ror_kbn: ${{ fromJSON(needs.plan.outputs.ror_versions)[matrix.version].kbn }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          electron_extra_launch_args: '--disable-gpu'
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
@@ -125,7 +152,7 @@ jobs:
     name: "🏗️ Prepare dev images"
     needs: plan
     if: contains(needs.plan.outputs.images, 'dev')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 90
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
@@ -161,7 +188,10 @@ jobs:
   dev-e2e-tests:
     name: "🧪 E2E Tests (pre-build plugins)"
     needs: [plan, prepare-dev-images]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    # The suite step stops at 75 minutes. The other 25 cover the set-up steps and the upload. The
+    # default of 360 minutes keeps a hung step on the runner for 6 hours.
+    timeout-minutes: 100
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}

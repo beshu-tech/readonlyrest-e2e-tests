@@ -28,10 +28,15 @@ on:
 env:
   APPLY_RESOURCE_LIMITS: "auto"
 
+# Each runs-on reads a JSON label list from a repo variable that Doppler syncs (project ror_ci,
+# config prd), so a runner change needs no commit. The fallback applies while the variable is unset.
 jobs:
   e2e-tests:
     name: "🔬 E2E Tests"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    # The suite step stops at 75 minutes. The other 25 cover the set-up steps and the upload. The
+    # default of 360 minutes keeps a hung step on the runner for 6 hours.
+    timeout-minutes: 100
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -63,7 +68,6 @@ jobs:
           ror_es: ${{ github.event.inputs.ror_es_version }}
           ror_kbn: ${{ github.event.inputs.ror_kbn_version }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          electron_extra_launch_args: '--disable-gpu'
 
       - name: Stop Docker memory monitor
         if: always()
