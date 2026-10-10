@@ -1,6 +1,9 @@
 import * as semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
 import { getKibanaVersion } from '../helpers';
+import { shouldNotBeShown } from '../helpers/hiddenByCss';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
+import { Tenancy } from './Tenancy';
 
 export class Home {
   static loadSampleData() {
@@ -54,8 +57,23 @@ export class Home {
     cy.wait('@deleteSampleData');
   }
 
-  static loadSampleDataButtonHidden() {
-    cy.findByRole('button', { name: /add sample ecommerce orders/i }).should('not.exist');
+  // The add and remove controls exist only on the sample data tab. The card and its "View data"
+  // control prove that the tab is rendered with the installed data set.
+  static sampleDataControlsHidden() {
+    cy.log('Sample data add and remove controls hidden');
+    Tenancy.getTenancyFromUrl().then(tenancy => {
+      cy.visit(`/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${tenancy}#/tutorial_directory/sampleData`);
+    });
+    // The wait covers the full Kibana load that the visit starts.
+    cy.get('[data-test-subj="homeTab-sampleData"]', { timeout: 80000 }).should('exist');
+    // Kibana 8.x shows the data set cards in a closed accordion.
+    if (semver.gte(getKibanaVersion(), '8.0.0') && semver.lt(getKibanaVersion(), '9.4.0')) {
+      cy.getByDataTestSubj('showSampleDataButton').click();
+    }
+    cy.getByDataTestSubj('sampleDataSetCardecommerce').scrollIntoView().should('be.visible');
+    cy.getByDataTestSubj('launchSampleDataSetecommerce').should('exist');
+    shouldNotBeShown('[data-test-subj="addSampleDataSetecommerce"]');
+    shouldNotBeShown('[data-test-subj="removeSampleDataSetecommerce"]');
   }
 
   static verifyIfCatalogueEmpty() {

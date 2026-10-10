@@ -20,7 +20,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Settings.setSettingsData(fixtureYamlFileName);
     Login.initialization();
     RoAndRoStrictKibanaAccessAssertions.changeTenancyAndAwaitSpaces('template');
-    Home.loadSampleDataButtonHidden();
+    Home.sampleDataControlsHidden();
 
     cy.log('Verify Dashboard features');
     // From 9.3 the dashboards listing no longer issues `POST /content_management/rpc/search`, so the
