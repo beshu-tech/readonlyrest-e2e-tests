@@ -33,9 +33,7 @@ describe('Tenancy', () => {
       Tenancy.checkTenancyNameInBadge('template', 'rw');
       RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
       Tenancy.checkTenancyNameInBadge('infosec', 'a');
-      KibanaNavigation.verifyKibanaNavigationLinkItemHref(
-        `${Cypress.config().baseUrl}/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=`
-      );
+      KibanaNavigation.verifyNavigationLinkHasPageTenancy('/s/default/app/discover');
       KibanaNavigation.openHomepage();
       RorMenu.openRorMenu();
       RorMenu.pressLogoutButton();

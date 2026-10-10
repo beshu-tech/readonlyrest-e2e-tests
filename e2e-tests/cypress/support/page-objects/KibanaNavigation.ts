@@ -1,4 +1,5 @@
 import { PageNotFound } from './PageNotFound';
+import { TENANCY_QUERY_STRING_KEY } from '../types';
 
 export class KibanaNavigation {
   // The link must come from the navigation. An unscoped cy.contains() can match a page link with the
@@ -100,10 +101,23 @@ export class KibanaNavigation {
     }
   }
 
-  static verifyKibanaNavigationLinkItemHref(href: string) {
-    cy.log('verifyKibanaNavigationLinkItemHref');
+  // ROR copies the tenancy of the page URL into each link. The values are compared decoded, because
+  // the page URL and a link can encode the same tenancy in different ways.
+  static verifyNavigationLinkHasPageTenancy(appPath: string) {
+    cy.log('verifyNavigationLinkHasPageTenancy');
     KibanaNavigation.openKibanaNavigation();
 
-    cy.get(`a[href*="${href}"]`);
+    cy.location('href').then(pageHref => {
+      const pageTenancy = new URL(pageHref).searchParams.get(TENANCY_QUERY_STRING_KEY);
+      expect(pageTenancy, 'tenancy of the page URL').to.be.a('string').and.have.length.greaterThan(0);
+
+      cy.get('[data-test-subj=collapsibleNav]')
+        .find(`a[href*="${appPath}?"]`)
+        .first()
+        .should($link => {
+          const linkTenancy = new URL($link.prop('href')).searchParams.get(TENANCY_QUERY_STRING_KEY);
+          expect(linkTenancy, `tenancy of the ${appPath} link`).to.equal(pageTenancy);
+        });
+    });
   }
 }
