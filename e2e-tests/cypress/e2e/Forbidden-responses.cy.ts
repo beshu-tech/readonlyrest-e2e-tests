@@ -62,7 +62,7 @@ describe('Forbidden responses', () => {
 
   // _bulk_delete exists from Kibana 8.7.0.
   if (semver.gte(getKibanaVersion(), '8.7.0')) {
-    it('keeps a saved object selected instead of hanging when bulk-delete is forbidden', () => {
+    it('keeps a saved object instead of hanging when bulk-delete is forbidden', () => {
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-bulk-delete', title: 'r*', name: 'Forbidden bulk delete' } },
         userCredentials
