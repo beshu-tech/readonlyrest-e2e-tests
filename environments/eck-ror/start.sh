@@ -152,6 +152,15 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
+SUBSTITUTED_DIR="kind-cluster/subst-ror"
+MANIFESTS_DIR=$(mktemp -d)
+cleanup() {
+  rm -rf "$SUBSTITUTED_DIR" "$MANIFESTS_DIR"
+}
+
+trap cleanup EXIT
+mkdir -p "$SUBSTITUTED_DIR"
+
 echo "CONFIGURING K8S CLUSTER ..."
 kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml "${KIND_IMAGE_ARGS[@]}"
 docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
@@ -161,9 +170,18 @@ docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=26214
 
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
+# The host downloads the manifests, with retries, and kubectl in the node reads them as files.
+METRICS_SERVER_VERSION="v0.9.0"
+download() {
+  retry 3 curl -fsSL --connect-timeout 30 --max-time 300 -o "$MANIFESTS_DIR/$1" "$2"
+}
+download crds.yaml "https://download.elastic.co/downloads/eck/$ECK_VERSION/crds.yaml"
+download operator.yaml "https://download.elastic.co/downloads/eck/$ECK_VERSION/operator.yaml"
+download metrics-server.yaml "https://github.com/kubernetes-sigs/metrics-server/releases/download/$METRICS_SERVER_VERSION/components.yaml"
+docker cp "$MANIFESTS_DIR/." eck-ror-control-plane:/eck-manifests
 docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
 docker exec eck-ror-control-plane chmod +x bootstrap-eck.sh
-docker exec eck-ror-control-plane bash -c "export ECK_VERSION=$ECK_VERSION && ./bootstrap-eck.sh"
+docker exec eck-ror-control-plane ./bootstrap-eck.sh /eck-manifests
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
 echo "Cluster type: $CLUSTER_TYPE"
@@ -191,7 +209,7 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
 
   # Load busybox used by the wait-for-apm init container.
   BUSYBOX_IMAGE="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}library/busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
-  docker pull "$BUSYBOX_IMAGE" || { echo "Failed to pull busybox image: $BUSYBOX_IMAGE"; exit 1; }
+  retry 3 docker pull "$BUSYBOX_IMAGE" || { echo "Failed to pull busybox image: $BUSYBOX_IMAGE"; exit 1; }
   docker tag "$BUSYBOX_IMAGE" busybox || { echo "Failed to tag $BUSYBOX_IMAGE as busybox."; exit 1; }
   kind load docker-image busybox --name "$CLUSTER_NAME" || { echo "Failed to load busybox into Kind cluster."; exit 1; }
   echo "busybox image loaded into Kind cluster"
@@ -200,13 +218,6 @@ else
   exit 3
 fi
 
-SUBSTITUTED_DIR="kind-cluster/subst-ror"
-cleanup() {
-  rm -rf "$SUBSTITUTED_DIR"
-}
-
-trap cleanup EXIT
-mkdir -p "$SUBSTITUTED_DIR"
 
 subsitute_env_in_yaml_templates() {
   MAJOR_VERSION=$(echo "$ES_VERSION" | cut -d '.' -f1)
