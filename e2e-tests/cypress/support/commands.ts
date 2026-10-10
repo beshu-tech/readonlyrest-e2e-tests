@@ -205,21 +205,20 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
     return false;
   }
 
-  /**
-   * Don't fail test when these specific errors from kibana platform
-   */
+  // Kibana errors that do not fail a test. A filter with a version gate or a `promise` check holds only
+  // on the Kibana versions, or for the unhandled rejection, that its comment names.
   if (
     err.message.includes('ResizeObserver loop limit exceeded') ||
     err.message.includes('ResizeObserver loop completed with undelivered notifications.') || // kibana 8.11.0 and above throws this error
     err.message.includes('Unexpected token') || // Sometimes kibana js file chunks are not available, app works as expected but throw unhandled errors which fail the tests
     err.message.includes('ScopedHistory instance has fell out of navigation scope for basePath') ||
-    err.message.includes("Cannot read properties of undefined (reading 'includes')") || // kibana 8.7.0 throws this error
-    err.message.includes("Cannot read properties of undefined (reading 'type')") || // kibana 7.x throws this error when run with ECK
+    (kibanaVersion.gte('8.7.0') && err.message.includes("Cannot read properties of undefined (reading 'includes')")) || // kibana 8.7.0 and later
+    (kibanaVersion.lt('8.0.0') && err.message.includes("Cannot read properties of undefined (reading 'type')")) || // kibana 7.x throws this error when run with ECK
     err.message.includes('Markdown content is required in [readOnly] mode') || // kibana 8.13.0 throws this error on sample data canvas open
     err.message.includes('e.toSorted is not a function') || // kibana 8.15.0 throws this error on report generation
-    err.message.includes('Not Found') || // kibana 9.0.0-beta1 throws: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
+    (promise && kibanaVersion.gte('9.0.0-beta1') && err.message.includes('Not Found')) || // kibana 9.0.0-beta1 and later: Uncaught (in promise) http_fetch_error_HttpFetchError: Not Found
     err.message.includes('Loading chunk') || // kibana 9.3.2 fails to fetch lazily loaded plugin chunks; affects every spec, so it stays global
-    err.message.includes("Cannot read properties of undefined (reading 'id')") || // kibana 9.x Discover throws when opening with no data views in the tenant
+    (kibanaVersion.gte('9.0.0') && err.message.includes("Cannot read properties of undefined (reading 'id')")) || // kibana 9.x Discover throws when opening with no data views in the tenant
     err.message.includes('endpoint is ignored by ReadonlyREST plugin') // unsupportedEndpointsFilter.ts intercepts Kibana security endpoints with 501; some callers lack try-catch
   ) {
     return false;

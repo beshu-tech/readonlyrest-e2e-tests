@@ -10,7 +10,7 @@ import { admin, kibana } from '../support/helpers/credentials';
 // None of them are related to what these tests verify (that switching the theme loads the dark CSS
 // and that the remember-group setting survives logout):
 //
-//  - ChunkLoadError / Loading chunk: 8.x lazily loads plugin chunks (securitySolution,
+//  - ChunkLoadError: 8.x lazily loads plugin chunks (securitySolution,
 //    observability, enterpriseSearch) during the reload and some fail to arrive.
 //  - executing a cancelled action: a plugin store flushes a queue whose actions were cancelled by
 //    the in-flight remount.
@@ -24,7 +24,6 @@ import { admin, kibana } from '../support/helpers/credentials';
 Cypress.on('uncaught:exception', err => {
   if (
     err.message.includes('ChunkLoadError') ||
-    err.message.includes('Loading chunk') ||
     err.message.includes('executing a cancelled action') ||
     err.message.includes('toUpperCase is not a function')
   ) {
