@@ -14,6 +14,15 @@ const forbiddenMessage = 'You shall not pass!';
 const forbiddenTagName = 'forbidden-tag-delete';
 const forbiddenAssignTagName = 'forbidden-tag-assign';
 
+// The ROR patches show their toast and then rethrow the 403, so Kibana code with no catch leaves an
+// unhandled rejection. Only that rejection is ignored, so a new error in the toast code still fails.
+// Registered with `Cypress.on` at spec scope, not `cy.on` inside a test, so it also covers the hooks.
+Cypress.on('uncaught:exception', (err, runnable, promise) => {
+  if (promise && /\bForbidden\b/.test(err.message)) {
+    return false;
+  }
+});
+
 // The objects use fixed ids, so the leftovers of a failed attempt make the next attempt fail. An
 // afterEach cannot promise a clean start on its own: a failed hook skips the rest of the cleanup.
 // So both hooks clean up. The cleanup must run under the default settings, because the forbidden
@@ -128,9 +137,6 @@ describe('Forbidden responses', () => {
 
   if (semver.lt(getKibanaVersion(), '8.0.0')) {
     it('shows a danger toast and keeps the object instead of faking a delete when an inspect-page delete is forbidden', () => {
-      // Same rethrow as the list-page test above: no fake "Deleted '...'" success toast anymore.
-      cy.on('uncaught:exception', () => false);
-
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-inspect-delete',
         credentials: userCredentials,
@@ -153,9 +159,6 @@ describe('Forbidden responses', () => {
     });
 
     it('shows a danger toast instead of leaving an unhandled rejection when an index pattern delete is forbidden on its edit page', () => {
-      // No catch here; ROR's toast is the only feedback, page just stays open.
-      cy.on('uncaught:exception', () => false);
-
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-edit-page-delete',
         credentials: userCredentials,
@@ -201,9 +204,6 @@ describe('Forbidden responses', () => {
   }
 
   it('shows a danger toast instead of staying silent when a tag delete is forbidden', () => {
-    // No catch anywhere in Kibana; the uncaught rejection here is expected, not a failure.
-    cy.on('uncaught:exception', () => false);
-
     // Tag lives in the creator's tenant; admin can't see it.
     cy.kbnPost({
       endpoint: 'api/saved_objects_tagging/tags/create',
@@ -225,9 +225,6 @@ describe('Forbidden responses', () => {
   });
 
   it('shows a danger toast instead of leaving the Save button spinning when a tag assignment is forbidden', () => {
-    // Same expected uncaught rejection as the tag delete test above.
-    cy.on('uncaught:exception', () => false);
-
     cy.kbnPost({
       endpoint: 'api/saved_objects_tagging/tags/create',
       credentials: userCredentials,
@@ -255,9 +252,6 @@ describe('Forbidden responses', () => {
   // Before 8.7.0 the single-delete patch covers the data view delete. From 9.2.0 Kibana catches it.
   if (semver.satisfies(getKibanaVersion(), '>=8.7.0 <9.2.0')) {
     it('shows a danger toast instead of staying silent when a data view delete is forbidden', () => {
-      // No catch before 9.2.0; ROR's interceptor is the only feedback.
-      cy.on('uncaught:exception', () => false);
-
       kbnApiClient.createDataView(
         {
           data_view: {
