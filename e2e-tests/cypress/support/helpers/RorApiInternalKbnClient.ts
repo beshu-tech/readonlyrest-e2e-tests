@@ -1,28 +1,15 @@
 import { kbnApiAdvancedClient } from './KbnApiAdvancedClient';
 import { requiredBaseUrl } from './index';
+import type { HttpResponse } from '../types';
 
 export class RorApiInternalKbnClient {
   public getLicense({
     impersonating,
-    failOnStatusCode,
     credentials = Cypress.env().kibanaUserCredentials
-  }: { impersonating?: string; failOnStatusCode?: boolean; credentials?: string } = {}): Cypress.Chainable<{
-    status?: string;
-    statusCode?: number;
-    message?: string;
-    iss?: string;
-  }> {
-    return cy.kbnGet<{
-      status?: string;
-      statusCode?: number;
-      message?: string;
-      iss?: string;
-    }>({
-      endpoint: 'pkp/api/license',
-      credentials,
-      impersonating,
-      failOnStatusCode
-    });
+  }: { impersonating?: string; credentials?: string } = {}): Cypress.Chainable<
+    HttpResponse<{ status?: string; message?: string; iss?: string }>
+  > {
+    return cy.kbnResponse({ endpoint: 'pkp/api/license', credentials, impersonating });
   }
 
   public deactivateTestSettings({

@@ -121,8 +121,7 @@ export class KbnApiClient {
     group?: string,
     { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
   ): void {
-    cy.kbnRequest({
-      method: 'PUT',
+    cy.kbnPut({
       endpoint: `api/spaces/space/${space.id}`,
       credentials,
       currentGroupHeader: group,

@@ -4,39 +4,7 @@ import * as semver from 'semver';
 import { capture as clipboardCapture } from './clipboardCapture';
 import { getKibanaVersion } from './helpers';
 import { describeBody } from './helpers/KbnApiClient';
-
-Cypress.Commands.add(
-  'kbnPost',
-  ({ endpoint, credentials, payload, currentGroupHeader, impersonating, headers }, ...args) => {
-    cy.kbnRequest({
-      method: 'POST',
-      endpoint,
-      credentials,
-      payload,
-      currentGroupHeader,
-      headers,
-      impersonating
-    });
-  }
-);
-
-Cypress.Commands.add('esPost', ({ endpoint, credentials, payload }, ...args) =>
-  cy.esRequest({
-    method: 'POST',
-    endpoint,
-    credentials,
-    payload
-  })
-);
-
-Cypress.Commands.add('esPut', ({ endpoint, credentials, payload }, ...args) =>
-  cy.esRequest({
-    method: 'PUT',
-    endpoint,
-    credentials,
-    payload
-  })
-);
+import type { HttpResponse } from './types';
 
 const IMPORT_ATTEMPTS = 5;
 const IMPORT_RETRY_DELAY_MS = 2000;
@@ -48,7 +16,7 @@ const IMPORT_RETRY_DELAY_MS = 2000;
  * a real import error and fails at once. Only an import with overwrite=true gets more attempts, because
  * it gives the same result when it runs twice.
  */
-Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }, ...args) => {
+Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, currentGroupHeader }) => {
   const upload = (attempt: number): Cypress.Chainable<unknown> =>
     uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
       'kbn-xsrf': 'true',
@@ -73,114 +41,65 @@ Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, cur
   return upload(1);
 });
 
-Cypress.Commands.add(
-  'kbnGet',
-  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode, headers }, ...args) =>
-    cy.kbnRequest({
-      method: 'GET',
-      endpoint,
-      credentials,
-      currentGroupHeader,
-      impersonating,
-      failOnStatusCode,
-      headers
-    }) as Cypress.Chainable<unknown>
-);
+type RequestFamily = 'kbn' | 'es';
+type RequestOptions = Cypress.EsRequestOptions & {
+  method: string;
+  currentGroupHeader?: string;
+  impersonating?: string;
+};
 
-Cypress.Commands.add('kbnGetResponse', ({ endpoint, credentials }) =>
-  cy.task('httpCall', {
-    method: 'GET',
-    url: `${Cypress.config().baseUrl}/${endpoint}`,
-    headers: { 'kbn-xsrf': 'true', authorization: `Basic ${btoa(credentials)}` },
-    body: null,
-    failOnStatusCode: false,
-    fullResponse: true
-  })
-);
-
-Cypress.Commands.add(
-  'esGet',
-  ({ endpoint, credentials }, ...args) =>
-    cy.esRequest({
-      method: 'GET',
-      endpoint,
-      credentials
-    }) as Cypress.Chainable<unknown>
-);
-
-Cypress.Commands.add(
-  'kbnDelete',
-  ({ endpoint, credentials, currentGroupHeader, impersonating, failOnStatusCode }, ...args) =>
-    cy.kbnRequest({
-      method: 'DELETE',
-      endpoint,
-      credentials,
-      currentGroupHeader,
-      impersonating,
-      failOnStatusCode
-    }) as Cypress.Chainable<unknown>
-);
-
-Cypress.Commands.add(
-  'esDelete',
-  ({ endpoint, credentials, failOnStatusCode }, ...args) =>
-    cy.esRequest({
-      method: 'DELETE',
-      endpoint,
-      credentials,
-      failOnStatusCode
-    }) as Cypress.Chainable<unknown>
-);
-
-Cypress.Commands.add(
-  'kbnRequest',
-  ({ method, endpoint, credentials, payload, currentGroupHeader, impersonating, failOnStatusCode, headers }) => {
-    const customHeaders: { [key: string]: string } = { 'kbn-xsrf': 'true', ...headers };
-    if (currentGroupHeader) {
-      customHeaders['x-ror-tenancy-id'] = currentGroupHeader;
-    }
-
-    if (impersonating) {
-      customHeaders['x-ror-impersonating'] = impersonating;
-    }
-
-    httpCall(method, `${Cypress.config().baseUrl}/${endpoint}`, credentials, payload, customHeaders, failOnStatusCode);
-  }
-);
-
-Cypress.Commands.add('esRequest', ({ method, endpoint, credentials, payload, failOnStatusCode }) => {
-  httpCall(method, `${Cypress.env().elasticsearchUrl}/${endpoint}`, credentials, payload, undefined, failOnStatusCode);
-});
-
-function httpCall(
-  method: string,
-  url: string,
-  credentials: string,
-  payload?: string | object,
-  headers?: { [key: string]: string },
-  failOnStatusCode = true
-): Cypress.Chainable<any> {
-  const options = {
+function httpCall(family: RequestFamily, options: RequestOptions, fullResponse = false): Cypress.Chainable<unknown> {
+  const {
     method,
-    url,
+    endpoint,
+    credentials,
+    payload,
+    failOnStatusCode = true,
+    headers,
+    currentGroupHeader,
+    impersonating
+  } = options;
+  const baseUrl = family === 'kbn' ? Cypress.config().baseUrl : Cypress.env().elasticsearchUrl;
+  return cy.task('httpCall', {
+    method,
+    url: `${baseUrl}/${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
-      authorization: `Basic ${btoa(credentials)}`,
-      ...headers
+      authorization: `Basic ${btoa(credentials ?? Cypress.env().kibanaUserCredentials)}`,
+      ...(family === 'kbn' ? { 'kbn-xsrf': 'true' } : {}),
+      ...headers,
+      ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {}),
+      ...(impersonating ? { 'x-ror-impersonating': impersonating } : {})
     },
     body: payload ? JSON.stringify(payload) : null,
-    failOnStatusCode
-  };
-
-  return cy.task('httpCall', options);
+    failOnStatusCode: fullResponse ? false : failOnStatusCode,
+    fullResponse
+  });
 }
+
+(['Get', 'Post', 'Put', 'Delete'] as const).forEach(verb => {
+  const method = verb.toUpperCase();
+  Cypress.Commands.add(`kbn${verb}`, (options: Cypress.KbnRequestOptions) => httpCall('kbn', { ...options, method }));
+  Cypress.Commands.add(`es${verb}`, (options: Cypress.EsRequestOptions) => httpCall('es', { ...options, method }));
+});
+
+// Yields the status, the headers and the body, and never fails on the status. It does not follow a
+// redirect, so that a redirect to the login page stays visible.
+Cypress.Commands.add(
+  'kbnResponse',
+  ({ method = 'GET', ...options }) => httpCall('kbn', { ...options, method }, true) as Cypress.Chainable<HttpResponse>
+);
+Cypress.Commands.add(
+  'esResponse',
+  ({ method = 'GET', ...options }) => httpCall('es', { ...options, method }, true) as Cypress.Chainable<HttpResponse>
+);
 
 function uploadFile(
   url: string,
   credentials: string,
   fixtureFilename: string,
   headers?: { [key: string]: string }
-): Cypress.Chainable<any> {
+): Cypress.Chainable<unknown> {
   return cy.fixture(fixtureFilename, 'binary').then(fileContent => {
     const options = {
       url,

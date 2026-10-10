@@ -68,14 +68,6 @@ export class ActivationKeys {
   }
 
   static sessionIndexStatus() {
-    const [user, pass] = Cypress.env().kibanaUserCredentials.split(':');
-    return cy
-      .request({
-        url: `${Cypress.env().elasticsearchUrl}/.readonlyrest_kbn_sessions`,
-        auth: { user, pass },
-        failOnStatusCode: false,
-        log: false
-      })
-      .its('status');
+    return cy.esResponse({ endpoint: '.readonlyrest_kbn_sessions' }).its('status');
   }
 }

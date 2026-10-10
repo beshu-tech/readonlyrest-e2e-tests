@@ -93,8 +93,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
       () =>
         this.findSearchSessionIds(credentials, group).then(ids => {
           (ids ?? []).forEach(id => {
-            cy.kbnRequest({
-              method: 'DELETE',
+            cy.kbnDelete({
               endpoint: `internal/session/${id}`,
               credentials,
               currentGroupHeader: group,
@@ -117,8 +116,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   // Yields undefined when the answer is not the JSON of a search session list.
   private findSearchSessionIds(credentials: BasicCredentials, group?: string): Cypress.Chainable<string[] | undefined> {
     return cy
-      .kbnRequest({
-        method: 'POST',
+      .kbnPost({
         endpoint: 'internal/session/_find',
         credentials,
         currentGroupHeader: group,
@@ -127,6 +125,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
         failOnStatusCode: false
       })
       .then(body => {
+        // A logged-out request gets the login page, a string.
         const sessions = (body as { saved_objects?: Array<{ id: string }> } | undefined)?.saved_objects;
         return cy.wrap(Array.isArray(sessions) ? sessions.map(session => session.id) : undefined, { log: false });
       });

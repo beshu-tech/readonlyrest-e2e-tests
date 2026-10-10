@@ -23,122 +23,22 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     export interface Chainable<Subject> {
-      kbnRequest({
-        method,
-        endpoint,
-        credentials,
-        payload,
-        currentGroupHeader,
-        failOnStatusCode,
-        headers
-      }: {
-        method: string;
-        endpoint: string;
-        credentials: string;
-        payload?: Payload;
-        currentGroupHeader?: string;
-        impersonating?: string;
-        failOnStatusCode?: boolean;
-        headers?: { [key: string]: string };
-      }): Chainable<Subject>;
-      kbnGet<T = Subject>({
-        endpoint,
-        credentials,
-        currentGroupHeader,
-        failOnStatusCode
-      }: {
-        endpoint: string;
-        credentials: string;
-        currentGroupHeader?: string;
-        impersonating?: string;
-        failOnStatusCode?: boolean;
-        headers?: { [key: string]: string };
-      }): Chainable<T>;
-      kbnGetResponse<T = unknown>({
-        endpoint,
-        credentials
-      }: {
-        endpoint: string;
-        credentials: string;
-      }): Chainable<HttpResponse<T>>;
-      kbnPost<T = Subject>({
-        endpoint,
-        credentials,
-        payload,
-        currentGroupHeader,
-        headers
-      }: {
-        endpoint: string;
-        credentials: string;
-        payload?: Payload;
-        currentGroupHeader?: string;
-        impersonating?: string;
-        headers?: { [key: string]: string };
-      }): Chainable<T>;
-      kbnImport({
-        endpoint,
-        credentials,
-        fixtureFilename,
-        currentGroupHeader
-      }: {
+      kbnGet<T = unknown>(options: KbnRequestOptions): Chainable<T>;
+      kbnPost<T = unknown>(options: KbnRequestOptions): Chainable<T>;
+      kbnPut<T = unknown>(options: KbnRequestOptions): Chainable<T>;
+      kbnDelete<T = unknown>(options: KbnRequestOptions): Chainable<T>;
+      kbnResponse<T = unknown>(options: ResponseOptions<KbnRequestOptions>): Chainable<HttpResponse<T>>;
+      kbnImport(options: {
         endpoint: string;
         credentials: string;
         fixtureFilename: string;
         currentGroupHeader?: string;
-      }): Chainable<Subject>;
-      kbnDelete<T = Subject>({
-        endpoint,
-        credentials,
-        currentGroupHeader,
-        failOnStatusCode
-      }: {
-        endpoint: string;
-        credentials: string;
-        currentGroupHeader?: string;
-        impersonating?: string;
-        failOnStatusCode?: boolean;
-      }): Chainable<T>;
-
-      esRequest({
-        method,
-        endpoint,
-        credentials,
-        payload,
-        failOnStatusCode
-      }: {
-        method: string;
-        endpoint: string;
-        credentials: string;
-        payload?: Payload;
-        failOnStatusCode?: boolean;
-      }): Chainable<Subject>;
-      esGet<T = Subject>({ endpoint, credentials }: { endpoint: string; credentials: string }): Chainable<T>;
-      esPost({
-        endpoint,
-        credentials,
-        payload
-      }: {
-        endpoint: string;
-        credentials: string;
-        payload?: Payload;
-      }): Chainable<Subject>;
-      esPut({
-        endpoint,
-        credentials,
-        payload
-      }: {
-        endpoint: string;
-        credentials: string;
-        payload?: Payload;
-      }): Chainable<Subject>;
-      esDelete({
-        endpoint,
-        credentials
-      }: {
-        endpoint: string;
-        credentials: string;
-        failOnStatusCode?: boolean;
-      }): Chainable<Subject>;
+      }): Chainable<unknown>;
+      esGet<T = unknown>(options: EsRequestOptions): Chainable<T>;
+      esPost<T = unknown>(options: EsRequestOptions): Chainable<T>;
+      esPut<T = unknown>(options: EsRequestOptions): Chainable<T>;
+      esDelete<T = unknown>(options: EsRequestOptions): Chainable<T>;
+      esResponse<T = unknown>(options: ResponseOptions<EsRequestOptions>): Chainable<HttpResponse<T>>;
       shouldHaveStyle(property: string, value: string): Chainable<Element>;
       getByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
       findByDataTestSubj(value: string, options?: any): Chainable<JQuery<HTMLElement>>;
@@ -147,6 +47,23 @@ declare global {
       waitForResponse(alias: `@${string}`): Chainable<{ statusCode: number }>;
     }
 
-    type Payload = string | object;
+    interface EsRequestOptions {
+      endpoint: string;
+      // The kibana user when not given.
+      credentials?: string;
+      // Sent as JSON.
+      payload?: object;
+      failOnStatusCode?: boolean;
+      headers?: { [key: string]: string };
+    }
+
+    interface KbnRequestOptions extends EsRequestOptions {
+      credentials: string;
+      currentGroupHeader?: string;
+      impersonating?: string;
+    }
+
+    // A response request yields any status, so it takes no failOnStatusCode.
+    type ResponseOptions<Options> = Options & { method?: string; failOnStatusCode?: never };
   }
 }

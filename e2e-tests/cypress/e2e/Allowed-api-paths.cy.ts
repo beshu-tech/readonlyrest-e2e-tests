@@ -105,7 +105,7 @@ function expectBlocked(endpoint: string, credentials: string) {
 // text error, which carry no status code in the body.
 function expectJsonAnswer<T>(endpoint: string, credentials: string, status: number) {
   return cy
-    .kbnGetResponse<T>({ endpoint, credentials })
+    .kbnResponse<T>({ endpoint, credentials })
     .then(response => {
       const shown = `${response.status} ${JSON.stringify(response.body)}`;
       expect(response.status, `GET ${endpoint} status: ${shown}`).to.equal(status);

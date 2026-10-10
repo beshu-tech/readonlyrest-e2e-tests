@@ -1,16 +1,14 @@
 export class RorApiClient {
   public configureRorIndexMainSettings(fixtureYamlFileName: string): Cypress.Chainable<void> {
     return cy.fixture(fixtureYamlFileName).then(yamlContent => {
-      cy.esPost({
+      cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config',
-        credentials: Cypress.env().kibanaUserCredentials,
         payload: {
           settings: `${yamlContent}`
         }
-      }).then(response => {
+      }).then(result => {
         // ReadonlyREST answers a rejected config with HTTP 200 and status "ko", and keeps the
         // settings it had. Loading the settings that are already active is also a "ko".
-        const result = response as unknown as { status: string; message: string };
         const loaded = result.status === 'ok' || result.message === 'Current settings are already loaded';
         expect(loaded, `${fixtureYamlFileName} loaded: ${result.message}`).to.equal(true);
       });
@@ -21,15 +19,13 @@ export class RorApiClient {
   // settings it had. Loading the settings that are already active is also a "FAILED".
   public configureRorIndexTestSettings(fixtureYamlFileName: string, ttlInSeconds: number): Cypress.Chainable<void> {
     return cy.fixture(fixtureYamlFileName).then(yamlContent => {
-      cy.esPost({
+      cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config/test',
-        credentials: Cypress.env().kibanaUserCredentials,
         payload: {
           settings: `${yamlContent}`,
           ttl: `${ttlInSeconds} sec`
         }
-      }).then(response => {
-        const result = response as unknown as { status: string; message: string };
+      }).then(result => {
         const loaded = result.status === 'OK' || result.message === 'Current settings are already loaded';
         expect(loaded, `${fixtureYamlFileName} loaded as Test ACL: ${result.message}`).to.equal(true);
       });
@@ -40,12 +36,10 @@ export class RorApiClient {
   // example when no Test ACL is active or the Test ACL does not use the mocked service.
   public configureRorAuthMockSettings(fixtureJsonFileName: string): Cypress.Chainable<void> {
     return cy.fixture(fixtureJsonFileName).then(content => {
-      cy.esPost({
+      cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config/test/authmock',
-        credentials: Cypress.env().kibanaUserCredentials,
         payload: content
-      }).then(response => {
-        const result = response as unknown as { status: string; message: string };
+      }).then(result => {
         expect(result.status, `${fixtureJsonFileName} auth mock status: ${result.message}`).to.equal('OK');
       });
     });
@@ -55,8 +49,7 @@ export class RorApiClient {
   public getRorIndexMainSettings(): Cypress.Chainable<string> {
     return cy
       .esGet<{ status: string; message: string }>({
-        endpoint: '_readonlyrest/admin/config',
-        credentials: Cypress.env().kibanaUserCredentials
+        endpoint: '_readonlyrest/admin/config'
       })
       .then(response => {
         expect(response.status, `index settings status: ${response.message}`).to.equal('ok');
@@ -68,8 +61,7 @@ export class RorApiClient {
   public getRorTestSettingsStatus(): Cypress.Chainable<string> {
     return cy
       .esGet<{ status: string }>({
-        endpoint: '_readonlyrest/admin/config/test',
-        credentials: Cypress.env().kibanaUserCredentials
+        endpoint: '_readonlyrest/admin/config/test'
       })
       .its('status');
   }

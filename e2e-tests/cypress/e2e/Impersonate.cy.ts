@@ -116,27 +116,25 @@ describe('impersonate', () => {
     const admin = 'admin:dev';
 
     cy.log('should return 403 error when test settings are not configured');
-    rorApiInternalKbnClient
-      .getLicense({ impersonating: impersonatingUser1, failOnStatusCode: false, credentials: admin })
-      .then(result => {
-        expect(result.statusCode).to.eq(403);
-        expect(result.status).to.eq('TEST_SETTINGS_NOT_CONFIGURED');
-      });
+    rorApiInternalKbnClient.getLicense({ impersonating: impersonatingUser1, credentials: admin }).then(response => {
+      expect(response.status).to.eq(403);
+      expect(response.body.status).to.eq('TEST_SETTINGS_NOT_CONFIGURED');
+    });
 
     cy.log(
       'should return not sufficient access level error when impersonated user is not an admin or unrestricted access level'
     );
     Impersonate.setTestSettingsData();
-    rorApiInternalKbnClient
-      .getLicense({ impersonating: impersonatingUser1, failOnStatusCode: false, credentials: admin })
-      .then(result => {
-        expect(result.message).to.eq("You don't have sufficient permissions to perform this operation.");
-        expect(result.status).to.eq('FORBIDDEN');
-      });
+    rorApiInternalKbnClient.getLicense({ impersonating: impersonatingUser1, credentials: admin }).then(response => {
+      expect(response.status).to.eq(403);
+      expect(response.body.message).to.eq("You don't have sufficient permissions to perform this operation.");
+      expect(response.body.status).to.eq('FORBIDDEN');
+    });
 
     cy.log('should return data when the user has access to the license');
-    rorApiInternalKbnClient.getLicense({ failOnStatusCode: false, credentials: admin }).then(result => {
-      expect(['https://api.beshu.tech', 'https://portal.readonlyrest.com']).to.include(result.iss);
+    rorApiInternalKbnClient.getLicense({ credentials: admin }).then(response => {
+      expect(response.status).to.eq(200);
+      expect(['https://api.beshu.tech', 'https://portal.readonlyrest.com']).to.include(response.body.iss);
     });
   });
 });
