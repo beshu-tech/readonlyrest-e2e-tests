@@ -24,7 +24,7 @@ describe('Reporting index', () => {
 
   it('should correctly match index pattern when audit index_template contains .reporting', () => {
     const indexPattern = 'xxx.reporting';
-    RorMenu.changeTenancy('Infosec', `/app/home?${TENANCY_QUERY_STRING_KEY}=*#/`);
+    RorMenu.changeTenancy('Infosec', `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*#/`);
     KibanaNavigation.openPage('Stack Management');
     if (kibanaVersion.gte('8.0.0')) {
       KibanaNavigation.openSubPage('Data Views');

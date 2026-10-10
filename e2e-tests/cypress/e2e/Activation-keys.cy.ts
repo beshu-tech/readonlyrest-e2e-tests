@@ -61,7 +61,7 @@ const LOGOUT_TIMEOUT_MS = 45000;
     cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
-    Login.initialization({ finishUrl: '/app/home' });
+    Login.initialization({ finishUrl: '/s/default/app/home' });
     ActivationKeys.open();
 
     // Free (index) -> Free: the edition does not change, so the sessions stay.
@@ -83,7 +83,7 @@ const LOGOUT_TIMEOUT_MS = 45000;
     cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
-    Login.initialization({ finishUrl: '/app/home' });
+    Login.initialization({ finishUrl: '/s/default/app/home' });
     ActivationKeys.open();
 
     // Free (index) -> Enterprise (env).

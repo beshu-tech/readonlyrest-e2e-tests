@@ -2,10 +2,11 @@ import { recurse } from 'cypress-recurse';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
 
 export class Loader {
-  public static loading(finishUrl?: string, spacePrefix?: string) {
+  // finishUrl is the path of the page that the load ends on, with the space prefix.
+  public static loading(finishUrl = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`) {
     cy.log('loading');
-    this.start();
-    this.finish(finishUrl, spacePrefix);
+    Loader.start();
+    Loader.settled(finishUrl);
   }
 
   public static waitForBreadcrumb(breadcrumb: string) {
@@ -14,16 +15,25 @@ export class Loader {
 
   /**
    * Waits for Kibana to finish bootstrapping, without requiring the "Loading Elastic" splash to be
-   * observed first.
+   * observed first. With a URL, it also waits for the URL of the page that the load ends on.
    *
    * Use this to end a test that reloaded the page. A test that finishes while Kibana is still
    * mounting leaves plugin stores half-initialised, and Cypress teardown then fires listeners the
    * half-built app registered, failing whichever hook is running with "executing a cancelled
    * action".
    */
-  public static settled() {
+  public static settled(url?: string) {
     cy.log('loading settled');
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
+    cy.contains(Loader.SPLASH_TEXT, { timeout: 80000 }).should('not.exist');
+    if (url) {
+      cy.urlShouldMatch(url);
+    }
+    // Explicit 80s rather than the 20s defaultCommandTimeout: start() can fall through before the
+    // page has begun rendering, so this assertion carries the wait.
+    //
+    // Kibana swaps globalLoadingIndicator for its -hidden variant when loading completes, so the
+    // presence of that element is the loading-finished marker. Chromium 138 (Cypress 15) does not
+    // always judge this header svg visible after a reload, so the assertion is `exist`.
     cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('exist');
   }
 
@@ -39,8 +49,8 @@ export class Loader {
    * can come and go between Cypress retries or never render at all. Asserting that it exists would
    * fail on a page that is loading correctly.
    *
-   * It is still worth waiting for, because it keeps finish() from evaluating against the page we are
-   * navigating away from. But only finish()'s URL check really distinguishes the old page from the
+   * It is still worth waiting for, because it keeps settled() from evaluating against the page we are
+   * navigating away from. But only the URL check of settled() really distinguishes the old page from the
    * new one, so the splash is a weak guard and not worth failing on.
    */
   private static start() {
@@ -63,18 +73,5 @@ export class Loader {
         cy.log('loading start: splash never observed — falling through to the end-state checks');
       }
     });
-  }
-
-  private static finish(finishUrl = `/app/home?${TENANCY_QUERY_STRING_KEY}=*`, spacePrefix = '/s/default') {
-    cy.log('loading finish');
-    cy.contains(Loader.SPLASH_TEXT, { timeout: 80000 }).should('not.exist');
-    cy.urlShouldMatch(`${spacePrefix}${finishUrl}`);
-    // Explicit 80s rather than the 20s defaultCommandTimeout: start() can fall through before the
-    // page has begun rendering, so this assertion carries the wait.
-    //
-    // Kibana swaps globalLoadingIndicator for its -hidden variant when loading completes, so the
-    // presence of that element is the loading-finished marker. Chromium 138 (Cypress 15) does not
-    // always judge this header svg visible after a reload, so the assertion is `exist`.
-    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('exist');
   }
 }

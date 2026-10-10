@@ -62,8 +62,8 @@ describe('sanity check', () => {
     cy.log('Change tenancy, and initialize it');
     // Kibana 8.19 and 9.1+ redirect the reporting page to /exports. 9.0 keeps the bare path.
     const finishUrl = kibanaVersion.has91Features()
-      ? '/app/management/insightsAndAlerting/reporting/exports'
-      : '/app/management/insightsAndAlerting/reporting';
+      ? '/s/default/app/management/insightsAndAlerting/reporting/exports'
+      : '/s/default/app/management/insightsAndAlerting/reporting';
 
     RorMenu.changeTenancy('Infosec', finishUrl);
 
@@ -105,11 +105,11 @@ describe('sanity check', () => {
 
     if (kibanaVersion.gte('8.7.0')) {
       Loader.loading(
-        "/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
+        "/s/default/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
       );
     } else {
       Loader.loading(
-        "/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
+        "/s/default/app/maps/map?tenancy=*#?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15m,to:now))&_a=(filters:!(),query:(language:kuery,query:''))"
       );
     }
 

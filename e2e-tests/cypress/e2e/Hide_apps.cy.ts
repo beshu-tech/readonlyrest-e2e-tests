@@ -41,7 +41,7 @@ describe('hidden apps', () => {
   context('default route hidden', () => {
     it('shows "Page not found" on login when navigation to the default route is prohibited', () => {
       Settings.setSettingsData('hiddenHomePageSettings.yaml');
-      Login.initialization({ finishUrl: '/app/page-not-found', spacePrefix: '' });
+      Login.initialization({ finishUrl: '/app/page-not-found' });
       PageNotFound.visible();
     });
   });

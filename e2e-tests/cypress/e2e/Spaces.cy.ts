@@ -2,6 +2,7 @@ import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Spaces } from '../support/page-objects/Spaces';
+import { Loader } from '../support/page-objects/Loader';
 import { ManageSpaces } from '../support/page-objects/ManageSpaces';
 import { itOnKibana } from '../support/helpers/itOnKibana';
 import { admin } from '../support/helpers/credentials';
@@ -42,8 +43,7 @@ describe('Spaces', () => {
 
     cy.log('Switch to newly created space');
     Spaces.openSpace(Spaces.idOf(SPACE_NAME));
-    cy.contains('Loading Elastic', { timeout: 80000 }).should('not.exist');
-    cy.url().should('include', `${Cypress.config().baseUrl}/s/test-space/app/home`);
+    Loader.settled(`/s/${Spaces.idOf(SPACE_NAME)}/app/home`);
 
     cy.log('Check if feature in space hidden');
     KibanaNavigation.openHomepage();

@@ -45,12 +45,12 @@ export class RorMenu {
     });
   }
 
-  static changeTenancy(tenancyName: string, finishUrl?: string, spacePrefix?: string) {
+  static changeTenancy(tenancyName: string, finishUrl?: string) {
     cy.log('changeTenancy');
     RorMenu.openRorMenu();
     RorMenu.openSubMenu('.ror_change_tenancy');
     cy.get(RorMenu.SUB_MENU).contains(tenancyName, { matchCase: false }).click();
-    Loader.loading(finishUrl, spacePrefix);
+    Loader.loading(finishUrl);
   }
 
   static openReportingPage() {

@@ -18,12 +18,11 @@ export class Login {
   static initialization({
     credentials,
     visitedUrl,
-    finishUrl,
-    spacePrefix
-  }: { credentials?: BasicCredentials; visitedUrl?: string; finishUrl?: string; spacePrefix?: string } = {}) {
+    finishUrl
+  }: { credentials?: BasicCredentials; visitedUrl?: string; finishUrl?: string } = {}) {
     Login.suppressPostLoginNotices();
     Login.signIn({ credentials, visitedUrl });
-    Loader.loading(finishUrl, spacePrefix);
+    Loader.loading(finishUrl);
   }
 
   static signIn({

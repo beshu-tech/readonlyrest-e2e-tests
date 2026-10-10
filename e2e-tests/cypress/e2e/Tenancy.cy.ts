@@ -30,12 +30,11 @@ describe('Tenancy', () => {
       const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: urlWithTenancyId,
-        spacePrefix: ''
+        finishUrl: urlWithTenancyId
       });
 
       Tenancy.checkTenancyNameInBadge('template', 'rw');
-      RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
+      RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`);
       Tenancy.checkTenancyNameInBadge('infosec', 'a');
       KibanaNavigation.verifyNavigationLinkHasPageTenancy('/s/default/app/discover');
       KibanaNavigation.openHomepage();
@@ -50,8 +49,7 @@ describe('Tenancy', () => {
       const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: urlWithTenancyId,
-        spacePrefix: ''
+        finishUrl: urlWithTenancyId
       });
 
       kbnApiClient.loadSampleData('ecommerce', admin, 'template_group');
@@ -75,8 +73,7 @@ describe('Tenancy', () => {
       const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`,
-        spacePrefix: ''
+        finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`
       });
     });
 
@@ -86,8 +83,7 @@ describe('Tenancy', () => {
       const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: urlWithTenancyId,
-        spacePrefix: ''
+        finishUrl: urlWithTenancyId
       });
 
       Spaces.createNewSpace(newSpace);
@@ -99,8 +95,7 @@ describe('Tenancy', () => {
       const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
-        spacePrefix: ''
+        finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
       });
 
       KibanaNavigation.openKibanaNavigation();
@@ -112,14 +107,12 @@ describe('Tenancy', () => {
     const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
     Login.initialization({
       visitedUrl: urlWithTenancyId,
-      finishUrl: urlWithTenancyId,
-      spacePrefix: ''
+      finishUrl: urlWithTenancyId
     });
 
     RorMenu.changeTenancy(
       'administrators',
-      `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`,
-      ''
+      `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`
     );
     IndexManagement.waitUntilLoaded();
     cy.go('back');
@@ -188,8 +181,7 @@ describe('Tenancy', () => {
         const otherTenancy = tenancies[otherTenancyName];
         Login.initialization({
           visitedUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${pageTenancy.encrypted}`,
-          finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
-          spacePrefix: ''
+          finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
         });
         Tenancy.checkTenancyNameInBadge(pageTenancyName, pageTenancy.access);
 
@@ -225,8 +217,7 @@ describe('Tenancy', () => {
 
     Login.initialization({
       visitedUrl: homeUrlWithInfosecTenancy,
-      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
-      spacePrefix: ''
+      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
     });
 
     RorMenu.openRorMenu();
@@ -249,8 +240,7 @@ describe('Tenancy', () => {
 
     Login.initialization({
       visitedUrl: dashboardsUrlWithInfosecTenancy,
-      finishUrl: `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=*`,
-      spacePrefix: ''
+      finishUrl: `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=*`
     });
 
     RorMenu.openRorMenu();
@@ -263,7 +253,7 @@ describe('Tenancy', () => {
     cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
 
     Login.fillLoginPageWith(kibana);
-    Loader.loading(`/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
+    Loader.loading(`/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`);
     cy.url().should('include', '/app/page-not-found');
   });
 });
