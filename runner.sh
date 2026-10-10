@@ -22,6 +22,7 @@ ELK_VERSION="$1"
 OPTIONAL_ECK_ARG=""
 OPTIONAL_ROR_ES_ARG=""
 OPTIONAL_ROR_KBN_ARG=""
+ROR_KBN_VERSION="latest"
 OPTIONAL_MODE_ARG=""
 MODE="e2e"
 CLUSTER_TYPE="apm"
@@ -109,6 +110,7 @@ while [[ $# -gt 0 ]]; do
   --ror-kbn)
     if [[ -n $2 && $2 != --* ]]; then
       OPTIONAL_ROR_KBN_ARG="--ror-kbn $2"
+      ROR_KBN_VERSION="$2"
       shift 2
     else
       echo "Error: --ror-kbn requires a version argument"
@@ -188,7 +190,8 @@ if [[ "$MODE" == "e2e" ]]; then
   # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the
   # suite's status, not tee's.
   set +e
-  time "${SUITE_TIMEOUT[@]}" ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
+  time ROR_KBN_VERSION="$ROR_KBN_VERSION" "${SUITE_TIMEOUT[@]}" ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 |
+    tee "$E2E_OUTPUT"
   E2E_STATUS=${PIPESTATUS[0]}
   set -e
   if [[ $E2E_STATUS -eq 124 || $E2E_STATUS -eq 137 ]]; then
