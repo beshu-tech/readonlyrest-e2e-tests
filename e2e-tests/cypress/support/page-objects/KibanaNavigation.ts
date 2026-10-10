@@ -1,13 +1,6 @@
 import { PageNotFound } from './PageNotFound';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
-
-function isHiddenByCss($element: JQuery<HTMLElement>) {
-  const hiddenElements = $element
-    .parents()
-    .addBack()
-    .filter((_, element) => Cypress.$(element).css('display') === 'none');
-  return hiddenElements.length > 0;
-}
+import { isHiddenByCss } from '../helpers/hiddenByCss';
 
 export class KibanaNavigation {
   // The link must come from the navigation. An unscoped cy.contains() can match a page link with the
@@ -38,9 +31,8 @@ export class KibanaNavigation {
     cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
-  // ROR hides an app link with injected CSS: display none on the link or on its group. The check
-  // looks for that, not for "not visible": Cypress also calls a link "not visible" when it is below
-  // the scroll area of the navigation. The visible link first proves that the navigation is open.
+  // ROR hides an app link with CSS on the link or on its group. The visible link first proves that
+  // the navigation is open.
   static checkIfHidden(page: string, visiblePage = 'Discover') {
     cy.log('checkIfHidden');
     cy.get('[data-test-subj=collapsibleNav]')
