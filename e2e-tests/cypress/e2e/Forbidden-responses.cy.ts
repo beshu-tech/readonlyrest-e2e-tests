@@ -67,7 +67,9 @@ describe('Forbidden responses', () => {
 
     it('shows only "Forbidden", never the configured message, when a dashboard delete is forbidden', () => {
       // error.message is response.statusText ("Forbidden"), not the body; addError isn't
-      // patched like addDanger is. Known gap, not fixed.
+      // patched like addDanger is. Known gap in Kibana, not fixed. When the toast shows the body
+      // message, expect the configured message instead:
+      // https://github.com/elastic/kibana/blob/v9.5.5/src/platform/plugins/shared/dashboard/public/dashboard_listing/hooks/use_dashboard_listing_table.tsx#L279-L283
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-dashboard-listing-delete',
         credentials: userCredentials,
@@ -162,7 +164,8 @@ describe('Forbidden responses', () => {
 
     it("shows only Kibana's own generic error text, never the configured message, when a dashboard delete from the listing is forbidden", () => {
       // Same statusText bug as the 8.x/9.x dashboard test above; a plain object is passed
-      // here, so the plugin's toast-error patch doesn't apply either. Known gap, not fixed.
+      // here, so the plugin's toast-error patch doesn't apply either. Known gap in Kibana, not fixed:
+      // https://github.com/elastic/kibana/blob/v7.17.29/src/plugins/kibana_react/public/table_list_view/table_list_view.tsx#L173-L183
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-dashboard-listing-delete-7x',
         credentials: userCredentials,
