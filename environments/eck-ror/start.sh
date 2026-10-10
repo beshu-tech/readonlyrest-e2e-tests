@@ -300,38 +300,80 @@ echo "------------------------------------------"
 echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then open your browser and try to access https://localhost:5601/"
 echo ""
 
+# Sets NOT_READY_PODS to the eck-ror pods that are not Running with all containers ready.
 check_pods_running() {
+  local pod_status line pod ready status
   pod_status=$(docker exec eck-ror-control-plane kubectl get pods | grep eck-ror)
 
-  all_ready=true
+  NOT_READY_PODS=()
   while read -r line; do
+    pod=$(echo "$line" | awk '{print $1}')
     ready=$(echo "$line" | awk '{print $2}')
     status=$(echo "$line" | awk '{print $3}')
 
-    cur="${ready%/*}"
-    total="${ready#*/}"
-
-    if [[ "$status" != "Running" || "$cur" != "$total" ]]; then
-      all_ready=false
+    if [[ -z "$pod" ]]; then
+      NOT_READY_PODS+=("(no eck-ror pod yet)")
+    elif [[ "$status" != "Running" || "${ready%/*}" != "${ready#*/}" ]]; then
+      NOT_READY_PODS+=("$pod")
     fi
   done <<< "$pod_status"
 
   echo -e "$pod_status"
-  $all_ready && return 0 || return 1
+  [[ ${#NOT_READY_PODS[@]} -eq 0 ]]
 }
 
-TIMEOUT_IN_SECONDS=300
+eck_health() {
+  docker exec eck-ror-control-plane kubectl get "$1" eck-ror -o jsonpath='{.status.health}' 2>/dev/null
+}
+
+# Sets NOT_READY_RESOURCES to the ECK resources that do not report the health the suite needs.
+# Elasticsearch may stay yellow: on one node, the replica of an index such as the ROR audit index
+# has no node to go to.
+check_eck_health() {
+  local kind health
+  NOT_READY_RESOURCES=()
+  for kind in elasticsearch kibana $([[ "$CLUSTER_TYPE" == "apm" ]] && echo apmserver); do
+    health=$(eck_health "$kind")
+    echo "$kind eck-ror health: ${health:-unknown}"
+    if [[ "$health" != "green" && ! ( "$kind" == "elasticsearch" && "$health" == "yellow" ) ]]; then
+      NOT_READY_RESOURCES+=("$kind")
+    fi
+  done
+  [[ ${#NOT_READY_RESOURCES[@]} -eq 0 ]]
+}
+
+# Runs both checks every time, so that each list holds the current answer.
+stack_ready() {
+  local ready=0
+  check_pods_running || ready=1
+  check_eck_health || ready=1
+  return $ready
+}
+
+report_not_ready() {
+  local pod
+  echo "Not ready after ${TIMEOUT_IN_SECONDS}s. Pods: ${NOT_READY_PODS[*]:-none}. ECK resources: ${NOT_READY_RESOURCES[*]:-none}."
+  docker exec eck-ror-control-plane kubectl get elasticsearch,kibana,apmserver || true
+  for pod in "${NOT_READY_PODS[@]}"; do
+    [[ "$pod" == "(no eck-ror pod yet)" ]] && continue
+    echo "--- kubectl describe pod $pod"
+    docker exec eck-ror-control-plane kubectl describe pod "$pod" || true
+  done
+}
+
+# The slowest start-up measured 242 s. The docker environment waits 600 s too.
+TIMEOUT_IN_SECONDS=600
 INTERVAL_IN_SECONDS=5
 
-echo "Waiting for all pods to be in Running and Ready state..."
-elapsed_time=0
-while ! check_pods_running; do
-  sleep $INTERVAL_IN_SECONDS
-
-  elapsed_time=$((elapsed_time + INTERVAL_IN_SECONDS))
-  if [[ "$elapsed_time" -ge "$TIMEOUT_IN_SECONDS" ]]; then
-    echo "Timeout reached after $TIMEOUT_IN_SECONDS seconds."
+echo "Waiting for all pods to be Running and Ready, and for ECK to report the stack healthy..."
+deadline=$((SECONDS + TIMEOUT_IN_SECONDS))
+NOT_READY_PODS=()
+NOT_READY_RESOURCES=()
+until stack_ready; do
+  if [[ "$SECONDS" -ge "$deadline" ]]; then
+    report_not_ready
     exit 1
   fi
+  sleep $INTERVAL_IN_SECONDS
 done
-echo "All pods are in Running and Ready state."
+echo "All pods are Running and Ready, and ECK reports the stack healthy."
