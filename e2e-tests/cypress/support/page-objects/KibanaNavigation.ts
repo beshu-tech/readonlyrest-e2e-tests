@@ -1,6 +1,14 @@
 import { PageNotFound } from './PageNotFound';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
 
+function isHiddenByCss($element: JQuery<HTMLElement>) {
+  const hiddenElements = $element
+    .parents()
+    .addBack()
+    .filter((_, element) => Cypress.$(element).css('display') === 'none');
+  return hiddenElements.length > 0;
+}
+
 export class KibanaNavigation {
   // The link must come from the navigation. An unscoped cy.contains() can match a page link with the
   // same text (Home shows "Stack Management" and "Dev Tools" links), and that click leaves the
@@ -42,11 +50,7 @@ export class KibanaNavigation {
     cy.get('[data-test-subj=collapsibleNav]')
       .contains(new RegExp(`^${page}$`))
       .should($link => {
-        const hiddenElements = $link
-          .parents()
-          .addBack()
-          .filter((_, el) => Cypress.$(el).css('display') === 'none');
-        expect(hiddenElements.length, `${page} link or a parent of it with display: none`).to.be.greaterThan(0);
+        expect(isHiddenByCss($link), `${page} link or a parent of it with display: none`).to.equal(true);
       });
   }
 
@@ -93,12 +97,24 @@ export class KibanaNavigation {
         });
     } else {
       cy.get('[data-test-subj="mgtSideBarNav"]')
-        .get(`[data-test-subj=${section}]`)
+        .find(`[data-test-subj=${section}]`)
         .siblings()
         .eq(0)
         .children()
         .should('have.length', count);
     }
+  }
+
+  // Counts the links in all sections, so a section that the per-section checks do not name cannot add
+  // links. A link that ROR hides with CSS does not count.
+  static checkStackManagementShownLinksCount(count: number) {
+    cy.log('check the count of shown Stack Management links');
+    cy.get('[data-test-subj="mgtSideBarNav"]')
+      .find('.euiSideNavItem a')
+      .should($links => {
+        const shownLinks = $links.filter((_, link) => !isHiddenByCss(Cypress.$(link)));
+        expect(shownLinks.length, 'shown Stack Management links').to.equal(count);
+      });
   }
 
   // ROR copies the tenancy of the page URL into each link. The values are compared decoded, because
