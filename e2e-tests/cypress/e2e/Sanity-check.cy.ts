@@ -101,8 +101,8 @@ describe('sanity check', () => {
   it('should check that logout functionality set nextUrl path as expected', () => {
     KibanaNavigation.openPage('Maps');
     // A request of a page that still loads gets a redirect to /logout when the logout ends the session.
-    // That /logout can come after the next login and end the new session too. So the logout waits
-    // until the Maps page loads.
+    // That /logout can come after the next login and end the new session too (RORDEV-2307). So the
+    // logout waits until the Maps page loads.
     cy.contains('Elastic Maps Service', { timeout: 30000 });
     cy.get('[data-test-subj=globalLoadingIndicator-hidden]').should('exist');
     // The Maps page still loads tiles and bundles when the logout ends its session, and those

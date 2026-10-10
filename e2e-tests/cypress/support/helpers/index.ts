@@ -23,6 +23,13 @@ export const kibanaVersion = {
   has91Features: () => semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
 };
 
+// runner.sh passes its --ror-kbn value: a release version, "latest", or the tag of a dev image. Only
+// a release version can be before a version.
+export const rorKbnReleaseBefore = (version: string): boolean => {
+  const value = String(Cypress.env('rorKbnVersion') ?? '');
+  return semver.valid(value) !== null && semver.lt(value, version);
+};
+
 export function requiredBaseUrl(): string {
   const baseUrl = Cypress.config('baseUrl');
   if (!baseUrl) throw new Error('Cypress baseUrl is not configured');
