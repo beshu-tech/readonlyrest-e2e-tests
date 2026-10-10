@@ -2,6 +2,9 @@ import { KibanaNavigation } from './KibanaNavigation';
 import { TopNav } from './TopNav';
 import { kibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
+import { recurse } from 'cypress-recurse';
+
+const QUEUED_REPORT_TOAST = 'Queued report for search';
 
 export class Discover {
   static createIndexPattern(indexPatternName: string) {
@@ -91,10 +94,19 @@ export class Discover {
     }
 
     cy.get('[data-test-subj=generateReportButton]').click();
-    cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
-    // Kibana closes the toast after notifications:lifetime:info (5 s). A slow browser runs that timer
-    // late, so the wait is twice the 10 s of the check above.
-    cy.contains('Queued report for search', { timeout: 20000 }).should('not.exist');
+    cy.contains(QUEUED_REPORT_TOAST, { timeout: 10000 }).should('exist');
+    // Kibana closes the toast after 5 s. A toast that comes during its fade-out can bring it back
+    // with no timer, and then it stays. So a toast still there after 10 s gets closed.
+    recurse(
+      () => cy.get('body', { log: false }),
+      $body => !$body.text().includes(QUEUED_REPORT_TOAST),
+      { limit: 20, delay: 500, doNotFail: true, yield: 'value', log: false }
+    ).then($body => {
+      if ($body.text().includes(QUEUED_REPORT_TOAST)) {
+        cy.contains('.euiToast', QUEUED_REPORT_TOAST).find('[data-test-subj=toastCloseButton]').click();
+      }
+    });
+    cy.contains(QUEUED_REPORT_TOAST).should('not.exist');
   }
 
   // Kibana 9.4 and later always puts New and Open in the overflow popover of the top menu. Open is
@@ -242,9 +254,18 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
       '[data-test-subj=createDataViewButtonFlyout]', // >= 8.2.x
       '[data-test-subj=createDataViewButton]' // >= 8.4.x
     ];
+    // The flyout loads all sources when it opens. A title typed before that load ends gets checked
+    // against the empty pattern, and the form keeps the error and saves nothing. So the title waits
+    // for the load.
+    const allSources = kibanaVersion.gte('8.10.0')
+      ? interceptNext('resolveIndex', { pathname: '**/internal/index-pattern-management/resolve_index/**' })
+      : undefined;
     cy.get(createDataViewPossibleSelectors.join(','))
       .contains(/create.*data.*view/i, { matchCase: false })
       .click();
+    if (allSources) {
+      cy.wait(allSources);
+    }
     cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName); // regular index pattern field
 
     if (kibanaVersion.gte('8.4.0')) {
