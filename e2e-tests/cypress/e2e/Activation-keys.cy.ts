@@ -55,6 +55,7 @@ const LOGOUT_TIMEOUT_MS = 45000;
     ActivationKeys.changeLicenseToFree();
 
     cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.verifyEdition('kbn_free');
   });
 
   it('should keep the sessions when a new activation key has the same license edition', () => {
@@ -67,10 +68,14 @@ const LOGOUT_TIMEOUT_MS = 45000;
 
     // Free (index) -> Free: the edition does not change, so the sessions stay.
     ActivationKeys.changeLicenseToFree();
+    ActivationKeys.verifyEdition('kbn_free');
 
-    // Reload instead of only reading the location: it sends the session cookie to the proxy again,
-    // so this fails if the sessions were dropped. Reading the location alone passes as soon as the
-    // page has not moved yet, which is also true when a logout is about to occur.
+    // A logout comes up to one session probe after the change. The wait gives the probe of the page
+    // that time, then the session index and a reload show that the sessions stay.
+    cy.wait(LOGOUT_TIMEOUT_MS);
+    cy.location('pathname').should('not.contain', '/login');
+    ActivationKeys.sessionIndexStatus().should('equal', 200);
+    // The reload sends the session cookie to the proxy again, so this fails if the sessions were dropped.
     cy.reload();
     cy.location('pathname').should('contain', '/s/default/app/home');
   });
@@ -87,5 +92,6 @@ const LOGOUT_TIMEOUT_MS = 45000;
     ActivationKeys.deleteLicense();
 
     cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.verifyEdition('kbn_ent');
   });
 });

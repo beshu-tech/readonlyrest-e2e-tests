@@ -1,6 +1,7 @@
 import { RorMenu } from './RorMenu';
 import { recurse } from 'cypress-recurse';
 import { SecuritySettings } from './SecuritySettings';
+import { userCredentials } from '../helpers';
 
 export class ActivationKeys {
   static DEFAULT_ACTIVATION_KEY =
@@ -20,18 +21,28 @@ export class ActivationKeys {
 
   static changeLicenseToFree() {
     cy.log('Change license to free');
+    cy.intercept({ method: 'POST', pathname: '/pkp/api/license' }).as('activateKey');
     SecuritySettings.getIframeBody().contains('Load Activation Key').click();
     SecuritySettings.getIframeBody()
       .find('[name="activationToken"]')
       .invoke('attr', 'value', ActivationKeys.DEFAULT_ACTIVATION_KEY)
       .trigger('input');
     SecuritySettings.getIframeBody().contains('Activate').click({ force: true });
+    cy.waitForResponse('@activateKey').its('statusCode').should('equal', 200);
   }
 
   static deleteLicense() {
     cy.log('Delete license');
+    cy.intercept({ method: 'DELETE', pathname: '/pkp/api/license' }).as('deleteKey');
     SecuritySettings.getIframeBody().contains('Delete').click();
     SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').click({ force: true });
+    cy.waitForResponse('@deleteKey').its('statusCode').should('equal', 200);
+  }
+
+  static verifyEdition(edition: 'kbn_free' | 'kbn_ent') {
+    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: userCredentials })
+      .its('license.edition')
+      .should('equal', edition);
   }
 
   /**
@@ -55,7 +66,7 @@ export class ActivationKeys {
     });
   }
 
-  private static sessionIndexStatus() {
+  static sessionIndexStatus() {
     const [user, pass] = Cypress.env().kibanaUserCredentials.split(':');
     return cy
       .request({
