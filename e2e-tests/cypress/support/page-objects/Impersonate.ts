@@ -6,18 +6,11 @@ import { interceptNext } from '../helpers/interceptNext';
 
 export class Impersonate {
   static open() {
-    cy.log('Open Impersonate');
-    RorMenu.openRorMenu();
-    RorMenu.openEditSecuritySettings();
-    Impersonate.clickImpersonateTab();
+    SecuritySettings.openTab('impersonate');
   }
 
   static clickImpersonateTab() {
-    cy.log('Click impersonate tab');
-    SecuritySettings.waitForIframeContent();
-    SecuritySettings.getIframeBody()
-      .findByRole('tab', { name: /impersonation/i })
-      .click();
+    SecuritySettings.tab('impersonate').click();
   }
 
   static getServiceByIndex(index: number) {

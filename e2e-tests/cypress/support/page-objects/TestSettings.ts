@@ -1,25 +1,14 @@
 import { interceptNext } from '../helpers/interceptNext';
-import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 
 export class TestSettings {
+  // The app reads the Test ACL when its tab opens, and not before.
   static open() {
-    cy.log('Open Test ACL');
-    RorMenu.openRorMenu();
-    RorMenu.openEditSecuritySettings();
     const getTestSettings = interceptNext('getTestSettings', { method: 'GET', url: '/pkp/api/test' });
-    TestSettings.clickTestSettingsTab();
+    SecuritySettings.openTab('test_settings');
     cy.waitForResponse(getTestSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
-  }
-
-  static clickTestSettingsTab() {
-    cy.log('Click Test ACL');
-    SecuritySettings.waitForIframeContent();
-    SecuritySettings.getIframeBody()
-      .findByRole('tab', { name: /test acl/i })
-      .click();
   }
 
   static changeTtlValue(time: string, unit: 'Seconds' | 'Minutes' | 'Hours' | 'Days' = 'Minutes') {

@@ -1,14 +1,10 @@
 import { interceptNext } from '../helpers/interceptNext';
 import { rorApiClient } from '../helpers/RorApiClient';
-import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
 
 export class Settings {
   static open() {
-    cy.log('Open settings');
-    RorMenu.openRorMenu();
-    RorMenu.openEditSecuritySettings();
-    SecuritySettings.getIframeBody().find('#settings').click();
+    SecuritySettings.openTab('settings');
   }
 
   static pressReloadFromFileSettingsButton() {
