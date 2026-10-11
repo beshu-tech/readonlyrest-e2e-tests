@@ -24,8 +24,7 @@ describe('Dev tools', () => {
     cy.log('should verify GET _search with bad JSON is rejected');
     const badJsonRequest = 'GET _search\n{\n  "query": { BAD_JSON\n    "match_all": {}\n  }\n}';
     if (kibanaVersion.has91Features()) {
-      DevTools.trySendRequest(badJsonRequest);
-      DevTools.verifyIfContainsErrorsMessage();
+      DevTools.sendRequestWithErrors(badJsonRequest);
     } else {
       DevTools.sendRequest(badJsonRequest, 400, 'Bad Request');
     }

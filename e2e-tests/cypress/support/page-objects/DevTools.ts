@@ -40,13 +40,19 @@ export class DevTools {
     // The Console also sends its own requests through this proxy, for example the autocomplete
     // loads on Kibana 7, so the route matches only the method and path of this request. `times: 1`
     // gives each request its own route: routes with the same alias all count a request they match.
-    cy.intercept({
-      method: 'POST',
-      pathname: '/s/default/api/console/proxy',
-      query: { method: exactly(method), path: exactly(path) },
-      times: 1
-    }).as('consoleRequest');
-    DevTools.trySendRequest(request);
+    let requestSent = false;
+    cy.intercept(
+      {
+        method: 'POST',
+        pathname: '/s/default/api/console/proxy',
+        query: { method: exactly(method), path: exactly(path) },
+        times: 1
+      },
+      () => {
+        requestSent = true;
+      }
+    ).as('consoleRequest');
+    DevTools.enterAndSendRequest(request, () => requestSent);
     cy.wait('@consoleRequest').then(({ request: sent, response }) => {
       // Kibana 8 and later answers the proxy call with 200 and gives the ES status in a header, so
       // that an ES 401 does not open the browser login prompt. Kibana 7 answers with the ES status.
@@ -57,11 +63,18 @@ export class DevTools {
     cy.contains(`${statusCode} - ${statusText}`).should('be.visible');
   }
 
-  // Enters the request and clicks send. The Console does not send a request with errors.
-  static trySendRequest(request: string) {
+  // Kibana 8.19 and 9.1 and later do not send a request with errors. They show a toast instead.
+  static sendRequestWithErrors(request: string) {
+    const errorsMessage = 'The selected request contains errors. Please resolve them and try again.';
+    const errorsToast = () => Cypress.$('[data-test-subj="globalToastList"]').text().includes(errorsMessage);
+    DevTools.enterAndSendRequest(request, errorsToast);
+    cy.contains('[data-test-subj="globalToastList"]', errorsMessage).should('be.visible');
+  }
+
+  // Enters the request and clicks send. `clickHadEffect` tells when the Console did what the click asks.
+  private static enterAndSendRequest(request: string, clickHadEffect: () => boolean) {
     if (kibanaVersion.gte('8.16.0')) {
-      DevTools.enterRequestIntoMonacoEditor(request);
-      cy.get('[data-test-subj="sendRequestButton"]').click();
+      DevTools.sendFromMonacoEditor(request, clickHadEffect);
     } else if (kibanaVersion.lte('7.9.0')) {
       cy.get('#ConAppEditor').click();
       cy.get('#ConAppInputTextarea').clear({ force: true });
@@ -75,6 +88,26 @@ export class DevTools {
       DevTools.pasteIntoFocusedEditor(request);
       cy.get('[data-test-subj=sendRequestButton]').click();
     }
+  }
+
+  // A new mount of the Console (see below) can also come right after the send click. The send action
+  // parses the editor text asynchronously and then reads the editor again, and the new mount disposes
+  // the editor model in between: Kibana shows "Unknown Request Error: Model is disposed!" and sends
+  // nothing. So the request goes in again until the click has its effect.
+  private static sendFromMonacoEditor(request: string, clickHadEffect: () => boolean, attempt = 1) {
+    DevTools.enterRequestIntoMonacoEditor(request);
+    cy.get('[data-test-subj="sendRequestButton"]').click();
+    recurse(() => cy.wrap(null, { log: false }).then(clickHadEffect), Boolean, {
+      limit: 30,
+      delay: 100,
+      doNotFail: true,
+      yield: 'value',
+      log: false
+    }).then(hadEffect => {
+      if (!hadEffect && attempt < DevTools.ENTER_ATTEMPTS) {
+        DevTools.sendFromMonacoEditor(request, clickHadEffect, attempt + 1);
+      }
+    });
   }
 
   // Kibana 8.16 to 9.1 can mount the Console again after it shows (RORDEV-2282). The new mount
@@ -160,14 +193,6 @@ export class DevTools {
   // one edit with no keys, so the editor gets the request as it is.
   private static pasteIntoFocusedEditor(text: string) {
     cy.focused().then($input => pasteText($input[0], text));
-  }
-
-  static verifyIfContainsErrorsMessage() {
-    cy.log('Verify if contains errors message');
-    cy.contains(
-      '[data-test-subj="globalToastList"]',
-      'The selected request contains errors. Please resolve them and try again.'
-    ).should('be.visible');
   }
 
   static verifyResponseInConsole(value: string) {
