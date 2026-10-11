@@ -22,7 +22,6 @@ describe('Test ACL', () => {
     rorApiClient.getRorTestSettingsStatus().should('equal', 'TEST_SETTINGS_PRESENT');
 
     cy.log('should check load current settings functionality');
-    Settings.closeToastMessages();
     TestSettings.loadCurrentSettings();
     TestSettings.pressLoadCurrentSettingsButton();
     Settings.unsavedChangesModalVisible();

@@ -15,18 +15,22 @@ export class Settings {
   static discardChanges() {
     cy.log('Discard changes');
     const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
-    SecuritySettings.getIframeBody().contains('Discard changes').click();
-    cy.waitForResponse(getSettings).then(response => {
-      expect([200, 304]).to.include(response.statusCode);
+    Settings.waitForToastAfter('Reloaded configuration', () => {
+      SecuritySettings.getIframeBody().contains('Discard changes').click();
+      cy.waitForResponse(getSettings).then(response => {
+        expect([200, 304]).to.include(response.statusCode);
+      });
     });
   }
 
   static reloadFromFileSettings() {
     cy.log('Press reload from file test settings');
     const getSettingsFile = interceptNext('getSettingsFile', { method: 'GET', url: '/pkp/api/settings/file' });
-    Settings.pressReloadFromFileSettingsButton();
-    cy.waitForResponse(getSettingsFile).then(response => {
-      expect([200, 304]).to.include(response.statusCode);
+    Settings.waitForToastAfter(Settings.LOADED_FROM_FILE_TOAST, () => {
+      Settings.pressReloadFromFileSettingsButton();
+      cy.waitForResponse(getSettingsFile).then(response => {
+        expect([200, 304]).to.include(response.statusCode);
+      });
     });
   }
 
@@ -40,12 +44,26 @@ export class Settings {
   }
 
   static closeToastMessages() {
-    cy.log('Close toast message');
-    return SecuritySettings.getIframeBody()
-      .find('[data-test-subj=toastCloseButton]')
-      .each($el => {
-        $el[0].click();
-      });
+    cy.log('Close toast messages');
+    const closeButtons = '[data-test-subj=toastCloseButton]';
+    SecuritySettings.getIframeBody().then(body => {
+      Cypress.$(body as HTMLElement)
+        .find(closeButtons)
+        .each((_, button) => button.click());
+    });
+    SecuritySettings.getIframeBody().find(closeButtons).should('not.exist');
+  }
+
+  static readonly LOADED_FROM_FILE_TOAST = 'Loaded default ACL from readonlyrest.yml';
+
+  // The answer of a load reaches Cypress before the app applies it to the form. The app sets the
+  // form state and then shows a toast, so a step that needs the new state (for example a second load
+  // that must ask before it overwrites changes) waits for that toast. Old toasts go first, so an old
+  // toast with the same title does not pass the check.
+  static waitForToastAfter(title: string, action: () => void) {
+    Settings.closeToastMessages();
+    action();
+    SecuritySettings.getIframeBody().contains(title).should('exist');
   }
 
   static unsavedChangesModalVisible() {

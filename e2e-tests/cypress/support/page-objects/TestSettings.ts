@@ -1,5 +1,6 @@
 import { interceptNext } from '../helpers/interceptNext';
 import { SecuritySettings } from './SecuritySettings';
+import { Settings } from './Settings';
 
 export class TestSettings {
   // The app reads the Test ACL when its tab opens, and not before.
@@ -25,9 +26,11 @@ export class TestSettings {
   static loadCurrentSettings() {
     cy.log('Load current settings');
     const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
-    TestSettings.pressLoadCurrentSettingsButton();
-    cy.waitForResponse(getSettings).then(response => {
-      expect([200, 304]).to.include(response.statusCode);
+    Settings.waitForToastAfter(Settings.LOADED_FROM_FILE_TOAST, () => {
+      TestSettings.pressLoadCurrentSettingsButton();
+      cy.waitForResponse(getSettings).then(response => {
+        expect([200, 304]).to.include(response.statusCode);
+      });
     });
   }
 

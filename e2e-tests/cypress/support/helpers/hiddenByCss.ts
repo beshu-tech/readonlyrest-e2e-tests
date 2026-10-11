@@ -11,9 +11,12 @@ export function isHiddenByCss($element: JQuery<HTMLElement>) {
 // Passes when no element matches, or when ROR hides each match with CSS. Prove first that the page
 // part that holds the control is rendered, or the check passes before the control comes.
 export function shouldNotBeShown(selector: string) {
-  cy.get('body').should($body => {
-    $body.find(selector).each((_, element) => {
-      expect(isHiddenByCss(Cypress.$(element)), `${selector} hidden`).to.equal(true);
-    });
+  cy.get('body').should($body => expectNotShown($body, selector));
+}
+
+// The same check on a page state that the caller already holds, for one `should` with more checks.
+export function expectNotShown($scope: JQuery<HTMLElement>, selector: string) {
+  $scope.find(selector).each((_, element) => {
+    expect(isHiddenByCss(Cypress.$(element)), `${selector} hidden`).to.equal(true);
   });
 }

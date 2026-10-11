@@ -1,6 +1,6 @@
 import { KibanaNavigation } from './KibanaNavigation';
 import { kibanaVersion } from '../helpers';
-import { shouldNotBeShown } from '../helpers/hiddenByCss';
+import { expectNotShown } from '../helpers/hiddenByCss';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
 import { Tenancy } from './Tenancy';
 
@@ -53,20 +53,17 @@ export class Home {
     });
     // The wait covers the full Kibana load that the visit starts.
     cy.get('[data-test-subj="homeTab-sampleData"]', { timeout: 80000 }).should('exist');
-    // Kibana 8.x shows the data set cards in an accordion. A click on an open accordion closes it.
-    if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.4.0')) {
-      cy.getByDataTestSubj('showSampleDataButton').then($button => {
-        if ($button.attr('aria-expanded') !== 'true') {
-          cy.wrap($button).click();
-        }
-      });
-      cy.getByDataTestSubj('showSampleDataButton').should('have.attr', 'aria-expanded', 'true');
-    }
-    // exist, not be.visible: on 8.19 the open accordion still fails the visibility check of its card.
-    cy.getByDataTestSubj('sampleDataSetCardecommerce').should('exist');
-    cy.getByDataTestSubj('launchSampleDataSetecommerce').should('exist');
-    shouldNotBeShown('[data-test-subj="addSampleDataSetecommerce"]');
-    shouldNotBeShown('[data-test-subj="removeSampleDataSetecommerce"]');
+    // Kibana 8.x up to 9.3 puts the data set cards in an accordion. A closed EUI accordion keeps its
+    // cards in the page (height 0, no display none), so the checks do not open it. Kibana 8.19 can
+    // mount the home app again after it shows, so all checks run on one state of the page: separate
+    // checks could find the card in one mount and an empty grid in the next.
+    cy.get('body').should($body => {
+      const exists = (subject: string) => $body.find(`[data-test-subj="${subject}"]`).length > 0;
+      expect(exists('sampleDataSetCardecommerce'), 'ecommerce card exists').to.equal(true);
+      expect(exists('launchSampleDataSetecommerce'), 'ecommerce launch button exists').to.equal(true);
+      expectNotShown($body, '[data-test-subj="addSampleDataSetecommerce"]');
+      expectNotShown($body, '[data-test-subj="removeSampleDataSetecommerce"]');
+    });
   }
 
   static verifyIfCatalogueEmpty() {
