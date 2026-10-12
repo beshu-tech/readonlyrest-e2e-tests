@@ -39,15 +39,10 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   }
 
   // Under resetKibanaIndexToTemplate, a request of the user resets the index of the user's tenancy
-  // to the template. This sends such a request until it answers 200, for at most about 10 s: once,
-  // on 9.5.5 docker (CI run 38160830949), the first answer was a 403.
+  // to the template. Once, on 9.5.5 docker (CI run 38160830949), the first answer was a 403.
   public resetTenancyIndexToTemplate(credentials: string): void {
     cy.log(`Reset the tenancy index of ${accountOf(credentials)} to the template`);
-    recurse(
-      () => cy.kbnResponse({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials }).its('status'),
-      status => status === 200,
-      { limit: 10, delay: 1000, log: false }
-    );
+    this.repeatUntilSuccess({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials });
   }
 
   public deleteDataViews(credentials: BasicCredentials, group?: string) {

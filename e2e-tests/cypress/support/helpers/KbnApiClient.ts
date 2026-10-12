@@ -1,3 +1,4 @@
+import { recurse } from 'cypress-recurse';
 import { accountOf, BasicCredentials } from './credentials';
 
 export class KbnApiClient {
@@ -100,12 +101,25 @@ export class KbnApiClient {
     });
   }
 
+  // After hooks call this right after they restore the ROR settings. A request in that moment can
+  // fail: once, on 7.17 docker (CI run 38221779222), Kibana answered 500 with a socket hang up.
   public deleteSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
-    cy.kbnDelete({
+    this.repeatUntilSuccess({
+      method: 'DELETE',
       endpoint: `api/sample_data/${sampleDatasetName}`,
       credentials,
       currentGroupHeader: group
     });
+  }
+
+  // For a cleanup request that must take effect: sends it until it answers 2xx, for at most about
+  // 10 s, and fails with the last status after that.
+  protected repeatUntilSuccess(options: Cypress.ResponseOptions<Cypress.KbnRequestOptions>): void {
+    recurse(
+      () => cy.kbnResponse(options).its('status'),
+      status => status >= 200 && status < 300,
+      { limit: 10, delay: 1000, log: false }
+    );
   }
 
   public deleteSpace(
