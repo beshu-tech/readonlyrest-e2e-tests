@@ -10,7 +10,7 @@ describe('Observability', () => {
   });
 
   afterEach(() => {
-    esApiClient.deleteIndexDocsByQuery(Observability.APM_DATA_INDEXES_WILDCARD);
+    esApiClient.deleteIndexDocsByQuery(Observability.apmDataIndices());
   });
 
   it('should verify APM functionality', () => {
