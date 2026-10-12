@@ -8,6 +8,7 @@ import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
+import { recordHistoryChanges } from '../support/helpers/historyChanges';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { admin } from '../support/helpers/credentials';
@@ -99,6 +100,7 @@ describe('sanity check', () => {
   });
 
   it('should check that logout functionality set nextUrl path as expected', () => {
+    recordHistoryChanges();
     KibanaNavigation.openPage('Maps');
     // A request of a page that still loads gets a redirect to /logout when the logout ends the session.
     // That /logout can come after the next login and end the new session too (RORDEV-2307). So the
