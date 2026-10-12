@@ -37,8 +37,8 @@ const customKibanaIndexName = '.kibana_custom';
     afterEach(() => {
       kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
 
-      // deleteSavedObjects will return 404 error because, thanks to resetKibanaIndexToTemplate: true, ROR KBN plugin will reset all data to template_group deleted above, first
-      kbnApiAdvancedClient.getSavedObjects(adminCredentials);
+      // The next admin request resets the admin tenancy to the template that the line above emptied.
+      kbnApiAdvancedClient.resetTenancyIndexToTemplate(adminCredentials);
 
       esApiClient.deleteIndex(customSessionIndex);
     });

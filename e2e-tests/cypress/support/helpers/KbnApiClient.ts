@@ -51,15 +51,20 @@ export class KbnApiClient {
     });
   }
 
+  protected static savedObjectsFindEndpoint(page = 1, perPage = 20) {
+    return (
+      'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url&type=tag' +
+      `&page=${page}&per_page=${perPage}`
+    );
+  }
+
   public getSavedObjects(
     credentials: string,
     group?: string,
     { page = 1, perPage = 20 }: { page?: number; perPage?: number } = {}
   ): Cypress.Chainable<GetObject> {
     return cy.kbnGet<GetObject>({
-      endpoint:
-        'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url&type=tag' +
-        `&page=${page}&per_page=${perPage}`,
+      endpoint: KbnApiClient.savedObjectsFindEndpoint(page, perPage),
       credentials,
       currentGroupHeader: group
     });
