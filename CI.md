@@ -50,3 +50,7 @@ Network steps retry: image pulls, package installs and manifest downloads use `r
 ## Artifacts
 
 When a leg fails, `.github/upload-videos` uploads the Cypress videos, the screenshots and the stack logs to S3. Before the upload, each text file loses every secret in `secrets_to_redact` (one per line). A file that still holds a secret after that, for example a binary file, is not uploaded.
+
+## Temporary workarounds
+
+- **RORDEV-2283**: after the stack starts, `runner.sh` restarts a Kibana node that does not answer user requests, once, with a warning titled `RORDEV-2283`. It is one commit. Revert that commit when the tested ROR KBN release has the fix (readonlyrest_kbn#1105). All places are marked `TEMPORARY (RORDEV-2283)`.
