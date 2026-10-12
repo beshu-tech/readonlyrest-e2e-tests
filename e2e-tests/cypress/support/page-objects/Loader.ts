@@ -35,6 +35,12 @@ export class Loader {
     // presence of that element is the loading-finished marker. Chromium 138 (Cypress 15) does not
     // always judge this header svg visible after a reload, so the assertion is `exist`.
     cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('exist');
+    // Kibana loses the unmount of an app whose mount ends after the page left it. A Home app lost
+    // that way keeps its hash router, which rewrites the URL hash of every later page (RORDEV-2315).
+    // Home's router writes #/ when it mounts, so a load that ends on Home waits for that.
+    if (url?.includes('/app/home')) {
+      cy.location('hash', { timeout: 80000 }).should('match', /^#\//);
+    }
   }
 
   private static readonly SPLASH_TEXT = 'Loading Elastic';
