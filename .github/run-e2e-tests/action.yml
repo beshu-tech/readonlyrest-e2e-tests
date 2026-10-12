@@ -27,16 +27,18 @@ inputs:
     description: 'How many times to run the suite. 1 for a hand-dispatched run, where a second attempt only doubles the wait.'
     required: false
     default: '2'
-  electron_extra_launch_args:
-    description: 'Extra Electron flags for the browser Cypress starts.'
-    required: false
-    default: ''
 
 runs:
   using: 'composite'
   steps:
     - name: Restore the yarn and Cypress caches
       uses: ./.github/cypress-cache
+    - name: Install the pinned kind
+      if: startsWith(inputs.env, 'eck-')
+      shell: bash
+      run: |
+        ./environments/eck-ror/install-kind.sh "$RUNNER_TEMP/kind-bin"
+        echo "$RUNNER_TEMP/kind-bin" >> "$GITHUB_PATH"
     - name: Run E2E tests
       uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
       with:
@@ -61,12 +63,13 @@ runs:
           ./runner.sh "${PARAMS[@]}"
       env:
         ROR_ACTIVATION_KEY: ${{ inputs.activation_key }}
-        ELECTRON_EXTRA_LAUNCH_ARGS: ${{ inputs.electron_extra_launch_args }}
         ENV: ${{ inputs.env }}
         ELK_VERSION: ${{ inputs.elk }}
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
+        # The same cap as timeout_minutes, so that runner.sh stops the suite in time to collect its logs.
+        E2E_TIME_CAP_SECONDS: 4500
     - name: Put the E2E summary on the run summary page
       # The runner writes the file only when the suite ran, on a pass as well as on a failure.
       if: always()
