@@ -226,6 +226,60 @@ export class Discover {
   };
 }
 
+const DATA_VIEW_NAME_INPUT = '[data-test-subj=createIndexPatternNameInput]';
+const DATA_VIEW_TITLE_INPUT = '[data-test-subj=createIndexPatternTitleInput]'; // >= 8.4.0
+const DATA_VIEW_SOURCES_STATUS = '[data-test-subj=createIndexPatternStatusMessage]';
+const DATA_VIEW_TIMESTAMP_FIELD = '[data-test-subj=timestampField]';
+const ALL_SOURCES_LOADED = 'Your index pattern can match';
+const TIMESTAMP_PROMPT = 'Select a timestamp field for use with the global time filter.';
+
+/**
+ * Types the index pattern into the data view flyout and selects @timestamp (Kibana >= 8.0).
+ *
+ * The Data views page renders again when one of its loads ends late (Kibana 8.19 to 9.5: the ES|QL
+ * check of the page). Each render mounts a new flyout, because the flyout makes a new context provider
+ * on every render (RORDEV-2319). The new flyout drops what was typed and loads all sources again. A
+ * title typed before that load ends gets checked against no sources, and the form keeps that error. So
+ * each check looks at the form as it is now: it types only into an empty form that shows all sources,
+ * and selects the timestamp field only when the form asks for it.
+ */
+const fillDataViewForm = (indexPatternName: string) => {
+  const titleInput = kibanaVersion.gte('8.4.0') ? DATA_VIEW_TITLE_INPUT : DATA_VIEW_NAME_INPUT;
+  recurse(
+    () =>
+      cy.get('body', { log: false }).then($body => {
+        const $title = $body.find(titleInput);
+        if ($title.length === 0) {
+          return false;
+        }
+        // Kibana adds a * to the index pattern as you type.
+        const title = String($title.val()).replace(/\*$/, '');
+        if (title !== indexPatternName) {
+          if (title) {
+            cy.get(titleInput).clear();
+          } else if ($body.find(DATA_VIEW_SOURCES_STATUS).text().includes(ALL_SOURCES_LOADED)) {
+            cy.get(DATA_VIEW_NAME_INPUT).clear().type(indexPatternName);
+            if (titleInput !== DATA_VIEW_NAME_INPUT) {
+              cy.get(titleInput).type(indexPatternName);
+            }
+          }
+          return false;
+        }
+        if (!$body.text().includes(TIMESTAMP_PROMPT)) {
+          return false;
+        }
+        if ($body.find(DATA_VIEW_TIMESTAMP_FIELD).text().includes('@timestamp')) {
+          return true;
+        }
+        cy.get(DATA_VIEW_TIMESTAMP_FIELD).click();
+        cy.contains('[role="option"]', '@timestamp').click();
+        return false;
+      }),
+    Boolean,
+    { delay: 500, timeout: 60000, limit: 120, log: false, error: 'The data view form did not keep the title' }
+  );
+};
+
 const createKibanaIndexPattern = (indexPatternName: string) => {
   const createIdentityForKibanaBefore7_15_1 = () => {
     cy.contains('Create index pattern').click();
@@ -254,27 +308,10 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
       '[data-test-subj=createDataViewButtonFlyout]', // >= 8.2.x
       '[data-test-subj=createDataViewButton]' // >= 8.4.x
     ];
-    // The flyout loads all sources when it opens. A title typed before that load ends gets checked
-    // against the empty pattern, and the form keeps the error and saves nothing. So the title waits
-    // for the load.
-    const allSources = kibanaVersion.gte('8.10.0')
-      ? interceptNext('resolveIndex', { pathname: '**/internal/index-pattern-management/resolve_index/**' })
-      : undefined;
     cy.get(createDataViewPossibleSelectors.join(','))
       .contains(/create.*data.*view/i, { matchCase: false })
       .click();
-    if (allSources) {
-      cy.wait(allSources);
-    }
-    cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName); // regular index pattern field
-
-    if (kibanaVersion.gte('8.4.0')) {
-      cy.get('[data-test-subj=createIndexPatternTitleInput]').type(indexPatternName); // Added title field in 8.4.0
-    }
-
-    cy.contains('Select a timestamp field for use with the global time filter.');
-    cy.get('[data-test-subj=timestampField]').click();
-    cy.contains('[role="option"]', '@timestamp').click();
+    fillDataViewForm(indexPatternName);
 
     const indexPattern = kibanaVersion.gte('8.9.0')
       ? interceptNext('indexPattern', { url: '/s/default/api/kibana/management/saved_objects/**' })
