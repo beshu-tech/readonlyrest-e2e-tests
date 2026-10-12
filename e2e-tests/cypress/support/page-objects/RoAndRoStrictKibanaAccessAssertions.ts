@@ -142,14 +142,13 @@ export class RoAndRoStrictKibanaAccessAssertions {
   private static changeTenancyAndAwaitSpaces(tenancyName: string) {
     const shouldAwaitSpacesPlugin = semver.gte(getKibanaVersion(), '9.4.0') && semver.lte(getKibanaVersion(), '9.5.3');
 
-    if (shouldAwaitSpacesPlugin) {
-      cy.intercept('*/bundles/plugin/spaces/1.0.0/spaces.chunk*').as('spacesPlugin');
-    }
-
     RorMenu.changeTenancy(tenancyName);
 
+    // The spaces menu loads in a lazy chunk, and the button appears when the chunk and the active
+    // space are loaded. A wait for the chunk request fails when the browser serves the chunk from
+    // its cache: then no request goes out.
     if (shouldAwaitSpacesPlugin) {
-      cy.wait('@spacesPlugin');
+      cy.get('[data-test-subj=spacesNavSelector]').should('exist');
     }
   }
 }
