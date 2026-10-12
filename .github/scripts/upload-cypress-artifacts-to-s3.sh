@@ -90,17 +90,27 @@ upload_one() {
   "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
-# Any file can hold a CI secret, whatever its name. In a text file (no NUL byte) each occurrence of
-# REDACT_VALUE becomes <redacted>. A file that still holds it after that is not uploaded at all.
-REDACT_VALUE=${REDACT_VALUE:-}
+# Any file can hold a CI secret, whatever its name. SECRETS_TO_REDACT holds one secret per line. In a
+# text file (no NUL byte) each occurrence of a secret becomes <redacted>. A file that still holds one
+# after that is not uploaded at all.
+SECRETS=()
+while IFS= read -r SECRET; do
+  [ -n "$SECRET" ] && SECRETS+=("$SECRET")
+done <<< "${SECRETS_TO_REDACT:-}"
 holds_secret() {
-  [ -n "$REDACT_VALUE" ] && grep -qF -- "$REDACT_VALUE" "$1" 2>/dev/null
+  local SECRET
+  for SECRET in "${SECRETS[@]}"; do
+    grep -qF -- "$SECRET" "$1" 2>/dev/null && return 0
+  done
+  return 1
 }
 redact() {
-  local FILE=$1
+  local FILE=$1 SECRET
   holds_secret "$FILE" || return 0
   if LC_ALL=C grep -qI -- '' "$FILE"; then
-    REDACT_VALUE="$REDACT_VALUE" perl -i -pe 's/\Q$ENV{REDACT_VALUE}\E/<redacted>/g' "$FILE"
+    for SECRET in "${SECRETS[@]}"; do
+      SECRET="$SECRET" perl -i -pe 's/\Q$ENV{SECRET}\E/<redacted>/g' "$FILE"
+    done
   fi
   ! holds_secret "$FILE"
 }
