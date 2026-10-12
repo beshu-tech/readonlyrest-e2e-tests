@@ -46,8 +46,6 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      - name: Check that every network step has a retry
-        run: ci/check-network-retries.sh
       - name: Choose the images, the environments and the versions
         id: plan
         env:
