@@ -184,7 +184,10 @@ if [[ "$MODE" == "e2e" ]]; then
   # caller kills this script, and the EXIT trap deletes the stack with its logs.
   SUITE_TIMEOUT=()
   if [[ -n "${E2E_TIME_CAP_SECONDS:-}" ]]; then
-    SUITE_TIMEOUT=(timeout --kill-after=60 "$((E2E_TIME_CAP_SECONDS - SECONDS - 300))")
+    # A slow set-up can leave no time: timeout takes 0 as no limit and fails on a negative value.
+    remaining=$((E2E_TIME_CAP_SECONDS - SECONDS - 300))
+    [[ $remaining -ge 1 ]] || remaining=1
+    SUITE_TIMEOUT=(timeout --kill-after=60 "$remaining")
   fi
 
   # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the

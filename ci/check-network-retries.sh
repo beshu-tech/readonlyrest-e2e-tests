@@ -3,9 +3,9 @@
 # `docker pull`, an `npm install` or `npm ci`, or a `kubectl apply|create -f <URL>`. The e2e suite
 # has no retry of its own, so one dropped connection fails the whole leg.
 #
-# A line passes when it calls the `retry <attempts>` helper, or when it is the head of an
-# `until ...; do` loop. kubectl gets no exception: download the manifest with `retry`, then apply
-# the file.
+# A line passes when `retry <attempts>` or the head of an `until ...; do` loop calls the network
+# command itself. A trailing comment does not count. kubectl gets no exception: download the
+# manifest with `retry`, then apply the file.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -16,7 +16,12 @@ offending=$(
     .github environments ci runner.sh e2e-tests/run-tests.sh |
     grep -v '^ci/check-network-retries\.sh:' |
     grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' |
-    grep -vE 'retry [0-9]+ |until ' || true
+    awk '{
+      code = $0
+      sub(/^[^:]+:[0-9]+:/, "", code)
+      sub(/[[:space:]]#.*$/, "", code)
+      if (code !~ /(^|[^[:alnum:]_])(retry [0-9]+|until) +(docker +pull|npm +(install|i|ci)([^[:alnum:]_]|$)|kubectl +(apply|create)([^[:alnum:]_]|$))/) print
+    }' || true
 )
 
 if [ -n "$offending" ]; then
