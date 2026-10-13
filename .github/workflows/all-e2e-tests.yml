@@ -33,7 +33,8 @@ jobs:
   # dev images are built from the branch under test, or from develop on the cron.
   plan:
     name: "🧮 Plan"
-    runs-on: &light-runner ${{ fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
+    # A fork PR runs its own scripts here, so it gets a GitHub-hosted runner, whatever LIGHT_RUNS_ON names.
+    runs-on: &light-runner ${{ github.event.pull_request.head.repo.fork && fromJSON('["ubuntu-24.04"]') || fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 5
     outputs:
       images: ${{ steps.plan.outputs.images }}
