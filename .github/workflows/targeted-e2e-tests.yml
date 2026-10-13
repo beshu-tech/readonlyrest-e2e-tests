@@ -69,8 +69,6 @@ jobs:
           mode: ${{ github.event.inputs.mode }}
           ror_es: ${{ github.event.inputs.ror_es_version }}
           ror_kbn: ${{ github.event.inputs.ror_kbn_version }}
-          # One attempt: a person is waiting on this run, and a retry only doubles that wait.
-          max_attempts: '1'
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
 
       - name: Stop Docker memory monitor

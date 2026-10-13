@@ -37,13 +37,13 @@ Prod legs test the latest ROR release, with the image tag `<ELK version>-ror-<RO
 
 | What | Limit | Why |
 |---|---|---|
-| e2e suite attempt | 75 minutes (`E2E_TIME_CAP_SECONDS`) | ECK answers more slowly than docker; the suite needs more than an hour there. `runner.sh` stops the suite 5 minutes before the cap, so it still collects the stack logs |
-| targeted e2e job | 100 minutes | One suite attempt plus set-up and upload. The GitHub default of 360 minutes keeps a hung step on the runner for 6 hours |
+| e2e run | 75 minutes (`E2E_TIME_CAP_SECONDS`), for the stack start, the suite and the log collection | ECK answers more slowly than docker; the suite needs more than an hour there. `runner.sh` stops the suite 5 minutes before the cap, so it still collects the stack logs |
+| targeted e2e job | 100 minutes | One e2e run plus set-up and upload. The GitHub default of 360 minutes keeps a hung step on the runner for 6 hours |
 | bootstrap leg | 2 attempts of 30 minutes | A start-up that fails once for an infrastructure reason gets a second attempt |
 
 ## Retries
 
-When the suite fails, `.github/run-e2e-tests` runs it a second time (`max_attempts`, default 2). A manual targeted run gets one attempt.
+The suite runs once. A second run turns a flaky spec green and hides its cause.
 
 Network steps retry: image pulls, package installs and manifest downloads use `retry <attempts> <command>` from `environments/common/retry.sh`.
 
