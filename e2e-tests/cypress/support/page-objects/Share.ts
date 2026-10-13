@@ -17,8 +17,11 @@ export class Share {
   /**
    * Copies the link and checks that it carries the tenancy. Kibana 8 and later copy a short URL
    * when the user can write, and create it with a request on the click. For a read-only user they
-   * copy a Discover locator URL. Kibana 7 copies the full URL of the app.
+   * copy a Discover locator URL, so the read-only form takes only Discover. Kibana 7 copies the full
+   * URL of the app.
    */
+  static copyLinkAndCheck(app: SharedApp, tenancy: string, options: { canWrite: true }): void;
+  static copyLinkAndCheck(app: 'discover', tenancy: string, options: { canWrite: false }): void;
   static copyLinkAndCheck(app: SharedApp, tenancy: string, { canWrite }: { canWrite: boolean }) {
     cy.log('Copy the share link');
     const tenancyParam = `${TENANCY_QUERY_STRING_KEY}=${tenancy}`;

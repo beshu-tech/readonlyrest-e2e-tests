@@ -36,8 +36,15 @@ const formatLoggerData = (data: unknown) =>
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   // The error of the first failed wait for Kibana answers. A node that does not answer user requests
   // stays so until it restarts (RORDEV-2283), and CI does not restart it. So the later specs of
-  // this suite run fail at once with this error, and do not wait again.
+  // this suite run fail at once with this error, and do not wait again. In `cypress open` a person
+  // can restart Kibana between runs, so there every wait starts again.
   let kibanaAnswerFailure: string | undefined;
+  const rememberKibanaAnswerFailure = (failure: string) => {
+    if (!config.isInteractive) {
+      kibanaAnswerFailure = failure;
+    }
+    return failure;
+  };
 
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<unknown> {
@@ -266,10 +273,12 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       while (answers < answersInARow) {
         const timeLeft = deadline - Date.now();
         if (timeLeft <= 0) {
-          kibanaAnswerFailure =
-            `Kibana did not answer ${answersInARow} requests in a row within ${totalTimeoutMs} ms. ` +
-            `GET ${url}: ${outcomes.join(', ')}`;
-          throw new Error(kibanaAnswerFailure);
+          throw new Error(
+            rememberKibanaAnswerFailure(
+              `Kibana did not answer ${answersInARow} requests in a row within ${totalTimeoutMs} ms. ` +
+                `GET ${url}: ${outcomes.join(', ')}`
+            )
+          );
         }
         const startedAt = Date.now();
         try {

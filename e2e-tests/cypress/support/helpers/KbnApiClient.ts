@@ -102,8 +102,8 @@ export class KbnApiClient {
   }
 
   // A Kibana request can fail with a 500 (socket hang up) when Kibana reuses an idle connection to
-  // ROR's Pre-Elasticsearch-proxy just as the proxy closes it (RORDEV-2314). It hit this cleanup
-  // once, on 7.17 docker (CI run 38221779222).
+  // ROR's Pre-Elasticsearch-proxy just as the proxy closes it (RORDEV-2314), so the delete repeats
+  // until it answers 2xx. Remove the repeat when a release has the fix.
   public deleteSampleData(sampleDatasetName: string, credentials: BasicCredentials, group?: string): void {
     this.repeatUntilSuccess({
       method: 'DELETE',

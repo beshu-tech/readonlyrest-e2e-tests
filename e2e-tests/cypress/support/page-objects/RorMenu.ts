@@ -2,7 +2,7 @@ import { recurse } from 'cypress-recurse';
 import { interceptNext } from '../helpers/interceptNext';
 import { Loader } from './Loader';
 import { expectSessionEnd } from '../sessionEnd';
-import { Popover } from './Popover';
+import { clickIsOld, Popover } from './Popover';
 
 export class RorMenu {
   // The RorPopover wrapper, not the inner <button className="ror-menu-trigger"> that carries the
@@ -12,9 +12,6 @@ export class RorMenu {
 
   // The button in TRIGGER that carries the onClick. A DOM click needs the element of the handler.
   private static readonly TRIGGER_BUTTON = '#rorMenuPopover .ror-menu-trigger';
-
-  // A popover opens in well under a second. After this time with no popover, the click is lost.
-  private static readonly RECLICK_AFTER_MS = 3000;
 
   // rorPopover.tsx passes panelProps={{ id: panelId }} and EuiPopover only mounts the panel while
   // open, so the panel's presence is an exact "the menu is open" signal.
@@ -36,21 +33,17 @@ export class RorMenu {
   }
 
   /**
-   * Clicks the `selector` element with `text` in the menu panel, or with `subMenuTrigger` in the
-   * sub-menu that this panel item opens.
+   * Clicks the `selector` element with `text` in the ROR menu, or in the sub-menu that `subMenuTrigger` opens.
    *
-   * Kibana 9.5 can mount the ROR header control again while Kibana starts: a header control that
-   * registers later goes before it, and Kibana lists the controls by index. That closes every ROR
-   * popover. cy.click() then fails the test, because its element left the page and nothing opens the
-   * menu again. So each check looks at the page as it is now: it clicks the item when the item is
-   * there, and else opens what is closed. The clicks are DOM clicks on the elements of the check. A
-   * trigger gets another click only 3 s after its last one: a click while its popover opens closes it.
+   * Kibana 9.5 can mount the ROR header control again while it starts, and that closes every ROR popover
+   * (RORDEV-2321). cy.click() then fails on an element that left the page, so each pass reads the page again.
+   * Remove the loop when a release has the fix.
    */
   static clickMenuItem(selector: string, text: string, subMenuTrigger?: string, matchCase = true) {
     cy.log(`ROR menu: click ${text}`);
     const lastClickAt: Record<string, number> = {};
     const clickTrigger = ($trigger: JQuery<HTMLElement>, name: string) => {
-      if ($trigger.length > 0 && Date.now() - (lastClickAt[name] ?? 0) >= RorMenu.RECLICK_AFTER_MS) {
+      if ($trigger.length > 0 && clickIsOld(lastClickAt[name] ?? 0)) {
         $trigger[0].click();
         lastClickAt[name] = Date.now();
       }

@@ -1,6 +1,7 @@
 import { recurse } from 'cypress-recurse';
 import { SecuritySettings } from './SecuritySettings';
 import { adminCredentials, kibanaCredentials } from '../helpers/credentials';
+import { interceptNext } from '../helpers/interceptNext';
 
 export class ActivationKeys {
   static DEFAULT_ACTIVATION_KEY =
@@ -12,7 +13,7 @@ export class ActivationKeys {
 
   static changeLicenseToFree() {
     cy.log('Change license to free');
-    cy.intercept({ method: 'POST', pathname: '/pkp/api/license' }).as('activateKey');
+    const activateKey = interceptNext('activateKey', { method: 'POST', pathname: '/pkp/api/license' });
     SecuritySettings.getIframeBody().contains('Load Activation Key').click();
     SecuritySettings.getIframeBody()
       .find('[name="activationToken"]')
@@ -20,15 +21,15 @@ export class ActivationKeys {
       .trigger('input');
     // Activate is the confirm button of the modal. It stays disabled until the key field has a value.
     SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').should('not.be.disabled').click();
-    cy.waitForResponse('@activateKey').its('statusCode').should('equal', 200);
+    cy.waitForResponse(activateKey).its('statusCode').should('equal', 200);
   }
 
   static deleteLicense() {
     cy.log('Delete license');
-    cy.intercept({ method: 'DELETE', pathname: '/pkp/api/license' }).as('deleteKey');
+    const deleteKey = interceptNext('deleteKey', { method: 'DELETE', pathname: '/pkp/api/license' });
     SecuritySettings.getIframeBody().contains('Delete').click();
     SecuritySettings.getIframeBody().find('[data-testid="confirm-button"]').should('not.be.disabled').click();
-    cy.waitForResponse('@deleteKey').its('statusCode').should('equal', 200);
+    cy.waitForResponse(deleteKey).its('statusCode').should('equal', 200);
   }
 
   static verifyEdition(edition: 'kbn_free' | 'kbn_ent') {
@@ -52,10 +53,29 @@ export class ActivationKeys {
         recurse(
           () => ActivationKeys.sessionIndexStatus(),
           status => status === 404,
-          { limit: 60, delay: 500, timeout: 40000, log: 'the sessions are deleted' }
+          { limit: 80, delay: 500, timeout: 40000, log: 'the sessions are deleted' }
         );
       }
     });
+  }
+
+  // Waits for the logout only when the restore changes the edition, so that it cannot log out the next test.
+  static restoreEnterpriseKey() {
+    const restore = () =>
+      cy.kbnPost({
+        endpoint: 'api/ror/license?overwrite=true',
+        credentials: adminCredentials,
+        payload: { license: `${Cypress.env().enterpriseActivationKey}` }
+      });
+    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: adminCredentials }).then(
+      ({ license }) => {
+        if (license.edition === 'kbn_ent') {
+          restore();
+        } else {
+          ActivationKeys.changeEditionAndWaitForLogout(restore);
+        }
+      }
+    );
   }
 
   static sessionIndexStatus() {

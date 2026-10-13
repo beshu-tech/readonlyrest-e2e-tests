@@ -7,6 +7,7 @@ import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { adminCredentials } from '../support/helpers/credentials';
+import { StackManagement } from '../support/page-objects/StackManagement';
 
 describe('Reporting index', () => {
   beforeEach(() => {
@@ -27,9 +28,9 @@ describe('Reporting index', () => {
     RorMenu.changeTenancy('Infosec', `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*#/`);
     KibanaNavigation.openPage('Stack Management');
     if (kibanaVersion.gte('8.0.0')) {
-      KibanaNavigation.openSubPage('Data Views');
+      StackManagement.openPage('Data Views');
     } else {
-      KibanaNavigation.openSubPage('Index Patterns');
+      StackManagement.openPage('Index Patterns');
     }
     Discover.createIndexPattern(indexPattern);
     cy.contains('@timestamp').should('be.visible');

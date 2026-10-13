@@ -29,12 +29,7 @@ describe('Spaces', () => {
     cy.url().should('include', `${Cypress.config().baseUrl}/s/default/app/management/kibana/spaces/`);
     KibanaNavigation.openHomepage();
     KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfNotExists('Analytics');
-
-    cy.log('Clear all changes');
-    ManageSpaces.openEditSpacePage('default', 'Default');
-    cy.get('#featureCategoryCheckbox_kibana').check();
-    Spaces.saveCurrentSpaceFeatures();
+    KibanaNavigation.verifyAppLinkAbsent('Analytics');
   });
 
   // FIXME: for Kibana 9.1.0 there is a new .kibana_security_search index not handled on es side yet
@@ -48,7 +43,7 @@ describe('Spaces', () => {
     cy.log('Check if feature in space hidden');
     KibanaNavigation.openHomepage();
     KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfNotExists('Analytics');
+    KibanaNavigation.verifyAppLinkAbsent('Analytics');
 
     Spaces.removeSpace(SPACE_NAME);
   });

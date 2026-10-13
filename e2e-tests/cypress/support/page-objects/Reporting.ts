@@ -63,7 +63,7 @@ export class Reporting {
   static verifyIfReportingPageAfterRefresh() {
     cy.log('Verify if reporting page open after refresh');
     // Kibana 8.19 and 9.1+ redirect the reporting page to /exports. 9.0 keeps the bare path.
-    const expectedUrl = kibanaVersion.has91Features()
+    const expectedUrl = kibanaVersion.is819OrFrom91()
       ? `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting/exports`
       : `${Cypress.config().baseUrl}/s/default/app/management/insightsAndAlerting/reporting`;
 
@@ -102,9 +102,9 @@ export class Reporting {
    * verifyReportsCount).
    *
    * Kibana's download button calls window.open() with the report URL, and Cypress does not control
-   * that window. On Kibana 9.5.5 it often never requests the URL (locally 6 of 6 runs, CI 2 runs), so
-   * no file arrives. So the test checks that the click opens the report URL, then fetches that URL
-   * with the browser session and checks the CSV.
+   * that window. On Kibana 9.5.5 that window often never requests the URL, so no file arrives. So
+   * the test checks that the click opens the report URL, then fetches that URL with the browser
+   * session and checks the CSV.
    */
   static downloadAndVerifyAnyReportExists() {
     cy.log('download report (title-agnostic)');

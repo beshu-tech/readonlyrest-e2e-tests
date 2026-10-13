@@ -6,6 +6,7 @@ import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { kibanaVersion } from '../support/helpers';
 import { adminCredentials, user2Credentials } from '../support/helpers/credentials';
+import { StackManagement } from '../support/page-objects/StackManagement';
 
 const testIndexName = '.kibana_test';
 
@@ -50,7 +51,7 @@ describe('Index management', () => {
     });
     esApiClient.addDocument(testIndexName, '0', { title: 'Sample document', content: 'This is a test document' });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Index Management');
+    StackManagement.openPage('Index Management');
     IndexManagement.IncludeHiddenIndices();
     IndexManagement.searchIndices(testIndexName);
     IndexManagement.openIndex(testIndexName);
@@ -64,7 +65,7 @@ describe('Index management', () => {
 
     // Delete index
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Index Management');
+    StackManagement.openPage('Index Management');
     IndexManagement.IncludeHiddenIndices();
     IndexManagement.searchIndices(testIndexName);
     IndexManagement.openIndex(testIndexName);
@@ -80,7 +81,7 @@ describe('Index management', () => {
   it('should verify empty data streams page', () => {
     Login.initialization({ credentials: user2Credentials });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Index Management');
+    StackManagement.openPage('Index Management');
     IndexManagement.openDataStreams();
     IndexManagement.verifyDataStreamsEmptyPage();
   });

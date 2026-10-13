@@ -22,8 +22,9 @@ if (kibanaVersion.gte('8.15.0')) {
       const oldFormatReportingIndex = `.reporting${index}-2025-02-02`;
       const newFormatReportingIndex = `.kibana-reporting-${index}`;
       const newFormatReportingName = 'new format reporting index doc';
-      // Kibana 8 can give a report made right after the save the title "Untitled Discover session"
-      // (see Reporting.verifyReportsCount), so on 8 either title is the new report.
+      // Kibana 8 can give a report made right after the save the title "Untitled Discover session", a
+      // race in Kibana and not in ROR. So on 8 either title is the new report, and this check cannot
+      // see a lost name there. Remove the second title when no leg runs Kibana 8.
       const newFormatReportTitle = kibanaVersion.lt('9.0.0')
         ? new RegExp(`${newFormatReportingName}|Untitled Discover session`)
         : newFormatReportingName;

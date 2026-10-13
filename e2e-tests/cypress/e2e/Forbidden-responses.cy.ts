@@ -1,4 +1,3 @@
-import semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { Settings } from '../support/page-objects/Settings';
 import { StackManagement } from '../support/page-objects/StackManagement';
@@ -7,7 +6,7 @@ import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { user2Credentials } from '../support/helpers/credentials';
 
 const forbiddenMessage = 'You shall not pass!';
@@ -44,7 +43,7 @@ describe('Forbidden responses', () => {
   });
 
   // _bulk_delete exists from Kibana 8.7.0.
-  if (semver.gte(getKibanaVersion(), '8.7.0')) {
+  if (kibanaVersion.gte('8.7.0')) {
     it('keeps a saved object instead of hanging when bulk-delete is forbidden', () => {
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-bulk-delete', title: 'r*', name: 'Forbidden bulk delete' } },
@@ -97,7 +96,7 @@ describe('Forbidden responses', () => {
   }
 
   // Kibana before 8.7.0 deletes one saved object at a time, through the single-delete patch.
-  if (semver.lt(getKibanaVersion(), '8.7.0')) {
+  if (kibanaVersion.lt('8.7.0')) {
     it('shows a danger toast and keeps the row instead of faking a delete when a single saved-object delete is forbidden', () => {
       // On the list page ROR's patch resolves after the toast, so the table re-fetches the
       // objects and shows again the row that Elasticsearch did not delete.
@@ -120,7 +119,7 @@ describe('Forbidden responses', () => {
     });
   }
 
-  if (semver.lt(getKibanaVersion(), '8.0.0')) {
+  if (kibanaVersion.lt('8.0.0')) {
     it('shows a danger toast and keeps the object instead of faking a delete when an inspect-page delete is forbidden', () => {
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-inspect-delete',
@@ -152,7 +151,7 @@ describe('Forbidden responses', () => {
 
       Login.initialization({ credentials: user2Credentials });
       KibanaNavigation.openPage('Stack Management');
-      KibanaNavigation.openSubPage('Index Patterns');
+      StackManagement.openPage('Index Patterns');
       cy.contains('a', 'forbidden-edit-page-delete*').click();
       cy.get('[data-test-subj="deleteIndexPatternButton"]').click();
       cy.get('[data-test-subj="confirmModalConfirmButton"]').click();
@@ -199,7 +198,7 @@ describe('Forbidden responses', () => {
 
     Login.initialization({ credentials: user2Credentials });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Tags');
+    StackManagement.openPage('Tags');
     // Actions sit behind a collapsed menu; the popover renders outside the row.
     cy.contains('tr', forbiddenTagName).find('[data-test-subj="euiCollapsedItemActionsButton"]').click();
     cy.get('[data-test-subj="tagsTableAction-delete"]').click();
@@ -225,7 +224,7 @@ describe('Forbidden responses', () => {
 
     Login.initialization({ credentials: user2Credentials });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Tags');
+    StackManagement.openPage('Tags');
     cy.contains('tr', forbiddenAssignTagName).find('[data-test-subj="euiCollapsedItemActionsButton"]').click();
     cy.get('[data-test-subj="tagsTableAction-assign"]').click();
     cy.get('[data-test-subj="assign-result-dashboard-forbidden-tag-assign-dashboard"]').click();
@@ -236,7 +235,7 @@ describe('Forbidden responses', () => {
   });
 
   // Before 8.7.0 the single-delete patch covers the data view delete. From 9.2.0 Kibana catches it.
-  if (semver.satisfies(getKibanaVersion(), '>=8.7.0 <9.2.0')) {
+  if (kibanaVersion.satisfies('>=8.7.0 <9.2.0')) {
     it('shows a danger toast instead of staying silent when a data view delete is forbidden', () => {
       kbnApiClient.createDataView(
         {
@@ -260,7 +259,7 @@ describe('Forbidden responses', () => {
   }
 
   // Only the flyout of 9.2.0 and later passes a bare Error with no title/text.
-  if (semver.gte(getKibanaVersion(), '9.2.0')) {
+  if (kibanaVersion.gte('9.2.0')) {
     it('fills the empty delete-data-view toast with the forbidden message', () => {
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-data-view-delete', title: 'r*', name: 'Forbidden data view delete' } },

@@ -8,7 +8,6 @@ import { Loader } from '../support/page-objects/Loader';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SampleData } from '../support/helpers/SampleData';
-import { recordHistoryChanges } from '../support/helpers/historyChanges';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { adminCredentials } from '../support/helpers/credentials';
@@ -63,7 +62,7 @@ describe('sanity check', () => {
 
     cy.log('Change tenancy, and initialize it');
     // Kibana 8.19 and 9.1+ redirect the reporting page to /exports. 9.0 keeps the bare path.
-    const finishUrl = kibanaVersion.has91Features()
+    const finishUrl = kibanaVersion.is819OrFrom91()
       ? '/s/default/app/management/insightsAndAlerting/reporting/exports'
       : '/s/default/app/management/insightsAndAlerting/reporting';
 
@@ -92,15 +91,13 @@ describe('sanity check', () => {
 
     cy.log('Verify the hidden apps feature');
     KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfHidden('Stack Management');
-    KibanaNavigation.checkIfNotExists('Dev Tools');
+    KibanaNavigation.verifyAppLinkAbsent('Dev Tools');
     KibanaNavigation.checkIfRouteNotReachable(
       `/s/default/app/management?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`
     );
   });
 
   it('should check that logout functionality set nextUrl path as expected', () => {
-    recordHistoryChanges();
     KibanaNavigation.openPage('Maps');
     // A request of a page that still loads gets a redirect to /logout when the logout ends the session.
     // That /logout can come after the next login and end the new session too (RORDEV-2307). So the

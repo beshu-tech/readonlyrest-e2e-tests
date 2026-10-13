@@ -16,30 +16,8 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     });
   }
 
-  // _find gives one page of results, so this reads page after page until it has them all. The
-  // deletes come after the last page: a delete between two pages moves objects to earlier pages.
-  private findAllSavedObjects(
-    credentials: BasicCredentials,
-    group?: string,
-    page = 1,
-    found: SavedObject[] = []
-  ): Cypress.Chainable<SavedObject[]> {
-    return this.getSavedObjects(credentials, group, { page, perPage: 100 }).then(result => {
-      // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
-      // index can be mid-reset, and a session sweep or config restart can log the request out,
-      // in which case the _find answers with a login page instead of the find JSON. An index
-      // that is already resetting has nothing left to clean, so treat that as the end of the list.
-      const pageObjects = result?.saved_objects ?? [];
-      const all = [...found, ...pageObjects];
-      if (pageObjects.length === 0 || all.length >= (result.total ?? 0)) {
-        return cy.wrap(all, { log: false });
-      }
-      return this.findAllSavedObjects(credentials, group, page + 1, all);
-    });
-  }
-
   // Under resetKibanaIndexToTemplate, a request of the user resets the index of the user's tenancy
-  // to the template. Once, on 9.5.5 docker (CI run 38160830949), the first answer was a 403.
+  // to the template. The first answer can be a 403, so the request repeats until it answers 2xx.
   public resetTenancyIndexToTemplate(credentials: BasicCredentials): void {
     cy.log(`Reset the tenancy index of ${accountOf(credentials)} to the template`);
     this.repeatUntilSuccess({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials });
@@ -119,36 +97,6 @@ export class KbnApiAdvancedClient extends KbnApiClient {
         error: `Search sessions were not deleted${group ? ` in ${group}` : ''}`
       }
     );
-  }
-
-  // Yields undefined when the answer is not the JSON of a search session list.
-  private findSearchSessionIds(credentials: BasicCredentials, group?: string): Cypress.Chainable<string[] | undefined> {
-    return cy
-      .kbnPost({
-        endpoint: 'internal/session/_find',
-        credentials,
-        currentGroupHeader: group,
-        headers: SEARCH_SESSION_API_HEADERS,
-        payload: { page: 1, perPage: 100 },
-        failOnStatusCode: false
-      })
-      .then(body => {
-        // A logged-out request gets the login page, a string.
-        const sessions = (body as { saved_objects?: Array<{ id: string }> } | undefined)?.saved_objects;
-        return cy.wrap(Array.isArray(sessions) ? sessions.map(session => session.id) : undefined, { log: false });
-      });
-  }
-
-  // Yields undefined when the answer is not a list of spaces: an error status, or the login page.
-  private findSpaces(credentials: BasicCredentials, group?: string): Cypress.Chainable<Space[] | undefined> {
-    return cy
-      .kbnGet<unknown>({
-        endpoint: 'api/spaces/space',
-        credentials,
-        currentGroupHeader: group,
-        failOnStatusCode: false
-      })
-      .then(body => cy.wrap(Array.isArray(body) ? (body as Space[]) : undefined, { log: false }));
   }
 
   /**
@@ -241,6 +189,58 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     }
 
     return poll();
+  }
+
+  // _find gives one page of results, so this reads page after page until it has them all. The
+  // deletes come after the last page: a delete between two pages moves objects to earlier pages.
+  private findAllSavedObjects(
+    credentials: BasicCredentials,
+    group?: string,
+    page = 1,
+    found: SavedObject[] = []
+  ): Cypress.Chainable<SavedObject[]> {
+    return this.getSavedObjects(credentials, group, { page, perPage: 100 }).then(result => {
+      // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
+      // index can be mid-reset, and a session sweep or config restart can log the request out,
+      // in which case the _find answers with a login page instead of the find JSON. An index
+      // that is already resetting has nothing left to clean, so treat that as the end of the list.
+      const pageObjects = result?.saved_objects ?? [];
+      const all = [...found, ...pageObjects];
+      if (pageObjects.length === 0 || all.length >= (result.total ?? 0)) {
+        return cy.wrap(all, { log: false });
+      }
+      return this.findAllSavedObjects(credentials, group, page + 1, all);
+    });
+  }
+
+  // Yields undefined when the answer is not the JSON of a search session list.
+  private findSearchSessionIds(credentials: BasicCredentials, group?: string): Cypress.Chainable<string[] | undefined> {
+    return cy
+      .kbnPost({
+        endpoint: 'internal/session/_find',
+        credentials,
+        currentGroupHeader: group,
+        headers: SEARCH_SESSION_API_HEADERS,
+        payload: { page: 1, perPage: 100 },
+        failOnStatusCode: false
+      })
+      .then(body => {
+        // A logged-out request gets the login page, a string.
+        const sessions = (body as { saved_objects?: Array<{ id: string }> } | undefined)?.saved_objects;
+        return cy.wrap(Array.isArray(sessions) ? sessions.map(session => session.id) : undefined, { log: false });
+      });
+  }
+
+  // Yields undefined when the answer is not a list of spaces: an error status, or the login page.
+  private findSpaces(credentials: BasicCredentials, group?: string): Cypress.Chainable<Space[] | undefined> {
+    return cy
+      .kbnGet<unknown>({
+        endpoint: 'api/spaces/space',
+        credentials,
+        currentGroupHeader: group,
+        failOnStatusCode: false
+      })
+      .then(body => cy.wrap(Array.isArray(body) ? (body as Space[]) : undefined, { log: false }));
   }
 }
 

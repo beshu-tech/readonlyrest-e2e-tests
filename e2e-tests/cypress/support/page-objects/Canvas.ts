@@ -1,14 +1,14 @@
 import { shouldNotBeShown } from '../helpers/hiddenByCss';
-import { ListingTable } from './ListingTable';
+import { SavedObjectsListTable } from './SavedObjectsListTable';
 
 export class Canvas {
   static openItem(number: number) {
-    ListingTable.openItem(number);
+    SavedObjectsListTable.openItem(number);
   }
 
   // The refresh control shows for every user, so it proves that the workpad header is rendered.
   // Kibana 7.x renders the Edit menu for a read-only user too, and ROR hides it with CSS.
-  static writeControlsNotShown() {
+  static verifyWriteControlsNotShown() {
     cy.log('Canvas write controls not shown');
     cy.getByDataTestSubj('canvas-refresh-control').should('be.visible');
     shouldNotBeShown('[data-test-subj="canvasWorkpadEditMenuButton"]');

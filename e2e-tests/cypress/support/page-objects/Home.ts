@@ -44,15 +44,20 @@ export class Home {
     cy.wait('@saveSampleData');
   }
 
-  // The add and remove controls exist only on the sample data tab. The card and its "View data"
-  // control prove that the tab is rendered with the installed data set.
-  static sampleDataControlsHidden() {
-    cy.log('Sample data add and remove controls hidden');
+  static openSampleDataTab() {
+    cy.log('Open the sample data tab');
     Tenancy.getTenancyFromUrl().then(tenancy => {
       cy.visit(`/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${tenancy}#/tutorial_directory/sampleData`);
     });
     // The wait covers the full Kibana load that the visit starts.
     cy.get('[data-test-subj="homeTab-sampleData"]', { timeout: 80000 }).should('exist');
+  }
+
+  // The add and remove controls exist only on the sample data tab. The card and its "View data"
+  // control prove that the tab is rendered with the installed data set. With the set installed,
+  // Kibana renders the remove control, which ROR hides, and no add control.
+  static verifySampleDataControlsNotShown() {
+    cy.log('Sample data add and remove controls not shown');
     // Kibana 8.x up to 9.3 puts the data set cards in an accordion. A closed EUI accordion keeps its
     // cards in the page (height 0, no display none), so the checks do not open it. Kibana 8.19 can
     // mount the home app again after it shows, so all checks run on one state of the page: separate
@@ -61,6 +66,7 @@ export class Home {
       const exists = (subject: string) => $body.find(`[data-test-subj="${subject}"]`).length > 0;
       expect(exists('sampleDataSetCardecommerce'), 'ecommerce card exists').to.equal(true);
       expect(exists('launchSampleDataSetecommerce'), 'ecommerce launch button exists').to.equal(true);
+      expect(exists('removeSampleDataSetecommerce'), 'ecommerce remove button exists').to.equal(true);
       expectNotShown($body, '[data-test-subj="addSampleDataSetecommerce"]');
       expectNotShown($body, '[data-test-subj="removeSampleDataSetecommerce"]');
     });

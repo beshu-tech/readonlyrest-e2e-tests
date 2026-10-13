@@ -145,7 +145,10 @@ export class EsApiAdvancedClient extends EsApiClient {
       const regex = new RegExp(pattern);
       result
         .filter(indexObj => regex.test(indexObj.index))
-        .forEach(matchingIndex => this.deleteIndex(matchingIndex.index));
+        .forEach(matchingIndex => {
+          cy.log(`Deleting index ${matchingIndex.index}...`);
+          this.deleteIndex(matchingIndex.index);
+        });
     });
   }
 
@@ -155,7 +158,10 @@ export class EsApiAdvancedClient extends EsApiClient {
       const regex = new RegExp(pattern);
       result.data_streams
         .filter(dataStream => regex.test(dataStream.name))
-        .forEach(matchingDataStream => this.deleteDataStream(matchingDataStream.name));
+        .forEach(matchingDataStream => {
+          cy.log(`Deleting data stream ${matchingDataStream.name}...`);
+          this.deleteDataStream(matchingDataStream.name);
+        });
     });
   }
 }

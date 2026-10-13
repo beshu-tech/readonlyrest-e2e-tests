@@ -12,19 +12,19 @@ describe('Kibana-content-overwrite', () => {
     Login.initialization();
   });
 
-  it('should overwrite Kibana alerting content', () => {
-    const isAlertingOverwritePageVisible = () => {
-      if (kibanaVersion.gte('8.6.0')) {
-        cy.contains(
-          'Kibana alerting does not work with ReadonlyREST, but we are working on an even better alerting and reporting solution.'
-        ).should('be.visible');
-      } else {
-        cy.contains(
-          'Kibana alerting does not work with ReadonlyREST, but we are working on an even better alerting and reporting solution.'
-        ).should('not.exist');
-      }
-    };
+  const isAlertingOverwritePageVisible = () => {
+    if (kibanaVersion.gte('8.6.0')) {
+      cy.contains(
+        'Kibana alerting does not work with ReadonlyREST, but we are working on an even better alerting and reporting solution.'
+      ).should('be.visible');
+    } else {
+      cy.contains(
+        'Kibana alerting does not work with ReadonlyREST, but we are working on an even better alerting and reporting solution.'
+      ).should('not.exist');
+    }
+  };
 
+  it('should overwrite Kibana alerting content', () => {
     if (kibanaVersion.gte('8.6.0')) {
       if (kibanaVersion.gte('8.14.0')) {
         StackManagement.openAlertsPage();
@@ -33,18 +33,16 @@ describe('Kibana-content-overwrite', () => {
       }
       StackManagement.openRulesPage();
       isAlertingOverwritePageVisible();
-
-      KibanaNavigation.openHomepage();
-
-      StackManagement.openConnectorsPage();
-      if (rorKbnReleaseBefore(CONNECTORS_OVERWRITE_FIX)) {
-        cy.log(`Skipped: ROR KBN ${Cypress.env('rorKbnVersion')} misses the Connectors overwrite (RORDEV-2185)`);
-      } else {
-        isAlertingOverwritePageVisible();
-      }
     } else {
       StackManagement.openRulesAndConnectorsPage();
       isAlertingOverwritePageVisible();
     }
+  });
+
+  // Before 8.6 the Rules and Connectors page of the test above covers the Connectors.
+  const connectorsTest = kibanaVersion.gte('8.6.0') && !rorKbnReleaseBefore(CONNECTORS_OVERWRITE_FIX) ? it : it.skip;
+  connectorsTest('should overwrite the Kibana Connectors page', () => {
+    StackManagement.openConnectorsPage();
+    isAlertingOverwritePageVisible();
   });
 });

@@ -1,11 +1,11 @@
 import { kibanaVersion } from '../helpers';
 import { shouldNotBeShown } from '../helpers/hiddenByCss';
-import { ListingTable } from './ListingTable';
+import { SavedObjectsListTable } from './SavedObjectsListTable';
 
 export class IndexPattern {
   static openItem(number: number) {
     cy.log('Open index pattern item');
-    ListingTable.openItem(number);
+    SavedObjectsListTable.openItem(number);
   }
 
   // The title proves that the header with the delete control is rendered. Kibana 9.4 and later puts
@@ -20,7 +20,7 @@ export class IndexPattern {
   }
 
   // The table proves that the list page is rendered. Kibana 8.0 renames index patterns to data views.
-  static createButtonHidden() {
+  static verifyCreateButtonNotShown() {
     cy.log('Create index pattern button hidden');
     cy.getByDataTestSubj('indexPatternTable').should('be.visible');
     if (kibanaVersion.gte('8.0.0')) {

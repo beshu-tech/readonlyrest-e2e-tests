@@ -140,6 +140,11 @@ Cypress.Commands.add('shouldHaveStyle', { prevSubject: true }, (subject, propert
 
 Cypress.Commands.add('getByDataTestSubj', (value, options) => cy.get(`[data-test-subj="${value}"]`, options));
 
+// A query, not a command: a retry runs the find again, also after its subject left the page.
+Cypress.Commands.addQuery('findByDataTestSubj', function (value: string) {
+  return (subject: JQuery<HTMLElement>) => subject.find(`[data-test-subj="${value}"]`);
+});
+
 Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   const baseUrl = (Cypress.config().baseUrl ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const escapedPath = urlPattern

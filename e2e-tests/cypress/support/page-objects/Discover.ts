@@ -3,6 +3,7 @@ import { TopNav } from './TopNav';
 import { kibanaVersion } from '../helpers';
 import { interceptNext } from '../helpers/interceptNext';
 import { recurse } from 'cypress-recurse';
+import { StackManagement } from './StackManagement';
 
 const QUEUED_REPORT_TOAST = 'Queued report for search';
 
@@ -82,7 +83,8 @@ export class Discover {
       cy.getByDataTestSubj('app-menu-overflow-button').click();
       cy.getByDataTestSubj('exportTopNavButton').click();
       cy.getByDataTestSubj('exportMenuItem-CSV').click();
-    } else if (kibanaVersion.has91Features()) {
+    } else if (kibanaVersion.is819OrFrom91()) {
+      // Kibana 8.19 and 9.1 to 9.3 have their own export button in the top navigation.
       cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
       cy.get('[data-test-subj=shareTopNavButton]').click();
@@ -111,15 +113,15 @@ export class Discover {
 
   // Kibana 9.4 and later always puts New and Open in the overflow popover of the top menu. Open is
   // allowed, so it proves that the popover holds the items.
-  static writeControlsNotShown() {
+  static verifyWriteControlsNotShown() {
     cy.log('Discover write controls not shown');
     if (kibanaVersion.gte('9.4.0')) {
-      TopNav.overflowButtonExists();
+      TopNav.verifyOverflowButtonExists();
     }
-    TopNav.checkControlsNotShown(
+    TopNav.verifyControlsNotShown(
       'shareTopNavButton',
       ['discoverNewButton', 'discoverSaveButton', 'interactiveSaveMenuItem', 'discoverOptionsButton'],
-      'discoverOpenButton'
+      { overflowAnchorTestSubj: 'discoverOpenButton', inPage: ['discoverNewButton'] }
     );
   }
 
@@ -127,7 +129,7 @@ export class Discover {
     cy.log('open data view page');
     if (kibanaVersion.gte('8.1.0')) {
       KibanaNavigation.openPage('Stack Management');
-      KibanaNavigation.openSubPage('Data Views');
+      StackManagement.openPage('Data Views');
     } else {
       KibanaNavigation.openPage('Discover');
     }

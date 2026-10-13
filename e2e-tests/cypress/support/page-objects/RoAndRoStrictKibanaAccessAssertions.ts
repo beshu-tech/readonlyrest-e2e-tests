@@ -14,6 +14,7 @@ import { Tenancy } from './Tenancy';
 import { kbnApiClient } from '../helpers/KbnApiClient';
 import { Login } from './Login';
 import { Share } from './Share';
+import { StackManagement } from './StackManagement';
 
 export class RoAndRoStrictKibanaAccessAssertions {
   static runAssertions(fixtureYamlFileName: string, credentials: BasicCredentials) {
@@ -21,7 +22,8 @@ export class RoAndRoStrictKibanaAccessAssertions {
     Settings.setSettingsData(fixtureYamlFileName);
     Login.initialization();
     RoAndRoStrictKibanaAccessAssertions.changeTenancyAndAwaitSpaces('template');
-    Home.sampleDataControlsHidden();
+    Home.openSampleDataTab();
+    Home.verifySampleDataControlsNotShown();
 
     cy.log('Verify Dashboard features');
     // From 9.3 the dashboards listing no longer issues `POST /content_management/rpc/search`, so the
@@ -48,7 +50,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     // Panels first: on Kibana 9.4, closing the app menu while the panels still render throws React
     // error #185 (maximum update depth) and leaves the page blank.
     Dashboard.waitForPanelsRendered();
-    Dashboard.writeControlsNotShown();
+    Dashboard.verifyWriteControlsNotShown();
 
     cy.log('Verify Lens panel renders without error');
     cy.get('[data-test-subj="embeddableError"]').should('not.exist');
@@ -59,7 +61,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     cy.log('Verify Discover features');
     KibanaNavigation.openPage('Discover');
     SubHeader.readonlyDiscoverBadgeVisible();
-    Discover.writeControlsNotShown();
+    Discover.verifyWriteControlsNotShown();
 
     cy.log('Verify discover Link sharing');
     Tenancy.getTenancyFromUrl().then(tenancy => {
@@ -88,7 +90,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
       cy.wait('@canvasResolve');
       SubHeader.readonlyBadgeVisible();
       SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Tracking');
-      Canvas.writeControlsNotShown();
+      Canvas.verifyWriteControlsNotShown();
     }
 
     KibanaNavigation.openPage('Stack Management');
@@ -97,19 +99,17 @@ export class RoAndRoStrictKibanaAccessAssertions {
     const VISIBLE_STACK_MANAGEMENT_ITEMS = kibanaVersion.gte('8.0.0')
       ? ['Reporting', 'Data Views', 'Saved Objects']
       : ['Reporting', 'Index Patterns', 'Saved Objects'];
-    cy.get('.euiSideNavItem a').should('have.length', VISIBLE_STACK_MANAGEMENT_ITEMS.length);
-    VISIBLE_STACK_MANAGEMENT_ITEMS.forEach(title => {
-      cy.get(`span[title="${title}"]`).should('be.visible');
-    });
+    KibanaNavigation.verifyStackManagementShownLinksCount(VISIBLE_STACK_MANAGEMENT_ITEMS.length);
+    VISIBLE_STACK_MANAGEMENT_ITEMS.forEach(title => KibanaNavigation.checkIfStackManagementSubPageVisible(title));
 
     cy.log('Verify Index Pattern features');
     if (kibanaVersion.gte('8.0.0')) {
-      KibanaNavigation.openSubPage('Data Views');
+      StackManagement.openPage('Data Views');
     } else {
-      KibanaNavigation.openSubPage('Index Patterns');
+      StackManagement.openPage('Index Patterns');
     }
 
-    IndexPattern.createButtonHidden();
+    IndexPattern.verifyCreateButtonNotShown();
     IndexPattern.openItem(0);
     SubHeader.readonlyBadgeVisible();
     if (kibanaVersion.gte('8.0.0')) {

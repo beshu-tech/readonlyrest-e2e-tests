@@ -5,9 +5,7 @@ import { kibanaVersion, pasteText } from '../helpers';
 export class DevTools {
   static openDevTools() {
     cy.log('Open Dev tools');
-    if (kibanaVersion.gte('8.16.0') && kibanaVersion.lt('9.2.0')) {
-      DevTools.markConsoleTourAsDone();
-    }
+    DevTools.disableConsoleTour();
     KibanaNavigation.openPage('Dev Tools');
 
     if (kibanaVersion.lt('8.16.0')) {
@@ -17,8 +15,12 @@ export class DevTools {
 
   // Kibana 8.16 to 9.1 opens the Console with a tour. One navigation can mount the Console two or three
   // times, and each mount shows its own tour, so a "Skip tour" click can find more than one button.
-  // The Console reads this key when it mounts, and a done tour shows no popover.
-  private static markConsoleTourAsDone() {
+  // The Console reads this key when it mounts and uses the object as its whole tour state, so the
+  // object is Kibana's start state with the tour turned off.
+  private static disableConsoleTour() {
+    if (kibanaVersion.lt('8.16.0') || kibanaVersion.gte('9.2.0')) {
+      return;
+    }
     cy.window().then(win => {
       win.localStorage.setItem(
         'consoleTour',
@@ -32,9 +34,9 @@ export class DevTools {
     });
   }
 
-  // Sends the request from the Console and checks the ES status of its answer.
-  static sendRequest(request: string, statusCode: number, statusText: string) {
-    cy.log(`Send request, expect ${statusCode}`);
+  // Sends the request from the Console and yields the ES status of its answer.
+  static sendRequest(request: string): Cypress.Chainable<number> {
+    cy.log('Send request');
     const [method, path] = request.split('\n')[0].trim().split(/\s+/);
     const exactly = (text: string) => new RegExp(`^${Cypress._.escapeRegExp(text)}$`);
     // The Console also sends its own requests through this proxy, for example the autocomplete
@@ -53,17 +55,20 @@ export class DevTools {
       }
     ).as('consoleRequest');
     DevTools.enterAndSendRequest(request, () => requestSent);
-    cy.wait('@consoleRequest').then(({ request: sent, response }) => {
+    return cy.wait('@consoleRequest').then(({ request: sent, response }) => {
       // Kibana 8 and later answers the proxy call with 200 and gives the ES status in a header, so
       // that an ES 401 does not open the browser login prompt. Kibana 7 answers with the ES status.
       const status = Number(response?.headers['x-console-proxy-status-code'] ?? response?.statusCode);
-      const body = JSON.stringify(sent.body ?? '').slice(0, 100);
-      expect(status, `ES status of ${method} ${path}, body ${body}`).to.equal(statusCode);
+      cy.log(`ES status ${status} of ${method} ${path}, body ${JSON.stringify(sent.body ?? '').slice(0, 100)}`);
+      return cy.wrap(status, { log: false });
     });
+  }
+
+  static verifyStatusShown(statusCode: number, statusText: string) {
     cy.contains(`${statusCode} - ${statusText}`).should('be.visible');
   }
 
-  // Kibana 8.19 and 9.1 and later do not send a request with errors. They show a toast instead.
+  // Sends a request that the Console rejects, and waits for its errors toast.
   static sendRequestWithErrors(request: string) {
     const errorsMessage = 'The selected request contains errors. Please resolve them and try again.';
     const errorsToast = () => Cypress.$('[data-test-subj="globalToastList"]').text().includes(errorsMessage);
@@ -74,27 +79,33 @@ export class DevTools {
   // Enters the request and clicks send. `clickHadEffect` tells when the Console did what the click asks.
   private static enterAndSendRequest(request: string, clickHadEffect: () => boolean) {
     if (kibanaVersion.gte('8.16.0')) {
-      DevTools.sendFromMonacoEditor(request, clickHadEffect);
+      DevTools.sendFromMonacoEditorUntilSent(request, clickHadEffect);
     } else if (kibanaVersion.lte('7.9.0')) {
-      cy.get('#ConAppEditor').click();
-      cy.get('#ConAppInputTextarea').clear({ force: true });
-      DevTools.pasteIntoFocusedEditor(request);
-
-      // Click play
-      cy.get('.ace_scroller:nth-child(4) > .ace_content').click({ force: true });
-      cy.get('.conApp__editorActionButton path').click({ force: true });
+      DevTools.sendFromOldAceEditor(request);
     } else {
-      cy.get('[data-test-subj=console-textarea]').focus().clear({ force: true });
-      DevTools.pasteIntoFocusedEditor(request);
-      cy.get('[data-test-subj=sendRequestButton]').click();
+      DevTools.sendFromAceEditor(request);
     }
+  }
+
+  private static sendFromOldAceEditor(request: string) {
+    cy.get('#ConAppEditor').click();
+    cy.get('#ConAppInputTextarea').clear({ force: true });
+    DevTools.pasteIntoFocusedEditor(request);
+    cy.get('.ace_scroller:nth-child(4) > .ace_content').click({ force: true });
+    cy.get('.conApp__editorActionButton path').click({ force: true });
+  }
+
+  private static sendFromAceEditor(request: string) {
+    cy.get('[data-test-subj=console-textarea]').focus().clear({ force: true });
+    DevTools.pasteIntoFocusedEditor(request);
+    cy.get('[data-test-subj=sendRequestButton]').click();
   }
 
   // A new mount of the Console (see below) can also come right after the send click. The send action
   // parses the editor text asynchronously and then reads the editor again, and the new mount disposes
   // the editor model in between: Kibana shows "Unknown Request Error: Model is disposed!" and sends
   // nothing. So the request goes in again until the click has its effect.
-  private static sendFromMonacoEditor(request: string, clickHadEffect: () => boolean, attempt = 1) {
+  private static sendFromMonacoEditorUntilSent(request: string, clickHadEffect: () => boolean, attempt = 1) {
     DevTools.enterRequestIntoMonacoEditor(request);
     cy.get('[data-test-subj="sendRequestButton"]').click();
     recurse(() => cy.wrap(null, { log: false }).then(clickHadEffect), Boolean, {
@@ -105,7 +116,7 @@ export class DevTools {
       log: false
     }).then(hadEffect => {
       if (!hadEffect && attempt < DevTools.ENTER_ATTEMPTS) {
-        DevTools.sendFromMonacoEditor(request, clickHadEffect, attempt + 1);
+        DevTools.sendFromMonacoEditorUntilSent(request, clickHadEffect, attempt + 1);
       }
     });
   }

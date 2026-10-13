@@ -1,11 +1,11 @@
 import { KibanaNavigation } from './KibanaNavigation';
 import { TopNav } from './TopNav';
 import { kibanaVersion } from '../helpers';
-import { ListingTable } from './ListingTable';
+import { SavedObjectsListTable } from './SavedObjectsListTable';
 
 export class Dashboard {
   static openItem(number: number) {
-    ListingTable.openItem(number);
+    SavedObjectsListTable.openItem(number);
   }
 
   /**
@@ -23,9 +23,9 @@ export class Dashboard {
   }
 
   // Kibana 7.x names the copy action "Clone", and 8.x and later name it "Duplicate".
-  static writeControlsNotShown() {
+  static verifyWriteControlsNotShown() {
     cy.log('Dashboard write controls not shown');
-    TopNav.checkControlsNotShown('shareTopNavButton', [
+    TopNav.verifyControlsNotShown('shareTopNavButton', [
       'dashboardEditMode',
       'dashboardClone',
       'dashboardInteractiveSaveMenuItem'

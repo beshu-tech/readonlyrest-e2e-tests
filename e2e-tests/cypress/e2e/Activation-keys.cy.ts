@@ -1,25 +1,16 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
 import { EnvName } from '../support/types';
-import { adminCredentials } from '../support/helpers/credentials';
+import { stopApp } from '../support/helpers';
 
-/**
- * Keys resolve in the order index -> env -> file -> bundled Free key. Loading a key through the UI
- * writes it to the index, which hides the env one; deleting it there uncovers the env one again.
- * That is why the delete below is a change from Free to Enterprise, and not a change to Free.
- */
-// The docker env (elk-ror) runs 2 kbn-ror replicas behind kbn-proxy's round robin (see
-// base.docker-compose.yml). Each node caches the ROR activation key in memory and only re-reads it
-// from the index every activationKeyRefreshInterval (10m default), and independently wipes *all*
-// shared sessions when it notices an edition change (readonlyrestkbn preKibanaProxy.ts
-// verifyLicenseChange -> sessionManager.deleteAllSessions()). A single client's requests can land
-// on nodes disagreeing about the current edition right after this test flips it. The eck-*
-// environments run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
-// ROR KBN answers an edition change before it deletes the sessions (RORDEV-2302). A page that loads
-// in between keeps its session, and only the next session probe logs it out. The probe runs every
-// 30 s, so the logout can come up to 30 s after the change.
+// ROR KBN answers an edition change before it deletes the sessions (RORDEV-2302). A page that
+// loads in between keeps its session until the next session probe, which runs every 30 s.
 const LOGOUT_TIMEOUT_MS = 45000;
+const SESSION_DELETE_WINDOW_MS = 5000;
 
+// The docker env runs 2 Kibana nodes behind a round-robin proxy. Each node re-reads the key only
+// every 10 minutes and deletes all sessions when it sees an edition change. After this test changes
+// the edition, the nodes disagree. The eck envs run 1 Kibana node.
 (Cypress.env().envName === EnvName.ELK_ROR ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {
     Login.initialization();
@@ -27,27 +18,9 @@ const LOGOUT_TIMEOUT_MS = 45000;
   });
 
   afterEach(() => {
-    // Back to the env key. Wait for the logout only when that changes the edition, so that it
-    // cannot log out the next test. The page goes first: a Kibana page that loses its session
-    // during the wait fails the hook with an uncaught error.
-    cy.window().then(win => {
-      win.location.href = 'about:blank';
-    });
-    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: adminCredentials }).then(
-      before => {
-        const restore = () =>
-          cy.kbnPost({
-            endpoint: 'api/ror/license?overwrite=true',
-            credentials: adminCredentials,
-            payload: { license: `${Cypress.env().enterpriseActivationKey}` }
-          });
-        if (before.license.edition === 'kbn_ent') {
-          restore();
-        } else {
-          ActivationKeys.changeEditionAndWaitForLogout(restore);
-        }
-      }
-    );
+    // A Kibana page that loses its session during the restore fails the hook with an uncaught error.
+    stopApp();
+    ActivationKeys.restoreEnterpriseKey();
   });
 
   it('should log the user out when a new activation key changes the license edition', () => {
@@ -70,10 +43,9 @@ const LOGOUT_TIMEOUT_MS = 45000;
     ActivationKeys.changeLicenseToFree();
     ActivationKeys.verifyEdition('kbn_free');
 
-    // A logout comes up to one session probe after the change. The wait gives the probe of the page
-    // that time, then the session index and a reload show that the sessions stay.
-    cy.wait(LOGOUT_TIMEOUT_MS);
-    cy.location('pathname').should('not.contain', '/login');
+    // ROR KBN deletes the sessions after it answers (RORDEV-2302), so the check that they stay waits
+    // until such a delete is over. The delete takes well under a second.
+    cy.wait(SESSION_DELETE_WINDOW_MS);
     ActivationKeys.sessionIndexStatus().should('equal', 200);
     // The reload sends the session cookie to the proxy again, so this fails if the sessions were dropped.
     cy.reload();
@@ -88,7 +60,8 @@ const LOGOUT_TIMEOUT_MS = 45000;
     Login.initialization({ finishUrl: '/s/default/app/home' });
     ActivationKeys.open();
 
-    // Free (index) -> Enterprise (env).
+    // Free (index) -> Enterprise (env). Keys resolve in the order index, env, file, bundled Free
+    // key, so the delete uncovers the env key.
     ActivationKeys.deleteLicense();
 
     cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');

@@ -1,4 +1,3 @@
-import { kibanaVersion } from '../helpers';
 import { PageNotFound } from './PageNotFound';
 import { TENANCY_QUERY_STRING_KEY } from '../types';
 import { isHiddenByCss } from '../helpers/hiddenByCss';
@@ -12,13 +11,6 @@ export class KibanaNavigation {
     KibanaNavigation.openKibanaNavigation();
 
     cy.get('[data-test-subj="collapsibleNav"]').find(`[title="${page}"]`).first().click();
-  }
-
-  // The link must come from the Stack Management navigation. A search in the whole page can also
-  // find a landing card, a breadcrumb or a toast with the same text.
-  static openSubPage(page: string) {
-    cy.log('open sub-page');
-    cy.get('[data-test-subj=mgtSideBarNav]').findByRole('link', { name: page }).click();
   }
 
   // The button toggles: a click on an open nav closes it. So it clicks only when aria-expanded says
@@ -40,33 +32,30 @@ export class KibanaNavigation {
     cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
+  // The Kibana versions on which ROR hides the navigation link of a hidden app. ROR 1.71.0 hides no
+  // such link on Kibana 9.4 and later, and the route stays blocked (RORDEV-2305). Widen the range
+  // when a release has the fix.
+  static readonly HIDES_APP_LINKS = '<9.4.0';
+
   // ROR hides an app link with CSS on the link or on its group. The visible link first proves that
   // the navigation is open.
-  static checkIfHidden(page: string, visiblePage = 'Discover') {
-    cy.log('checkIfHidden');
+  static verifyAppLinkNotShown(app: string, visibleApp = 'Discover') {
+    cy.log(`verify the ${app} link is not shown`);
     cy.get('[data-test-subj=collapsibleNav]')
-      .contains(new RegExp(`^${visiblePage}$`))
+      .contains(new RegExp(`^${visibleApp}$`))
       .scrollIntoView()
       .should('be.visible');
-    if (kibanaVersion.satisfies(KibanaNavigation.HIDDEN_APPS_NAV_DEFECT)) {
-      cy.log(`Skipped: ROR does not hide the ${page} link on this Kibana (RORDEV-2305)`);
-      return;
-    }
     cy.get('[data-test-subj=collapsibleNav]')
-      .contains(new RegExp(`^${page}$`))
+      .contains(new RegExp(`^${app}$`))
       .should($link => {
-        expect(isHiddenByCss($link), `${page} link or a parent of it with display: none`).to.equal(true);
+        expect(isHiddenByCss($link), `${app} link or a parent of it with display: none`).to.equal(true);
       });
   }
 
-  // ROR 1.71.0 hides no navigation link of a hidden app on these Kibana versions. The route stays
-  // blocked. Remove the range when a release has the fix of RORDEV-2305.
-  private static readonly HIDDEN_APPS_NAV_DEFECT = '>=9.4.0';
-
-  static checkIfNotExists(page: string) {
-    cy.log('checkIfNotExists');
+  static verifyAppLinkAbsent(app: string) {
+    cy.log(`verify the ${app} link is absent`);
     cy.get('[data-test-subj=collapsibleNav]')
-      .contains(new RegExp(`^${page}$`))
+      .contains(new RegExp(`^${app}$`))
       .should('not.exist');
   }
 
@@ -116,7 +105,7 @@ export class KibanaNavigation {
 
   // Counts the links in all sections, so a section that the per-section checks do not name cannot add
   // links. A link that ROR hides with CSS does not count.
-  static checkStackManagementShownLinksCount(count: number) {
+  static verifyStackManagementShownLinksCount(count: number) {
     cy.log('check the count of shown Stack Management links');
     cy.get('[data-test-subj="mgtSideBarNav"]')
       .find('.euiSideNavItem a')

@@ -24,25 +24,23 @@ export class Loader {
    */
   public static settled(url?: string) {
     cy.log('loading settled');
-    cy.contains(Loader.SPLASH_TEXT, { timeout: 80000 }).should('not.exist');
+    cy.contains(Loader.SPLASH_TEXT, { timeout: Loader.LOAD_TIMEOUT_MS }).should('not.exist');
     if (url) {
       cy.urlShouldMatch(url);
     }
-    // Explicit 80s rather than the 20s defaultCommandTimeout: start() can fall through before the
-    // page has begun rendering, so this assertion carries the wait.
-    //
-    // Kibana swaps globalLoadingIndicator for its -hidden variant when loading completes, so the
-    // presence of that element is the loading-finished marker. Chromium 138 (Cypress 15) does not
-    // always judge this header svg visible after a reload, so the assertion is `exist`.
-    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: 80000 }).should('exist');
+    // start() can return before the page renders, so this check carries the wait of the load.
+    // Chromium 138 does not always see this header svg as visible after a reload, so the check is `exist`.
+    cy.get('[data-test-subj=globalLoadingIndicator-hidden]', { timeout: Loader.LOAD_TIMEOUT_MS }).should('exist');
     // Kibana loses the unmount of an app whose mount ends after the page left it. A Home app lost
     // that way keeps its hash router, which rewrites the URL hash of every later page (RORDEV-2315).
     // Home's router writes #/ when it mounts, so a load that ends on Home waits for that.
     if (url?.includes('/app/home')) {
-      cy.location('hash', { timeout: 80000 }).should('match', /^#\//);
+      cy.location('hash', { timeout: Loader.LOAD_TIMEOUT_MS }).should('match', /^#\//);
     }
   }
 
+  // A full Kibana load on a loaded CI runner takes more than the 20 s defaultCommandTimeout.
+  private static readonly LOAD_TIMEOUT_MS = 80000;
   private static readonly SPLASH_TEXT = 'Loading Elastic';
   private static readonly SPLASH_POLL_MS = 500;
   private static readonly SPLASH_MAX_POLLS = 60; // ~30s

@@ -27,7 +27,7 @@ describe('hidden apps', () => {
       KibanaNavigation.checkStackManagementSectionElementsCount('data', 0);
       KibanaNavigation.checkStackManagementSectionElementsCount('insightsAndAlerting', 1);
       KibanaNavigation.checkStackManagementSectionElementsCount('kibana', 2);
-      KibanaNavigation.checkStackManagementShownLinksCount(3);
+      KibanaNavigation.verifyStackManagementShownLinksCount(3);
       KibanaNavigation.checkIfStackManagementSubPageVisible('Reporting');
       if (kibanaVersion.gte('8.0.0')) {
         KibanaNavigation.checkIfStackManagementSubPageVisible('Data Views');

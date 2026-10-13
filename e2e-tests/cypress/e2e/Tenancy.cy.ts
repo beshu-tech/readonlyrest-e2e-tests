@@ -14,6 +14,7 @@ import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { UserSettings } from '../support/page-objects/UserSettings';
 import { adminCredentials, kibanaCredentials } from '../support/helpers/credentials';
 import { Share } from '../support/page-objects/Share';
+import { itOnKibana } from '../support/helpers/itOnKibana';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
@@ -23,6 +24,7 @@ describe('Tenancy', () => {
 
     afterEach(() => {
       kbnApiClient.deleteSampleData('ecommerce', adminCredentials, 'template_group');
+      // No later spec resets the spaces of this tenancy, so each test leaves them clean.
       kbnApiAdvancedClient.tryResetSpaces(adminCredentials, 'template_group');
     });
 
@@ -87,11 +89,11 @@ describe('Tenancy', () => {
       });
 
       Spaces.createNewSpace(newSpace);
-      Spaces.openSpace(newSpace);
-      Spaces.verifyCurrentSpace(newSpace);
+      Spaces.openSpace(Spaces.idOf(newSpace));
+      Spaces.verifyCurrentSpace(Spaces.idOf(newSpace));
     });
 
-    it('should hide the Stack Management link in the infosec tenancy', () => {
+    itOnKibana(KibanaNavigation.HIDES_APP_LINKS, 'should hide the Stack Management link in the infosec tenancy', () => {
       const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
@@ -99,7 +101,7 @@ describe('Tenancy', () => {
       });
 
       KibanaNavigation.openKibanaNavigation();
-      KibanaNavigation.checkIfHidden('Stack Management');
+      KibanaNavigation.verifyAppLinkNotShown('Stack Management');
     });
   });
 

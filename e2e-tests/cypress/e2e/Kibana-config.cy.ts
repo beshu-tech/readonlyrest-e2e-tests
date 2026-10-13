@@ -1,10 +1,9 @@
-import * as semver from 'semver';
 import { recurse } from 'cypress-recurse';
 import { KibanaConfig } from '../support/helpers/KibanaConfig';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import { getKibanaVersion } from '../support/helpers';
+import { getKibanaVersion, kibanaVersion } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Reporting } from '../support/page-objects/Reporting';
@@ -178,7 +177,7 @@ const customKibanaIndexName = '.kibana_custom';
     });
   });
   // xpack.reporting.index was removed in Kibana 8.0, so this only applies to the 7.x leg.
-  if (semver.lt(getKibanaVersion(), '8.0.0')) {
+  if (kibanaVersion.lt('8.0.0')) {
     describe('Custom kibana config custom xpack.reporting.index', () => {
       const docsIndex = 'sample_index';
 

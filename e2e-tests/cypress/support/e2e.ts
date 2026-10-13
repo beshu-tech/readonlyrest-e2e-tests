@@ -51,6 +51,7 @@ declare global {
         value: string,
         options?: Partial<Loggable & Timeoutable & Withinable & Shadow>
       ): Chainable<JQuery<HTMLElement>>;
+      findByDataTestSubj(value: string): Chainable<JQuery<HTMLElement>>;
       getValueFromClipboard(): Chainable<string>;
       urlShouldMatch(urlPattern: string): Chainable<string>;
       waitForResponse(alias: `@${string}`): Chainable<{ statusCode: number }>;

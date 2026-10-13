@@ -10,17 +10,13 @@ describe('impersonate', () => {
     rorApiInternalKbnClient.deactivateTestSettings();
   });
 
-  // Skipped until a release has the fix for RORDEV-2303: the session probe can log the user out right
-  // after an impersonation starts, so this test fails at random.
-  it.skip('should check impersonate (RORDEV-2303)', () => {
-    Login.initialization();
-
-    cy.log('should check service lists rendering');
-
-    Impersonate.setTestSettingsData();
-
-    TestSettings.open();
-    Impersonate.open();
+  describe('impersonation tab', () => {
+    beforeEach(() => {
+      Login.initialization();
+      Impersonate.setTestSettingsData();
+      TestSettings.open();
+      Impersonate.open();
+    });
 
     const createLdapUsers = () => {
       Impersonate.openConfigureServiceDialog(0);
@@ -29,87 +25,66 @@ describe('impersonate', () => {
       Impersonate.saveEditMockUsers();
     };
 
-    const createAuthnUsers = () => {
-      Impersonate.openConfigureServiceDialog(1);
-      Impersonate.addEditMockUser('JaneDoe');
-      Impersonate.saveEditMockUsers();
-    };
-
-    const createAuthzUsers = () => {
-      Impersonate.openConfigureServiceDialog(2);
-      Impersonate.addEditMockUser('JaimeRhynes', ['Customer']);
-      Impersonate.saveEditMockUsers();
-    };
-
-    const assertLdapService = () => {
-      cy.log('should assert ldap service');
+    it('should list the users of each mock service', () => {
+      createLdapUsers();
       Impersonate.assertServiceName(0, 'LDAP 1');
       Impersonate.assertServiceType(0, 'ldap');
       Impersonate.assertServiceColumns(0, ['Username', 'Groups']);
       Impersonate.assertUser(0, 0, 'JohnDoe', ['group3']);
       Impersonate.assertUser(0, 1, 'RobertSmith', ['group3']);
-    };
 
-    const assertAuthnService = () => {
-      cy.log('should assert authn service');
+      Impersonate.openConfigureServiceDialog(1);
+      Impersonate.addEditMockUser('JaneDoe');
+      Impersonate.saveEditMockUsers();
       Impersonate.assertServiceName(1, 'ACME1 External Authorization Service');
       Impersonate.assertServiceType(1, 'authn');
       Impersonate.assertServiceColumns(1, ['Username']);
       Impersonate.assertUser(1, 0, 'JaneDoe');
-    };
 
-    const assertAuthzService = () => {
-      cy.log('should assert authz service');
+      Impersonate.openConfigureServiceDialog(2);
+      Impersonate.addEditMockUser('JaimeRhynes', ['Customer']);
+      Impersonate.saveEditMockUsers();
       Impersonate.assertServiceName(2, 'ACME2 External Authentication Service');
       Impersonate.assertServiceType(2, 'authz');
       Impersonate.assertServiceColumns(2, ['Username', 'Groups']);
       Impersonate.assertUser(2, 0, 'JaimeRhynes', ['Customer']);
-    };
 
-    const assertLocalUser = () => {
-      cy.log('should assert local user');
       Impersonate.assertServiceName(3, 'Local users');
       Impersonate.assertServiceType(3, 'local');
       Impersonate.assertServiceColumns(3, ['Username']);
       Impersonate.assertUser(3, 0, 'kibana');
-    };
 
-    createLdapUsers();
-    assertLdapService();
+      cy.log('should edit existing auth mock');
+      Impersonate.openEditAuthMockDialog(2);
+      Impersonate.addEditMockUser('kibana', ['group3']);
+      Impersonate.saveEditMockUsers();
+      Impersonate.assertUser(2, 1, 'kibana', ['group3']);
+    });
 
-    createAuthnUsers();
-    assertAuthnService();
+    // Skipped until a release has the fix for RORDEV-2303: the session probe can log the user out right
+    // after an impersonation starts, so this test fails at random.
+    it.skip('should impersonate a local user and an LDAP user (RORDEV-2303)', () => {
+      createLdapUsers();
 
-    createAuthzUsers();
-    assertAuthzService();
+      Impersonate.open();
+      Impersonate.impersonateUserFromTheList(3, 2, 'new_user');
+      Impersonate.finishImpersonation();
+      Impersonate.verifyFinishedImpersonation();
 
-    assertLocalUser();
+      Impersonate.open();
+      Impersonate.impersonateUserFromTheList(0, 1, 'RobertSmith');
+      Impersonate.finishImpersonation();
+      Impersonate.verifyFinishedImpersonation();
+    });
 
-    cy.log('should edit existing auth mock');
-    Impersonate.openEditAuthMockDialog(2);
-    Impersonate.addEditMockUser('kibana', ['group3']);
-    Impersonate.saveEditMockUsers();
-    Impersonate.assertUser(2, 1, 'kibana', ['group3']);
-
-    cy.log('should impersonate localUser');
-    Impersonate.open();
-    Impersonate.impersonateUserFromTheList(3, 2, 'new_user');
-    Impersonate.finishImpersonation();
-    Impersonate.verifyFinishedImpersonation();
-
-    cy.log('should impersonate LDAP user');
-    Impersonate.open();
-    Impersonate.impersonateUserFromTheList(0, 1, 'RobertSmith');
-    Impersonate.finishImpersonation();
-    Impersonate.verifyFinishedImpersonation();
-
-    cy.log('should back from expired Test ACL dialog into a Test ACL tab');
-    TestSettings.open();
-    TestSettings.pressInvalidateFileTestSettings();
-    Impersonate.clickImpersonateTab();
-    Impersonate.checkIfExpiredModal();
-    Impersonate.backFromExpiredTestSettings();
-    SecuritySettings.checkActiveTab('Test ACL');
+    it('should go back from the expired Test ACL dialog to the Test ACL tab', () => {
+      TestSettings.open();
+      TestSettings.pressInvalidateFileTestSettings();
+      Impersonate.clickImpersonateTab();
+      Impersonate.checkIfExpiredModal();
+      Impersonate.backFromExpiredTestSettings();
+      SecuritySettings.checkActiveTab('Test ACL');
+    });
   });
 
   it('should check direct kibana request with x-ror-impersonating header', () => {

@@ -19,8 +19,8 @@ export const kibanaVersion = {
   lt: (version: string) => semver.lt(getKibanaVersion(), version),
   lte: (version: string) => semver.lte(getKibanaVersion(), version),
   satisfies: (range: string) => semver.satisfies(getKibanaVersion(), range),
-  // Kibana 8.19 has the features of 9.1, which 9.0 does not have.
-  has91Features: () => semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
+  // Kibana 8.19 has some changes of 9.1 that 9.0 does not have. Each caller names the change it checks.
+  is819OrFrom91: () => semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
 };
 
 // runner.sh passes its --ror-kbn value: a release version, "latest", or the tag of a dev image. Only

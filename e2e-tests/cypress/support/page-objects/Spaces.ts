@@ -111,9 +111,8 @@ export class Spaces {
     cy.get(spaceItem).click();
   }
 
-  static verifyCurrentSpace(spaceName: string) {
+  static verifyCurrentSpace(spaceId: string) {
     cy.log('Verify current space');
-    const onKibana8 = kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0');
-    cy.getByDataTestSubj(`space-avatar-${spaceName}`).should(onKibana8 ? 'exist' : 'be.visible');
+    cy.getByDataTestSubj(`space-avatar-${spaceId}`).should('be.visible');
   }
 }

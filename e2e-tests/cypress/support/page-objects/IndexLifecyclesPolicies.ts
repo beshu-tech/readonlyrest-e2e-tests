@@ -1,10 +1,11 @@
 import { KibanaNavigation } from './KibanaNavigation';
+import { StackManagement } from './StackManagement';
 
 export class IndexLifecyclesPolicies {
   static openIndexLifecyclePolicy() {
     cy.log('open index lifecycle policy page');
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Index Lifecycle Policies');
+    StackManagement.openPage('Index Lifecycle Policies');
   }
 
   static verifyIndexLifecyclePolicy() {
