@@ -21,9 +21,8 @@ inputs:
     description: 'S3 secret access key'
     required: true
   secrets_to_redact:
-    description: 'CI secrets to remove from every text file before the upload, one per line. Any other file that holds one is not uploaded.'
-    required: false
-    default: ''
+    description: 'CI secrets to remove from every text file before the upload, one per line. Any other file that holds one is not uploaded. Empty means no upload.'
+    required: true
   results_dir:
     description: 'Cypress results directory to upload (videos/ and screenshots/ live here)'
     required: false

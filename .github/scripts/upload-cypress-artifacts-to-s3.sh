@@ -97,6 +97,12 @@ SECRETS=()
 while IFS= read -r SECRET; do
   [ -n "$SECRET" ] && SECRETS+=("$SECRET")
 done <<< "${SECRETS_TO_REDACT:-}"
+# With no secret to look for, every file passes the check. An empty value is a caller defect, for
+# example a renamed secret, so nothing is uploaded.
+if [ ${#SECRETS[@]} -eq 0 ]; then
+  echo "::error title=S3 upload::SECRETS_TO_REDACT is empty, so the files cannot be checked for secrets. Nothing is uploaded."
+  exit 1
+fi
 holds_secret() {
   local SECRET
   for SECRET in "${SECRETS[@]}"; do
