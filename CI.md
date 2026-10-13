@@ -25,13 +25,10 @@ Each `runs-on` reads a JSON list of runner labels from a repository variable. Do
 
 The plan job of each workflow gets the versions from `.github/scripts/resolve-test-versions.sh`. The script asks the ROR API (`https://api.beshu.tech/list_es_versions`) for the latest ROR release and the ELK versions that it supports. A version counts when both the ES and the Kibana plugin support it.
 
-- **e2e**: the latest version of each major from 7, and of the two newest minors of the newest major. Example: 9.5.5, 9.4.8, 8.19.23, 7.17.29.
+- **e2e**: the latest version of each major from 7, and of the two newest minors of the newest major.
 - **bootstrap**: the latest version of each minor.
 
-Prod legs test the latest ROR release, with the image tag `<ELK version>-ror-<ROR version>`. Before they start, the script checks that Docker Hub has both plugin images of that release for every version. The plan job fails, and no leg starts, when:
-
-- the ROR API does not answer, or
-- an image of the release is missing, for example while a release is still being published.
+Prod legs test the latest ROR release, with the image tag `<ELK version>-ror-<ROR version>`. When the ROR API does not answer, the plan job fails and no leg starts.
 
 ## Time limits
 

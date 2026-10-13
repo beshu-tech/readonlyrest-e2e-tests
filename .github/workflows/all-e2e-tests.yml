@@ -24,7 +24,6 @@ env:
   ECK_3X: eck-3.5.0
   ECK_2X: eck-2.16.1
 
-# Runners, versions under test and time limits: see CI.md.
 jobs:
   # ==========================================
   # PLAN
@@ -39,8 +38,8 @@ jobs:
     outputs:
       images: ${{ steps.plan.outputs.images }}
       matrix: ${{ steps.plan.outputs.matrix }}
-      versions: ${{ steps.plan.outputs.versions }}
-      ror: ${{ steps.plan.outputs.ror }}
+      elk_versions: ${{ steps.plan.outputs.elk_versions }}
+      ror_version: ${{ steps.plan.outputs.ror_version }}
     steps:
       - &checkout
         name: Checkout code
@@ -65,17 +64,14 @@ jobs:
           elif [ "$DRAFT" = true ];                                           then IMAGES="dev";      ENVS="docker"
           else                                                                     IMAGES="dev";      ENVS="docker $ECK_3X"
           fi
-          # The prod legs test the latest ROR release, so its images must exist.
-          CHECK=()
-          [[ " $IMAGES " == *" prod "* ]] && CHECK=(--check-images)
-          RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh e2e "${CHECK[@]}")
+          RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh e2e)
           echo "$RESOLVED"
-          VERSIONS=$(jq -r '.versions | join(" ")' <<< "$RESOLVED")
+          ELK_VERSIONS=$(jq -r '.elk_versions | join(" ")' <<< "$RESOLVED")
           {
             echo "images=$IMAGES"
-            echo "ror=$(jq -r .ror <<< "$RESOLVED")"
-            echo "versions=$VERSIONS"
-            echo "matrix=$(jq -cn --arg v "$VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
+            echo "ror_version=$(jq -r .ror_version <<< "$RESOLVED")"
+            echo "elk_versions=$ELK_VERSIONS"
+            echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
           } >> "$GITHUB_OUTPUT"
 
   # ==========================================
@@ -113,8 +109,8 @@ jobs:
           env: ${{ matrix.env }}
           elk: ${{ matrix.version }}
           mode: prod
-          ror_es: ${{ needs.plan.outputs.ror }}
-          ror_kbn: ${{ needs.plan.outputs.ror }}
+          ror_es: ${{ needs.plan.outputs.ror_version }}
+          ror_kbn: ${{ needs.plan.outputs.ror_version }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
       - &stop-memory-monitor
         name: Stop Docker memory monitor
@@ -158,7 +154,7 @@ jobs:
           # manual dispatch, head_ref is empty and ref_name is the branch.
           TARGET_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.head_ref || github.ref_name }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
-          ELK_VERSIONS: ${{ needs.plan.outputs.versions }}
+          ELK_VERSIONS: ${{ needs.plan.outputs.elk_versions }}
         run: |
           set -euo pipefail
           . ci/prebuild-images-lib.sh

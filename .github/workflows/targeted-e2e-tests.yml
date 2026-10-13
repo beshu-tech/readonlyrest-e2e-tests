@@ -31,7 +31,6 @@ on:
 env:
   APPLY_RESOURCE_LIMITS: "auto"
 
-# Runners and time limits: see CI.md.
 jobs:
   e2e-tests:
     name: "🔬 E2E Tests"
