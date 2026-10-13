@@ -184,9 +184,13 @@ if [[ "$MODE" == "e2e" ]]; then
   # caller kills this script, and the EXIT trap deletes the stack with its logs.
   SUITE_TIMEOUT=()
   if [[ -n "${E2E_TIME_CAP_SECONDS:-}" ]]; then
-    # A slow set-up can leave no time: timeout takes 0 as no limit and fails on a negative value.
     remaining=$((E2E_TIME_CAP_SECONDS - SECONDS - 300))
-    [[ $remaining -ge 1 ]] || remaining=1
+    # timeout takes 0 as no limit and fails on a negative value.
+    if [[ $remaining -lt 1 ]]; then
+      echo "::error title=E2E%3A ELK $ELK_VERSION on $ENV_NAME::The stack start took $SECONDS s and left no time for the suite under the $E2E_TIME_CAP_SECONDS s cap. The suite did not run."
+      ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" || true
+      exit 1
+    fi
     SUITE_TIMEOUT=(timeout --kill-after=60 "$remaining")
   fi
 
