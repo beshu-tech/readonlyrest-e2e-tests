@@ -71,6 +71,10 @@ S3_PATH=$(printf '%s' "$S3_PATH" | sed 's://*:/:g')
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
+# Fewer attempts than a release upload gets. These artifacts help somebody read a red job, and a
+# storage outage must not hold the job open for minutes per file.
+export S3_UPLOAD_ATTEMPTS="${S3_UPLOAD_ATTEMPTS:-2}"
+
 # An explicit mime type keeps the uploader from calling `file` (its guess path), which is not
 # guaranteed to exist on a bare runner. Without it the Content-Type comes out empty, the signed-POST
 # policy rejects the malformed form, and the upload 403s.
@@ -85,15 +89,17 @@ mime_of() {
   esac
 }
 
+# S3_UPLOADER_MAX_TIME caps one upload. A stalled connection would otherwise hold the job until
+# its timeout. The shared uploader has no cap by default, because a release zip upload can take
+# more than 300 s.
 upload_one() {
   local FILE=$1 KEY=$2 MIME=$3
-  "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
+  S3_UPLOADER_MAX_TIME=300 "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
 UPLOADED=0
 SKIPPED_EMPTY=0
 FAILED=0
-DIAGNOSED=false
 
 # -print0/read -d '' so paths with spaces survive; the relative path becomes the key, keeping the
 # videos/ vs screenshots/ split visible in the bucket.
@@ -112,17 +118,10 @@ while IFS= read -r -d '' FILE; do
     continue
   fi
 
+  # The uploader retried the transient answers and printed the error body, so the log already
+  # names the cause.
   echo "WARNING: upload failed for $FILE (continuing)"
   FAILED=$((FAILED + 1))
-  # s3-uploader.sh uses `curl -f`, which hides the server's error body. On the FIRST failure only,
-  # re-run it with S3_UPLOADER_DEBUG=1 to capture the actual S3 error XML (AccessDenied /
-  # SignatureDoesNotMatch / a policy condition) — without it a 403 is unattributable.
-  if [ "$DIAGNOSED" = false ]; then
-    DIAGNOSED=true
-    echo "----- S3 failure diagnostic: re-uploading $REL to capture the error body -----"
-    (S3_UPLOADER_DEBUG=1 upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" 2>&1 | sed 's/^/[s3-debug] /') || true
-    echo "----- end diagnostic -----"
-  fi
 done < <(find "$SOURCE_DIR" -type f -print0)
 
 echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
