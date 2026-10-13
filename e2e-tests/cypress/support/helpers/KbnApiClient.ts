@@ -21,7 +21,7 @@ export class KbnApiClient {
       });
   }
 
-  public createDataView(dataView: object, credentials: string, group?: string): void {
+  public createDataView(dataView: object, credentials: BasicCredentials, group?: string): void {
     cy.kbnPost<{ data_view?: DataView }>({
       endpoint: 'api/data_views/data_view',
       credentials,
@@ -40,7 +40,7 @@ export class KbnApiClient {
 
   public deleteDataView(
     dataViewId: string,
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string,
     { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
   ): void {
@@ -60,7 +60,7 @@ export class KbnApiClient {
   }
 
   public getSavedObjects(
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string,
     { page = 1, perPage = 20 }: { page?: number; perPage?: number } = {}
   ): Cypress.Chainable<GetObject> {
@@ -73,7 +73,7 @@ export class KbnApiClient {
 
   public deleteSavedObject(
     savedObject: SavedObject,
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string,
     { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
   ): void {
@@ -85,7 +85,7 @@ export class KbnApiClient {
     });
   }
 
-  public loadSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
+  public loadSampleData(sampleDatasetName: string, credentials: BasicCredentials, group?: string): void {
     cy.kbnPost<{ elasticsearchIndicesCreated?: Record<string, number> }>({
       endpoint: `api/sample_data/${sampleDatasetName}`,
       credentials,
@@ -104,7 +104,7 @@ export class KbnApiClient {
   // A Kibana request can fail with a 500 (socket hang up) when Kibana reuses an idle connection to
   // ROR's Pre-Elasticsearch-proxy just as the proxy closes it (RORDEV-2314). It hit this cleanup
   // once, on 7.17 docker (CI run 38221779222).
-  public deleteSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
+  public deleteSampleData(sampleDatasetName: string, credentials: BasicCredentials, group?: string): void {
     this.repeatUntilSuccess({
       method: 'DELETE',
       endpoint: `api/sample_data/${sampleDatasetName}`,
@@ -125,7 +125,7 @@ export class KbnApiClient {
 
   public deleteSpace(
     spaceId: string,
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string,
     { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
   ): void {
@@ -139,7 +139,7 @@ export class KbnApiClient {
 
   public updateSpace(
     space: Space,
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string,
     { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
   ): void {
@@ -154,7 +154,7 @@ export class KbnApiClient {
 
   public createShortUrl(
     payload: ShortUrlPayload,
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string
   ): Cypress.Chainable<ShortUrlResponse> {
     return cy.kbnPost<ShortUrlResponse>({
@@ -165,7 +165,7 @@ export class KbnApiClient {
     });
   }
 
-  public createShortUrlLegacy(credentials: string, group?: string): Cypress.Chainable<ShortUrlResponse> {
+  public createShortUrlLegacy(credentials: BasicCredentials, group?: string): Cypress.Chainable<ShortUrlResponse> {
     return cy.kbnPost<ShortUrlResponse>({
       endpoint: 'api/saved_objects/url',
       credentials,

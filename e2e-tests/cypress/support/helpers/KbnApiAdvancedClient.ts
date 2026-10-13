@@ -1,10 +1,10 @@
 import { recurse } from 'cypress-recurse';
 import { KbnApiClient, SavedObject, Space } from './KbnApiClient';
-import { accountOf, admin, BasicCredentials } from './credentials';
+import { accountOf, adminCredentials, BasicCredentials } from './credentials';
 import { requiredBaseUrl } from './index';
 
 export class KbnApiAdvancedClient extends KbnApiClient {
-  public deleteSavedObjects(credentials: string, group?: string): void {
+  public deleteSavedObjects(credentials: BasicCredentials, group?: string): void {
     cy.log(`Get all saved objects for ${accountOf(credentials)}`);
     this.findAllSavedObjects(credentials, group).then(savedObjects => {
       savedObjects.forEach(savedObject => {
@@ -19,7 +19,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   // _find gives one page of results, so this reads page after page until it has them all. The
   // deletes come after the last page: a delete between two pages moves objects to earlier pages.
   private findAllSavedObjects(
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string,
     page = 1,
     found: SavedObject[] = []
@@ -40,7 +40,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
 
   // Under resetKibanaIndexToTemplate, a request of the user resets the index of the user's tenancy
   // to the template. Once, on 9.5.5 docker (CI run 38160830949), the first answer was a 403.
-  public resetTenancyIndexToTemplate(credentials: string): void {
+  public resetTenancyIndexToTemplate(credentials: BasicCredentials): void {
     cy.log(`Reset the tenancy index of ${accountOf(credentials)} to the template`);
     this.repeatUntilSuccess({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials });
   }
@@ -203,7 +203,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
       {
         url: `${requiredBaseUrl()}/api/spaces/space`,
         headers: {
-          authorization: `Basic ${btoa(admin)}`,
+          authorization: `Basic ${btoa(adminCredentials)}`,
           'kbn-xsrf': 'true'
         },
         answersInARow: 4,

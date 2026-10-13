@@ -7,23 +7,21 @@ import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SearchSessions } from '../support/page-objects/SearchSessions';
 import { itOnKibana } from '../support/helpers/itOnKibana';
-import { admin, user } from '../support/helpers/credentials';
-
-const user4 = user(4);
+import { adminCredentials, user4Credentials } from '../support/helpers/credentials';
 
 describe('Discover tests', () => {
   beforeEach(() => {
     if (kibanaVersion.lt('9.0.0')) {
-      kbnApiAdvancedClient.deleteSearchSessions(admin);
+      kbnApiAdvancedClient.deleteSearchSessions(adminCredentials);
     }
   });
 
   afterEach(() => {
-    kbnApiClient.deleteSampleData('ecommerce', user4);
+    kbnApiClient.deleteSampleData('ecommerce', user4Credentials);
   });
 
   it('should allow to see discover page when user has access only for specific indices', () => {
-    Login.initialization({ credentials: user4 });
+    Login.initialization({ credentials: user4Credentials });
     Home.loadSampleData();
     KibanaNavigation.openPage('Discover');
     if (kibanaVersion.lt('9.0.0')) {

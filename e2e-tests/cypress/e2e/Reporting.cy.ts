@@ -7,11 +7,11 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { IndexLifecyclesPolicies } from '../support/page-objects/IndexLifecyclesPolicies';
 import { SampleData } from '../support/helpers/SampleData';
-import { accountOf, admin, kibana } from '../support/helpers/credentials';
+import { accountOf, adminCredentials, kibanaCredentials } from '../support/helpers/credentials';
 
 const testData = [
-  { credentials: kibana, index: '.kibana' },
-  { credentials: admin, index: '.kibana_admins_group' }
+  { credentials: kibanaCredentials, index: '.kibana' },
+  { credentials: adminCredentials, index: '.kibana_admins_group' }
 ];
 
 const reportingSampleIndex = 'reporting_sample_index';

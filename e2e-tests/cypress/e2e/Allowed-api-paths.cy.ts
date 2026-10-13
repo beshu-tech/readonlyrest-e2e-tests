@@ -1,3 +1,4 @@
+import { BasicCredentials } from '../support/helpers/credentials';
 /* Copyright (C) Beshu Limited t/a ReadonlyREST Security - All Rights Reserved
  * Unauthorized copying of this file, via any medium is strictly prohibited
  * Proprietary and confidential
@@ -87,7 +88,7 @@ describe('allowed_api_paths enforcement for api_only users', () => {
 
 // --- Helpers ---
 
-function apiGet(endpoint: string, credentials: string) {
+function apiGet(endpoint: string, credentials: BasicCredentials) {
   return cy.kbnGet({ endpoint, credentials, failOnStatusCode: false });
 }
 
@@ -97,13 +98,13 @@ function assertRor403(response: unknown) {
   expect(response).to.have.property('status', 'forbidden');
 }
 
-function expectBlocked(endpoint: string, credentials: string) {
+function expectBlocked(endpoint: string, credentials: BasicCredentials) {
   return apiGet(endpoint, credentials).then(assertRor403);
 }
 
 // The status and the content type tell Kibana's JSON answer from a redirect to the login page or a
 // text error, which carry no status code in the body.
-function expectJsonAnswer<T>(endpoint: string, credentials: string, status: number) {
+function expectJsonAnswer<T>(endpoint: string, credentials: BasicCredentials, status: number) {
   return cy
     .kbnResponse<T>({ endpoint, credentials })
     .then(response => {
@@ -114,19 +115,22 @@ function expectJsonAnswer<T>(endpoint: string, credentials: string, status: numb
     .its('body');
 }
 
-function expectSpacesIncludeDefault(endpoint: string, credentials: string) {
+function expectSpacesIncludeDefault(
+  endpoint: 'api/spaces/space' | 's/default/api/spaces/space',
+  credentials: BasicCredentials
+) {
   expectJsonAnswer<Array<{ id: string }>>(endpoint, credentials, 200).then(spaces => {
     expect(spaces.map(space => space.id)).to.include('default');
   });
 }
 
-function expectTenantsList(endpoint: string, credentials: string) {
+function expectTenantsList(endpoint: string, credentials: BasicCredentials) {
   expectJsonAnswer<{ tenants?: unknown }>(endpoint, credentials, 200).then(body => {
     expect(body.tenants, 'tenants').to.be.an('array');
   });
 }
 
-function expectKibanaNotFound(endpoint: string, credentials: string) {
+function expectKibanaNotFound(endpoint: string, credentials: BasicCredentials) {
   expectJsonAnswer<{ statusCode?: number }>(endpoint, credentials, 404).then(body => {
     expect(body.statusCode, 'status code in the Kibana answer').to.equal(404);
   });

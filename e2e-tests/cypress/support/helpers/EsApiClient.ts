@@ -1,7 +1,10 @@
+import { kibanaCredentials } from './credentials';
+
 export class EsApiClient {
   public deleteIndexDocsByQuery(index: string): void {
     cy.esPost({
       endpoint: `${index}/_delete_by_query`,
+      credentials: kibanaCredentials,
       payload: {
         query: {
           match_all: {}
@@ -12,26 +15,30 @@ export class EsApiClient {
 
   public refreshIndex(index: string): void {
     cy.esPost({
-      endpoint: `${index}/_refresh`
+      endpoint: `${index}/_refresh`,
+      credentials: kibanaCredentials
     });
   }
 
   public deleteIndex(index: string): void {
     cy.esDelete({
       endpoint: index,
+      credentials: kibanaCredentials,
       failOnStatusCode: false
     });
   }
 
   public deleteDataStream(index: string): void {
     cy.esDelete({
-      endpoint: `_data_stream/${index}`
+      endpoint: `_data_stream/${index}`,
+      credentials: kibanaCredentials
     });
   }
 
   public addDocument(index: string, id: string, doc: object): void {
     cy.esPost({
       endpoint: `${index}/_doc/${id}`,
+      credentials: kibanaCredentials,
       payload: doc
     });
   }
@@ -39,6 +46,7 @@ export class EsApiClient {
   public createIndex(index: string, settings?: object, mappings?: object): void {
     cy.esPut({
       endpoint: index,
+      credentials: kibanaCredentials,
       payload: {
         ...(settings && { settings }),
         ...(mappings && { mappings })
@@ -48,25 +56,29 @@ export class EsApiClient {
 
   public indices(): Cypress.Chainable<GetIndices[]> {
     return cy.esGet<GetIndices[]>({
-      endpoint: '_cat/indices?format=json&expand_wildcards=all'
+      endpoint: '_cat/indices?format=json&expand_wildcards=all',
+      credentials: kibanaCredentials
     });
   }
 
   public dataStreams(): Cypress.Chainable<GetDataStreams> {
     return cy.esGet<GetDataStreams>({
-      endpoint: '_data_stream?format=json&expand_wildcards=all'
+      endpoint: '_data_stream?format=json&expand_wildcards=all',
+      credentials: kibanaCredentials
     });
   }
 
   public findIndicesByPattern(pattern: string): Cypress.Chainable<GetIndices[]> {
     return cy.esGet<GetIndices[]>({
-      endpoint: `_cat/indices/${pattern}?format=json`
+      endpoint: `_cat/indices/${pattern}?format=json`,
+      credentials: kibanaCredentials
     });
   }
 
   public attachLifecyclePolicy(index: string, policyName: string): void {
     cy.esPut({
       endpoint: `${index}/_settings`,
+      credentials: kibanaCredentials,
       payload: {
         'index.lifecycle.name': policyName
       }
@@ -75,7 +87,8 @@ export class EsApiClient {
 
   public rolloverIndex(index: string): void {
     cy.esPost({
-      endpoint: `${index}/_rollover`
+      endpoint: `${index}/_rollover`,
+      credentials: kibanaCredentials
     });
   }
 }

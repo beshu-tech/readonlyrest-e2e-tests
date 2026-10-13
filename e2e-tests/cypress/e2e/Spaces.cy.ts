@@ -5,18 +5,18 @@ import { Spaces } from '../support/page-objects/Spaces';
 import { Loader } from '../support/page-objects/Loader';
 import { ManageSpaces } from '../support/page-objects/ManageSpaces';
 import { itOnKibana } from '../support/helpers/itOnKibana';
-import { admin } from '../support/helpers/credentials';
+import { adminCredentials } from '../support/helpers/credentials';
 
 const SPACE_NAME = 'Test space';
 
 describe('Spaces', () => {
   beforeEach(() => {
-    kbnApiAdvancedClient.resetSpaces(admin);
+    kbnApiAdvancedClient.resetSpaces(adminCredentials);
     Login.initialization();
   });
 
   afterEach(() => {
-    kbnApiAdvancedClient.tryResetSpaces(admin);
+    kbnApiAdvancedClient.tryResetSpaces(adminCredentials);
   });
 
   it('should successfully set feature visibility for default space', () => {

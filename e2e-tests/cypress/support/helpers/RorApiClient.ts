@@ -1,8 +1,11 @@
+import { kibanaCredentials } from './credentials';
+
 export class RorApiClient {
   public configureRorIndexMainSettings(fixtureYamlFileName: string): Cypress.Chainable<void> {
     return cy.fixture(fixtureYamlFileName).then(yamlContent => {
       cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config',
+        credentials: kibanaCredentials,
         payload: {
           settings: `${yamlContent}`
         }
@@ -18,7 +21,10 @@ export class RorApiClient {
   // Test settings stay active until their TTL ends, also after the spec that loaded them. Invalidating
   // settings that are not active also answers "OK".
   public invalidateTestSettings() {
-    cy.esDelete<{ status: string; message: string }>({ endpoint: '_readonlyrest/admin/config/test' }).then(result => {
+    cy.esDelete<{ status: string; message: string }>({
+      endpoint: '_readonlyrest/admin/config/test',
+      credentials: kibanaCredentials
+    }).then(result => {
       expect(result.status, `Test ACL invalidated: ${result.message}`).to.equal('OK');
     });
   }
@@ -29,6 +35,7 @@ export class RorApiClient {
     return cy.fixture(fixtureYamlFileName).then(yamlContent => {
       cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config/test',
+        credentials: kibanaCredentials,
         payload: {
           settings: `${yamlContent}`,
           ttl: `${ttlInSeconds} sec`
@@ -46,6 +53,7 @@ export class RorApiClient {
     return cy.fixture(fixtureJsonFileName).then(content => {
       cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config/test/authmock',
+        credentials: kibanaCredentials,
         payload: content
       }).then(result => {
         expect(result.status, `${fixtureJsonFileName} auth mock status: ${result.message}`).to.equal('OK');
@@ -57,7 +65,8 @@ export class RorApiClient {
   public getRorIndexMainSettings(): Cypress.Chainable<string> {
     return cy
       .esGet<{ status: string; message: string }>({
-        endpoint: '_readonlyrest/admin/config'
+        endpoint: '_readonlyrest/admin/config',
+        credentials: kibanaCredentials
       })
       .then(response => {
         expect(response.status, `index settings status: ${response.message}`).to.equal('ok');
@@ -69,7 +78,8 @@ export class RorApiClient {
   public getRorTestSettingsStatus(): Cypress.Chainable<string> {
     return cy
       .esGet<{ status: string }>({
-        endpoint: '_readonlyrest/admin/config/test'
+        endpoint: '_readonlyrest/admin/config/test',
+        credentials: kibanaCredentials
       })
       .its('status');
   }

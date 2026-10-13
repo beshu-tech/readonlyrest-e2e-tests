@@ -1,19 +1,21 @@
 import { kbnApiAdvancedClient } from './KbnApiAdvancedClient';
 import { requiredBaseUrl } from './index';
-import { kibana } from './credentials';
+import { BasicCredentials, kibanaCredentials } from './credentials';
 import type { HttpResponse } from '../types';
 
 export class RorApiInternalKbnClient {
   public getLicense({
     impersonating,
-    credentials = kibana
-  }: { impersonating?: string; credentials?: string } = {}): Cypress.Chainable<
+    credentials = kibanaCredentials
+  }: { impersonating?: string; credentials?: BasicCredentials } = {}): Cypress.Chainable<
     HttpResponse<{ status?: string; message?: string; iss?: string }>
   > {
     return cy.kbnResponse({ endpoint: 'pkp/api/license', credentials, impersonating });
   }
 
-  public deactivateTestSettings({ credentials = kibana }: { credentials?: string } = {}): Cypress.Chainable<void> {
+  public deactivateTestSettings({
+    credentials = kibanaCredentials
+  }: { credentials?: BasicCredentials } = {}): Cypress.Chainable<void> {
     return cy.kbnDelete<void>({
       endpoint: 'pkp/api/test',
       credentials
@@ -34,7 +36,7 @@ export class RorApiInternalKbnClient {
           headers: {
             'Content-Type': 'application/yaml',
             'kbn-xsrf': 'true',
-            authorization: `Basic ${btoa(kibana)}`
+            authorization: `Basic ${btoa(kibanaCredentials)}`
           },
           body: `${yamlContent}`,
           allowTransportError: true

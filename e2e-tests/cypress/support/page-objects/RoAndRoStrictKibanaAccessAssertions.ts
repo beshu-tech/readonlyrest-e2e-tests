@@ -1,3 +1,4 @@
+import { BasicCredentials } from '../helpers/credentials';
 import { Settings } from './Settings';
 import { RorMenu } from './RorMenu';
 import { Home } from './Home';
@@ -15,7 +16,7 @@ import { Login } from './Login';
 import { Share } from './Share';
 
 export class RoAndRoStrictKibanaAccessAssertions {
-  static runAssertions(fixtureYamlFileName: string, credentials: string) {
+  static runAssertions(fixtureYamlFileName: string, credentials: BasicCredentials) {
     kbnApiClient.loadSampleData('ecommerce', credentials, 'template_group');
     Settings.setSettingsData(fixtureYamlFileName);
     Login.initialization();

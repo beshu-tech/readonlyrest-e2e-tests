@@ -1,6 +1,6 @@
 import { recurse } from 'cypress-recurse';
 import { SecuritySettings } from './SecuritySettings';
-import { admin } from '../helpers/credentials';
+import { adminCredentials, kibanaCredentials } from '../helpers/credentials';
 
 export class ActivationKeys {
   static DEFAULT_ACTIVATION_KEY =
@@ -32,7 +32,7 @@ export class ActivationKeys {
   }
 
   static verifyEdition(edition: 'kbn_free' | 'kbn_ent') {
-    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: admin })
+    cy.kbnGet<{ license: { edition: string } }>({ endpoint: 'pkp/api/license', credentials: adminCredentials })
       .its('license.edition')
       .should('equal', edition);
   }
@@ -59,6 +59,6 @@ export class ActivationKeys {
   }
 
   static sessionIndexStatus() {
-    return cy.esResponse({ endpoint: '.readonlyrest_kbn_sessions' }).its('status');
+    return cy.esResponse({ endpoint: '.readonlyrest_kbn_sessions', credentials: kibanaCredentials }).its('status');
   }
 }

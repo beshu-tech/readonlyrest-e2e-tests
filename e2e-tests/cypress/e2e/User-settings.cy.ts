@@ -4,7 +4,7 @@ import { SecuritySettings } from '../support/page-objects/SecuritySettings';
 import { kibanaVersion } from '../support/helpers';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { Loader } from '../support/page-objects/Loader';
-import { admin, kibana } from '../support/helpers/credentials';
+import { adminCredentials, kibanaCredentials } from '../support/helpers/credentials';
 
 // Unhandled rejections Kibana itself emits while re-bootstrapping after the theme reload below.
 // None of them are related to what these tests verify (that switching the theme loads the dark CSS
@@ -71,7 +71,7 @@ describe('User settings', () => {
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
     cy.url().should('include', `tenancy%3D`);
-    Login.fillLoginPageWith(admin);
+    Login.fillLoginPageWith(adminCredentials);
     Loader.loading();
     RorMenu.openRorMenu();
     RorMenu.verifyCurrentTenant(selectedTenant);
@@ -82,7 +82,7 @@ describe('User settings', () => {
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
     cy.url().should('not.include', `tenancy%3D`);
-    Login.fillLoginPageWith(admin);
+    Login.fillLoginPageWith(adminCredentials);
     Loader.loading();
     RorMenu.openRorMenu();
     RorMenu.verifyCurrentTenant('administrators');
@@ -96,7 +96,7 @@ describe('User settings', () => {
     RorMenu.openRorMenu();
     RorMenu.pressLogoutButton();
     RorMenu.interceptIdentity();
-    Login.fillLoginPageWith(kibana);
+    Login.fillLoginPageWith(kibanaCredentials);
     Loader.loading();
     RorMenu.verifyIdentityTenancyIsNot('kibana', 'infosec_group');
   });

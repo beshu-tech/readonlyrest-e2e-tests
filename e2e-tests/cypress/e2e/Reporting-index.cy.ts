@@ -6,7 +6,7 @@ import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
-import { admin } from '../support/helpers/credentials';
+import { adminCredentials } from '../support/helpers/credentials';
 
 describe('Reporting index', () => {
   beforeEach(() => {
@@ -15,9 +15,9 @@ describe('Reporting index', () => {
   });
 
   afterEach(() => {
-    kbnApiAdvancedClient.deleteSavedObjects(admin, 'infosec_group');
+    kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'infosec_group');
     if (kibanaVersion.gte('8.0.0')) {
-      kbnApiAdvancedClient.deleteDataViews(admin, 'infosec_group');
+      kbnApiAdvancedClient.deleteDataViews(adminCredentials, 'infosec_group');
     }
     Settings.restoreDefaultSettings();
   });

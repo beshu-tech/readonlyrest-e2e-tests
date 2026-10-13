@@ -2,7 +2,7 @@ import { Login } from '../support/page-objects/Login';
 import { Settings } from '../support/page-objects/Settings';
 import { Editor } from '../support/page-objects/Editor';
 import { rorApiClient } from '../support/helpers/RorApiClient';
-import { kibana } from '../support/helpers/credentials';
+import { kibanaCredentials } from '../support/helpers/credentials';
 
 describe('settings', () => {
   it('should check settings', () => {
@@ -26,7 +26,7 @@ describe('settings', () => {
   });
 
   it('should save settings and verify success response from request when user without group logging in', () => {
-    Login.initialization({ credentials: kibana });
+    Login.initialization({ credentials: kibanaCredentials });
     Settings.open();
     Settings.clickSaveButton();
   });

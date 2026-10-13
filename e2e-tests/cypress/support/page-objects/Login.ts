@@ -1,7 +1,7 @@
 import { Loader } from './Loader';
 import { requiredBaseUrl } from '../helpers';
 import { sessionEndCompleted } from '../sessionEnd';
-import { admin, BasicCredentials } from '../helpers/credentials';
+import { adminCredentials, BasicCredentials } from '../helpers/credentials';
 
 export class Login {
   static fillLoginPageWithWrongCredentials() {
@@ -27,7 +27,7 @@ export class Login {
   }
 
   static signIn({
-    credentials = admin,
+    credentials = adminCredentials,
     visitedUrl = requiredBaseUrl()
   }: {
     credentials?: BasicCredentials;

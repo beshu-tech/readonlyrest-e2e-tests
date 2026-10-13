@@ -14,6 +14,7 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { EnvName } from '../support/types';
+import { adminCredentials } from '../support/helpers/credentials';
 
 const customKibanaIndexName = '.kibana_custom';
 
@@ -27,7 +28,6 @@ const customKibanaIndexName = '.kibana_custom';
   });
 
   describe('Custom kibana config', () => {
-    const adminCredentials = 'admin:dev';
     const customSessionIndex = `test_index`;
 
     before(() => {
@@ -191,13 +191,13 @@ const customKibanaIndexName = '.kibana_custom';
       beforeEach(() => {
         esApiClient.deleteIndex(docsIndex);
         esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
-        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+        kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
       });
 
       afterEach(() => {
         esApiClient.deleteIndex(docsIndex);
         esApiAdvancedClient.pruneAllReportingIndices();
-        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+        kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
       });
 
       it('should verify custom reporting index', () => {

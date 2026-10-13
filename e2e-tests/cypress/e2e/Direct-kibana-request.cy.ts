@@ -1,13 +1,11 @@
 import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
-import { admin, BasicCredentials, user } from '../support/helpers/credentials';
+import { adminCredentials, BasicCredentials, user1Credentials } from '../support/helpers/credentials';
 import { rorApiClient } from '../support/helpers/RorApiClient';
 import { Settings } from '../support/page-objects/Settings';
 
 describe('Direct kibana request', () => {
-  const user1 = user(1);
-
   beforeEach(() => {
     clearDirectKibanaRequestState();
     rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
@@ -20,17 +18,17 @@ describe('Direct kibana request', () => {
 
   it('should check direct kibana request', () => {
     const verifySavedObjects = () => {
-      kbnApiAdvancedClient.deleteSavedObjects(user1);
+      kbnApiAdvancedClient.deleteSavedObjects(user1Credentials);
 
       cy.log('Import saved objects for user1');
       cy.kbnImport({
         endpoint: 'api/saved_objects/_import?overwrite=true',
-        credentials: user1,
+        credentials: user1Credentials,
         fixtureFilename: 'file.ndjson'
       });
 
       cy.log('Get imported saved objects for user1 Administrators group');
-      kbnApiAdvancedClient.getSavedObjects(user1).then(result => {
+      kbnApiAdvancedClient.getSavedObjects(user1Credentials).then(result => {
         const savedObjectIds = result.saved_objects.map(obj => obj.id);
 
         expect(savedObjectIds).to.includes('my-pattern');
@@ -39,7 +37,7 @@ describe('Direct kibana request', () => {
       });
 
       cy.log('Get imported saved objects for admin Administrators group');
-      kbnApiAdvancedClient.getSavedObjects(admin).then(result => {
+      kbnApiAdvancedClient.getSavedObjects(adminCredentials).then(result => {
         const savedObjectIds = result.saved_objects.map(obj => obj.id);
 
         expect(savedObjectIds).to.includes('my-pattern');
@@ -48,7 +46,7 @@ describe('Direct kibana request', () => {
       });
 
       cy.log('Get imported saved objects for user1 infosec group');
-      kbnApiAdvancedClient.getSavedObjects(user1, 'infosec_group').then(result => {
+      kbnApiAdvancedClient.getSavedObjects(user1Credentials, 'infosec_group').then(result => {
         const actual = result.saved_objects.some(
           saved_object => saved_object.id === 'my-pattern' || saved_object.id === 'my-dashboard'
         );
@@ -57,7 +55,7 @@ describe('Direct kibana request', () => {
     };
 
     const verifyDataViews = () => {
-      kbnApiAdvancedClient.deleteDataViews(user1);
+      kbnApiAdvancedClient.deleteDataViews(user1Credentials);
       cy.log('Create data_views for user1 Administrators group');
       kbnApiAdvancedClient.createDataView(
         {
@@ -67,20 +65,20 @@ describe('Direct kibana request', () => {
             name: 'My Logstash Data View'
           }
         },
-        user1
+        user1Credentials
       );
 
       const dataViewIds = (credentials: BasicCredentials, group?: string) =>
         kbnApiAdvancedClient.getDataViews(credentials, group).then(result => result.data_view.map(view => view.id));
 
       cy.log('Get data_views for user1 Administrators group');
-      dataViewIds(user1).should('include', 'logstash');
+      dataViewIds(user1Credentials).should('include', 'logstash');
 
       cy.log('Get data_views for admin Administrators group');
-      dataViewIds(admin).should('include', 'logstash');
+      dataViewIds(adminCredentials).should('include', 'logstash');
 
       cy.log('Get data_views for user1 infosec group');
-      dataViewIds(user1, 'infosec_group').should('not.include', 'logstash');
+      dataViewIds(user1Credentials, 'infosec_group').should('not.include', 'logstash');
     };
 
     verifySavedObjects();
@@ -122,23 +120,23 @@ describe('Direct kibana request', () => {
               }
             }
           },
-          admin,
+          adminCredentials,
           'template_group'
         )
-      : kbnApiClient.createShortUrlLegacy(admin, 'template_group');
+      : kbnApiClient.createShortUrlLegacy(adminCredentials, 'template_group');
 
     createShortUrl.then(response => {
       expect(response).to.have.property('id');
       const shortUrlId = response.id;
 
       cy.log('Verify short URL exists for template_group tenancy');
-      kbnApiClient.getSavedObjects(admin, 'template_group').then(result => {
+      kbnApiClient.getSavedObjects(adminCredentials, 'template_group').then(result => {
         const ids = result.saved_objects.map(obj => obj.id);
         expect(ids).to.include(shortUrlId);
       });
 
       cy.log('Verify short URL does not exist for different tenancy');
-      kbnApiClient.getSavedObjects(admin, 'admins_group').then(result => {
+      kbnApiClient.getSavedObjects(adminCredentials, 'admins_group').then(result => {
         const ids = result.saved_objects.map(obj => obj.id);
         expect(ids).not.to.include(shortUrlId);
       });
@@ -146,13 +144,13 @@ describe('Direct kibana request', () => {
   });
 
   const clearDirectKibanaRequestState = () => {
-    kbnApiAdvancedClient.deleteSavedObjects(user1);
-    kbnApiAdvancedClient.deleteSavedObjects(admin);
-    kbnApiAdvancedClient.deleteSavedObjects(admin, 'template_group');
+    kbnApiAdvancedClient.deleteSavedObjects(user1Credentials);
+    kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
+    kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
     if (kibanaVersion.gte('8.0.0')) {
-      kbnApiAdvancedClient.deleteDataViews(user1);
-      kbnApiAdvancedClient.deleteDataViews(admin);
-      kbnApiAdvancedClient.deleteDataViews(admin, 'template_group');
+      kbnApiAdvancedClient.deleteDataViews(user1Credentials);
+      kbnApiAdvancedClient.deleteDataViews(adminCredentials);
+      kbnApiAdvancedClient.deleteDataViews(adminCredentials, 'template_group');
     }
   };
 });

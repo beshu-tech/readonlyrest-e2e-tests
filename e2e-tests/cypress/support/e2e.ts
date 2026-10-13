@@ -4,6 +4,7 @@ import { installSessionEndExceptionFilter } from './sessionEnd';
 import { kbnApiAdvancedClient } from './helpers/KbnApiAdvancedClient';
 import { rorApiClient } from './helpers/RorApiClient';
 import type { HttpResponse } from './types';
+import type { BasicCredentials } from './helpers/credentials';
 
 // Record what the app copies, so the specs never depend on the OS clipboard - see
 // clipboardCapture.ts for why Chromium 138 makes that necessary.
@@ -36,7 +37,7 @@ declare global {
       kbnResponse<T = unknown>(options: ResponseOptions<KbnRequestOptions>): Chainable<HttpResponse<T>>;
       kbnImport(options: {
         endpoint: string;
-        credentials: string;
+        credentials: BasicCredentials;
         fixtureFilename: string;
         currentGroupHeader?: string;
       }): Chainable<unknown>;
@@ -57,8 +58,7 @@ declare global {
 
     interface EsRequestOptions {
       endpoint: string;
-      // The kibana user when not given.
-      credentials?: string;
+      credentials: BasicCredentials;
       // Sent as JSON.
       payload?: object;
       failOnStatusCode?: boolean;
@@ -66,7 +66,6 @@ declare global {
     }
 
     interface KbnRequestOptions extends EsRequestOptions {
-      credentials: string;
       currentGroupHeader?: string;
       impersonating?: string;
     }

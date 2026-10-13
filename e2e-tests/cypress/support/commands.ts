@@ -1,10 +1,10 @@
+import { BasicCredentials } from './helpers/credentials';
 import '@testing-library/cypress/add-commands';
 import 'cypress-network-idle';
 import { capture as clipboardCapture } from './clipboardCapture';
 import { kibanaVersion } from './helpers';
 import { describeBody } from './helpers/KbnApiClient';
 import type { HttpResponse } from './types';
-import { kibana } from './helpers/credentials';
 
 const IMPORT_ATTEMPTS = 5;
 const IMPORT_RETRY_DELAY_MS = 2000;
@@ -65,7 +65,7 @@ function httpCall(family: RequestFamily, options: RequestOptions, fullResponse =
     url: `${baseUrl}/${endpoint}`,
     headers: {
       'Content-Type': 'application/json',
-      authorization: `Basic ${btoa(credentials ?? kibana)}`,
+      authorization: `Basic ${btoa(credentials)}`,
       ...(family === 'kbn' ? { 'kbn-xsrf': 'true' } : {}),
       ...headers,
       ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {}),
@@ -77,11 +77,15 @@ function httpCall(family: RequestFamily, options: RequestOptions, fullResponse =
   });
 }
 
-(['Get', 'Post', 'Put', 'Delete'] as const).forEach(verb => {
-  const method = verb.toUpperCase();
-  Cypress.Commands.add(`kbn${verb}`, (options: Cypress.KbnRequestOptions) => httpCall('kbn', { ...options, method }));
-  Cypress.Commands.add(`es${verb}`, (options: Cypress.EsRequestOptions) => httpCall('es', { ...options, method }));
-});
+Cypress.Commands.add('kbnGet', options => httpCall('kbn', { ...options, method: 'GET' }));
+Cypress.Commands.add('kbnPost', options => httpCall('kbn', { ...options, method: 'POST' }));
+Cypress.Commands.add('kbnPut', options => httpCall('kbn', { ...options, method: 'PUT' }));
+Cypress.Commands.add('kbnDelete', options => httpCall('kbn', { ...options, method: 'DELETE' }));
+
+Cypress.Commands.add('esGet', options => httpCall('es', { ...options, method: 'GET' }));
+Cypress.Commands.add('esPost', options => httpCall('es', { ...options, method: 'POST' }));
+Cypress.Commands.add('esPut', options => httpCall('es', { ...options, method: 'PUT' }));
+Cypress.Commands.add('esDelete', options => httpCall('es', { ...options, method: 'DELETE' }));
 
 // Yields the status, the headers and the body, and never fails on the status. It does not follow a
 // redirect, so that a redirect to the login page stays visible.
@@ -96,7 +100,7 @@ Cypress.Commands.add(
 
 function uploadFile(
   url: string,
-  credentials: string,
+  credentials: BasicCredentials,
   fixtureFilename: string,
   headers?: { [key: string]: string }
 ): Cypress.Chainable<unknown> {

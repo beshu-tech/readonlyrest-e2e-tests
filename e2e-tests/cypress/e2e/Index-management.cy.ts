@@ -5,7 +5,7 @@ import { esApiClient } from '../support/helpers/EsApiClient';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { kibanaVersion } from '../support/helpers';
-import { admin, user } from '../support/helpers/credentials';
+import { adminCredentials, user2Credentials } from '../support/helpers/credentials';
 
 const testIndexName = '.kibana_test';
 
@@ -13,7 +13,7 @@ describe('Index management', () => {
   beforeEach(() => {
     if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
       // A test that stopped before its afterEach can leave this data view behind.
-      kbnApiClient.deleteDataView('r', admin, undefined, { failOnStatusCode: false });
+      kbnApiClient.deleteDataView('r', adminCredentials, undefined, { failOnStatusCode: false });
       kbnApiClient.createDataView(
         {
           data_view: {
@@ -22,7 +22,7 @@ describe('Index management', () => {
             name: 'ReadonlyREST Data view'
           }
         },
-        admin
+        adminCredentials
       );
     }
   });
@@ -37,7 +37,7 @@ describe('Index management', () => {
     });
 
     if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
-      kbnApiClient.deleteDataView('r', admin, undefined, { failOnStatusCode: false });
+      kbnApiClient.deleteDataView('r', adminCredentials, undefined, { failOnStatusCode: false });
     }
   });
 
@@ -78,7 +78,7 @@ describe('Index management', () => {
   });
 
   it('should verify empty data streams page', () => {
-    Login.initialization({ credentials: user(2) });
+    Login.initialization({ credentials: user2Credentials });
     KibanaNavigation.openPage('Stack Management');
     KibanaNavigation.openSubPage('Index Management');
     IndexManagement.openDataStreams();

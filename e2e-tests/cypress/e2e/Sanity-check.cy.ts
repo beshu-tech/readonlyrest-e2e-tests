@@ -11,7 +11,7 @@ import { SampleData } from '../support/helpers/SampleData';
 import { recordHistoryChanges } from '../support/helpers/historyChanges';
 import { TENANCY_QUERY_STRING_KEY } from '../support/types';
 import { Tenancy } from '../support/page-objects/Tenancy';
-import { admin } from '../support/helpers/credentials';
+import { adminCredentials } from '../support/helpers/credentials';
 
 describe('sanity check', () => {
   beforeEach(() => {
@@ -29,9 +29,9 @@ describe('sanity check', () => {
 
   afterEach(() => {
     stopApp();
-    kbnApiAdvancedClient.deleteSampleData('ecommerce', admin);
-    kbnApiAdvancedClient.deleteSavedObjects(admin);
-    kbnApiAdvancedClient.deleteSavedObjects(admin, 'infosec_group');
+    kbnApiAdvancedClient.deleteSampleData('ecommerce', adminCredentials);
+    kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
+    kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'infosec_group');
     esApiAdvancedClient.pruneAllReportingIndices();
   });
 
@@ -118,7 +118,7 @@ describe('sanity check', () => {
     cy.then(() => {
       oldPageLeaving = false;
     });
-    Login.fillLoginPageWith(admin);
+    Login.fillLoginPageWith(adminCredentials);
 
     if (kibanaVersion.gte('8.7.0')) {
       Loader.loading(
