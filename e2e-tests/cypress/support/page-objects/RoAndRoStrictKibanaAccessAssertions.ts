@@ -47,8 +47,7 @@ export class RoAndRoStrictKibanaAccessAssertions {
     }
     Dashboard.openItem(0);
     SubHeader.breadcrumbsLastItem('[eCommerce] Revenue Dashboard');
-    // Panels first: on Kibana 9.4, closing the app menu while the panels still render throws React
-    // error #185 (maximum update depth) and leaves the page blank.
+    // The Lens check below needs the rendered panels.
     Dashboard.waitForPanelsRendered();
     Dashboard.verifyWriteControlsNotShown();
 
