@@ -78,16 +78,16 @@ export class DevTools {
 
   // Enters the request and clicks send. `clickHadEffect` tells when the Console did what the click asks.
   private static enterAndSendRequest(request: string, clickHadEffect: () => boolean) {
-    if (kibanaVersion.gte('8.16.0')) {
-      DevTools.sendFromMonacoEditorUntilSent(request, clickHadEffect);
-    } else if (kibanaVersion.lte('7.9.0')) {
-      DevTools.sendFromOldAceEditor(request);
+    if (kibanaVersion.lte('7.9.0')) {
+      DevTools.sendFromAceEditorUpTo79(request);
+    } else if (kibanaVersion.lt('8.16.0')) {
+      DevTools.sendFromAceEditorFrom710To815(request);
     } else {
-      DevTools.sendFromAceEditor(request);
+      DevTools.sendFromMonacoEditorUntilSent(request, clickHadEffect);
     }
   }
 
-  private static sendFromOldAceEditor(request: string) {
+  private static sendFromAceEditorUpTo79(request: string) {
     cy.get('#ConAppEditor').click();
     cy.get('#ConAppInputTextarea').clear({ force: true });
     DevTools.pasteIntoFocusedEditor(request);
@@ -95,7 +95,7 @@ export class DevTools {
     cy.get('.conApp__editorActionButton path').click({ force: true });
   }
 
-  private static sendFromAceEditor(request: string) {
+  private static sendFromAceEditorFrom710To815(request: string) {
     cy.get('[data-test-subj=console-textarea]').focus().clear({ force: true });
     DevTools.pasteIntoFocusedEditor(request);
     cy.get('[data-test-subj=sendRequestButton]').click();
