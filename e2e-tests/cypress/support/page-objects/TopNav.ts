@@ -43,9 +43,9 @@ export class TopNav {
   }
 
   // Kibana 9.4 throws React error #185 (maximum update depth) and blanks the page when the page updates
-  // while its overflow menu is open. A dashboard can load its panels a second time after they first
-  // rendered. So the menu opens and closes only after QUIET_MS with no request in flight and no
-  // panel that renders.
+  // while its overflow menu is open (RORDEV-2323). A dashboard can load its panels a second time after
+  // they first rendered. So the menu opens and closes only after QUIET_MS with no request in flight
+  // and no panel that renders.
   private static waitForPageQuiet() {
     let quietSince = Date.now();
     recurse(
