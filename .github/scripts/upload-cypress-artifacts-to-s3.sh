@@ -71,8 +71,10 @@ S3_PATH=$(printf '%s' "$S3_PATH" | sed 's://*:/:g')
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
-# A shorter retry budget than a release upload gets. These artifacts help somebody read a red job,
-# and a storage outage must not hold the job open for minutes per file.
+# A shorter retry budget than a release upload gets. These artifacts help somebody read a red job.
+# The budget counts only the waits between attempts. An attempt that times out is retried, so one
+# file can hold the job for about 3 x S3_UPLOADER_MAX_TIME. The loop below stops at the first file
+# whose budget is spent, so an outage holds the job for one file only.
 export S3_UPLOAD_RETRY_BUDGET_SECONDS="${S3_UPLOAD_RETRY_BUDGET_SECONDS:-30}"
 
 # An explicit mime type keeps the uploader from calling `file` (its guess path), which is not
@@ -113,15 +115,23 @@ while IFS= read -r -d '' FILE; do
 
   REL=${FILE#"$SOURCE_DIR"/}
   MIME=$(mime_of "$FILE")
-  if upload_one "$FILE" "${S3_PATH}${REL}" "$MIME"; then
+  UPLOAD_STATUS=0
+  upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" || UPLOAD_STATUS=$?
+  if [ "$UPLOAD_STATUS" -eq 0 ]; then
     UPLOADED=$((UPLOADED + 1))
     continue
   fi
 
   # The uploader retried the transient answers and printed the error body, so the log already
   # names the cause.
-  echo "WARNING: upload failed for $FILE (continuing)"
   FAILED=$((FAILED + 1))
+  # Status 3: the storage stayed down for the whole retry budget. Every later file waits for the
+  # same budget and fails the same way, so the run stops here.
+  if [ "$UPLOAD_STATUS" -eq 3 ]; then
+    echo "WARNING: upload failed for $FILE. The storage stayed down for the whole retry budget, so the files that remain are not uploaded."
+    break
+  fi
+  echo "WARNING: upload failed for $FILE (continuing)"
 done < <(find "$SOURCE_DIR" -type f -print0)
 
 echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
