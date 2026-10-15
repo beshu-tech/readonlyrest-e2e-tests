@@ -10,7 +10,7 @@ set -euo pipefail
 ROR_API="https://api.beshu.tech/list_es_versions"
 
 main() {
-  local run_type=${1:-} listing ror_version supported elk_versions
+  local run_type=${1:-} listing ror_version supported_elk_versions elk_versions
   case "$run_type" in
     e2e|bootstrap) ;;
     *) echo "usage: resolve-test-versions.sh e2e|bootstrap" >&2; exit 1 ;;
@@ -18,11 +18,11 @@ main() {
 
   listing=$(retry 3 fetch "$ROR_API")
   ror_version=$(latest_ror_release <<< "$listing")
-  supported=$(elk_supported_versions <<< "$listing")
+  supported_elk_versions=$(elk_supported_versions <<< "$listing")
 
   case "$run_type" in
-    e2e)       elk_versions=$(latest_of_each_major_and_of_two_newest_minors <<< "$supported") ;;
-    bootstrap) elk_versions=$(latest_of_each_minor <<< "$supported") ;;
+    e2e)       elk_versions=$(latest_of_each_major_and_of_two_newest_minors <<< "$supported_elk_versions") ;;
+    bootstrap) elk_versions=$(latest_of_each_minor <<< "$supported_elk_versions") ;;
   esac
 
   if [ "$(jq length <<< "$elk_versions")" -eq 0 ]; then

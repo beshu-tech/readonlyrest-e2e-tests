@@ -57,11 +57,8 @@ runs:
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
-        # One cap for the whole run: the stack start, the suite and the log collection. runner.sh
-        # stops the suite 5 minutes before it, so that the logs still get collected.
-        #
-        # The eck envs set the number: Kubernetes networking answers each request more slowly than
-        # the docker-compose bridge, and the 27-spec suite needs more than an hour there.
+        # The cap covers the stack start, the suite and the log collection. The eck envs set the
+        # number: the suite there takes more than one hour.
         E2E_TIME_CAP_SECONDS: 4500
     - name: Put the E2E summary on the run summary page
       # The runner writes the file only when the suite ran, on a pass as well as on a failure.
