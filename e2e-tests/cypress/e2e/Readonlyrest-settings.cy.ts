@@ -164,7 +164,7 @@ describe('Readonlyrest-settings', () => {
     });
 
     cy.request({ url: `${Cypress.config().baseUrl}/api/spaces/space`, failOnStatusCode: false }).then(response => {
-      expect(response.status).to.equal(403);
+      expect(response.status).to.equal(401);
       expect(response.body.error).to.equal('Unauthorized');
     });
   });

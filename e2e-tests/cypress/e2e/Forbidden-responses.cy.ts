@@ -28,7 +28,7 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
 // So both hooks clean up. The cleanup must run under the default settings, because the forbidden
 // settings deny every delete.
 const cleanUp = () => {
-  Settings.setSettingsData('defaultSettings.yaml');
+  Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   // deleteDataViews() 404s on 7.x.
   kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
 };
