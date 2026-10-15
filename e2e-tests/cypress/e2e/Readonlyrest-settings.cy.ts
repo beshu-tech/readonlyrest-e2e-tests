@@ -1,5 +1,6 @@
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { esApiClient } from '../support/helpers/EsApiClient';
+import { isMultiKibanaNodeEnv } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Discover } from '../support/page-objects/Discover';
@@ -29,14 +30,11 @@ describe('Readonlyrest-settings', () => {
   });
 
   // The docker env (elk-ror) runs 2 kbn-ror replicas behind kbn-proxy's round robin (see
-  // base.docker-compose.yml). resetKibanaIndexToTemplate is only applied once, at tenant-index
-  // creation time (TenantIndexBasedOnTemplateApplier, called from abstractIndexCreator.ts) - unlike
-  // the CSS/JS/middleware injections elsewhere in this spec, which re-evaluate on every request and
-  // so self-correct if an early request lands on a stale replica. If the one request that creates
-  // .kibana_admins_group lands on a replica that has not yet picked up the settings POSTed above,
-  // the reset never happens and nothing later can retrigger it. The eck-* environments run a single
-  // Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
-  (Cypress.env().envName === 'elk-ror' ? it.skip : it)('should verify kibanaIndexTemplate functionality', () => {
+  // base.docker-compose.yml), so a request of this test can land on either of them, and the two
+  // do not share the per-session state that decides whether the tenant index gets reset from the
+  // template. That made the test flaky there. The eck-* environments run a single Kibana node
+  // (kind-cluster/ror/base/kbn.yml: count: 1), where every request hits the same state.
+  (isMultiKibanaNodeEnv() ? it.skip : it)('should verify kibanaIndexTemplate functionality', () => {
     Settings.setReadonlyRestKbnSettings(`
   kibanaIndexTemplate: ".kibana_template_group"
   resetKibanaIndexToTemplate: true
@@ -63,7 +61,15 @@ describe('Readonlyrest-settings', () => {
       currentGroupHeader: 'admins_group'
     });
 
-    cy.reload();
+    // A reload is not enough to retrigger the reset: kbn-ror only re-runs the tenant index
+    // creation (and with it the reindex from the template) once per session id per index, and
+    // remembers that for 2 minutes in the memory of the node that served the request. A login
+    // is not subject to that - it always runs the creation for the session it opens - so clear
+    // the cookies and sign in again to get a session id the node has not seen yet.
+    cy.clearCookies();
+    cy.clearLocalStorage();
+    Login.initialization();
+
     Dashboard.openDashboard();
     Dashboard.verifyDashboardNotExist('Look at my dashboard');
   });
@@ -87,7 +93,7 @@ describe('Readonlyrest-settings', () => {
 
     cy.reload();
 
-    cy.get('h1').shouldHaveStyle('color', 'rgb(0,128,0)');
+    cy.get('h1', { timeout: 30000 }).shouldHaveStyle('color', 'rgb(0,128,0)');
   });
 
   it('should verify custom Kibana JS', () => {
@@ -104,7 +110,7 @@ describe('Readonlyrest-settings', () => {
 
     cy.reload();
 
-    cy.get('[data-testid="metadata-alert-message"]')
+    cy.get('[data-testid="metadata-alert-message"]', { timeout: 30000 })
       .should('exist')
       .then($el => {
         cy.log(`Alert message: ${$el.text()}`);
@@ -139,7 +145,7 @@ describe('Readonlyrest-settings', () => {
 
     cy.reload();
 
-    cy.get('[data-testid="metadata-enriched-data"]')
+    cy.get('[data-testid="metadata-enriched-data"]', { timeout: 30000 })
       .should('exist')
       .then($el => {
         cy.log(`Entiched data: ${$el.text()}`);

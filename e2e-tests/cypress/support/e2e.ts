@@ -41,7 +41,8 @@ declare global {
         payload,
         currentGroupHeader,
         failOnStatusCode,
-        headers
+        headers,
+        timeoutMs
       }: {
         method: string;
         endpoint: string;
@@ -51,6 +52,7 @@ declare global {
         impersonating?: string;
         failOnStatusCode?: boolean;
         headers?: { [key: string]: string };
+        timeoutMs?: number;
       }): Chainable<Subject>;
       kbnGet<T = Subject>({
         endpoint,
@@ -71,14 +73,18 @@ declare global {
         credentials,
         payload,
         currentGroupHeader,
-        headers
+        failOnStatusCode,
+        headers,
+        timeoutMs
       }: {
         endpoint: string;
         credentials: string;
         payload?: Payload;
         currentGroupHeader?: string;
         impersonating?: string;
+        failOnStatusCode?: boolean;
         headers?: { [key: string]: string };
+        timeoutMs?: number;
       }): Chainable<T>;
       kbnPut({
         endpoint,

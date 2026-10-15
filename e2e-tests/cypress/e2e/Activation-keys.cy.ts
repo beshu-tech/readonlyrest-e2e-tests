@@ -1,6 +1,6 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
-import { userCredentials } from '../support/helpers';
+import { isMultiKibanaNodeEnv, userCredentials } from '../support/helpers';
 
 // The logout shows up only after the next session probe, which runs every
 // readonlyrest_kbn.sessions_probe_interval_seconds (30 s by default). That is longer than the 20 s
@@ -19,7 +19,7 @@ const LOGOUT_TIMEOUT = { timeout: 45000 };
 // verifyLicenseChange -> sessionManager.deleteAllSessions()). A single client's requests can land
 // on nodes disagreeing about the current edition right after this test flips it. The eck-* environments
 // run a single Kibana node (kind-cluster/ror/base/kbn.yml: count: 1) and are unaffected.
-(Cypress.env().envName === 'elk-ror' ? describe.skip : describe)('Activation key', () => {
+(isMultiKibanaNodeEnv() ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {
     Login.initialization();
     ActivationKeys.open();

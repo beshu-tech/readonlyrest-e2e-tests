@@ -4,6 +4,9 @@ metadata:
   name: eck-ror-es-np
 spec:
   type: NodePort
+  # The cluster has one Elasticsearch node. Without this, each readiness failure removes its
+  # endpoint, and each open request ends in ECONNRESET instead of a slow response.
+  publishNotReadyAddresses: true
   ports:
     - port: 9200
       name: esport

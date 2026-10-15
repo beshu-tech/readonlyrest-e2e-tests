@@ -1,14 +1,22 @@
+import * as semver from 'semver';
 import { BasicCredentials } from './KbnApiClient';
+import { EnvName } from '../types';
 
 export const getKibanaVersion = () => {
   const kibanaVersion: string = Cypress.env('kibanaVersion');
   console.log('kibana version', kibanaVersion);
-  if (!kibanaVersion) {
-    throw new Error('Kibana version not specified in the config file');
+  if (!kibanaVersion || !semver.valid(kibanaVersion)) {
+    throw new Error(
+      `Kibana version not specified correctly (got "${kibanaVersion}"). Pass it via --env kibanaVersion=<version>.`
+    );
   }
 
   return kibanaVersion;
 };
+
+export function isMultiKibanaNodeEnv(): boolean {
+  return Cypress.env().envName === EnvName.ELK_ROR;
+}
 
 export function requiredBaseUrl(): string {
   const baseUrl = Cypress.config('baseUrl');

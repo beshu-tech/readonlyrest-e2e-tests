@@ -1,7 +1,7 @@
 helpers:
     ckr: &common-kibana-rules
         access: rw
-        hide_apps: ['Enterprise Search|Overview', 'Observability']
+        hide_apps: ['Enterprise Search|Overview']
         index: '.kibana_@{acl:current_group}'
 
     ag: &all-groups
@@ -22,9 +22,29 @@ readonlyrest:
               index_template: "'readonlyrest_audit_'yyyy-MM-dd"
 
     access_control_rules:
+        # <-- related to ECK environment -->
+        - name: 'Kibana service account - token'
+          verbosity: error
+          token_authentication:
+              token: 'Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}'
+              username: service_account
+
         - name: 'Kibana service account - user/pass'
           verbosity: error
           auth_key: kibana:kibana
+
+        - name: 'PROBE'
+          verbosity: error
+          auth_key: 'elastic-internal-probe:${INTERNAL_PROBE_PASS}'
+
+        - name: 'ELASTIC-INTERNAL'
+          verbosity: error
+          auth_key: 'elastic-internal:${INTERNAL_USR_PASS}'
+        # <!-- related to ECK environment -->
+
+        - name: 'APM server - system account'
+          verbosity: error
+          auth_key: apm:test
 
         - name: JWT_AUTH
           jwt_auth:
@@ -52,7 +72,6 @@ readonlyrest:
           kibana:
               <<: *common-kibana-rules
               access: admin
-              hide_apps: ['Enterprise Search|Overview', 'Management']
               metadata:
                   alert_message: 'Dear @{acl:user}'
         - name: infosec
