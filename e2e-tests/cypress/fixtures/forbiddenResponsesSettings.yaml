@@ -1,0 +1,40 @@
+readonlyrest:
+  response_if_req_forbidden: You shall not pass!
+
+  access_control_rules:
+
+    - name: "Kibana service account - user/pass"
+      verbosity: error
+      auth_key: kibana:kibana
+
+    # <-- related to ECK environment -->
+    - name: 'Kibana service account - token'
+      verbosity: error
+      token_authentication:
+        token: 'Bearer ${KIBANA_SERVICE_ACCOUNT_TOKEN}'
+        username: service_account
+
+    - name: 'PROBE'
+      verbosity: error
+      auth_key: 'elastic-internal-probe:${INTERNAL_PROBE_PASS}'
+
+    - name: 'ELASTIC-INTERNAL'
+      verbosity: error
+      auth_key: 'elastic-internal:${INTERNAL_USR_PASS}'
+    # <!-- related to ECK environment -->
+
+    # A forbidden tag delete, saved-object delete, bulk-delete and data-view delete all end up
+    # calling one of these two actions.
+    - name: DENY_SAVED_OBJECT_AND_TAG_DELETE
+      type: forbid
+      auth_key: user2:dev
+      actions:
+        - "indices:data/write/delete"
+        - "indices:data/write/bulk"
+
+    - name: user2
+      auth_key: user2:dev
+      kibana:
+        index: ".kibana_user2"
+        access: rw
+      indices: ["invoices"]

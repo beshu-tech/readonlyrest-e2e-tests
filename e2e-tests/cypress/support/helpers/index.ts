@@ -26,3 +26,8 @@ export function isJsonString(str: string) {
 }
 
 export const userCredentials: BasicCredentials = `${Cypress.env().login}:${Cypress.env().password}`;
+
+export const stopApp = () =>
+  cy.window({ log: false }).then(win => {
+    win.location.href = 'about:blank';
+  });

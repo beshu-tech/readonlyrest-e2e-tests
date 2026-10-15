@@ -41,7 +41,8 @@ export class KbnApiClient {
     { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
   ): Cypress.Chainable<GetObject> {
     return cy.kbnGet<GetObject>({
-      endpoint: 'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url',
+      endpoint:
+        'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url&type=tag',
       credentials,
       currentGroupHeader: group,
       failOnStatusCode

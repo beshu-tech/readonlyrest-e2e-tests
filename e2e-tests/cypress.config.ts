@@ -28,9 +28,11 @@ export default defineConfig({
   responseTimeout: 20000,
   pageLoadTimeout: 20000,
   taskTimeout: 20000,
+  // One retry. A test that needs it is a flake, and the retried-tests report names it. More
+  // retries would hide a test that fails two times out of three.
   retries: {
-    openMode: 2,
-    runMode: 2
+    openMode: 1,
+    runMode: 1
   },
   e2e: {
     // We've imported your old cypress plugins here.

@@ -179,7 +179,7 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
   # Load busybox used by the wait-for-apm init container.
-  BUSYBOX_IMAGE="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}library/busybox"
+  BUSYBOX_IMAGE="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}library/busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
   docker pull "$BUSYBOX_IMAGE" || { echo "Failed to pull busybox image: $BUSYBOX_IMAGE"; exit 1; }
   docker tag "$BUSYBOX_IMAGE" busybox || { echo "Failed to tag $BUSYBOX_IMAGE as busybox."; exit 1; }
   kind load docker-image busybox --name "$CLUSTER_NAME" || { echo "Failed to load busybox into Kind cluster."; exit 1; }

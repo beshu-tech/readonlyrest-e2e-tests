@@ -5,7 +5,7 @@
 # `library/` is the namespace of an official image, so the name resolves with the prefix and without
 # it, to the same digest.
 ARG MIRROR=
-FROM ${MIRROR}library/nginx:latest
+FROM ${MIRROR}library/nginx:1.31@sha256:f9ea18bfa4fad859e1ed38259d711da7ccad2c3516e875cec3351a57c859f571
 
 COPY conf/kbn/kbn-proxy-nginx.conf /etc/nginx/nginx.conf
 COPY certs/kibana.key /etc/nginx/kibana/kibana.key

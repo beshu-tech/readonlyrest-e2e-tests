@@ -15,10 +15,18 @@ export class KibanaNavigation {
     }).click();
   }
 
+  // The button toggles: a click on an open nav closes it. So it clicks only when aria-expanded says
+  // the nav is closed. Kibana 7.17 to 9.5 sets that attribute on the button.
   static openKibanaNavigation() {
     cy.log('openKibanaNavigation');
     KibanaNavigation.closeOpenOverlays();
-    cy.get('[data-test-subj=toggleNavButton]').click({ force: true });
+    cy.get('[data-test-subj=toggleNavButton]').then($button => {
+      if ($button.attr('aria-expanded') !== 'true') {
+        cy.wrap($button).click();
+      }
+    });
+    cy.get('[data-test-subj=toggleNavButton]').should('have.attr', 'aria-expanded', 'true');
+    cy.get('[data-test-subj=collapsibleNav]').should('be.visible');
   }
 
   private static closeOpenOverlays() {

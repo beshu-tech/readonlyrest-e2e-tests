@@ -6,62 +6,42 @@ import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Loader } from '../support/page-objects/Loader';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
+import type { GetObject } from '../support/helpers/KbnApiClient';
 import { getKibanaVersion, userCredentials } from '../support/helpers';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { IndexManagement } from '../support/page-objects/IndexManagement';
-import { TENANCY_QUERY_STRING_KEY } from '../support/types';
+import { TENANCY_QUERY_STRING_KEY, X_ROR_TENANCY } from '../support/types';
 import { Spaces } from '../support/page-objects/Spaces';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { UserSettings } from '../support/page-objects/UserSettings';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
-    // eslint-disable-next-line no-use-before-define
-    runTests();
-  });
-
-  describe('should run tests when back to previous page in a browser history', () => {
-    const backBrowserHistory = (
-      endUrl = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`
-    ) => {
-      RorMenu.changeTenancy('administrators', endUrl, '');
-      IndexManagement.waitUntilLoaded();
-      cy.go('back');
-      // Chromium 138 serves history-back from the back/forward cache, which restores
-      // the page without re-running the injected tenancy scripts, so the URL tenancy
-      // is not re-applied. Tracked in RORDEV-2172 — until the product handles BFCache
-      // restores, this suite pins the full-load semantics explicitly.
-      cy.reload();
-    };
-
-    // eslint-disable-next-line no-use-before-define
-    runTests({ callbackAfterLogin: backBrowserHistory });
-  });
-
-  describe('should run tests when tenancy switched in a different tab', () => {
-    const urlWithInfosecTenancyId = `/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
-
-    const openAnotherTabs = () => {
-      cy.window().then(win => {
-        win.open(urlWithInfosecTenancyId, '_blank');
-      });
-    };
-
-    beforeEach(() => {
-      cy.clearCookies();
-      cy.clearLocalStorage();
+    afterEach(() => {
+      kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
+      kbnApiAdvancedClient.deleteAllSpaces(userCredentials, 'template_group');
     });
 
-    // eslint-disable-next-line no-use-before-define
-    runTests({ callbackBeforeLogin: openAnotherTabs });
-  });
+    it('should open correct tenancy when URL contains tenancy query string', () => {
+      const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
+      Login.initialization({
+        visitedUrl: urlWithTenancyId,
+        finishUrl: urlWithTenancyId,
+        spacePrefix: ''
+      });
 
-  // Outside runTests: the share panel does not depend on how the session was opened, and the first
-  // test in runTests already checks that the tenancy survives each variant. This is the most
-  // expensive test in the suite, because it installs the ecommerce sample data.
-  describe('share link', () => {
-    afterEach(() => {
-      kbnApiClient.deleteSampleData('ecommerce', userCredentials);
+      Tenancy.checkTenancyNameInBadge('template', 'rw');
+      RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
+      Tenancy.checkTenancyNameInBadge('infosec', 'a');
+      KibanaNavigation.verifyKibanaNavigationLinkItemHref(
+        `${Cypress.config().baseUrl}/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=`
+      );
+      KibanaNavigation.openHomepage();
+      RorMenu.openRorMenu();
+      RorMenu.pressLogoutButton();
+      Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
+      Loader.loading();
+      Tenancy.checkTenancyNameInBadge('administrators', 'a');
     });
 
     it('should copy link to specific visualization with tenancy information', () => {
@@ -126,29 +106,154 @@ describe('Tenancy', () => {
         );
       }
     });
-  });
 
-  // Outside runTests: neither test reads callbackBeforeLogin or callbackAfterLogin, so the three
-  // passes would be identical.
-  it('should redirect to page not found when tenancy is not available', () => {
-    const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
-    Login.initialization({
-      visitedUrl: urlWithTenancyId,
-      finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`,
-      spacePrefix: ''
+    it('should redirect to page not found when tenancy is not available', () => {
+      const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
+      Login.initialization({
+        visitedUrl: urlWithTenancyId,
+        finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`,
+        spacePrefix: ''
+      });
+    });
+
+    it('should correctly switch Kibana space', () => {
+      const newSpace = 'test-space';
+
+      const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
+      Login.initialization({
+        visitedUrl: urlWithTenancyId,
+        finishUrl: urlWithTenancyId,
+        spacePrefix: ''
+      });
+
+      Spaces.createNewSpace(newSpace);
+      Spaces.openSpace(newSpace);
+      Spaces.verifyCurrentSpace(newSpace);
+    });
+
+    it('should hide correct Kibana navigation items on tenancy switch', () => {
+      const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
+      Login.initialization({
+        visitedUrl: urlWithTenancyId,
+        finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
+        spacePrefix: ''
+      });
+
+      KibanaNavigation.openKibanaNavigation();
+      KibanaNavigation.checkIfNotVisible('Stack Management');
     });
   });
 
-  it('should hide correct Kibana navigation items on tenancy switch', () => {
-    const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
+  it('should open the tenancy of the previous page after browser back', () => {
+    const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
     Login.initialization({
       visitedUrl: urlWithTenancyId,
-      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
+      finishUrl: urlWithTenancyId,
       spacePrefix: ''
     });
 
-    KibanaNavigation.openKibanaNavigation();
-    KibanaNavigation.checkIfNotVisible('Stack Management');
+    RorMenu.changeTenancy(
+      'administrators',
+      `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`,
+      ''
+    );
+    IndexManagement.waitUntilLoaded();
+    cy.go('back');
+    // Chromium 138 serves history-back from the back/forward cache, which restores
+    // the page without re-running the injected tenancy scripts, so the URL tenancy
+    // is not re-applied. Tracked in RORDEV-2172 — until the product handles BFCache
+    // restores, this test pins the full-load semantics explicitly.
+    cy.reload();
+    Tenancy.checkTenancyNameInBadge('template', 'rw');
+  });
+
+  // Two tabs on two tenancies share one session. The proxy must resolve the tenancy of each request from that
+  // request, and not from the session. cy.request sends the session cookie of the browser and the x-ror-tenancy
+  // header of the other tenancy. Each tenancy has its own Kibana index, and a marker data view in that index shows
+  // which tenancy answered a request.
+  describe('should resolve the tenancy of each request when one session uses two tenancies', () => {
+    const tenancies = {
+      template: {
+        group: 'template_group',
+        encrypted: Tenancy.encryptedTenancyWithTemplateGroup,
+        access: 'rw',
+        marker: 'tenancy-marker-template',
+        fixture: 'tenancy_marker_template.ndjson'
+      },
+      infosec: {
+        group: 'infosec_group',
+        encrypted: Tenancy.encryptedInfosecGroup,
+        access: 'a',
+        marker: 'tenancy-marker-infosec',
+        fixture: 'tenancy_marker_infosec.ndjson'
+      }
+    } as const;
+    const findIndexPatternsEndpoint = '/api/saved_objects/_find?type=index-pattern&per_page=1000';
+    const indexPatternIds = (result: GetObject) => result.saved_objects.map(savedObject => savedObject.id);
+
+    // Each marker exists only in its own tenancy.
+    const deleteMarkers = () => {
+      Object.values(tenancies).forEach(({ group, marker }) => {
+        kbnApiClient.deleteSavedObject({ type: 'index-pattern', id: marker }, userCredentials, group);
+      });
+    };
+
+    beforeEach(() => {
+      Object.values(tenancies).forEach(({ group, fixture }) => {
+        cy.kbnImport({
+          endpoint: 'api/saved_objects/_import?overwrite=true',
+          credentials: userCredentials,
+          fixtureFilename: fixture,
+          currentGroupHeader: group
+        });
+      });
+    });
+
+    afterEach(() => {
+      deleteMarkers();
+    });
+
+    (
+      [
+        ['template', 'infosec'],
+        ['infosec', 'template']
+      ] as const
+    ).forEach(([pageTenancyName, otherTenancyName]) => {
+      it(`should keep ${pageTenancyName} in the page after an API call of the same session on ${otherTenancyName}`, () => {
+        const pageTenancy = tenancies[pageTenancyName];
+        const otherTenancy = tenancies[otherTenancyName];
+        Login.initialization({
+          visitedUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${pageTenancy.encrypted}`,
+          finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
+          spacePrefix: ''
+        });
+        Tenancy.checkTenancyNameInBadge(pageTenancyName, pageTenancy.access);
+
+        cy.request<GetObject>({
+          url: findIndexPatternsEndpoint,
+          headers: { [X_ROR_TENANCY]: decodeURIComponent(otherTenancy.encrypted) }
+        })
+          .its('body')
+          .then(result => {
+            expect(indexPatternIds(result)).to.include(otherTenancy.marker).and.not.include(pageTenancy.marker);
+          });
+
+        // The page loads again, as a tab does when the user goes back to it.
+        cy.reload();
+        Tenancy.checkTenancyNameInBadge(pageTenancyName, pageTenancy.access);
+        // The page's fetch goes through the tenancy script of the page, which adds the tenancy of the page.
+        // no-referrer removes the referer fallback, so only the x-ror-tenancy header can resolve the tenancy.
+        cy.window()
+          .then(win =>
+            win
+              .fetch(findIndexPatternsEndpoint, { referrerPolicy: 'no-referrer' })
+              .then(response => response.json() as Promise<GetObject>)
+          )
+          .then(result => {
+            expect(indexPatternIds(result)).to.include(pageTenancy.marker).and.not.include(otherTenancy.marker);
+          });
+      });
+    });
   });
 
   it('should not apply stale remembered tenancy to a new user session after logout', () => {
@@ -198,58 +303,3 @@ describe('Tenancy', () => {
     cy.url().should('include', '/app/page-not-found');
   });
 });
-
-function runTests({
-  callbackAfterLogin,
-  callbackBeforeLogin
-}: {
-  callbackAfterLogin?: (endUrl?: string) => void;
-  callbackBeforeLogin?: () => void;
-} = {}) {
-  afterEach(() => {
-    kbnApiClient.deleteSampleData('ecommerce', userCredentials);
-    kbnApiAdvancedClient.deleteAllSpaces(userCredentials, 'template_group');
-  });
-
-  it('should open correct tenancy when URL contains tenancy query string', () => {
-    const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
-    callbackBeforeLogin?.();
-    Login.initialization({
-      visitedUrl: urlWithTenancyId,
-      finishUrl: urlWithTenancyId,
-      spacePrefix: ''
-    });
-
-    callbackAfterLogin?.(`/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`);
-    Tenancy.checkTenancyNameInBadge('template', 'rw');
-    RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
-    Tenancy.checkTenancyNameInBadge('infosec', 'a');
-    KibanaNavigation.verifyKibanaNavigationLinkItemHref(
-      `${Cypress.config().baseUrl}/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=`
-    );
-    KibanaNavigation.openHomepage();
-    RorMenu.openRorMenu();
-    RorMenu.pressLogoutButton();
-    Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
-    Loader.loading();
-    Tenancy.checkTenancyNameInBadge('administrators', 'a');
-  });
-
-  it('should correctly switch Kibana space', () => {
-    const newSpace = 'test-space';
-
-    const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
-    callbackBeforeLogin?.();
-    Login.initialization({
-      visitedUrl: urlWithTenancyId,
-      finishUrl: urlWithTenancyId,
-      spacePrefix: ''
-    });
-
-    callbackAfterLogin?.();
-
-    Spaces.createNewSpace(newSpace);
-    Spaces.openSpace(newSpace);
-    Spaces.verifyCurrentSpace(newSpace);
-  });
-}

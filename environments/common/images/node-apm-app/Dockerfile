@@ -5,18 +5,13 @@
 # `library/` is the namespace of an official image, so the name resolves with the prefix and without
 # it, to the same digest.
 ARG MIRROR=
-FROM ${MIRROR}library/node:20
-
-RUN apt-get update && apt-get install -y --fix-missing\
-    vim \
-    curl \
-    libc6-amd64-cross && \
-    ln -s /usr/x86_64-linux-gnu/lib64/ /lib64
-RUN mkdir -p /example-app
+FROM ${MIRROR}library/node:20@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
 
 WORKDIR /example-app
 
-RUN npm install elastic-apm-node express
+# --before resolves the transitive versions as they were on that date. Without it, a release
+# published seconds before the build can fail it with ETARGET. Move the date to update.
+RUN npm install --no-audit --no-fund --before=2026-10-05 elastic-apm-node@4.18.0 express@5.2.1
 
 COPY ./app.js /example-app
 
