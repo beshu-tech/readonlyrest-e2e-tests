@@ -23,7 +23,10 @@ for container in $(docker ps -q --filter label=com.docker.compose.project=elk-ro
   docker restart "$container" >/dev/null
   deadline=$((SECONDS + 300))
   until [ "$(docker inspect -f '{{.State.Health.Status}}' "$container")" = healthy ]; do
-    [ "$SECONDS" -lt "$deadline" ] || break
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "::error title=RORDEV-2283::Kibana replica $name is not healthy 300 s after the restart."
+      exit 1
+    fi
     sleep 5
   done
   if ! kibana_answers "${probe[@]}"; then
