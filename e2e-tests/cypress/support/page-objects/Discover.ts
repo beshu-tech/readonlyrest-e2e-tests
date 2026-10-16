@@ -49,12 +49,6 @@ export class Discover {
    * Explicitly navigating to the saved object's own /view/<id> URL forces Discover to reinitialize
    * from the persisted session, which does set the tab label correctly.
    *
-   * Kibana 8.19.18 has a related but distinct issue: even after this reopen, a CSV report
-   * generated shortly after save can still have payload.title "Untitled Discover session"
-   * (confirmed via proxy-level ES response logging) - the reopen fixes the visible tab label but
-   * not whatever internal state the reporting export reads from. Callers that need to assert on
-   * a report's title on <9.0.0 should not rely on saveReport's `reportName` alone.
-   *
    * Sets the hash directly instead of cy.visit()'ing the target URL: Discover's router picks up
    * the route change the same way (it's hash-based), but a hash-only change skips tearing down and
    * re-fetching the whole document/JS bundle. saveReport can run several times in one spec
@@ -65,7 +59,7 @@ export class Discover {
     cy.log('reopenSavedDiscoverSession');
     cy.wait(createDiscoverSession).then(({ response }) => {
       const savedId = response?.body?.result?.result?.item?.id;
-      if (!savedId) return;
+      expect(savedId, 'id of the saved Discover session in the create response').to.be.a('string').and.not.equal('');
 
       cy.window().then(win => {
         win.location.hash = `#/view/${savedId}`;

@@ -41,12 +41,8 @@ export class Reporting {
   }
 
   /**
-   * Title-agnostic alternative to verifySavedReport. On Kibana <9.0.0, a CSV report generated
-   * shortly after saving a Discover session can be persisted with payload.title "Untitled
-   * Discover session" instead of the session's actual saved name (confirmed via proxy-level ES
-   * response logging - a title-binding race distinct from, and not fixed by, the reopen done in
-   * Discover.saveReport for >=9.0.0). Use this where the test only needs to confirm a report was
-   * generated and completed, not that its title matches the saved search name.
+   * On Kibana before 9.0.0, a report saved right after its Discover session can carry the title
+   * "Untitled Discover session". So this check counts the reports and ignores their titles.
    */
   static verifyReportsCount(count: number) {
     cy.log('verifyReportsCount');
