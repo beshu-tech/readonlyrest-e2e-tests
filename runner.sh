@@ -146,6 +146,33 @@ write_summary() {
   } > "$E2E_SUMMARY"
 }
 
+# Runs the suite and sets E2E_STATUS. A caller with a time cap gives it in E2E_TIME_CAP_SECONDS.
+# The suite then stops 5 minutes before the cap, so that the summary and the stack logs still get
+# written. At the cap the caller kills this script, and the EXIT trap deletes the stack with its logs.
+run_suite() {
+  local time_limit=()
+  if [[ -n "${E2E_TIME_CAP_SECONDS:-}" ]]; then
+    local remaining=$((E2E_TIME_CAP_SECONDS - SECONDS - 300))
+    # timeout takes 0 as no limit and fails on a negative value.
+    if [[ $remaining -lt 1 ]]; then
+      echo "::error title=E2E%3A ELK $ELK_VERSION on $ENV_NAME::The stack start took $SECONDS s and left no time for the suite under the $E2E_TIME_CAP_SECONDS s cap. The suite did not run."
+      ./environments/"$ENV_NAME"/collect-logs.sh "$STACK_LOGS" || true
+      exit 1
+    fi
+    time_limit=(timeout --kill-after=60 "$remaining")
+  fi
+
+  # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the
+  # suite's status, not tee's.
+  set +e
+  time "${time_limit[@]}" ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
+  E2E_STATUS=${PIPESTATUS[0]}
+  set -e
+  if [[ $E2E_STATUS -eq 124 || $E2E_STATUS -eq 137 ]]; then
+    echo "::error title=E2E%3A ELK $ELK_VERSION on $ENV_NAME::The suite did not end before the time cap, and it was stopped."
+  fi
+}
+
 cleanup() {
   ./environments/"$ENV_NAME"/stop-and-clean.sh
 }
@@ -173,12 +200,7 @@ if [[ "$MODE" == "e2e" ]]; then
 
   mkdir -p results
 
-  # errexit would end the script here, before the summary and the logs. PIPESTATUS holds the
-  # suite's status, not tee's.
-  set +e
-  time ./e2e-tests/run-tests.sh "$ELK_VERSION" "$ENV_NAME" 2>&1 | tee "$E2E_OUTPUT"
-  E2E_STATUS=${PIPESTATUS[0]}
-  set -e
+  run_suite
 
   write_summary
 

@@ -21,6 +21,14 @@ kube() { docker exec "$CONTROL_PLANE" kubectl "$@"; }
 # elastic-system.
 kube get pods -A -o wide > "$OUT/pods.txt" 2>&1 || true
 kube get events -A --sort-by=.lastTimestamp > "$OUT/events.txt" 2>&1 || true
+kube get elasticsearch,kibana,apmserver -A > "$OUT/eck-resources.txt" 2>&1 || true
+kube top pods -A > "$OUT/top-pods.txt" 2>&1 || true
+# describe shows the limits and the last state of each container: an OOM kill reads "OOMKilled".
+kube describe pods -A > "$OUT/pods-describe.txt" 2>&1 || true
+kube get pods -A -o yaml > "$OUT/pods.yaml" 2>&1 || true
+# One line per container that ended at least once: the pod, the container and the reason.
+kube get pods -A -o jsonpath='{range .items[*]}{range .status.containerStatuses[*]}{.lastState.terminated.reason}{"\t"}{.name}{"\t"}{end}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' 2>/dev/null |
+  awk -F'\t' '{ for (i = 1; i < NF; i += 2) if ($i != "") print $NF ": container " $(i + 1) " ended with " $i }' > "$OUT/terminated.txt" || true
 
 kube get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}{end}' 2>/dev/null |
   while read -r ns pod; do
@@ -33,7 +41,11 @@ kube get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.
   done
 
 echo ">>> stack logs written to $OUT"
-cat "$OUT/pods.txt" 2>/dev/null || true
+cat "$OUT/pods.txt" "$OUT/eck-resources.txt" 2>/dev/null || true
+if [ -s "$OUT/terminated.txt" ]; then
+  echo "Containers that ended at least once:"
+  cat "$OUT/terminated.txt"
+fi
 
 if [ "$CONSOLE" = "--console" ]; then
   echo "Cluster events:"

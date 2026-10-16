@@ -1,5 +1,11 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+# The kubelet rotates a container log at 10Mi by default, and `kubectl logs` reads only the current
+# file. Kibana at debug level writes 10Mi in about 8 minutes. 500Mi keeps a whole suite run in one file.
+kubeadmConfigPatches:
+- |
+  kind: KubeletConfiguration
+  containerLogMaxSize: 500Mi
 nodes:
 - role: control-plane
   extraPortMappings:

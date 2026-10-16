@@ -97,8 +97,45 @@ upload_one() {
   S3_UPLOADER_MAX_TIME="${S3_UPLOADER_MAX_TIME:-300}" "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
+# Any file can hold a CI secret, whatever its name. SECRETS_TO_REDACT holds one secret per line. In a
+# text file (no NUL byte) each occurrence of a secret becomes <redacted>. A file that still holds one
+# after that is not uploaded at all.
+SECRETS=()
+while IFS= read -r SECRET; do
+  [ -n "$SECRET" ] && SECRETS+=("$SECRET")
+done <<< "${SECRETS_TO_REDACT:-}"
+# With no secret to look for, every file passes the check. An empty value is a caller defect, for
+# example a renamed secret, so nothing is uploaded.
+if [ ${#SECRETS[@]} -eq 0 ]; then
+  echo "::error title=S3 upload::SECRETS_TO_REDACT is empty, so the files cannot be checked for secrets. Nothing is uploaded."
+  exit 1
+fi
+holds_secret() {
+  local SECRET
+  for SECRET in "${SECRETS[@]}"; do
+    grep -qF -- "$SECRET" "$1" 2>/dev/null && return 0
+  done
+  return 1
+}
+# A file with no NUL byte is text. grep -I is not enough: with -q, grep can stop at the first match
+# before it reads a NUL byte that comes later in the file.
+is_text() {
+  [ "$(LC_ALL=C tr -dc '\000' < "$1" | head -c 1 | wc -c)" -eq 0 ]
+}
+redact() {
+  local FILE=$1 SECRET
+  holds_secret "$FILE" || return 0
+  if is_text "$FILE"; then
+    for SECRET in "${SECRETS[@]}"; do
+      SECRET="$SECRET" perl -i -pe 's/\Q$ENV{SECRET}\E/<redacted>/g' "$FILE"
+    done
+  fi
+  ! holds_secret "$FILE"
+}
+
 UPLOADED=0
 SKIPPED_EMPTY=0
+SKIPPED_SECRET=0
 FAILED=0
 
 # -print0/read -d '' so paths with spaces survive; the relative path becomes the key, keeping the
@@ -113,6 +150,11 @@ while IFS= read -r -d '' FILE; do
 
   REL=${FILE#"$SOURCE_DIR"/}
   MIME=$(mime_of "$FILE")
+  if ! redact "$FILE"; then
+    echo "WARNING: $REL holds the secret; not uploaded"
+    SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
+    continue
+  fi
   UPLOAD_STATUS=0
   upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" || UPLOAD_STATUS=$?
   if [ "$UPLOAD_STATUS" -eq 0 ]; then
@@ -136,7 +178,7 @@ while IFS= read -r -d '' FILE; do
   echo "WARNING: upload failed for $FILE (continuing)"
 done < <(find "$SOURCE_DIR" -type f -print0)
 
-echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY failed=$FAILED"
+echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY skipped_secret=$SKIPPED_SECRET failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
   echo "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
 elif [ "$FAILED" -eq 0 ]; then

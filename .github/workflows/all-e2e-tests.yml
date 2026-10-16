@@ -21,8 +21,6 @@ concurrency:
 
 env:
   APPLY_RESOURCE_LIMITS: "auto"
-  # Newest first: a failure on the newest line is the one to see first in the run UI.
-  ELK_VERSIONS: "9.5.5 9.4.8 8.19.23 7.17.29"
   ECK_3X: eck-3.5.0
   ECK_2X: eck-2.16.1
 
@@ -34,13 +32,21 @@ jobs:
   # dev images are built from the branch under test, or from develop on the cron.
   plan:
     name: "🧮 Plan"
-    runs-on: ubuntu-latest
+    # A fork PR runs its own scripts here, so it gets a GitHub-hosted runner, whatever LIGHT_RUNS_ON names.
+    runs-on: &light-runner ${{ github.event.pull_request.head.repo.fork && fromJSON('["ubuntu-24.04"]') || fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 5
     outputs:
       images: ${{ steps.plan.outputs.images }}
       matrix: ${{ steps.plan.outputs.matrix }}
+      elk_versions: ${{ steps.plan.outputs.elk_versions }}
+      ror_version: ${{ steps.plan.outputs.ror_version }}
     steps:
-      - name: Choose the images and the environments
+      - &checkout
+        name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Choose the images, the environments and the versions
         id: plan
         env:
           EVENT: ${{ github.event_name }}
@@ -58,8 +64,13 @@ jobs:
           elif [ "$DRAFT" = true ];                                           then IMAGES="dev";      ENVS="docker"
           else                                                                     IMAGES="dev";      ENVS="docker $ECK_3X"
           fi
+          RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh e2e)
+          echo "$RESOLVED"
+          ELK_VERSIONS=$(jq -r '.elk_versions | join(" ")' <<< "$RESOLVED")
           {
             echo "images=$IMAGES"
+            echo "ror_version=$(jq -r .ror_version <<< "$RESOLVED")"
+            echo "elk_versions=$ELK_VERSIONS"
             echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
           } >> "$GITHUB_OUTPUT"
 
@@ -70,24 +81,25 @@ jobs:
     name: "🔬 E2E Tests (released plugins)"
     needs: plan
     if: contains(needs.plan.outputs.images, 'prod')
-    runs-on: ubuntu-latest
-    strategy:
+    runs-on: &e2e-runner ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    strategy: &legs
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          persist-credentials: false
-      - name: Configure the Docker Hub mirror
+      - *checkout
+      - &docker-hub-mirror
+        name: Configure the Docker Hub mirror
         run: source .github/scripts/docker-hub-mirror.sh
-      - name: Set up Node.js
+      - &setup-node
+        name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.11.0'
-      - name: Clean up disk space
+      - &cleanup-disk-space
+        name: Clean up disk space
         uses: ./.github/cleanup-disk-space
-      - name: Start Docker memory monitor
+      - &start-memory-monitor
+        name: Start Docker memory monitor
         uses: ./.github/docker-memory-monitor
         with:
           action: start
@@ -97,14 +109,17 @@ jobs:
           env: ${{ matrix.env }}
           elk: ${{ matrix.version }}
           mode: prod
+          ror_es: ${{ needs.plan.outputs.ror_version }}
+          ror_kbn: ${{ needs.plan.outputs.ror_version }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-          electron_extra_launch_args: '--disable-gpu'
-      - name: Stop Docker memory monitor
+      - &stop-memory-monitor
+        name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
         with:
           action: stop
-      - name: S3 Upload Videos & show logs
+      - &upload-artifacts
+        name: S3 Upload Videos & show logs
         if: failure()
         continue-on-error: true
         uses: ./.github/upload-videos
@@ -115,6 +130,7 @@ jobs:
           bucket: ${{ vars.ROR_S3_BUCKET }}
           region: ${{ vars.ROR_S3_REGION }}
           path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
+          secrets_to_redact: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
 
   # ==========================================
   # DEV IMAGE PREPARATION
@@ -124,15 +140,12 @@ jobs:
     name: "🏗️ Prepare dev images"
     needs: plan
     if: contains(needs.plan.outputs.images, 'dev')
-    runs-on: ubuntu-latest
+    runs-on: *light-runner
     timeout-minutes: 90
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          persist-credentials: false
+      - *checkout
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
@@ -141,7 +154,7 @@ jobs:
           # manual dispatch, head_ref is empty and ref_name is the branch.
           TARGET_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.head_ref || github.ref_name }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
-
+          ELK_VERSIONS: ${{ needs.plan.outputs.elk_versions }}
         run: |
           set -euo pipefail
           . ci/prebuild-images-lib.sh
@@ -160,29 +173,16 @@ jobs:
   dev-e2e-tests:
     name: "🧪 E2E Tests (pre-build plugins)"
     needs: [plan, prepare-dev-images]
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: *e2e-runner
+    strategy: *legs
     env:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          persist-credentials: false
-      - name: Configure the Docker Hub mirror
-        run: source .github/scripts/docker-hub-mirror.sh
-      - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: '24.11.0'
-      - name: Clean up disk space
-        uses: ./.github/cleanup-disk-space
-      - name: Start Docker memory monitor
-        uses: ./.github/docker-memory-monitor
-        with:
-          action: start
+      - *checkout
+      - *docker-hub-mirror
+      - *setup-node
+      - *cleanup-disk-space
+      - *start-memory-monitor
       - name: Run E2E tests
         uses: ./.github/run-e2e-tests
         with:
@@ -192,20 +192,5 @@ jobs:
           ror_es: ${{ env.ROR_IMAGE_TAG }}
           ror_kbn: ${{ env.ROR_IMAGE_TAG }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
-
-      - name: Stop Docker memory monitor
-        if: always()
-        uses: ./.github/docker-memory-monitor
-        with:
-          action: stop
-      - name: S3 Upload Videos & show logs
-        if: failure()
-        continue-on-error: true
-        uses: ./.github/upload-videos
-        with:
-          access_key_id: ${{ secrets.ROR_S3_ACCESS_KEY_ID }}
-          secret_access_key: ${{ secrets.ROR_S3_SECRET_ACCESS_KEY }}
-          endpoint_url: ${{ vars.ROR_S3_ENDPOINT_URL }}
-          bucket: ${{ vars.ROR_S3_BUCKET }}
-          region: ${{ vars.ROR_S3_REGION }}
-          path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
+      - *stop-memory-monitor
+      - *upload-artifacts
