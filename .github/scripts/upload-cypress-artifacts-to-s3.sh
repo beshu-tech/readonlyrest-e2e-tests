@@ -181,6 +181,6 @@ done < <(find "$SOURCE_DIR" -type f -print0)
 echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY skipped_secret=$SKIPPED_SECRET failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
   echo "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
-elif [ "$FAILED" -eq 0 ]; then
+elif [ "$FAILED" -eq 0 ] && [ "$SKIPPED_SECRET" -eq 0 ]; then
   echo "No Cypress artifacts found in $SOURCE_DIR — nothing to upload."
 fi
