@@ -13,6 +13,8 @@ module.exports = {
     sourceType: 'module'
   },
   plugins: ['@typescript-eslint', 'prettier'],
+  // The ESLint config itself is CommonJS.
+  overrides: [{ files: ['.eslintrc.js'], rules: { '@typescript-eslint/no-require-imports': 'off' } }],
   settings: {
     'import/extensions': ['.js', '.ts'],
     'import/resolver': {

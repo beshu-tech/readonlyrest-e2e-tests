@@ -30,8 +30,8 @@
 # The ROR ES and ROR KBN images keep their Docker Hub name. A dev run pulls them minutes after the
 # other repo pushed them, and a cache can hold a stale answer.
 #
-# The Kind node image also keeps its Docker Hub name. Kind chooses that name itself, one for each
-# Kind version. This script cannot change it.
+# The Kind node image also keeps its Docker Hub name. It is pinned by digest, together with the Kind
+# release that built it, and Kind retries its pull.
 #
 # ROR_DOCKER_HUB_MIRROR=false switches the mirror off.
 

@@ -1,18 +1,7 @@
+import { pasteText } from '../helpers';
 import { SecuritySettings } from './SecuritySettings';
 
 export class Editor {
-  static changeConfig(config: string) {
-    cy.log('Change text');
-    const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
-    SecuritySettings.getIframeBody()
-      .findByRole('code')
-      .find('textarea')
-      .eq(0)
-      .focus()
-      .type(`${selectAllKeys}{backspace}`, { force: true })
-      .type(config, { force: true });
-  }
-
   static pasteConfig(config: string) {
     cy.log('paste config');
     const selectAllKeys = Cypress.platform === 'darwin' ? '{cmd}a' : '{ctrl}a';
@@ -22,16 +11,7 @@ export class Editor {
       .eq(0)
       .focus()
       .type(`${selectAllKeys}{backspace}`, { force: true })
-      .then($el => {
-        const clipboardData = new DataTransfer();
-        const pasteEvent = new ClipboardEvent('paste', {
-          bubbles: true,
-          cancelable: true,
-          clipboardData
-        });
-        clipboardData.setData('text/plain', config);
-        $el[0].dispatchEvent(pasteEvent);
-      });
+      .then($el => pasteText($el[0], config));
   }
 
   static replaceValues(findValue: string, newValue: string) {
@@ -49,6 +29,12 @@ export class Editor {
       .type(closeSearchBoxIfExist, { force: true })
       .type(findKeys, { force: true });
 
+    // The find field can hold an earlier search or the word at the cursor.
+    SecuritySettings.getIframeBody()
+      .findByRole('textbox', { name: /^Find$/ })
+      .clear({ force: true })
+      .type(findValue, { force: true });
+
     SecuritySettings.getIframeBody()
       .findByRole('button', { name: /toggle replace/i })
       .click({ force: true });
@@ -58,5 +44,8 @@ export class Editor {
       .click({ force: true })
       .type(newValue, { force: true })
       .type('{enter}', { force: true });
+
+    // The editor scrolls to the replaced text, so its rendered lines hold it.
+    SecuritySettings.getIframeBody().find('.view-lines').should('contain.text', newValue);
   }
 }

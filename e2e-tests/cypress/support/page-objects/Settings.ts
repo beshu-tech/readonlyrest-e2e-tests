@@ -1,13 +1,11 @@
+import { interceptNext } from '../helpers/interceptNext';
 import { rorApiClient } from '../helpers/RorApiClient';
-import { RorMenu } from './RorMenu';
 import { SecuritySettings } from './SecuritySettings';
+import { stopApp } from '../helpers';
 
 export class Settings {
   static open() {
-    cy.log('Open settings');
-    RorMenu.openRorMenu();
-    RorMenu.openEditSecuritySettings();
-    SecuritySettings.getIframeBody().find('#settings').click();
+    SecuritySettings.openTab('settings');
   }
 
   static pressReloadFromFileSettingsButton() {
@@ -16,19 +14,23 @@ export class Settings {
 
   static discardChanges() {
     cy.log('Discard changes');
-    cy.intercept('GET', '/pkp/api/settings').as('getSettings');
-    SecuritySettings.getIframeBody().contains('Discard changes').click();
-    cy.waitForResponse('@getSettings').then(response => {
-      expect([200, 304]).to.include(response.statusCode);
+    const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
+    Settings.waitForToastAfter('Reloaded configuration', () => {
+      SecuritySettings.getIframeBody().contains('Discard changes').click();
+      cy.waitForResponse(getSettings).then(response => {
+        expect([200, 304]).to.include(response.statusCode);
+      });
     });
   }
 
   static reloadFromFileSettings() {
     cy.log('Press reload from file test settings');
-    cy.intercept('GET', '/pkp/api/settings/file').as('reloadFromFileSettings');
-    Settings.pressReloadFromFileSettingsButton();
-    cy.waitForResponse('@reloadFromFileSettings').then(response => {
-      expect([200, 304]).to.include(response.statusCode);
+    const getSettingsFile = interceptNext('getSettingsFile', { method: 'GET', url: '/pkp/api/settings/file' });
+    Settings.waitForToastAfter(Settings.LOADED_FROM_FILE_TOAST, () => {
+      Settings.pressReloadFromFileSettingsButton();
+      cy.waitForResponse(getSettingsFile).then(response => {
+        expect([200, 304]).to.include(response.statusCode);
+      });
     });
   }
 
@@ -42,12 +44,26 @@ export class Settings {
   }
 
   static closeToastMessages() {
-    cy.log('Close toast message');
-    return SecuritySettings.getIframeBody()
-      .find('[data-test-subj=toastCloseButton]')
-      .each($el => {
-        $el[0].click();
-      });
+    cy.log('Close toast messages');
+    const closeButtons = '[data-test-subj=toastCloseButton]';
+    SecuritySettings.getIframeBody().then(body => {
+      Cypress.$(body as HTMLElement)
+        .find(closeButtons)
+        .each((_, button) => button.click());
+    });
+    SecuritySettings.getIframeBody().find(closeButtons).should('not.exist');
+  }
+
+  static readonly LOADED_FROM_FILE_TOAST = 'Loaded default ACL from readonlyrest.yml';
+
+  // The answer of a load reaches Cypress before the app applies it to the form. The app sets the
+  // form state and then shows a toast, so a step that needs the new state (for example a second load
+  // that must ask before it overwrites changes) waits for that toast. Old toasts go first, so an old
+  // toast with the same title does not pass the check.
+  static waitForToastAfter(title: string, action: () => void) {
+    Settings.closeToastMessages();
+    action();
+    SecuritySettings.getIframeBody().contains(title).should('exist');
   }
 
   static unsavedChangesModalVisible() {
@@ -60,29 +76,12 @@ export class Settings {
     return SecuritySettings.getIframeBody().contains('Reload anyway').click();
   }
 
-  static successfulLoadFromFileToast() {
-    cy.log('Successful load from file toast');
-    return SecuritySettings.getIframeBody().contains('Loaded default ACL from readonlyrest.yml');
-  }
-
-  static currentSettingsAlreadyLoadedToast() {
-    cy.log('Current settings already loaded toast');
-    return SecuritySettings.getIframeBody().contains('Current ACL are already loaded');
-  }
-
-  static successfulReloadConfigurationToast() {
-    cy.log('Successful reload configuration toast');
-    return SecuritySettings.getIframeBody().contains('Reloaded configuration');
-  }
-
-  static successfulSavedConfigurationToast() {
-    cy.log('Successful saved configuration toast');
-    return SecuritySettings.getIframeBody().contains('saved');
-  }
-
-  static malformedSavedConfigurationToast() {
-    cy.log('Malformed saved configuration toast');
-    return SecuritySettings.getIframeBody().contains('Malformed settings');
+  // For an after hook. A settings change can end the group of the tenancy of a page that still
+  // loads. Its tenancy-context-injector.js then never answers (RORDEV-2309), and Cypress fails the
+  // hook on the page load timeout. So the page goes first.
+  static restoreDefaultSettings() {
+    stopApp();
+    Settings.setSettingsData('defaultSettings.yaml');
   }
 
   static setSettingsData(fixtureYamlSettingsFileName: string) {

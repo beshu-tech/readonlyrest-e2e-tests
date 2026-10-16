@@ -1,6 +1,8 @@
 import { recurse } from 'cypress-recurse';
+import { interceptNext } from '../helpers/interceptNext';
 import { Loader } from './Loader';
 import { expectSessionEnd } from '../sessionEnd';
+import { clickIsOld, Popover } from './Popover';
 
 export class RorMenu {
   // The RorPopover wrapper, not the inner <button className="ror-menu-trigger"> that carries the
@@ -8,20 +10,20 @@ export class RorMenu {
   // actionability there; clicking the wrapper lets the event bubble and works on every version.
   private static readonly TRIGGER = '#rorMenuPopover';
 
+  // The button in TRIGGER that carries the onClick. A DOM click needs the element of the handler.
+  private static readonly TRIGGER_BUTTON = '#rorMenuPopover .ror-menu-trigger';
+
   // rorPopover.tsx passes panelProps={{ id: panelId }} and EuiPopover only mounts the panel while
   // open, so the panel's presence is an exact "the menu is open" signal.
   private static readonly PANEL = '#rorMenuPanel';
 
-  private static readonly SETTLE_MS = 300;
-  private static readonly OPEN_ATTEMPTS = 3;
+  // Change tenancy and Manage kibana each open their own popover, which EuiPopover mounts outside
+  // #rorMenuPanel. The list of items in it carries this class, and mounts only while it is open.
+  private static readonly SUB_MENU = '.ror-menu-scroll-container';
 
   static openRorMenu() {
     cy.log('open ROR menu');
-    RorMenu.clickTriggerUntilOpen();
-    // Assert after the retries so a real failure reports "#rorMenuPanel not found" instead of a
-    // later, more confusing "'Edit security settings' never appeared". `exist`, not `be.visible`:
-    // the panel is only mounted while the popover is open, so existence is the exact signal.
-    cy.get(RorMenu.PANEL, { timeout: 10000 }).should('exist');
+    Popover.open(RorMenu.TRIGGER, RorMenu.PANEL);
   }
 
   static closeRorMenu() {
@@ -31,74 +33,86 @@ export class RorMenu {
   }
 
   /**
-   * Clicks the trigger and re-clicks if the popover did not open.
+   * Clicks the `selector` element with `text` in the ROR menu, or in the sub-menu that `subMenuTrigger` opens.
    *
-   * The panel is polled from the DOM rather than asserted on, because `cy.get(...).should(...)`
-   * retries the assertion but never re-runs the click before it, so a swallowed click can only be
-   * recovered by driving the retry ourselves.
+   * Kibana 9.5 can mount the ROR header control again while it starts, and that closes every ROR popover
+   * (RORDEV-2321). cy.click() then fails on an element that left the page, so each pass reads the page again.
+   * Remove the loop when a release has the fix.
    */
-  private static clickTriggerUntilOpen() {
+  static clickMenuItem(selector: string, text: string, subMenuTrigger?: string, matchCase = true) {
+    cy.log(`ROR menu: click ${text}`);
+    const lastClickAt: Record<string, number> = {};
+    const clickTrigger = ($trigger: JQuery<HTMLElement>, name: string) => {
+      if ($trigger.length > 0 && clickIsOld(lastClickAt[name] ?? 0)) {
+        $trigger[0].click();
+        lastClickAt[name] = Date.now();
+      }
+    };
+    let clicked = false;
     recurse(
       () =>
-        // No `.should('be.visible')`: cy.click() enforces actionability itself, and asserting
-        // visibility separately fails on Kibana 9.x. The settle wait belongs here rather than in
-        // `delay` so the panel gets a chance to mount before the first check, not only between
-        // attempts.
-        cy
-          .get(RorMenu.TRIGGER, { timeout: 30000 })
-          .click()
-          .then(() => cy.wait(RorMenu.SETTLE_MS, { log: false }))
-          .then(() => cy.get('body', { log: false })),
-      $body => $body.find(RorMenu.PANEL).length > 0,
-      {
-        limit: RorMenu.OPEN_ATTEMPTS,
-        delay: 0,
-        timeout: 120000,
-        // openRorMenu() asserts on the panel immediately after, so failing here would only replace
-        // that message with a less specific one.
-        doNotFail: true,
-        log: false
-      }
-    );
+        cy.get('body', { log: false }).then($body => {
+          const $item = RorMenu.findByText(
+            $body.find(subMenuTrigger ? RorMenu.SUB_MENU : RorMenu.PANEL),
+            selector,
+            text,
+            matchCase
+          );
+          const panelOpen = $body.find(RorMenu.PANEL).length > 0;
+          if ($item.length > 0) {
+            $item[0].click();
+            clicked = true;
+          } else if (!panelOpen) {
+            clickTrigger($body.find(RorMenu.TRIGGER_BUTTON), 'menu');
+          } else if (subMenuTrigger && $body.find(RorMenu.SUB_MENU).length === 0) {
+            clickTrigger($body.find(`${RorMenu.PANEL} ${subMenuTrigger}`), 'subMenu');
+          }
+          return clicked;
+        }),
+      Boolean,
+      { delay: 100, timeout: 60000, doNotFail: true, log: false }
+    ).then(() => {
+      expect(clicked, `ROR menu item "${text}" clicked`).to.equal(true);
+    });
   }
 
-  // Every caller opens the menu immediately before this, so the lookup is scoped to the panel. An
-  // unscoped cy.contains() would retry for 20s against a closed menu and report the item as
-  // missing, hiding the fact that the menu never opened.
+  // The `selector` elements in the scope whose text has `text`, without such an element inside them.
+  // The same element as cy.contains(selector, text) finds.
+  private static findByText($scope: JQuery<HTMLElement>, selector: string, text: string, matchCase: boolean) {
+    const normal = (value: string) => (matchCase ? value : value.toLowerCase());
+    const hasText = (element: Element) => normal(element.textContent ?? '').includes(normal(text));
+    return $scope
+      .find(selector)
+      .filter((_, element) => hasText(element) && !Cypress.$(element).find(selector).toArray().some(hasText));
+  }
+
   static openEditSecuritySettings() {
-    cy.intercept('GET', '/pkp/api/settings').as('getSettings');
-    cy.get(RorMenu.PANEL).contains('Edit security settings').click({ force: true });
-    cy.waitForResponse('@getSettings').then(response => {
+    const getSettings = interceptNext('getSettings', { method: 'GET', url: '/pkp/api/settings' });
+    RorMenu.clickMenuItem('button', 'Edit security settings');
+    cy.waitForResponse(getSettings).then(response => {
       expect([200, 304]).to.include(response.statusCode);
     });
   }
 
-  static changeTenancy(tenancyName: string, finishUrl?: string, spacePrefix?: string) {
+  static changeTenancy(tenancyName: string, finishUrl?: string) {
     cy.log('changeTenancy');
-    RorMenu.openRorMenu();
-    cy.get('.ror_change_tenancy', { timeout: 30000 }).should('be.visible');
-    cy.contains('Change tenancy').click({ force: true });
-    cy.contains(tenancyName, { matchCase: false }).click({ force: true });
-    Loader.loading(finishUrl, spacePrefix);
+    RorMenu.clickMenuItem('*', tenancyName, '.ror_change_tenancy', false);
+    Loader.loading(finishUrl);
   }
 
   static openReportingPage() {
     cy.log('open reporting page');
-    RorMenu.openRorMenu();
-    cy.contains('Manage kibana').click({ force: true });
-    cy.contains('button', 'Reporting').click({ force: true });
+    RorMenu.clickMenuItem('button', 'Reporting', '.ror_kibana_management');
   }
 
   static openDataViewsPage() {
     cy.log('open data views page');
-    RorMenu.openRorMenu();
-    cy.get('.ror_kibana_management').click({ force: true });
-    cy.get('.euiButtonEmpty').contains('Data View', { matchCase: false }).click({ force: true });
+    RorMenu.clickMenuItem('button', 'Data Views', '.ror_kibana_management');
   }
 
   static pressLogoutButton() {
     expectSessionEnd();
-    cy.contains('Log out').click();
+    RorMenu.clickMenuItem('button', 'Log out');
   }
 
   static verifyCurrentTenant(tenancyName: string) {
@@ -107,9 +121,31 @@ export class RorMenu {
     cy.get('[data-testid="current-tenant"]').contains(tenancyName).should('be.visible');
   }
 
+  // The menu shows no tenancy for a user without groups either, so the check proves something only for
+  // a user with groups.
   static verifyNoTenantAvailable() {
     cy.log('Verify no tenant available');
 
     cy.get('[data-testid="current-tenant"]').should('not.exist');
+  }
+
+  // The ROR menu loads the identity of the page from /pkp/api/info when the page starts. Call this
+  // before the page loads. The request goes without If-None-Match, so the answer has a body.
+  static interceptIdentity() {
+    cy.intercept({ method: 'GET', pathname: '/pkp/api/info' }, req => {
+      delete req.headers['if-none-match'];
+    }).as('rorIdentity');
+  }
+
+  // The menu shows no tenancy for a user without groups, so only the identity can show a stale one.
+  static verifyIdentityTenancyIsNot(username: string, staleGroupId: string) {
+    cy.log(`Verify that the tenancy of ${username} is not ${staleGroupId}`);
+
+    cy.wait('@rorIdentity').then(({ response }) => {
+      expect(response?.statusCode, 'GET /pkp/api/info status').to.equal(200);
+      const identity = response?.body?.identity as { username?: string; currentGroup?: { id: string } } | undefined;
+      expect(identity?.username, 'user of the page').to.equal(username);
+      expect(identity?.currentGroup?.id, 'tenancy of the page').not.to.equal(staleGroupId);
+    });
   }
 }

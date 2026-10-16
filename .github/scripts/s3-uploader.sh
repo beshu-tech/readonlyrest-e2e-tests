@@ -144,8 +144,12 @@ fi
 # The file name goes in curl's own quotes: in -F, an unquoted @path ends at a ',' or ';', so a spec
 # name that holds either would send a truncated file. $key_and_sig_args stays unquoted on purpose —
 # it is several arguments, and must split.
+# The slowest file of a failed ECK run took about 10 s. The limits stop a stalled connection, which
+# would otherwise hold the job until its timeout.
 curl                            \
     -# $CURL_FLAGS              \
+    --connect-timeout 30        \
+    --max-time 300              \
     -F "key=$targfile"          \
     $key_and_sig_args           \
     -F "Content-Type=$mime"     \

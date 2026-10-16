@@ -1,9 +1,8 @@
-import * as semver from 'semver';
-import { getKibanaVersion } from '../helpers';
+import { kibanaVersion } from '../helpers';
 
 export class IndexManagement {
   static waitUntilLoaded() {
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.get('[data-test-subj="indicesSearch"]').should('be.visible');
     } else {
       cy.get(
@@ -15,7 +14,7 @@ export class IndexManagement {
   static IncludeHiddenIndices() {
     cy.log('Include hidden indices');
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.get('[data-test-subj="checkboxToggles-includeHiddenIndices"]').click();
     } else {
       cy.get('[data-test-subj="indexTableIncludeHiddenIndicesToggle"]').click();
@@ -25,13 +24,16 @@ export class IndexManagement {
   static searchIndices(indexName: string) {
     cy.log(`Search for index: ${indexName}`);
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.get('[data-test-subj="indicesSearch"]').type(indexName);
-    } else {
-      cy.get(
-        'input[aria-label="This is a search bar. As you type, the results lower in the page will automatically filter."]'
-      ).type(indexName);
+    IndexManagement.searchInput().clear().type(indexName);
+  }
+
+  private static searchInput() {
+    if (kibanaVersion.gte('8.0.0')) {
+      return cy.get('[data-test-subj="indicesSearch"]');
     }
+    return cy.get(
+      'input[aria-label="This is a search bar. As you type, the results lower in the page will automatically filter."]'
+    );
   }
 
   static openIndex(indexName: string) {
@@ -43,7 +45,7 @@ export class IndexManagement {
   static openIndexSettings() {
     cy.log('Open index settings');
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.get('[data-test-subj="indexDetailsTab-settings"]').click();
     } else {
       cy.contains('button[role="tab"]', 'Settings').click();
@@ -53,7 +55,7 @@ export class IndexManagement {
   static verifyIndexSetting(settingName: string, expectedValue: string) {
     cy.log(`Verify index setting: ${settingName} with value: ${expectedValue}`);
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.contains(settingName).siblings().eq(1).should('have.text', `"${expectedValue}"`);
     } else {
       cy.contains(`"${settingName}": "${expectedValue}",`).should('exist');
@@ -77,7 +79,7 @@ export class IndexManagement {
 
     IndexManagement.openIndexActionsContextMenuButton();
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.get('[data-test-subj="deleteIndexMenuButton"]').click();
     } else {
       cy.contains('button', 'Delete index').click();
@@ -87,18 +89,18 @@ export class IndexManagement {
   static clickConfirmDeleteIndexButton() {
     cy.log('Click confirm delete index button');
 
-    if (semver.lt(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.lt('8.0.0')) {
       cy.get('[for="confirmDeleteIndicesCheckbox"]').click();
     }
 
-    cy.get('[data-test-subj="confirmModalConfirmButton"]').click({ force: true });
+    cy.get('[data-test-subj="confirmModalConfirmButton"]').should('not.be.disabled').click();
   }
 
-  static verifyIndexExists(indexName: string) {
-    cy.log(`Search for index: ${indexName}`);
+  static verifyIndexNotListed(indexName: string) {
+    cy.log(`Verify that the index list does not show: ${indexName}`);
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
-      cy.get('[data-test-subj="indicesSearch"]').type(indexName);
+    IndexManagement.searchIndices(indexName);
+    if (kibanaVersion.gte('8.0.0')) {
       cy.contains('No indices found').should('be.visible');
     } else {
       cy.contains('No indices to show').should('be.visible');
@@ -107,13 +109,22 @@ export class IndexManagement {
 
   static openDataStreams() {
     cy.log('Open Data Streams');
+    // The path has the space prefix, for example /s/default/api/index_management/data_streams.
+    cy.intercept({ method: 'GET', pathname: '**/api/index_management/data_streams' }, req => {
+      delete req.headers['if-none-match'];
+    }).as('dataStreamsList');
 
     cy.get('[data-test-subj="data_streamsTab"]').click();
   }
 
+  // The empty-page text alone also shows when the list request fails.
   static verifyDataStreamsEmptyPage() {
     cy.log('Verify data streams empty page');
 
+    cy.wait('@dataStreamsList').then(({ response }) => {
+      expect(response?.statusCode, 'data streams list status').to.equal(200);
+      expect(response?.body, 'data streams list').to.be.an('array').that.has.length(0);
+    });
     cy.contains('[data-test-subj="title"]', "You don't have any data streams yet");
   }
 }
