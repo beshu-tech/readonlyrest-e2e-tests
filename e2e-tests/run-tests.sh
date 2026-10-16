@@ -50,9 +50,9 @@ yarn --frozen-lockfile install
 # The key goes in through the environment, not --env: yarn prints the command line it runs.
 export CYPRESS_enterpriseActivationKey="$ROR_ACTIVATION_KEY"
 if [[ "$RUN_TYPE" == "open" ]]; then
-  yarn open --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME,rorKbnVersion=${ROR_KBN_VERSION:-latest}"
+  yarn open --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME"
 else
-  yarn run run --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME,rorKbnVersion=${ROR_KBN_VERSION:-latest}"
+  yarn run run --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME"
 fi
 
 if [[ $? -ne 0 ]]; then

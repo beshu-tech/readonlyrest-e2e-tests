@@ -1,11 +1,8 @@
 import { Login } from '../support/page-objects/Login';
 import { StackManagement } from '../support/page-objects/StackManagement';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
-import { kibanaVersion, rorKbnReleaseBefore } from '../support/helpers';
-
-// ROR KBN before 1.72.0 shows the overwrite on the Connectors page only when the page renders before
-// Kibana redirects to .../connectors (RORDEV-2185). Remove the skip when no leg runs such a release.
-const CONNECTORS_OVERWRITE_FIX = '1.72.0';
+import { kibanaVersion } from '../support/helpers';
+import { itOnKibana } from '../support/helpers/itOnKibana';
 
 describe('Kibana-content-overwrite', () => {
   beforeEach(() => {
@@ -40,8 +37,7 @@ describe('Kibana-content-overwrite', () => {
   });
 
   // Before 8.6 the Rules and Connectors page of the test above covers the Connectors.
-  const connectorsTest = kibanaVersion.gte('8.6.0') && !rorKbnReleaseBefore(CONNECTORS_OVERWRITE_FIX) ? it : it.skip;
-  connectorsTest('should overwrite the Kibana Connectors page', () => {
+  itOnKibana('>=8.6.0', 'should overwrite the Kibana Connectors page', () => {
     StackManagement.openConnectorsPage();
     isAlertingOverwritePageVisible();
   });
