@@ -9,15 +9,16 @@ export class Dashboard {
   }
 
   /**
-   * Waits until each panel of the open dashboard finished rendering. Kibana reporting and Kibana's own
-   * tests use the same attributes: the viewport gives the panel count in data-shared-items-count, and
-   * each panel sets data-render-complete="true" when it is done.
+   * Waits until each panel of the open dashboard finished rendering, as Kibana reporting does: the
+   * viewport gives the panel count in data-shared-items-count, and each panel wrapper
+   * (data-shared-item) sets data-render-complete="true" when it is done. Elements inside a panel can
+   * carry data-render-complete too, so only the wrappers count.
    */
   static waitForPanelsRendered() {
     cy.get('[data-shared-items-count]', { timeout: 30000 }).should($viewport => {
       const panelCount = Number($viewport.attr('data-shared-items-count'));
       expect(panelCount, 'panel count').to.be.greaterThan(0);
-      const renderedCount = $viewport.closest('body').find('[data-render-complete="true"]').length;
+      const renderedCount = $viewport.closest('body').find('[data-shared-item][data-render-complete="true"]').length;
       expect(renderedCount, 'rendered panels').to.be.at.least(panelCount);
     });
   }

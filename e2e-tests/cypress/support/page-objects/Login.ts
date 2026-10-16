@@ -38,7 +38,10 @@ export class Login {
   }
 
   static fillLoginPageWith(credentials: BasicCredentials) {
-    const [username, password] = credentials.split(':');
+    // A password can hold a colon, so only the first one separates.
+    const separator = credentials.indexOf(':');
+    const username = credentials.slice(0, separator);
+    const password = credentials.slice(separator + 1);
     cy.get('#form-username', { timeout: 30000 }).should('be.visible');
     sessionEndCompleted();
     cy.get('#form-username').type(username);
