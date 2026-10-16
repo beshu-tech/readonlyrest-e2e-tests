@@ -47,3 +47,5 @@ Network steps retry: image pulls, package installs and manifest downloads use `r
 ## Artifacts
 
 When a leg fails, `.github/upload-videos` uploads the Cypress videos, the screenshots and the stack logs to S3. Before the upload, each text file loses every secret in `secrets_to_redact` (one per line). A file that still holds a secret after that, for example a binary file, is not uploaded.
+
+The uploader retries a transient answer of the storage, for 30 seconds per file. The upload stops at the first file that spends the whole budget, and at a wrong setting of the uploader. Every later file meets the same answer.

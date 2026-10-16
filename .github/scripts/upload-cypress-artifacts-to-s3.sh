@@ -23,9 +23,7 @@ set -uo pipefail
 CI_DIR="$(cd "$(dirname "$0")" && pwd)"
 STORE=E2E_REPORTS
 
-# Credentials are flat; only the path prefix is resolved through the store name, exactly as
-# ci-lib.sh's upload_using_aws_s3_uploader does (that helper takes one file with a guessed mime
-# type; this one walks a tree and passes an explicit mime, so it drives ci/s3-uploader.sh itself).
+# One credential set writes every store, and the store name selects the path prefix only.
 AK_VAR="ROR_S3_ACCESS_KEY_ID"
 SK_VAR="ROR_S3_SECRET_ACCESS_KEY"
 BUCKET_VAR="ROR_S3_BUCKET"
@@ -71,9 +69,15 @@ S3_PATH=$(printf '%s' "$S3_PATH" | sed 's://*:/:g')
 # Consumed by s3-uploader.sh, which switches to path-style addressing when it is set.
 export S3_ENDPOINT_URL="${!ENDPOINT_VAR}"
 
-# An explicit mime type keeps the uploader from calling `file` (its guess path), which is not
-# guaranteed to exist on a bare runner. Without it the Content-Type comes out empty, the signed-POST
-# policy rejects the malformed form, and the upload 403s.
+# A shorter retry budget than a release upload gets. These artifacts help somebody read a red job.
+# The budget counts only the waits between attempts. An attempt that spends S3_UPLOADER_MAX_TIME
+# is not retried, so one file holds the job for that long at most. The loop below stops at the
+# first file whose budget is spent, so an outage holds the job for one file only.
+export S3_UPLOAD_RETRY_BUDGET_SECONDS="${S3_UPLOAD_RETRY_BUDGET_SECONDS:-30}"
+
+# An explicit mime type, because the guess of the uploader needs `file`, which a container here can
+# lack, and its extension table maps neither .mp4 nor .png. A video served as
+# application/octet-stream downloads instead of playing.
 mime_of() {
   case "$1" in
     *.mp4) echo "video/mp4" ;;
@@ -85,9 +89,12 @@ mime_of() {
   esac
 }
 
+# S3_UPLOADER_MAX_TIME caps one upload. A stalled connection would otherwise hold the job until
+# its timeout. The shared uploader has no cap by default, because a release zip upload can take
+# more than 300 s.
 upload_one() {
   local FILE=$1 KEY=$2 MIME=$3
-  "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
+  S3_UPLOADER_MAX_TIME="${S3_UPLOADER_MAX_TIME:-300}" "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
 # Any file can hold a CI secret, whatever its name. SECRETS_TO_REDACT holds one secret per line. In a
@@ -130,7 +137,6 @@ UPLOADED=0
 SKIPPED_EMPTY=0
 SKIPPED_SECRET=0
 FAILED=0
-DIAGNOSED=false
 
 # -print0/read -d '' so paths with spaces survive; the relative path becomes the key, keeping the
 # videos/ vs screenshots/ split visible in the bucket.
@@ -149,27 +155,32 @@ while IFS= read -r -d '' FILE; do
     SKIPPED_SECRET=$((SKIPPED_SECRET + 1))
     continue
   fi
-  if upload_one "$FILE" "${S3_PATH}${REL}" "$MIME"; then
+  UPLOAD_STATUS=0
+  upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" || UPLOAD_STATUS=$?
+  if [ "$UPLOAD_STATUS" -eq 0 ]; then
     UPLOADED=$((UPLOADED + 1))
     continue
   fi
 
-  echo "WARNING: upload failed for $FILE (continuing)"
+  # The uploader retried the transient answers and printed the error body, so the log already
+  # names the cause.
   FAILED=$((FAILED + 1))
-  # s3-uploader.sh uses `curl -f`, which hides the server's error body. On the FIRST failure only,
-  # re-run it with S3_UPLOADER_DEBUG=1 to capture the actual S3 error XML (AccessDenied /
-  # SignatureDoesNotMatch / a policy condition) — without it a 403 is unattributable.
-  if [ "$DIAGNOSED" = false ]; then
-    DIAGNOSED=true
-    echo "----- S3 failure diagnostic: re-uploading $REL to capture the error body -----"
-    (S3_UPLOADER_DEBUG=1 upload_one "$FILE" "${S3_PATH}${REL}" "$MIME" 2>&1 | sed 's/^/[s3-debug] /') || true
-    echo "----- end diagnostic -----"
+  # Status 3 is a storage that stayed down for the whole retry budget, and status 2 a wrong
+  # setting. Every later file meets the same thing, so the run stops on both.
+  if [ "$UPLOAD_STATUS" -eq 3 ]; then
+    echo "WARNING: upload failed for $FILE. The storage stayed down for the whole retry budget, so the files that remain are not uploaded."
+    break
   fi
+  if [ "$UPLOAD_STATUS" -eq 2 ]; then
+    echo "WARNING: upload failed for $FILE. A setting of the uploader is wrong, so the files that remain are not uploaded."
+    break
+  fi
+  echo "WARNING: upload failed for $FILE (continuing)"
 done < <(find "$SOURCE_DIR" -type f -print0)
 
 echo "S3 upload summary: uploaded=$UPLOADED skipped_empty=$SKIPPED_EMPTY skipped_secret=$SKIPPED_SECRET failed=$FAILED"
 if [ "$UPLOADED" -gt 0 ]; then
   echo "Uploaded $UPLOADED Cypress artifact(s) to s3://${BUCKET}/${S3_PATH}"
-elif [ "$FAILED" -eq 0 ]; then
+elif [ "$FAILED" -eq 0 ] && [ "$SKIPPED_SECRET" -eq 0 ]; then
   echo "No Cypress artifacts found in $SOURCE_DIR — nothing to upload."
 fi
