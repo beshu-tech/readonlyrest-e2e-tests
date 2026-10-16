@@ -25,6 +25,12 @@ xpack.reporting.encryptionKey: "321421321211231241232132132132132"
 
 telemetry.enabled: false
 
+# One line for each response of Kibana itself, which runs behind the ROR KBN proxy. A 502 at the
+# nginx proxy that has no line here never reached Kibana.
+logging.loggers:
+  - name: http.server.response
+    level: debug
+
 
 readonlyrest_kbn:
   cookiePass: '12312313123213123213123adadasdasdasd'
