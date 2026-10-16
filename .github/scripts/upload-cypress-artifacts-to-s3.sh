@@ -23,9 +23,7 @@ set -uo pipefail
 CI_DIR="$(cd "$(dirname "$0")" && pwd)"
 STORE=E2E_REPORTS
 
-# Credentials are flat; only the path prefix is resolved through the store name, exactly as
-# ci-lib.sh's upload_using_aws_s3_uploader does (that helper takes one file with a guessed mime
-# type; this one walks a tree and passes an explicit mime, so it drives ci/s3-uploader.sh itself).
+# One credential set writes every store, and the store name selects the path prefix only.
 AK_VAR="ROR_S3_ACCESS_KEY_ID"
 SK_VAR="ROR_S3_SECRET_ACCESS_KEY"
 BUCKET_VAR="ROR_S3_BUCKET"
@@ -125,10 +123,14 @@ while IFS= read -r -d '' FILE; do
   # The uploader retried the transient answers and printed the error body, so the log already
   # names the cause.
   FAILED=$((FAILED + 1))
-  # Status 3: the storage stayed down for the whole retry budget. Every later file waits for the
-  # same budget and fails the same way, so the run stops here.
+  # Status 3 is a storage that stayed down for the whole retry budget, and status 2 a wrong
+  # setting. Every later file meets the same thing, so the run stops on both.
   if [ "$UPLOAD_STATUS" -eq 3 ]; then
     echo "WARNING: upload failed for $FILE. The storage stayed down for the whole retry budget, so the files that remain are not uploaded."
+    break
+  fi
+  if [ "$UPLOAD_STATUS" -eq 2 ]; then
+    echo "WARNING: upload failed for $FILE. A setting of the uploader is wrong, so the files that remain are not uploaded."
     break
   fi
   echo "WARNING: upload failed for $FILE (continuing)"
