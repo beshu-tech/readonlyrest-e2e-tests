@@ -9,9 +9,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     this.findAllSavedObjects(credentials, group).then(savedObjects => {
       savedObjects.forEach(savedObject => {
         cy.log(`Remove ${savedObject.id} saved object for ${accountOf(credentials)}`);
-        // Best effort: an object listed a moment ago can already be gone (404). Losing that
-        // race must not fail cleanup.
-        this.deleteSavedObject(savedObject, credentials, group, { failOnStatusCode: false });
+        this.deleteSavedObjectIfPresent(savedObject, credentials, group);
       });
     });
   }

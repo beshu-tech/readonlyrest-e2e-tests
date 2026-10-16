@@ -9,9 +9,7 @@ const IMPORTED_DATA_VIEW = { type: 'index-pattern', id: '3b5651f9-8fa6-4da4-87ab
 describe('Saved objects', () => {
   beforeEach(() => {
     // When the import finds this object already there, it overwrites it and the row count does not change.
-    kbnApiAdvancedClient.deleteSavedObject(IMPORTED_DATA_VIEW, adminCredentials, undefined, {
-      failOnStatusCode: false
-    });
+    kbnApiAdvancedClient.deleteSavedObjectIfPresent(IMPORTED_DATA_VIEW, adminCredentials);
     Login.initialization();
     StackManagement.openSavedObjectsPage();
   });

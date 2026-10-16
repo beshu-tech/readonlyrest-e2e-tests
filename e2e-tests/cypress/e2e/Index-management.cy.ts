@@ -14,7 +14,7 @@ describe('Index management', () => {
   beforeEach(() => {
     if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
       // A test that stopped before its afterEach can leave this data view behind.
-      kbnApiClient.deleteDataView('r', adminCredentials, undefined, { failOnStatusCode: false });
+      kbnApiClient.deleteDataViewIfPresent('r', adminCredentials);
       kbnApiClient.createDataView(
         {
           data_view: {
@@ -38,7 +38,7 @@ describe('Index management', () => {
     });
 
     if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
-      kbnApiClient.deleteDataView('r', adminCredentials, undefined, { failOnStatusCode: false });
+      kbnApiClient.deleteDataViewIfPresent('r', adminCredentials);
     }
   });
 

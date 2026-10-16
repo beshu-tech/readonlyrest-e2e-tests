@@ -1,6 +1,8 @@
 import { recurse } from 'cypress-recurse';
 import { accountOf, BasicCredentials } from './credentials';
 
+const isSuccess = (status: number) => status >= 200 && status < 300;
+
 export class KbnApiClient {
   public getDataViews(credentials: BasicCredentials, group?: string): Cypress.Chainable<DataViews> {
     return cy
@@ -38,17 +40,15 @@ export class KbnApiClient {
     });
   }
 
-  public deleteDataView(
-    dataViewId: string,
-    credentials: BasicCredentials,
-    group?: string,
-    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
-  ): void {
-    cy.kbnDelete({
+  public deleteDataView(dataViewId: string, credentials: BasicCredentials, group?: string): void {
+    cy.kbnDelete({ endpoint: `api/data_views/data_view/${dataViewId}`, credentials, currentGroupHeader: group });
+  }
+
+  public deleteDataViewIfPresent(dataViewId: string, credentials: BasicCredentials, group?: string): void {
+    this.deleteUntilGone({
       endpoint: `api/data_views/data_view/${dataViewId}`,
       credentials,
-      currentGroupHeader: group,
-      failOnStatusCode
+      currentGroupHeader: group
     });
   }
 
@@ -71,17 +71,19 @@ export class KbnApiClient {
     });
   }
 
-  public deleteSavedObject(
-    savedObject: SavedObject,
-    credentials: BasicCredentials,
-    group?: string,
-    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
-  ): void {
+  public deleteSavedObject(savedObject: SavedObject, credentials: BasicCredentials, group?: string): void {
     cy.kbnDelete({
       endpoint: `api/saved_objects/${savedObject.type}/${savedObject.id}`,
       credentials,
-      currentGroupHeader: group,
-      failOnStatusCode
+      currentGroupHeader: group
+    });
+  }
+
+  public deleteSavedObjectIfPresent(savedObject: SavedObject, credentials: BasicCredentials, group?: string): void {
+    this.deleteUntilGone({
+      endpoint: `api/saved_objects/${savedObject.type}/${savedObject.id}`,
+      credentials,
+      currentGroupHeader: group
     });
   }
 
@@ -113,14 +115,18 @@ export class KbnApiClient {
     });
   }
 
-  // For a cleanup request that must take effect: sends it until it answers 2xx, for at most about
-  // 10 s, and fails with the last status after that.
-  protected repeatUntilSuccess(options: Cypress.ResponseOptions<Cypress.KbnRequestOptions>): void {
-    recurse(
-      () => cy.kbnResponse(options).its('status'),
-      status => status >= 200 && status < 300,
-      { limit: 10, delay: 1000, log: false }
-    );
+  // For a cleanup delete: the object can already be gone, so a 404 also counts as done.
+  protected deleteUntilGone(options: Omit<Cypress.ResponseOptions<Cypress.KbnRequestOptions>, 'method'>): void {
+    this.repeatUntilSuccess({ ...options, method: 'DELETE' }, status => isSuccess(status) || status === 404);
+  }
+
+  // For a cleanup request that must take effect: sends it until isDone accepts the status (2xx by
+  // default), for at most about 10 s, and fails with the last status after that.
+  protected repeatUntilSuccess(
+    options: Cypress.ResponseOptions<Cypress.KbnRequestOptions>,
+    isDone: (status: number) => boolean = isSuccess
+  ): void {
+    recurse(() => cy.kbnResponse(options).its('status'), isDone, { limit: 10, delay: 1000, log: false });
   }
 
   public deleteSpace(
