@@ -90,17 +90,38 @@ upload_one() {
   "$CI_DIR/s3-uploader.sh" "$AK" "$SK" "${BUCKET}@${REGION}" "$FILE" "$KEY" "$MIME"
 }
 
-# Any file can hold a CI secret, whatever its name. In a text file (no NUL byte) each occurrence of
-# REDACT_VALUE becomes <redacted>. A file that still holds it after that is not uploaded at all.
-REDACT_VALUE=${REDACT_VALUE:-}
+# Any file can hold a CI secret, whatever its name. SECRETS_TO_REDACT holds one secret per line. In a
+# text file (no NUL byte) each occurrence of a secret becomes <redacted>. A file that still holds one
+# after that is not uploaded at all.
+SECRETS=()
+while IFS= read -r SECRET; do
+  [ -n "$SECRET" ] && SECRETS+=("$SECRET")
+done <<< "${SECRETS_TO_REDACT:-}"
+# With no secret to look for, every file passes the check. An empty value is a caller defect, for
+# example a renamed secret, so nothing is uploaded.
+if [ ${#SECRETS[@]} -eq 0 ]; then
+  echo "::error title=S3 upload::SECRETS_TO_REDACT is empty, so the files cannot be checked for secrets. Nothing is uploaded."
+  exit 1
+fi
 holds_secret() {
-  [ -n "$REDACT_VALUE" ] && grep -qF -- "$REDACT_VALUE" "$1" 2>/dev/null
+  local SECRET
+  for SECRET in "${SECRETS[@]}"; do
+    grep -qF -- "$SECRET" "$1" 2>/dev/null && return 0
+  done
+  return 1
+}
+# A file with no NUL byte is text. grep -I is not enough: with -q, grep can stop at the first match
+# before it reads a NUL byte that comes later in the file.
+is_text() {
+  [ "$(LC_ALL=C tr -dc '\000' < "$1" | head -c 1 | wc -c)" -eq 0 ]
 }
 redact() {
-  local FILE=$1
+  local FILE=$1 SECRET
   holds_secret "$FILE" || return 0
-  if LC_ALL=C grep -qI -- '' "$FILE"; then
-    REDACT_VALUE="$REDACT_VALUE" perl -i -pe 's/\Q$ENV{REDACT_VALUE}\E/<redacted>/g' "$FILE"
+  if is_text "$FILE"; then
+    for SECRET in "${SECRETS[@]}"; do
+      SECRET="$SECRET" perl -i -pe 's/\Q$ENV{SECRET}\E/<redacted>/g' "$FILE"
+    done
   fi
   ! holds_secret "$FILE"
 }

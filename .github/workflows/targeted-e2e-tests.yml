@@ -31,8 +31,6 @@ on:
 env:
   APPLY_RESOURCE_LIMITS: "auto"
 
-# Each runs-on reads a JSON label list from a repo variable that Doppler syncs (project ror_ci,
-# config prd), so a runner change needs no commit. The fallback applies while the variable is unset.
 jobs:
   e2e-tests:
     name: "🔬 E2E Tests"
@@ -90,4 +88,4 @@ jobs:
           bucket: ${{ vars.ROR_S3_BUCKET }}
           region: ${{ vars.ROR_S3_REGION }}
           path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
-          redact: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+          secrets_to_redact: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}

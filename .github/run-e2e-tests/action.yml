@@ -36,21 +36,20 @@ runs:
         ./environments/eck-ror/install-kind.sh "$RUNNER_TEMP/kind-bin"
         echo "$RUNNER_TEMP/kind-bin" >> "$GITHUB_PATH"
     - name: Run E2E tests
-      # One attempt: a second suite run turns a flaky spec green and hides its cause. The action
-      # only gives the time cap, which a composite action step cannot set by itself.
-      uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08
-      with:
-        max_attempts: 1
-        # The eck envs set the number: Kubernetes networking answers each request more slowly than
-        # the docker-compose bridge, and the 27-spec suite needs more than an hour there. A run
-        # that hits the cap reports the timeout and hides the failure that came first.
-        timeout_minutes: 75
-        command: |
-          PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
-          [ -n "$ROR_ES_VERSION" ] && PARAMS+=(--ror-es "$ROR_ES_VERSION")
-          [ -n "$ROR_KBN_VERSION" ] && PARAMS+=(--ror-kbn "$ROR_KBN_VERSION")
-          [ -n "$MODE" ] && PARAMS+=(--mode "$MODE")
-          ./runner.sh "${PARAMS[@]}"
+      shell: bash
+      run: |
+        PARAMS=(--run e2e --env "$ENV" --elk "$ELK_VERSION")
+        [ -n "$ROR_ES_VERSION" ] && PARAMS+=(--ror-es "$ROR_ES_VERSION")
+        [ -n "$ROR_KBN_VERSION" ] && PARAMS+=(--ror-kbn "$ROR_KBN_VERSION")
+        [ -n "$MODE" ] && PARAMS+=(--mode "$MODE")
+        # The step fails at the cap, so the callers' `if: failure()` upload still runs. A job
+        # timeout cancels the job, and that upload does not run.
+        STATUS=0
+        timeout --kill-after=60 "$E2E_TIME_CAP_SECONDS" ./runner.sh "${PARAMS[@]}" || STATUS=$?
+        if [ "$STATUS" -eq 124 ] || [ "$STATUS" -eq 137 ]; then
+          echo "::error title=E2E%3A ELK $ELK_VERSION on $ENV::runner.sh did not end in $E2E_TIME_CAP_SECONDS s, and it was stopped."
+        fi
+        exit "$STATUS"
       env:
         ROR_ACTIVATION_KEY: ${{ inputs.activation_key }}
         ENV: ${{ inputs.env }}
@@ -58,7 +57,8 @@ runs:
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
-        # The same cap as timeout_minutes, so that runner.sh stops the suite in time to collect its logs.
+        # The cap covers the stack start, the suite and the log collection. The eck envs set the
+        # number: the suite there takes more than one hour.
         E2E_TIME_CAP_SECONDS: 4500
     - name: Put the E2E summary on the run summary page
       # The runner writes the file only when the suite ran, on a pass as well as on a failure.
