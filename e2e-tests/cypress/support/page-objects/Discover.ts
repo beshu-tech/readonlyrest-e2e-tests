@@ -1,15 +1,19 @@
-import * as semver from 'semver';
 import { KibanaNavigation } from './KibanaNavigation';
-import { getKibanaVersion } from '../helpers';
+import { TopNav } from './TopNav';
+import { kibanaVersion } from '../helpers';
+import { interceptNext } from '../helpers/interceptNext';
+import { recurse } from 'cypress-recurse';
+import { StackManagement } from './StackManagement';
+
+const QUEUED_REPORT_TOAST = 'Queued report for search';
 
 export class Discover {
   static createIndexPattern(indexPatternName: string) {
     cy.log('createIndexPattern');
     createKibanaIndexPattern(indexPatternName);
 
-    if (semver.lt(getKibanaVersion(), '8.8.0')) {
-      KibanaNavigation.openKibanaNavigation();
-      cy.contains('Discover').click({ force: true });
+    if (kibanaVersion.lt('8.8.0')) {
+      KibanaNavigation.openPage('Discover');
     }
 
     Discover.verifyIndexTitle(indexPatternName);
@@ -17,21 +21,19 @@ export class Discover {
 
   static saveReport(reportName: string) {
     cy.log('saveReport');
-    KibanaNavigation.openKibanaNavigation();
-    cy.contains('Discover').click();
+    KibanaNavigation.openPage('Discover');
     cy.get('[data-test-subj=discoverSaveButton]').click();
     cy.get('[data-test-subj=savedObjectTitle]').type(reportName, { delay: 0 });
 
-    if (semver.gte(getKibanaVersion(), '9.0.0')) {
-      cy.intercept('POST', '**/api/content_management/rpc/create').as('createDiscoverSession');
-    }
+    const createDiscoverSession = kibanaVersion.gte('9.0.0')
+      ? interceptNext('createDiscoverSession', { method: 'POST', url: '**/api/content_management/rpc/create' })
+      : undefined;
 
-    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('not.be.disabled');
-    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').click({ force: true });
+    cy.get('[data-test-subj=confirmSaveSavedObjectButton]').should('not.be.disabled').click();
     Discover.verifySearchSaved(reportName);
 
-    if (semver.gte(getKibanaVersion(), '9.0.0')) {
-      Discover.reopenSavedDiscoverSession(reportName);
+    if (createDiscoverSession) {
+      Discover.reopenSavedDiscoverSession(reportName, createDiscoverSession);
     }
   }
 
@@ -59,9 +61,9 @@ export class Discover {
    * (e.g. Reporting.cy.ts), and the extra full page loads from cy.visit() were heavy enough to
    * crash the Electron renderer on memory-constrained CI runners.
    */
-  private static reopenSavedDiscoverSession(reportName: string) {
+  private static reopenSavedDiscoverSession(reportName: string, createDiscoverSession: `@${string}`) {
     cy.log('reopenSavedDiscoverSession');
-    cy.wait('@createDiscoverSession').then(({ response }) => {
+    cy.wait(createDiscoverSession).then(({ response }) => {
       const savedId = response?.body?.result?.result?.item?.id;
       if (!savedId) return;
 
@@ -69,23 +71,24 @@ export class Discover {
         win.location.hash = `#/view/${savedId}`;
       });
     });
-    // Not '.should(be.visible)': cy.contains() can match a visually-hidden
-    // euiScreenReaderOnly duplicate of this text before the real, visible one.
-    cy.contains(reportName, { timeout: 20000 }).should('exist');
+    // The breadcrumb, not any text: the "'<name>' was saved" toast also holds the name, and it shows
+    // before Discover opens the session again.
+    cy.get('[data-test-subj="breadcrumb last"]', { timeout: 20000 }).should('contain', reportName);
   }
 
   static exportToCsv() {
     cy.log('exportToCsv');
 
-    if (semver.gte(getKibanaVersion(), '9.4.0')) {
+    if (kibanaVersion.gte('9.4.0')) {
       cy.getByDataTestSubj('app-menu-overflow-button').click();
       cy.getByDataTestSubj('exportTopNavButton').click();
       cy.getByDataTestSubj('exportMenuItem-CSV').click();
-    } else if (semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')) {
+    } else if (kibanaVersion.is819OrFrom91()) {
+      // Kibana 8.19 and 9.1 to 9.3 have their own export button in the top navigation.
       cy.get('[data-test-subj=exportTopNavButton]').click();
     } else {
       cy.get('[data-test-subj=shareTopNavButton]').click();
-      if (semver.gte(getKibanaVersion(), '8.15.0')) {
+      if (kibanaVersion.gte('8.15.0')) {
         cy.get('[data-test-subj=export]').click();
       } else {
         cy.get('[data-test-subj=sharePanel-CSVReports]').click();
@@ -93,96 +96,53 @@ export class Discover {
     }
 
     cy.get('[data-test-subj=generateReportButton]').click();
-    cy.contains('Queued report for search', { timeout: 10000 }).should('exist');
-    cy.contains('Queued report for search', { timeout: 10000 }).should('not.exist');
-
-    /**
-     * TODO: For now csv download crash cypress electron browser (it's probably works in case of other browsers).
-     * For now we can skip it
-     */
-    // cy.get('[data-test-subj=downloadCompletedReportButton]').click();
-    // cy.readFile('cypress/downloads/admin_search.csv').should('not.be.null');
+    cy.contains(QUEUED_REPORT_TOAST, { timeout: 10000 }).should('exist');
+    // Kibana closes the toast after 5 s. A toast that comes during its fade-out can bring it back
+    // with no timer, and then it stays. So a toast still there after 10 s gets closed.
+    recurse(
+      () => cy.get('body', { log: false }),
+      $body => !$body.text().includes(QUEUED_REPORT_TOAST),
+      { limit: 20, delay: 500, doNotFail: true, yield: 'value', log: false }
+    ).then($body => {
+      if ($body.text().includes(QUEUED_REPORT_TOAST)) {
+        cy.contains('.euiToast', QUEUED_REPORT_TOAST).find('[data-test-subj=toastCloseButton]').click();
+      }
+    });
+    cy.contains(QUEUED_REPORT_TOAST).should('not.exist');
   }
 
-  static openShareDiscover() {
-    cy.log('openShareDiscoverUrl');
-    cy.getByDataTestSubj('shareTopNavButton').click();
-
-    if (semver.lt(getKibanaVersion(), '8.0.0')) {
-      cy.getByDataTestSubj('sharePanel-Permalinks').click();
+  // Kibana 9.4 and later always puts New and Open in the overflow popover of the top menu. Open is
+  // allowed, so it proves that the popover holds the items.
+  static verifyWriteControlsNotShown() {
+    cy.log('Discover write controls not shown');
+    if (kibanaVersion.gte('9.4.0')) {
+      TopNav.verifyOverflowButtonExists();
     }
-  }
-
-  static clickCopyLinkButton(accessLevel: 'admin' | 'rw' | 'ro' | 'ro_strict') {
-    cy.log('clickCopyLinkButton');
-
-    if (semver.gte(getKibanaVersion(), '8.0.0') && ['admin', 'rw'].includes(accessLevel)) {
-      cy.intercept({ method: 'POST', pathname: '/s/default/api/short_url' }).as('generateShortUrl');
-      cy.getByDataTestSubj('copyShareUrlButton').click();
-      cy.wait('@generateShortUrl');
-    } else {
-      cy.getByDataTestSubj('copyShareUrlButton').click();
-    }
-  }
-
-  static optionsButtonNotExist() {
-    cy.log('Options button Not exist');
-    if (semver.gte(getKibanaVersion(), '8.8.0')) {
-      cy.findByText(/options/i).should('not.be.visible');
-    } else {
-      cy.findByText(/options/i).should('not.exist');
-    }
-  }
-
-  static newButtonNotExist() {
-    cy.log('New button Not exist');
-    cy.findByText(/new/i).should('not.exist');
-  }
-
-  static saveButtonNotExist() {
-    cy.log('Save button Not exist');
-    cy.findByText('Save').should('not.exist');
+    TopNav.verifyControlsNotShown(
+      'shareTopNavButton',
+      ['discoverNewButton', 'discoverSaveButton', 'interactiveSaveMenuItem', 'discoverOptionsButton'],
+      { overflowAnchorTestSubj: 'discoverOpenButton', inPage: ['discoverNewButton'] }
+    );
   }
 
   static openDataViewPage = () => {
     cy.log('open data view page');
-
-    const openDataPageForKibanaForAndAbove8_1_0 = () => {
-      KibanaNavigation.openKibanaNavigation();
-      cy.contains('Stack Management').click();
-      cy.contains('Data Views').click();
-    };
-
-    const openDataPageForKibanaBefore7_18_1 = () => {
-      KibanaNavigation.openKibanaNavigation();
-      cy.contains('Discover').click();
-    };
-
-    if (semver.gte(getKibanaVersion(), '8.1.0')) {
-      return openDataPageForKibanaForAndAbove8_1_0();
+    if (kibanaVersion.gte('8.1.0')) {
+      KibanaNavigation.openPage('Stack Management');
+      StackManagement.openPage('Data Views');
+    } else {
+      KibanaNavigation.openPage('Discover');
     }
-    return openDataPageForKibanaBefore7_18_1();
   };
 
   static verifyIndexPatternSwitchLink = (indexPatternName: string) => {
     cy.log('verify Index Pattern Switch Link');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.get('[data-test-subj*=detail-link]').contains(indexPatternName);
     } else {
       cy.get('[data-test-subj=indexPattern-switch-link]').contains(indexPatternName);
     }
   };
-
-  static selectDataView(dataView: string) {
-    const searchUrl = semver.gte(getKibanaVersion(), '9.0.0')
-      ? '/s/default/internal/search/ese**'
-      : '/s/default/internal/bsearch?compress=true';
-
-    cy.intercept('POST', searchUrl).as('dataViewSearch');
-    cy.getByDataTestSubj('discover-dataView-switch-link').click();
-    cy.contains('[data-test-subj="fullText"]', dataView).click();
-    cy.wait('@dataViewSearch');
-  }
 
   static verifyDocumentWithTodayRange = (row: number, indexPatternName: string) => {
     cy.log('verify Document with Today Range');
@@ -194,7 +154,7 @@ export class Discover {
 
   static verifyDocument = (row: number, indexPatternName: string) => {
     cy.log('verify Document');
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.contains('[data-test-subj="discoverCellDescriptionList"]', indexPatternName).eq(row).should('be.visible');
     } else {
       cy.get('[data-test-subj="docTableExpandToggleColumn"]').eq(row).click();
@@ -204,17 +164,11 @@ export class Discover {
 
   static selectTodayDataRange = () => {
     cy.log('Select Today Data Range');
-    const searchUrl = semver.gte(getKibanaVersion(), '9.0.0')
-      ? `/s/default/internal/search/ese**`
-      : `/s/default/internal/bsearch**`;
+    const searchUrl = kibanaVersion.gte('9.0.0') ? `/s/default/internal/search/ese**` : `/s/default/internal/bsearch**`;
 
-    // Wait for any pending searches (e.g. from data view switch) to complete before
-    // setting up the intercept, so that @search only captures the Today-triggered request.
-    cy.waitForNetworkIdle('POST', searchUrl, 500, { timeout: 15000 });
+    const search = interceptNext('search', { method: 'POST', url: searchUrl });
 
-    cy.intercept('POST', searchUrl).as('search');
-
-    if (semver.gte(getKibanaVersion(), '9.5.0')) {
+    if (kibanaVersion.gte('9.5.0')) {
       cy.getByDataTestSubj('dateRangePickerControlButton').click();
       cy.getByDataTestSubj('dateRangePickerPresetItem-Today').click();
     } else {
@@ -222,7 +176,7 @@ export class Discover {
       cy.getByDataTestSubj('superDatePickerCommonlyUsed_Today').click();
     }
 
-    cy.wait('@search');
+    cy.wait(search);
   };
 
   static toastErrorNotVisible = (message: string) => {
@@ -239,7 +193,7 @@ export class Discover {
   static verifyIndexTitle = (indexPatternName: string) => {
     cy.log('Verify Index title');
 
-    if (semver.gte(getKibanaVersion(), '9.2.0')) {
+    if (kibanaVersion.gte('9.2.0')) {
       cy.contains('[data-test-subj="indexPatternTitle"]', indexPatternName).as('indexPatternTitle').scrollIntoView();
       cy.get('@indexPatternTitle').should('be.visible');
     } else {
@@ -266,7 +220,7 @@ export class Discover {
   static verifyDiscoverFromSearchSessionCorrectlyRestored = () => {
     cy.log('Verify Discover from search session');
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       cy.contains(/You are viewing cached data from a specific time range/i).should('be.visible');
     } else {
       cy.getByDataTestSubj('searchSessionIndicator').should('be.visible');
@@ -274,15 +228,69 @@ export class Discover {
   };
 }
 
+const DATA_VIEW_NAME_INPUT = '[data-test-subj=createIndexPatternNameInput]';
+const DATA_VIEW_TITLE_INPUT = '[data-test-subj=createIndexPatternTitleInput]'; // >= 8.4.0
+const DATA_VIEW_SOURCES_STATUS = '[data-test-subj=createIndexPatternStatusMessage]';
+const DATA_VIEW_TIMESTAMP_FIELD = '[data-test-subj=timestampField]';
+const ALL_SOURCES_LOADED = 'Your index pattern can match';
+const TIMESTAMP_PROMPT = 'Select a timestamp field for use with the global time filter.';
+
+/**
+ * Types the index pattern into the data view flyout and selects @timestamp (Kibana >= 8.0).
+ *
+ * The Data views page renders again when one of its loads ends late (Kibana 8.19 to 9.5: the ES|QL
+ * check of the page). Each render mounts a new flyout, because the flyout makes a new context provider
+ * on every render (RORDEV-2319). The new flyout drops what was typed and loads all sources again. A
+ * title typed before that load ends gets checked against no sources, and the form keeps that error. So
+ * each check looks at the form as it is now: it types only into an empty form that shows all sources,
+ * and selects the timestamp field only when the form asks for it.
+ */
+const fillDataViewForm = (indexPatternName: string) => {
+  const titleInput = kibanaVersion.gte('8.4.0') ? DATA_VIEW_TITLE_INPUT : DATA_VIEW_NAME_INPUT;
+  recurse(
+    () =>
+      cy.get('body', { log: false }).then($body => {
+        const $title = $body.find(titleInput);
+        if ($title.length === 0) {
+          return false;
+        }
+        // Kibana adds a * to the index pattern as you type.
+        const title = String($title.val()).replace(/\*$/, '');
+        if (title !== indexPatternName) {
+          if (title) {
+            cy.get(titleInput).clear();
+          } else if ($body.find(DATA_VIEW_SOURCES_STATUS).text().includes(ALL_SOURCES_LOADED)) {
+            cy.get(DATA_VIEW_NAME_INPUT).clear().type(indexPatternName);
+            if (titleInput !== DATA_VIEW_NAME_INPUT) {
+              cy.get(titleInput).type(indexPatternName);
+            }
+          }
+          return false;
+        }
+        if (!$body.text().includes(TIMESTAMP_PROMPT)) {
+          return false;
+        }
+        if ($body.find(DATA_VIEW_TIMESTAMP_FIELD).text().includes('@timestamp')) {
+          return true;
+        }
+        cy.get(DATA_VIEW_TIMESTAMP_FIELD).click();
+        cy.contains('[role="option"]', '@timestamp').click();
+        return false;
+      }),
+    Boolean,
+    { delay: 500, timeout: 60000, limit: 120, log: false, error: 'The data view form did not keep the title' }
+  );
+};
+
 const createKibanaIndexPattern = (indexPatternName: string) => {
   const createIdentityForKibanaBefore7_15_1 = () => {
     cy.contains('Create index pattern').click();
     cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName);
     cy.contains('Next step').click();
     cy.get('[data-test-subj=createIndexPatternTimeFieldSelect]').select('@timestamp');
-    cy.intercept('/s/default/api/saved_objects/index-pattern').as('indexPattern');
-    cy.get('[data-test-subj=createIndexPatternButton]').click({ force: true });
-    cy.wait('@indexPattern');
+    const indexPattern = interceptNext('indexPattern', { url: '/s/default/api/saved_objects/index-pattern' });
+    cy.get('[data-test-subj=createIndexPatternButton]').should('not.be.disabled').click();
+    cy.wait(indexPattern);
   };
 
   const createIdentityForKibanaForAndAbove7_15_1 = () => {
@@ -290,10 +298,10 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName);
     cy.contains('Select a timestamp field for use with the global time filter.');
     cy.get('[data-test-subj=timestampField]').click();
-    cy.contains('@timestamp').click({ force: true });
-    cy.intercept('/s/default/api/saved_objects/index-pattern').as('indexPattern');
-    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
-    cy.wait('@indexPattern');
+    cy.contains('[role="option"]', '@timestamp').click();
+    const indexPattern = interceptNext('indexPattern', { url: '/s/default/api/saved_objects/index-pattern' });
+    cy.get('[data-test-subj=saveIndexPatternButton]').should('not.be.disabled').click();
+    cy.wait(indexPattern);
   };
 
   const createIdentityForKibanaForAndAbove8_0_0 = () => {
@@ -305,32 +313,27 @@ const createKibanaIndexPattern = (indexPatternName: string) => {
     cy.get(createDataViewPossibleSelectors.join(','))
       .contains(/create.*data.*view/i, { matchCase: false })
       .click();
-    cy.get('[data-test-subj=createIndexPatternNameInput]').type(indexPatternName); // regular index pattern field
+    fillDataViewForm(indexPatternName);
 
-    if (semver.gte(getKibanaVersion(), '8.4.0')) {
-      cy.get('[data-test-subj=createIndexPatternTitleInput]').type(indexPatternName); // Added title field in 8.4.0
-    }
+    const indexPattern = kibanaVersion.gte('8.9.0')
+      ? interceptNext('indexPattern', { url: '/s/default/api/kibana/management/saved_objects/**' })
+      : interceptNext('indexPattern', { url: '/s/default/api/saved_objects/**' });
 
-    cy.contains('Select a timestamp field for use with the global time filter.');
-    cy.get('[data-test-subj=timestampField]').click();
-    cy.contains('@timestamp').click({ force: true });
+    // The title check runs async, and the form saves nothing while it runs. Kibana 8.15 and later
+    // mark it with data-is-validating, as Kibana's own tests wait for it.
+    cy.get('[data-test-subj=createIndexPatternTitleInput]').should($input => {
+      expect($input.attr('data-is-validating') ?? '0', 'title validation').to.equal('0');
+    });
+    cy.get('[data-test-subj=saveIndexPatternButton]').should('not.be.disabled').click();
 
-    if (semver.gte(getKibanaVersion(), '8.9.0')) {
-      cy.intercept('/s/default/api/kibana/management/saved_objects/**').as('indexPattern');
-    } else {
-      cy.intercept('/s/default/api/saved_objects/**').as('indexPattern');
-    }
-
-    cy.get('[data-test-subj=saveIndexPatternButton]').click({ force: true });
-
-    cy.wait('@indexPattern');
+    cy.wait(indexPattern);
   };
 
-  if (semver.gte(getKibanaVersion(), '8.0.0')) {
+  if (kibanaVersion.gte('8.0.0')) {
     return createIdentityForKibanaForAndAbove8_0_0();
   }
 
-  if (semver.gte(getKibanaVersion(), '7.15.1')) {
+  if (kibanaVersion.gte('7.15.1')) {
     return createIdentityForKibanaForAndAbove7_15_1();
   }
 

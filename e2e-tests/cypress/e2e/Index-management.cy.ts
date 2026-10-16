@@ -1,18 +1,20 @@
-import * as semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { IndexManagement } from '../support/page-objects/IndexManagement';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
+import { adminCredentials, user2Credentials } from '../support/helpers/credentials';
+import { StackManagement } from '../support/page-objects/StackManagement';
 
 const testIndexName = '.kibana_test';
-const adminUserCredentials = 'admin:dev';
 
 describe('Index management', () => {
   beforeEach(() => {
-    if (semver.gte(getKibanaVersion(), '8.0.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
+    if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
+      // A test that stopped before its afterEach can leave this data view behind.
+      kbnApiClient.deleteDataViewIfPresent('r', adminCredentials);
       kbnApiClient.createDataView(
         {
           data_view: {
@@ -21,7 +23,7 @@ describe('Index management', () => {
             name: 'ReadonlyREST Data view'
           }
         },
-        adminUserCredentials
+        adminCredentials
       );
     }
   });
@@ -35,8 +37,8 @@ describe('Index management', () => {
         });
     });
 
-    if (semver.gte(getKibanaVersion(), '8.0.0') && semver.lt(getKibanaVersion(), '9.0.0')) {
-      kbnApiClient.deleteDataView('r', adminUserCredentials);
+    if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
+      kbnApiClient.deleteDataViewIfPresent('r', adminCredentials);
     }
   });
 
@@ -49,36 +51,37 @@ describe('Index management', () => {
     });
     esApiClient.addDocument(testIndexName, '0', { title: 'Sample document', content: 'This is a test document' });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Index Management');
+    StackManagement.openPage('Index Management');
     IndexManagement.IncludeHiddenIndices();
     IndexManagement.searchIndices(testIndexName);
     IndexManagement.openIndex(testIndexName);
     IndexManagement.openIndexSettings();
     IndexManagement.verifyIndexSetting('priority', indexPriorityValue);
 
-    if (semver.gte(getKibanaVersion(), '8.0.0')) {
+    if (kibanaVersion.gte('8.0.0')) {
       IndexManagement.openDiscoverIndex();
       Discover.verifyDocument(0, testIndexName);
     }
 
     // Delete index
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Index Management');
+    StackManagement.openPage('Index Management');
     IndexManagement.IncludeHiddenIndices();
     IndexManagement.searchIndices(testIndexName);
     IndexManagement.openIndex(testIndexName);
     IndexManagement.selectDeleteActionFromContextMenu();
 
     IndexManagement.clickConfirmDeleteIndexButton();
-    IndexManagement.verifyIndexExists(testIndexName);
+    IndexManagement.verifyIndexNotListed(testIndexName);
+    esApiClient.indices().then(indices => {
+      expect(indices.map(index => index.index)).not.to.include(testIndexName);
+    });
   });
 
   it('should verify empty data streams page', () => {
-    const userCredentials = 'user2:dev';
-    const [username, password] = userCredentials.split(':');
-    Login.initialization({ credentials: { username, password } });
+    Login.initialization({ credentials: user2Credentials });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Index Management');
+    StackManagement.openPage('Index Management');
     IndexManagement.openDataStreams();
     IndexManagement.verifyDataStreamsEmptyPage();
   });

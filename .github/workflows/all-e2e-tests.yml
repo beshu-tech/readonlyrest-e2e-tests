@@ -82,6 +82,9 @@ jobs:
     needs: plan
     if: contains(needs.plan.outputs.images, 'prod')
     runs-on: &e2e-runner ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
+    # The suite step stops at 75 minutes. The other 25 cover the set-up steps and the upload. The
+    # default of 360 minutes keeps a hung step on the runner for 6 hours.
+    timeout-minutes: &e2e-job-timeout 100
     strategy: &legs
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -174,6 +177,7 @@ jobs:
     name: "🧪 E2E Tests (pre-build plugins)"
     needs: [plan, prepare-dev-images]
     runs-on: *e2e-runner
+    timeout-minutes: *e2e-job-timeout
     strategy: *legs
     env:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}

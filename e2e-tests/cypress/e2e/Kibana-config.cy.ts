@@ -1,10 +1,9 @@
-import * as semver from 'semver';
 import { recurse } from 'cypress-recurse';
 import { KibanaConfig } from '../support/helpers/KibanaConfig';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import { getKibanaVersion } from '../support/helpers';
+import { getKibanaVersion, kibanaVersion } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Reporting } from '../support/page-objects/Reporting';
@@ -14,6 +13,7 @@ import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { EnvName } from '../support/types';
+import { adminCredentials } from '../support/helpers/credentials';
 
 const customKibanaIndexName = '.kibana_custom';
 
@@ -27,7 +27,6 @@ const customKibanaIndexName = '.kibana_custom';
   });
 
   describe('Custom kibana config', () => {
-    const adminCredentials = 'admin:dev';
     const customSessionIndex = `test_index`;
 
     before(() => {
@@ -37,8 +36,8 @@ const customKibanaIndexName = '.kibana_custom';
     afterEach(() => {
       kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
 
-      // deleteSavedObjects will return 404 error because, thanks to resetKibanaIndexToTemplate: true, ROR KBN plugin will reset all data to template_group deleted above, first
-      kbnApiAdvancedClient.getSavedObjects(adminCredentials);
+      // The next admin request resets the admin tenancy to the template that the line above emptied.
+      kbnApiAdvancedClient.resetTenancyIndexToTemplate(adminCredentials);
 
       esApiClient.deleteIndex(customSessionIndex);
     });
@@ -79,8 +78,8 @@ const customKibanaIndexName = '.kibana_custom';
 
       RorMenu.pressLogoutButton();
       // Logging out keeps the current location as nextUrl, so this login lands back on the
-      // dashboards list rather than on the home page Loader.finish expects by default.
-      Login.initialization({ finishUrl: '/app/dashboards' });
+      // dashboards list rather than on the home page Loader.loading expects by default.
+      Login.initialization({ finishUrl: '/s/default/app/dashboards' });
       Dashboard.openDashboard();
       Dashboard.verifyDashboardNotExist('Look at my dashboard');
     });
@@ -160,8 +159,8 @@ const customKibanaIndexName = '.kibana_custom';
 
     it('should verify disabled multiTenancy', () => {
       // With multitenancy off there is no tenancy query string, so the default finish URL of
-      // Loader.finish ('/app/home?tenancy=*') never matches.
-      Login.initialization({ finishUrl: '/app/home' });
+      // Loader.loading ('/s/default/app/home?tenancy=*') never matches.
+      Login.initialization({ finishUrl: '/s/default/app/home' });
       RorMenu.openRorMenu();
       RorMenu.verifyNoTenantAvailable();
     });
@@ -178,7 +177,7 @@ const customKibanaIndexName = '.kibana_custom';
     });
   });
   // xpack.reporting.index was removed in Kibana 8.0, so this only applies to the 7.x leg.
-  if (semver.lt(getKibanaVersion(), '8.0.0')) {
+  if (kibanaVersion.lt('8.0.0')) {
     describe('Custom kibana config custom xpack.reporting.index', () => {
       const docsIndex = 'sample_index';
 
@@ -191,17 +190,17 @@ const customKibanaIndexName = '.kibana_custom';
       beforeEach(() => {
         esApiClient.deleteIndex(docsIndex);
         esApiAdvancedClient.pruneAllReportingIndicesUntilEmpty();
-        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+        kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
       });
 
       afterEach(() => {
         esApiClient.deleteIndex(docsIndex);
         esApiAdvancedClient.pruneAllReportingIndices();
-        kbnApiAdvancedClient.deleteSavedObjects('admin:dev');
+        kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);
       });
 
       it('should verify custom reporting index', () => {
-        SampleData.createSampleData(docsIndex, 1);
+        SampleData.createSampleData(docsIndex);
         Login.initialization();
 
         Discover.openDataViewPage();
