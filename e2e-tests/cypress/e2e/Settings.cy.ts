@@ -22,6 +22,7 @@ describe('settings', () => {
     const changedBlockName = `PERSONAL_GRP${Cypress._.random(0, 1e6)}`;
     Editor.replaceValues('PERSONAL_GRP', changedBlockName);
     Settings.clickSaveButton();
+    Settings.confirmSaveModal();
     rorApiClient.getRorIndexMainSettings().should('contain', `name: ${changedBlockName}`);
   });
 
@@ -29,5 +30,6 @@ describe('settings', () => {
     Login.initialization({ credentials: kibanaCredentials });
     Settings.open();
     Settings.clickSaveButton();
+    Settings.confirmSaveModal();
   });
 });

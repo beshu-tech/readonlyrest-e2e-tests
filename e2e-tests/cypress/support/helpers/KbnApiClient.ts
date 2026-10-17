@@ -62,12 +62,17 @@ export class KbnApiClient {
   public getSavedObjects(
     credentials: BasicCredentials,
     group?: string,
-    { page = 1, perPage = 20 }: { page?: number; perPage?: number } = {}
+    {
+      page = 1,
+      perPage = 20,
+      failOnStatusCode = true
+    }: { page?: number; perPage?: number; failOnStatusCode?: boolean } = {}
   ): Cypress.Chainable<GetObject> {
     return cy.kbnGet<GetObject>({
       endpoint: KbnApiClient.savedObjectsFindEndpoint(page, perPage),
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
     });
   }
 
@@ -87,20 +92,40 @@ export class KbnApiClient {
     });
   }
 
-  public loadSampleData(sampleDatasetName: string, credentials: BasicCredentials, group?: string): void {
-    cy.kbnPost<{ elasticsearchIndicesCreated?: Record<string, number> }>({
-      endpoint: `api/sample_data/${sampleDatasetName}`,
-      credentials,
-      currentGroupHeader: group
-    }).then(result => {
-      // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
-      if (typeof result?.elasticsearchIndicesCreated !== 'object') {
-        throw new Error(
+  /**
+   * Kibana's sample-data installer deletes the previous index and recreates it in one request;
+   * those two steps occasionally race each other (resource_already_exists_exception -> 500).
+   * That failure resolves rather than rejecting (failOnStatusCode: false), so the fixed-interval
+   * retry below gets a chance to let the race settle. A request that Kibana has logged out gets a
+   * 2xx login page instead of the JSON, and is retried the same way. A cy.task timeout does not:
+   * it rejects the chain, cypress-recurse does not retry on rejection, and the loop ends
+   * immediately. So timeoutMs must, on its own, outlast the bulk-insert that follows a successful
+   * create - the retry budget below cannot cover a run where that insert is slower than timeoutMs.
+   */
+  public loadSampleData(
+    sampleDatasetName: string,
+    credentials: BasicCredentials,
+    group?: string
+  ): Cypress.Chainable<{ elasticsearchIndicesCreated?: Record<string, number> }> {
+    return recurse(
+      () =>
+        cy.kbnPost<{ elasticsearchIndicesCreated?: Record<string, number> }>({
+          endpoint: `api/sample_data/${sampleDatasetName}`,
+          credentials,
+          currentGroupHeader: group,
+          failOnStatusCode: false,
+          timeoutMs: 30000
+        }),
+      response => typeof response?.elasticsearchIndicesCreated === 'object',
+      {
+        timeout: 90000,
+        delay: 5000,
+        log: response => cy.log(`Load sample data "${sampleDatasetName}" response: ${describeBody(response)}`),
+        error:
           `api/sample_data/${sampleDatasetName} did not answer with the created indices for ${accountOf(credentials)}` +
-            `${inTenancy(group)}. Body: ${describeBody(result)}`
-        );
+          `${inTenancy(group)}`
       }
-    });
+    );
   }
 
   // A Kibana request can fail with a 500 (socket hang up) when Kibana reuses an idle connection to

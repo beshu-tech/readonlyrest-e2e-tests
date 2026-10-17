@@ -4,7 +4,7 @@ import { adminCredentials } from '../support/helpers/credentials';
 
 describe('Forbidden login test', () => {
   before(() => {
-    Settings.setSettingsData('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });
 
   beforeEach(() => {
