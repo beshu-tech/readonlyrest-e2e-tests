@@ -57,8 +57,8 @@ runs:
         ROR_ES_VERSION: ${{ inputs.ror_es }}
         ROR_KBN_VERSION: ${{ inputs.ror_kbn }}
         MODE: ${{ inputs.mode }}
-        # The cap covers the stack start, the suite and the log collection. It is about 2x the
-        # 95th percentile of the passed legs (43 min), and above the slowest passed leg (69 min).
+        # The cap covers the stack start, the suite and the log collection. Keep it 25 minutes
+        # below the job timeout-minutes, so that the job still uploads the results.
         E2E_TIME_CAP_SECONDS: 5400
     - name: Put the E2E summary on the run summary page
       # The runner writes the file only when the suite ran, on a pass as well as on a failure.

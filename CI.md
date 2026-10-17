@@ -34,7 +34,7 @@ Prod legs test the latest ROR release, with the image tag `<ELK version>-ror-<RO
 
 | What | Limit | Why |
 |---|---|---|
-| e2e run | 90 minutes (`E2E_TIME_CAP_SECONDS`), for the stack start, the suite and the log collection | About 2x the 95th percentile of the passed legs (43 minutes), and above the slowest passed leg (69 minutes). `runner.sh` stops the suite 5 minutes before the cap, so it still collects the stack logs. The error names the spec that ran at the stop |
+| e2e run | 90 minutes (`E2E_TIME_CAP_SECONDS`), for the stack start, the suite and the log collection | A hung run stops 25 minutes before the job timeout, so the job still uploads the results. `runner.sh` stops the suite 5 minutes before the cap, so it still collects the stack logs. The error names the spec that ran at the stop |
 | e2e job (all and targeted) | 115 minutes | One e2e run plus set-up and upload. The GitHub default of 360 minutes keeps a hung step on the runner for 6 hours |
 | bootstrap leg | 2 attempts of 30 minutes | A start-up that fails once for an infrastructure reason gets a second attempt |
 
