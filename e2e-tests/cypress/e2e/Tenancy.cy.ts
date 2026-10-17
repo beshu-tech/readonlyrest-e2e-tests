@@ -1,45 +1,48 @@
-import semver from 'semver/preload';
 import { Login } from '../support/page-objects/Login';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { RorMenu } from '../support/page-objects/RorMenu';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Loader } from '../support/page-objects/Loader';
-import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import type { GetObject } from '../support/helpers/KbnApiClient';
-import { getKibanaVersion, userCredentials } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { IndexManagement } from '../support/page-objects/IndexManagement';
 import { TENANCY_QUERY_STRING_KEY, X_ROR_TENANCY } from '../support/types';
 import { Spaces } from '../support/page-objects/Spaces';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { UserSettings } from '../support/page-objects/UserSettings';
+import { adminCredentials, kibanaCredentials } from '../support/helpers/credentials';
+import { Share } from '../support/page-objects/Share';
+import { itOnKibana } from '../support/helpers/itOnKibana';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
+    beforeEach(() => {
+      kbnApiAdvancedClient.resetSpaces(adminCredentials, 'template_group');
+    });
+
     afterEach(() => {
-      kbnApiClient.deleteSampleData('ecommerce', userCredentials, 'template_group');
-      kbnApiAdvancedClient.deleteAllSpaces(userCredentials, 'template_group');
+      kbnApiClient.deleteSampleData('ecommerce', adminCredentials, 'template_group');
+      // No later spec resets the spaces of this tenancy, so each test leaves them clean.
+      kbnApiAdvancedClient.tryResetSpaces(adminCredentials, 'template_group');
     });
 
     it('should open correct tenancy when URL contains tenancy query string', () => {
       const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: urlWithTenancyId,
-        spacePrefix: ''
+        finishUrl: urlWithTenancyId
       });
 
       Tenancy.checkTenancyNameInBadge('template', 'rw');
-      RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
+      RorMenu.changeTenancy('Infosec', `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`);
       Tenancy.checkTenancyNameInBadge('infosec', 'a');
-      KibanaNavigation.verifyKibanaNavigationLinkItemHref(
-        `${Cypress.config().baseUrl}/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=`
-      );
+      KibanaNavigation.verifyNavigationLinkHasPageTenancy('/s/default/app/discover');
       KibanaNavigation.openHomepage();
       RorMenu.openRorMenu();
       RorMenu.pressLogoutButton();
-      Login.fillLoginPageWith(Cypress.env().login, Cypress.env().password);
+      Login.fillLoginPageWith(adminCredentials);
       Loader.loading();
       Tenancy.checkTenancyNameInBadge('administrators', 'a');
     });
@@ -48,71 +51,31 @@ describe('Tenancy', () => {
       const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: urlWithTenancyId,
-        spacePrefix: ''
+        finishUrl: urlWithTenancyId
       });
 
-      kbnApiClient.loadSampleData('ecommerce', userCredentials, 'template_group');
-      cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
+      kbnApiClient.loadSampleData('ecommerce', adminCredentials, 'template_group');
       KibanaNavigation.openPage('Discover');
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
+      if (kibanaVersion.gte('8.0.0')) {
         cy.get('[data-test-subj="discover-dataView-switch-link"]', { timeout: 30000 }).should('exist');
       } else {
         cy.get('[data-test-subj="indexPattern-switch-link"]', { timeout: 30000 }).should('exist');
       }
-      Discover.openShareDiscover();
-      Discover.clickCopyLinkButton('admin');
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        cy.getValueFromClipboard()
-          .should('contain', 'https://localhost:5601/s/default/app/r/s')
-          .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
-      } else {
-        cy.getValueFromClipboard().should(
-          'contain',
-          `https://localhost:5601/s/default/app/discover?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#`
-        );
-      }
+      Share.open();
+      Share.copyLinkAndCheck('discover', Tenancy.encryptedTenancyWithTemplateGroup, { canWrite: true });
 
       Dashboard.openDashboard();
       Dashboard.openItem(0);
-      Dashboard.openShareDashboard();
-      Dashboard.clickCopyLinkButton();
-
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        cy.getValueFromClipboard()
-          .should('contain', 'https://localhost:5601/s/default/app/r/s')
-          .should('contain', `?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`);
-      } else {
-        cy.getValueFromClipboard().should(
-          'contain',
-          `https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/`
-        );
-      }
-      if (semver.lt(getKibanaVersion(), '8.0.0')) {
-        Dashboard.backToShareDashboard();
-      }
-      Dashboard.clickEmbedTab();
-      Dashboard.clickCopyEmbedCodeButton();
-
-      if (semver.gte(getKibanaVersion(), '8.0.0')) {
-        cy.getValueFromClipboard().should(
-          'contain',
-          `<iframe src="https://localhost:5601/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}#/view/`
-        );
-      } else {
-        cy.getValueFromClipboard().should(
-          'contain',
-          `<iframe src="https://localhost:5601/s/default/app/dashboards?embed=true&amp;${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`
-        );
-      }
+      Share.open();
+      Share.copyLinkAndCheck('dashboards', Tenancy.encryptedTenancyWithTemplateGroup, { canWrite: true });
+      Share.copyDashboardEmbedCodeAndCheck(Tenancy.encryptedTenancyWithTemplateGroup);
     });
 
     it('should redirect to page not found when tenancy is not available', () => {
       const urlWithTenancyId = `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithNotAvailableTenancy}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`,
-        spacePrefix: ''
+        finishUrl: `/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`
       });
     });
 
@@ -122,25 +85,23 @@ describe('Tenancy', () => {
       const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: urlWithTenancyId,
-        spacePrefix: ''
+        finishUrl: urlWithTenancyId
       });
 
       Spaces.createNewSpace(newSpace);
-      Spaces.openSpace(newSpace);
-      Spaces.verifyCurrentSpace(newSpace);
+      Spaces.openSpace(Spaces.idOf(newSpace));
+      Spaces.verifyCurrentSpace(Spaces.idOf(newSpace));
     });
 
-    it('should hide correct Kibana navigation items on tenancy switch', () => {
+    itOnKibana(KibanaNavigation.HIDES_APP_LINKS, 'should hide the Stack Management link in the infosec tenancy', () => {
       const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
-        finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
-        spacePrefix: ''
+        finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
       });
 
       KibanaNavigation.openKibanaNavigation();
-      KibanaNavigation.checkIfNotVisible('Stack Management');
+      KibanaNavigation.verifyAppLinkNotShown('Stack Management');
     });
   });
 
@@ -148,14 +109,12 @@ describe('Tenancy', () => {
     const urlWithTenancyId = `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedTenancyWithTemplateGroup}`;
     Login.initialization({
       visitedUrl: urlWithTenancyId,
-      finishUrl: urlWithTenancyId,
-      spacePrefix: ''
+      finishUrl: urlWithTenancyId
     });
 
     RorMenu.changeTenancy(
       'administrators',
-      `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`,
-      ''
+      `/s/default/app/management/data/index_management/indices?${TENANCY_QUERY_STRING_KEY}=*`
     );
     IndexManagement.waitUntilLoaded();
     cy.go('back');
@@ -194,7 +153,7 @@ describe('Tenancy', () => {
     // Each marker exists only in its own tenancy.
     const deleteMarkers = () => {
       Object.values(tenancies).forEach(({ group, marker }) => {
-        kbnApiClient.deleteSavedObject({ type: 'index-pattern', id: marker }, userCredentials, group);
+        kbnApiClient.deleteSavedObject({ type: 'index-pattern', id: marker }, adminCredentials, group);
       });
     };
 
@@ -202,7 +161,7 @@ describe('Tenancy', () => {
       Object.values(tenancies).forEach(({ group, fixture }) => {
         cy.kbnImport({
           endpoint: 'api/saved_objects/_import?overwrite=true',
-          credentials: userCredentials,
+          credentials: adminCredentials,
           fixtureFilename: fixture,
           currentGroupHeader: group
         });
@@ -224,8 +183,7 @@ describe('Tenancy', () => {
         const otherTenancy = tenancies[otherTenancyName];
         Login.initialization({
           visitedUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${pageTenancy.encrypted}`,
-          finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
-          spacePrefix: ''
+          finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
         });
         Tenancy.checkTenancyNameInBadge(pageTenancyName, pageTenancy.access);
 
@@ -261,8 +219,7 @@ describe('Tenancy', () => {
 
     Login.initialization({
       visitedUrl: homeUrlWithInfosecTenancy,
-      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`,
-      spacePrefix: ''
+      finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
     });
 
     RorMenu.openRorMenu();
@@ -274,10 +231,10 @@ describe('Tenancy', () => {
     cy.url().should('include', `nextUrl=`);
     cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
 
-    Login.fillLoginPageWith('kibana', 'kibana');
+    RorMenu.interceptIdentity();
+    Login.fillLoginPageWith(kibanaCredentials);
     Loader.loading();
-    RorMenu.openRorMenu();
-    RorMenu.verifyNoTenantAvailable();
+    RorMenu.verifyIdentityTenancyIsNot('kibana', 'infosec_group');
   });
 
   it('should redirect to page-not-found instead of carrying stale tenancy to a saved-object page after logout', () => {
@@ -285,8 +242,7 @@ describe('Tenancy', () => {
 
     Login.initialization({
       visitedUrl: dashboardsUrlWithInfosecTenancy,
-      finishUrl: `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=*`,
-      spacePrefix: ''
+      finishUrl: `/s/default/app/dashboards?${TENANCY_QUERY_STRING_KEY}=*`
     });
 
     RorMenu.openRorMenu();
@@ -298,8 +254,8 @@ describe('Tenancy', () => {
     cy.url().should('include', `nextUrl=`);
     cy.url().should('include', `${TENANCY_QUERY_STRING_KEY}%3D`);
 
-    Login.fillLoginPageWith('kibana', 'kibana');
-    Loader.loading(`/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`, '');
+    Login.fillLoginPageWith(kibanaCredentials);
+    Loader.loading(`/app/page-not-found?${TENANCY_QUERY_STRING_KEY}=*`);
     cy.url().should('include', '/app/page-not-found');
   });
 });

@@ -23,10 +23,11 @@ mkdir -p "$OUT" 2>/dev/null || exit 0
 # Status and exit codes: on a collapse this is often enough on its own. RestartCount tells a
 # container that died and came back from one that never died: `docker ps` shows only the current
 # process.
+# IP names the replica behind an upstream address in the nginx proxy log.
 {
-  printf 'NAMES\tSTATUS\tRESTARTS\tIMAGE\n'
+  printf 'NAMES\tSTATUS\tRESTARTS\tIMAGE\tIP\n'
   for container in $(docker ps -a --filter "name=^${PROJECT}" --format '{{.Names}}' 2>/dev/null); do
-    docker inspect -f '{{.Name}}{{"\t"}}{{.State.Status}}{{"\t"}}{{.RestartCount}}{{"\t"}}{{.Config.Image}}' "$container" 2>&1 | sed 's|^/||'
+    docker inspect -f '{{.Name}}{{"\t"}}{{.State.Status}}{{"\t"}}{{.RestartCount}}{{"\t"}}{{.Config.Image}}{{"\t"}}{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$container" 2>&1 | sed 's|^/||'
   done
 } > "$OUT/containers.txt" 2>&1 || true
 

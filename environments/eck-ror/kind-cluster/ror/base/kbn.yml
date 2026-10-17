@@ -1,3 +1,13 @@
+# A Secret, not a literal env value: `kubectl describe` and `-o yaml` then show only the reference,
+# and the stack logs do not hold the key.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eck-ror-activation-key
+type: Opaque
+stringData:
+  key: "${ROR_ACTIVATION_KEY}"
+---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
@@ -25,15 +35,20 @@ spec:
     spec:
       containers:
         - name: kibana
+          imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: false
             runAsUser: 0
             runAsGroup: 0
           env:
             - name: ROR_ACTIVATION_KEY
-              value: "${ROR_ACTIVATION_KEY}"
+              valueFrom:
+                secretKeyRef:
+                  name: eck-ror-activation-key
+                  key: key
             - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
               value: "yes"
+            # Kibana 9.4.6 exhausts a 768 MB heap.
             - name: NODE_OPTIONS
               # A smaller heap causes GC pauses long enough to fail the readiness probe.
               value: "--max-old-space-size=1536"

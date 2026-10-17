@@ -1,4 +1,7 @@
 import { recurse } from 'cypress-recurse';
+import { accountOf, BasicCredentials } from './credentials';
+
+const isSuccess = (status: number) => status >= 200 && status < 300;
 
 export class KbnApiClient {
   public getDataViews(credentials: BasicCredentials, group?: string): Cypress.Chainable<DataViews> {
@@ -20,48 +23,72 @@ export class KbnApiClient {
       });
   }
 
-  public createDataView(dataView: object, credentials: string, group?: string): void {
-    cy.kbnPost({
+  public createDataView(dataView: object, credentials: BasicCredentials, group?: string): void {
+    cy.kbnPost<{ data_view?: DataView }>({
       endpoint: 'api/data_views/data_view',
       credentials,
       currentGroupHeader: group,
       payload: dataView
+    }).then(result => {
+      // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
+      if (typeof result?.data_view?.id !== 'string') {
+        throw new Error(
+          `api/data_views/data_view did not answer with the new data view for ${accountOf(credentials)}` +
+            `${inTenancy(group)}. Body: ${describeBody(result)}`
+        );
+      }
     });
   }
 
-  public deleteDataView(dataViewId: string, credentials: string, group?: string): void {
-    cy.kbnDelete({
+  public deleteDataView(dataViewId: string, credentials: BasicCredentials, group?: string): void {
+    cy.kbnDelete({ endpoint: `api/data_views/data_view/${dataViewId}`, credentials, currentGroupHeader: group });
+  }
+
+  public deleteDataViewIfPresent(dataViewId: string, credentials: BasicCredentials, group?: string): void {
+    this.deleteUntilGone({
       endpoint: `api/data_views/data_view/${dataViewId}`,
       credentials,
       currentGroupHeader: group
     });
   }
 
+  protected static savedObjectsFindEndpoint(page = 1, perPage = 20) {
+    return (
+      'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url&type=tag' +
+      `&page=${page}&per_page=${perPage}`
+    );
+  }
+
   public getSavedObjects(
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string,
-    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+    {
+      page = 1,
+      perPage = 20,
+      failOnStatusCode = true
+    }: { page?: number; perPage?: number; failOnStatusCode?: boolean } = {}
   ): Cypress.Chainable<GetObject> {
     return cy.kbnGet<GetObject>({
-      endpoint:
-        'api/saved_objects/_find?type=index-pattern&type=search&type=visualization&type=dashboard&type=url&type=tag',
+      endpoint: KbnApiClient.savedObjectsFindEndpoint(page, perPage),
       credentials,
       currentGroupHeader: group,
       failOnStatusCode
     });
   }
 
-  public deleteSavedObject(
-    savedObject: SavedObject,
-    credentials: string,
-    group?: string,
-    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
-  ): void {
+  public deleteSavedObject(savedObject: SavedObject, credentials: BasicCredentials, group?: string): void {
     cy.kbnDelete({
       endpoint: `api/saved_objects/${savedObject.type}/${savedObject.id}`,
       credentials,
-      currentGroupHeader: group,
-      failOnStatusCode
+      currentGroupHeader: group
+    });
+  }
+
+  public deleteSavedObjectIfPresent(savedObject: SavedObject, credentials: BasicCredentials, group?: string): void {
+    this.deleteUntilGone({
+      endpoint: `api/saved_objects/${savedObject.type}/${savedObject.id}`,
+      credentials,
+      currentGroupHeader: group
     });
   }
 
@@ -69,73 +96,96 @@ export class KbnApiClient {
    * Kibana's sample-data installer deletes the previous index and recreates it in one request;
    * those two steps occasionally race each other (resource_already_exists_exception -> 500).
    * That failure resolves rather than rejecting (failOnStatusCode: false), so the fixed-interval
-   * retry below gets a chance to let the race settle. A cy.task timeout does not: it rejects the
-   * chain, cypress-recurse does not retry on rejection, and the loop ends immediately. So
-   * timeoutMs must, on its own, outlast the bulk-insert that follows a successful create - the
-   * retry budget below cannot cover a run where that insert is slower than timeoutMs.
+   * retry below gets a chance to let the race settle. A request that Kibana has logged out gets a
+   * 2xx login page instead of the JSON, and is retried the same way. A cy.task timeout does not:
+   * it rejects the chain, cypress-recurse does not retry on rejection, and the loop ends
+   * immediately. So timeoutMs must, on its own, outlast the bulk-insert that follows a successful
+   * create - the retry budget below cannot cover a run where that insert is slower than timeoutMs.
    */
   public loadSampleData(
     sampleDatasetName: string,
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string
-  ): Cypress.Chainable<{ statusCode?: number; elasticsearchIndicesCreated?: Record<string, number> }> {
+  ): Cypress.Chainable<{ elasticsearchIndicesCreated?: Record<string, number> }> {
     return recurse(
       () =>
-        cy.kbnPost<{ statusCode?: number; elasticsearchIndicesCreated?: Record<string, number> }>({
+        cy.kbnPost<{ elasticsearchIndicesCreated?: Record<string, number> }>({
           endpoint: `api/sample_data/${sampleDatasetName}`,
           credentials,
           currentGroupHeader: group,
           failOnStatusCode: false,
           timeoutMs: 30000
         }),
-      response => response?.elasticsearchIndicesCreated !== undefined,
+      response => typeof response?.elasticsearchIndicesCreated === 'object',
       {
         timeout: 90000,
         delay: 5000,
-        log: response => cy.log(`Load sample data "${sampleDatasetName}" response: ${JSON.stringify(response)}`),
-        error: `Timed out loading sample data "${sampleDatasetName}"`
+        log: response => cy.log(`Load sample data "${sampleDatasetName}" response: ${describeBody(response)}`),
+        error:
+          `api/sample_data/${sampleDatasetName} did not answer with the created indices for ${accountOf(credentials)}` +
+          `${inTenancy(group)}`
       }
     );
   }
 
-  public deleteSampleData(sampleDatasetName: string, credentials: string, group?: string): void {
-    cy.kbnDelete({
+  // A Kibana request can fail with a 500 (socket hang up) when Kibana reuses an idle connection to
+  // ROR's Pre-Elasticsearch-proxy just as the proxy closes it (RORDEV-2314), so the delete repeats
+  // until it answers 2xx. Remove the repeat when a release has the fix.
+  public deleteSampleData(sampleDatasetName: string, credentials: BasicCredentials, group?: string): void {
+    this.repeatUntilSuccess({
+      method: 'DELETE',
       endpoint: `api/sample_data/${sampleDatasetName}`,
       credentials,
       currentGroupHeader: group
     });
   }
 
-  public deleteSpace(spaceName: string, credentials: string, group?: string): void {
+  // For a cleanup delete: the object can already be gone, so a 404 also counts as done.
+  protected deleteUntilGone(options: Omit<Cypress.ResponseOptions<Cypress.KbnRequestOptions>, 'method'>): void {
+    this.repeatUntilSuccess({ ...options, method: 'DELETE' }, status => isSuccess(status) || status === 404);
+  }
+
+  // For a cleanup request that must take effect: sends it until isDone accepts the status (2xx by
+  // default), for at most about 10 s, and fails with the last status after that.
+  protected repeatUntilSuccess(
+    options: Cypress.ResponseOptions<Cypress.KbnRequestOptions>,
+    isDone: (status: number) => boolean = isSuccess
+  ): void {
+    recurse(() => cy.kbnResponse(options).its('status'), isDone, { limit: 10, delay: 1000, log: false });
+  }
+
+  public deleteSpace(
+    spaceId: string,
+    credentials: BasicCredentials,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
     cy.kbnDelete({
-      endpoint: `api/spaces/space/${spaceName}`,
+      endpoint: `api/spaces/space/${spaceId}`,
       credentials,
-      currentGroupHeader: group
+      currentGroupHeader: group,
+      failOnStatusCode
     });
   }
 
-  public getAllSpaces(credentials: BasicCredentials, group?: string): Cypress.Chainable<Space[]> {
-    return cy
-      .kbnGet<Space[]>({
-        endpoint: `api/spaces/space`,
-        credentials,
-        currentGroupHeader: group
-      })
-      .then(spaces => {
-        // A request that Kibana has logged out gets a 2xx login page instead of the JSON.
-        if (!Array.isArray(spaces)) {
-          throw new Error(
-            `api/spaces/space did not answer with a list of spaces for ${accountOf(credentials)}` +
-              `${inTenancy(group)}. Body: ${describeBody(spaces)}`
-          );
-        }
-        return spaces;
-      });
+  public updateSpace(
+    space: Space,
+    credentials: BasicCredentials,
+    group?: string,
+    { failOnStatusCode = true }: { failOnStatusCode?: boolean } = {}
+  ): void {
+    cy.kbnPut({
+      endpoint: `api/spaces/space/${space.id}`,
+      credentials,
+      currentGroupHeader: group,
+      payload: space,
+      failOnStatusCode
+    });
   }
 
   public createShortUrl(
     payload: ShortUrlPayload,
-    credentials: string,
+    credentials: BasicCredentials,
     group?: string
   ): Cypress.Chainable<ShortUrlResponse> {
     return cy.kbnPost<ShortUrlResponse>({
@@ -146,7 +196,7 @@ export class KbnApiClient {
     });
   }
 
-  public createShortUrlLegacy(credentials: string, group?: string): Cypress.Chainable<ShortUrlResponse> {
+  public createShortUrlLegacy(credentials: BasicCredentials, group?: string): Cypress.Chainable<ShortUrlResponse> {
     return cy.kbnPost<ShortUrlResponse>({
       endpoint: 'api/saved_objects/url',
       credentials,
@@ -173,22 +223,26 @@ export interface DataViews {
   data_view: DataView[];
 }
 
-interface SavedObject {
+export interface SavedObject {
   type: string;
   id: string;
 }
 
 export interface GetObject {
   saved_objects: SavedObject[];
+  total: number;
 }
 
-interface Space {
+export interface Space {
   id: string;
   name: string;
-  initials: string;
-  color: string;
+  description?: string;
+  initials?: string;
+  color?: string;
   disabledFeatures: string[];
-  imageUrl: string;
+  imageUrl?: string;
+  solution?: string;
+  _reserved?: boolean;
 }
 
 export interface ShortUrlPayload {
@@ -200,14 +254,9 @@ export interface ShortUrlResponse {
   id: string;
 }
 
-export type BasicCredentials = `${string}:${string}`;
-
-// CI keeps its logs, so a message names the account and never the pair.
-const accountOf = (credentials: BasicCredentials): string => credentials.split(':')[0];
-
 const inTenancy = (group?: string): string => (group ? ` in ${group}` : '');
 
-const describeBody = (data: unknown): string => {
+export const describeBody = (data: unknown): string => {
   const shown = typeof data === 'string' ? data : JSON.stringify(data) ?? String(data);
   return shown.length > 2000 ? `${shown.slice(0, 2000)}…` : shown;
 };

@@ -1,3 +1,4 @@
+import { kibanaCredentials } from './credentials';
 import { isMultiKibanaNodeEnv } from './index';
 
 // The node that answers this POST applies the new settings before it replies. Every other node
@@ -16,7 +17,7 @@ export class RorApiClient {
         headers: {
           'Content-Type': 'application/yaml'
         },
-        credentials: Cypress.env().kibanaUserCredentials,
+        credentials: kibanaCredentials,
         payload: yamlContent
       })
       .then(response => {
@@ -38,27 +39,70 @@ export class RorApiClient {
     return cy.fixture(fixtureYamlFileName).then(yaml => this.configureRorIndexMainSettings(yaml));
   }
 
+  // Test settings stay active until their TTL ends, also after the spec that loaded them. Invalidating
+  // settings that are not active also answers "OK".
+  public invalidateTestSettings() {
+    cy.esDelete<{ status: string; message: string }>({
+      endpoint: '_readonlyrest/admin/config/test',
+      credentials: kibanaCredentials
+    }).then(result => {
+      expect(result.status, `Test ACL invalidated: ${result.message}`).to.equal('OK');
+    });
+  }
+
+  // ReadonlyREST answers a rejected Test ACL with HTTP 200 and status "FAILED", and keeps the
+  // settings it had. Loading the settings that are already active is also a "FAILED".
   public configureRorIndexTestSettings(fixtureYamlFileName: string, ttlInSeconds: number): Cypress.Chainable<void> {
     return cy.fixture(fixtureYamlFileName).then(yamlContent => {
-      cy.esPost({
+      cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config/test',
-        credentials: Cypress.env().kibanaUserCredentials,
+        credentials: kibanaCredentials,
         payload: {
           settings: `${yamlContent}`,
           ttl: `${ttlInSeconds} sec`
         }
+      }).then(result => {
+        const loaded = result.status === 'OK' || result.message === 'Current settings are already loaded';
+        expect(loaded, `${fixtureYamlFileName} loaded as Test ACL: ${result.message}`).to.equal(true);
       });
     });
   }
 
+  // ReadonlyREST answers a rejected auth mock with HTTP 200 and a status other than "OK", for
+  // example when no Test ACL is active or the Test ACL does not use the mocked service.
   public configureRorAuthMockSettings(fixtureJsonFileName: string): Cypress.Chainable<void> {
     return cy.fixture(fixtureJsonFileName).then(content => {
-      cy.esPost({
+      cy.esPost<{ status: string; message: string }>({
         endpoint: '_readonlyrest/admin/config/test/authmock',
-        credentials: Cypress.env().kibanaUserCredentials,
+        credentials: kibanaCredentials,
         payload: content
+      }).then(result => {
+        expect(result.status, `${fixtureJsonFileName} auth mock status: ${result.message}`).to.equal('OK');
       });
     });
+  }
+
+  // The main settings that ReadonlyREST keeps in its index, as YAML.
+  public getRorIndexMainSettings(): Cypress.Chainable<string> {
+    return cy
+      .esGet<{ status: string; message: string }>({
+        endpoint: '_readonlyrest/admin/config',
+        credentials: kibanaCredentials
+      })
+      .then(response => {
+        expect(response.status, `index settings status: ${response.message}`).to.equal('ok');
+        return response.message;
+      });
+  }
+
+  // Status is TEST_SETTINGS_PRESENT, TEST_SETTINGS_INVALIDATED or TEST_SETTINGS_NOT_CONFIGURED.
+  public getRorTestSettingsStatus(): Cypress.Chainable<string> {
+    return cy
+      .esGet<{ status: string }>({
+        endpoint: '_readonlyrest/admin/config/test',
+        credentials: kibanaCredentials
+      })
+      .its('status');
   }
 }
 

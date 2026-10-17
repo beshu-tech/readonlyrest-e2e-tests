@@ -1,17 +1,27 @@
 import * as semver from 'semver';
-import { BasicCredentials } from './KbnApiClient';
 import { EnvName } from '../types';
 
-export const getKibanaVersion = () => {
-  const kibanaVersion: string = Cypress.env('kibanaVersion');
-  console.log('kibana version', kibanaVersion);
-  if (!kibanaVersion || !semver.valid(kibanaVersion)) {
-    throw new Error(
-      `Kibana version not specified correctly (got "${kibanaVersion}"). Pass it via --env kibanaVersion=<version>.`
-    );
-  }
+let kibanaVersionUnderTest: string | undefined;
 
-  return kibanaVersion;
+// run-tests.sh passes the version with --env kibanaVersion.
+export const getKibanaVersion = (): string => {
+  if (!kibanaVersionUnderTest) {
+    const value: string = Cypress.env('kibanaVersion');
+    if (!semver.valid(value)) {
+      throw new Error(`Cypress env kibanaVersion is not a version: "${value}". Pass --env kibanaVersion=<version>.`);
+    }
+    kibanaVersionUnderTest = value;
+  }
+  return kibanaVersionUnderTest;
+};
+
+export const kibanaVersion = {
+  gte: (version: string) => semver.gte(getKibanaVersion(), version),
+  lt: (version: string) => semver.lt(getKibanaVersion(), version),
+  lte: (version: string) => semver.lte(getKibanaVersion(), version),
+  satisfies: (range: string) => semver.satisfies(getKibanaVersion(), range),
+  // Kibana 8.19 has some changes of 9.1 that 9.0 does not have. Each caller names the change it checks.
+  is819OrFrom91: () => semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
 };
 
 export function isMultiKibanaNodeEnv(): boolean {
@@ -24,17 +34,14 @@ export function requiredBaseUrl(): string {
   return baseUrl;
 }
 
-export function isJsonString(str: string) {
-  try {
-    JSON.parse(str);
-  } catch (e) {
-    return false;
-  }
-  return true;
+// Pastes the text into the element: one paste event, with no key events.
+export function pasteText(element: HTMLElement, text: string) {
+  const clipboardData = new DataTransfer();
+  clipboardData.setData('text/plain', text);
+  element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
 }
 
-export const userCredentials: BasicCredentials = `${Cypress.env().login}:${Cypress.env().password}`;
-
+// Leaves the Kibana page. Cypress then waits for no request of that page.
 export const stopApp = () =>
   cy.window({ log: false }).then(win => {
     win.location.href = 'about:blank';

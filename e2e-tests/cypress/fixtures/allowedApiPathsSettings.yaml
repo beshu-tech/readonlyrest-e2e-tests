@@ -63,7 +63,7 @@ readonlyrest:
               index: '.kibana_api_restricted'
               allowed_api_paths:
                   - http_method: GET
-                    http_path: '^/internal/spaces/get_all.*$'
+                    http_path: '^/internal/spaces/_active_space$'
 
         # api_only user restricted to ReadonlyREST public API paths (/api/ror/*).
         - name: API_ONLY_ROR_RESTRICTED

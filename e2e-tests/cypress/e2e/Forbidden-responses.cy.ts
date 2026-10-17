@@ -1,4 +1,3 @@
-import semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { Settings } from '../support/page-objects/Settings';
 import { StackManagement } from '../support/page-objects/StackManagement';
@@ -7,9 +6,9 @@ import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
-import { getKibanaVersion } from '../support/helpers';
+import { kibanaVersion } from '../support/helpers';
+import { user2Credentials } from '../support/helpers/credentials';
 
-const userCredentials = 'user2:dev';
 const forbiddenMessage = 'You shall not pass!';
 const forbiddenTagName = 'forbidden-tag-delete';
 const forbiddenAssignTagName = 'forbidden-tag-assign';
@@ -17,7 +16,7 @@ const forbiddenAssignTagName = 'forbidden-tag-assign';
 // The ROR patches show their toast and then rethrow the 403, so Kibana code with no catch leaves an
 // unhandled rejection. Only that rejection is ignored, so a new error in the toast code still fails.
 // Registered with `Cypress.on` at spec scope, not `cy.on` inside a test, so it also covers the hooks.
-Cypress.on('uncaught:exception', (err, runnable, promise) => {
+Cypress.on('uncaught:exception', (err, _runnable, promise) => {
   if (promise && /\bForbidden\b/.test(err.message)) {
     return false;
   }
@@ -28,9 +27,9 @@ Cypress.on('uncaught:exception', (err, runnable, promise) => {
 // So both hooks clean up. The cleanup must run under the default settings, because the forbidden
 // settings deny every delete.
 const cleanUp = () => {
-  Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
+  Settings.restoreDefaultSettings();
   // deleteDataViews() 404s on 7.x.
-  kbnApiAdvancedClient.deleteSavedObjects(userCredentials);
+  kbnApiAdvancedClient.deleteSavedObjects(user2Credentials);
 };
 
 describe('Forbidden responses', () => {
@@ -44,14 +43,14 @@ describe('Forbidden responses', () => {
   });
 
   // _bulk_delete exists from Kibana 8.7.0.
-  if (semver.gte(getKibanaVersion(), '8.7.0')) {
+  if (kibanaVersion.gte('8.7.0')) {
     it('keeps a saved object instead of hanging when bulk-delete is forbidden', () => {
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-bulk-delete', title: 'r*', name: 'Forbidden bulk delete' } },
-        userCredentials
+        user2Credentials
       );
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       StackManagement.openSavedObjectsPage();
       cy.get('[data-test-subj="checkboxSelectAll"]').click();
       cy.get('[data-test-subj="savedObjectsManagementDelete"]').click();
@@ -72,13 +71,13 @@ describe('Forbidden responses', () => {
       // https://github.com/elastic/kibana/blob/v9.5.5/src/platform/plugins/shared/dashboard/public/dashboard_listing/hooks/use_dashboard_listing_table.tsx#L279-L283
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-dashboard-listing-delete',
-        credentials: userCredentials,
+        credentials: user2Credentials,
         payload: {
           attributes: { title: 'Forbidden dashboard listing delete', panelsJSON: '[]', optionsJSON: '{}' }
         }
       });
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       // Can race a ROR tenancy hop on first navigation.
       cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
       Dashboard.openDashboard();
@@ -97,18 +96,18 @@ describe('Forbidden responses', () => {
   }
 
   // Kibana before 8.7.0 deletes one saved object at a time, through the single-delete patch.
-  if (semver.lt(getKibanaVersion(), '8.7.0')) {
+  if (kibanaVersion.lt('8.7.0')) {
     it('shows a danger toast and keeps the row instead of faking a delete when a single saved-object delete is forbidden', () => {
       // On the list page ROR's patch resolves after the toast, so the table re-fetches the
       // objects and shows again the row that Elasticsearch did not delete.
       // No data-view API on 7.x; the generic saved objects API works on every version.
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-single-delete',
-        credentials: userCredentials,
+        credentials: user2Credentials,
         payload: { attributes: { title: 'forbidden-single-delete*' } }
       });
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       StackManagement.openSavedObjectsPage();
       cy.get('[data-test-subj="checkboxSelectAll"]').click();
       cy.get('[data-test-subj="savedObjectsManagementDelete"]').click();
@@ -120,15 +119,15 @@ describe('Forbidden responses', () => {
     });
   }
 
-  if (semver.lt(getKibanaVersion(), '8.0.0')) {
+  if (kibanaVersion.lt('8.0.0')) {
     it('shows a danger toast and keeps the object instead of faking a delete when an inspect-page delete is forbidden', () => {
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-inspect-delete',
-        credentials: userCredentials,
+        credentials: user2Credentials,
         payload: { attributes: { title: 'Forbidden inspect delete', panelsJSON: '[]', optionsJSON: '{}' } }
       });
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       StackManagement.openSavedObjectsPage();
       // Actions sit behind a collapsed menu; the popover renders outside the row.
       cy.contains('tr', 'Forbidden inspect delete').find('[data-test-subj="euiCollapsedItemActionsButton"]').click();
@@ -146,13 +145,13 @@ describe('Forbidden responses', () => {
     it('shows a danger toast and keeps the edit page open when an index pattern delete is forbidden', () => {
       cy.kbnPost({
         endpoint: 'api/saved_objects/index-pattern/forbidden-edit-page-delete',
-        credentials: userCredentials,
+        credentials: user2Credentials,
         payload: { attributes: { title: 'forbidden-edit-page-delete*' } }
       });
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       KibanaNavigation.openPage('Stack Management');
-      KibanaNavigation.openSubPage('Index Patterns');
+      StackManagement.openPage('Index Patterns');
       cy.contains('a', 'forbidden-edit-page-delete*').click();
       cy.get('[data-test-subj="deleteIndexPatternButton"]').click();
       cy.get('[data-test-subj="confirmModalConfirmButton"]').click();
@@ -168,13 +167,13 @@ describe('Forbidden responses', () => {
       // https://github.com/elastic/kibana/blob/v7.17.29/src/plugins/kibana_react/public/table_list_view/table_list_view.tsx#L173-L183
       cy.kbnPost({
         endpoint: 'api/saved_objects/dashboard/forbidden-dashboard-listing-delete-7x',
-        credentials: userCredentials,
+        credentials: user2Credentials,
         payload: {
           attributes: { title: 'Forbidden dashboard listing delete 7x', panelsJSON: '[]', optionsJSON: '{}' }
         }
       });
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       // Same tenancy-hop race as above.
       cy.waitForNetworkIdle('*', 500, { timeout: 10000 });
       Dashboard.openDashboard();
@@ -193,13 +192,13 @@ describe('Forbidden responses', () => {
     // Tag lives in the creator's tenant; admin can't see it.
     cy.kbnPost({
       endpoint: 'api/saved_objects_tagging/tags/create',
-      credentials: userCredentials,
+      credentials: user2Credentials,
       payload: { name: forbiddenTagName, description: '', color: '#FF0000' }
     });
 
-    Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+    Login.initialization({ credentials: user2Credentials });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Tags');
+    StackManagement.openPage('Tags');
     // Actions sit behind a collapsed menu; the popover renders outside the row.
     cy.contains('tr', forbiddenTagName).find('[data-test-subj="euiCollapsedItemActionsButton"]').click();
     cy.get('[data-test-subj="tagsTableAction-delete"]').click();
@@ -213,19 +212,19 @@ describe('Forbidden responses', () => {
   it('shows a danger toast when a tag assignment is forbidden', () => {
     cy.kbnPost({
       endpoint: 'api/saved_objects_tagging/tags/create',
-      credentials: userCredentials,
+      credentials: user2Credentials,
       payload: { name: forbiddenAssignTagName, description: '', color: '#00FF00' }
     });
     // Only taggable types work here (not index-pattern); use a dashboard.
     cy.kbnPost({
       endpoint: 'api/saved_objects/dashboard/forbidden-tag-assign-dashboard',
-      credentials: userCredentials,
+      credentials: user2Credentials,
       payload: { attributes: { title: 'Forbidden tag assign dashboard', panelsJSON: '[]', optionsJSON: '{}' } }
     });
 
-    Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+    Login.initialization({ credentials: user2Credentials });
     KibanaNavigation.openPage('Stack Management');
-    KibanaNavigation.openSubPage('Tags');
+    StackManagement.openPage('Tags');
     cy.contains('tr', forbiddenAssignTagName).find('[data-test-subj="euiCollapsedItemActionsButton"]').click();
     cy.get('[data-test-subj="tagsTableAction-assign"]').click();
     cy.get('[data-test-subj="assign-result-dashboard-forbidden-tag-assign-dashboard"]').click();
@@ -236,7 +235,7 @@ describe('Forbidden responses', () => {
   });
 
   // Before 8.7.0 the single-delete patch covers the data view delete. From 9.2.0 Kibana catches it.
-  if (semver.satisfies(getKibanaVersion(), '>=8.7.0 <9.2.0')) {
+  if (kibanaVersion.satisfies('>=8.7.0 <9.2.0')) {
     it('shows a danger toast instead of staying silent when a data view delete is forbidden', () => {
       kbnApiClient.createDataView(
         {
@@ -246,10 +245,10 @@ describe('Forbidden responses', () => {
             name: 'Forbidden data view delete interceptor'
           }
         },
-        userCredentials
+        user2Credentials
       );
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       Discover.openDataViewPage();
       cy.contains('tr', 'Forbidden data view delete interceptor').find('[data-test-subj="action-delete"]').click();
       cy.get('[data-test-subj="confirmModalConfirmButton"]').click();
@@ -260,14 +259,14 @@ describe('Forbidden responses', () => {
   }
 
   // Only the flyout of 9.2.0 and later passes a bare Error with no title/text.
-  if (semver.gte(getKibanaVersion(), '9.2.0')) {
+  if (kibanaVersion.gte('9.2.0')) {
     it('fills the empty delete-data-view toast with the forbidden message', () => {
       kbnApiClient.createDataView(
         { data_view: { id: 'forbidden-data-view-delete', title: 'r*', name: 'Forbidden data view delete' } },
-        userCredentials
+        user2Credentials
       );
 
-      Login.initialization({ credentials: { username: 'user2', password: 'dev' } });
+      Login.initialization({ credentials: user2Credentials });
       Discover.openDataViewPage();
       cy.contains('tr', 'Forbidden data view delete').find('[data-test-subj="action-delete"]').click();
       cy.get('[data-test-subj="confirmFlyoutConfirmButton"]').click();

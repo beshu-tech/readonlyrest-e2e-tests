@@ -3,9 +3,20 @@ set -e
 
 cd "$(dirname "$0")"
 
+source ./kind-pins.sh
+source ../common/retry.sh
+
 if ! command -v kind &> /dev/null; then
-  echo "Cannot find 'kind' tool. Please follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
+  echo "Cannot find 'kind' tool. Run ./install-kind.sh <directory on your PATH>, or follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
   exit 1
+fi
+
+# The pinned node image works only with the pinned kind. Another kind gets its own default image.
+KIND_IMAGE_ARGS=()
+if [[ "$(kind version | awk '{print $2}')" == "$KIND_VERSION" ]]; then
+  KIND_IMAGE_ARGS=(--image "$KIND_NODE_IMAGE")
+else
+  echo "WARNING: kind is $(kind version), not $KIND_VERSION. The node image is not pinned. Run ./install-kind.sh to get $KIND_VERSION."
 fi
 
 if ! command -v docker &> /dev/null; then
@@ -141,8 +152,17 @@ if [[ -z $ES_VERSION || -z $KBN_VERSION ]]; then
   show_help
 fi
 
+SUBSTITUTED_DIR="kind-cluster/subst-ror"
+MANIFESTS_DIR=$(mktemp -d)
+cleanup() {
+  rm -rf "$SUBSTITUTED_DIR" "$MANIFESTS_DIR"
+}
+
+trap cleanup EXIT
+mkdir -p "$SUBSTITUTED_DIR"
+
 echo "CONFIGURING K8S CLUSTER ..."
-kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml
+kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml "${KIND_IMAGE_ARGS[@]}"
 docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker        /bin/bash -c "sysctl -w vm.max_map_count=262144"
 docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=262144"
@@ -150,9 +170,26 @@ docker exec eck-ror-worker2       /bin/bash -c "sysctl -w vm.max_map_count=26214
 
 
 echo "CONFIGURING ECK $ECK_VERSION ..."
+# The host downloads the manifests, with retries, and kubectl in the node reads them as files.
+METRICS_SERVER_VERSION="v0.9.0"
+download() {
+  retry 3 curl -fsSL --connect-timeout 30 --max-time 300 -o "$MANIFESTS_DIR/$1" "$2"
+}
+download crds.yaml "https://download.elastic.co/downloads/eck/$ECK_VERSION/crds.yaml"
+download operator.yaml "https://download.elastic.co/downloads/eck/$ECK_VERSION/operator.yaml"
+download metrics-server.yaml "https://github.com/kubernetes-sigs/metrics-server/releases/download/$METRICS_SERVER_VERSION/components.yaml"
+docker cp "$MANIFESTS_DIR/." eck-ror-control-plane:/eck-manifests
 docker cp kind-cluster/bootstrap-eck.sh eck-ror-control-plane:/
 docker exec eck-ror-control-plane chmod +x bootstrap-eck.sh
-docker exec eck-ror-control-plane bash -c "export ECK_VERSION=$ECK_VERSION && ./bootstrap-eck.sh"
+docker exec eck-ror-control-plane ./bootstrap-eck.sh /eck-manifests
+
+ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
+ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
+# The kubelet pulls with no retry of ours, and a failed pull waits in back-off. The host pulls with
+# retries instead, and kind copies the images into the workers, where ES and Kibana run.
+retry 3 docker pull "$ROR_ES_IMAGE"
+retry 3 docker pull "$ROR_KBN_IMAGE"
+kind load docker-image "$ROR_ES_IMAGE" "$ROR_KBN_IMAGE" --name eck-ror --nodes eck-ror-worker,eck-ror-worker2
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
 echo "Cluster type: $CLUSTER_TYPE"
@@ -180,7 +217,7 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
 
   # Load busybox used by the wait-for-apm init container.
   BUSYBOX_IMAGE="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}library/busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
-  docker pull "$BUSYBOX_IMAGE" || { echo "Failed to pull busybox image: $BUSYBOX_IMAGE"; exit 1; }
+  retry 3 docker pull "$BUSYBOX_IMAGE" || { echo "Failed to pull busybox image: $BUSYBOX_IMAGE"; exit 1; }
   docker tag "$BUSYBOX_IMAGE" busybox || { echo "Failed to tag $BUSYBOX_IMAGE as busybox."; exit 1; }
   kind load docker-image busybox --name "$CLUSTER_NAME" || { echo "Failed to load busybox into Kind cluster."; exit 1; }
   echo "busybox image loaded into Kind cluster"
@@ -189,13 +226,6 @@ else
   exit 3
 fi
 
-SUBSTITUTED_DIR="kind-cluster/subst-ror"
-cleanup() {
-  rm -rf "$SUBSTITUTED_DIR"
-}
-
-trap cleanup EXIT
-mkdir -p "$SUBSTITUTED_DIR"
 
 subsitute_env_in_yaml_templates() {
   MAJOR_VERSION=$(echo "$ES_VERSION" | cut -d '.' -f1)
@@ -289,38 +319,80 @@ echo "------------------------------------------"
 echo "ECK and ROR is being bootstrapped. Wait for all pods to be run and then open your browser and try to access https://localhost:5601/"
 echo ""
 
+# Sets NOT_READY_PODS to the eck-ror pods that are not Running with all containers ready.
 check_pods_running() {
+  local pod_status line pod ready status
   pod_status=$(docker exec eck-ror-control-plane kubectl get pods | grep eck-ror)
 
-  all_ready=true
+  NOT_READY_PODS=()
   while read -r line; do
+    pod=$(echo "$line" | awk '{print $1}')
     ready=$(echo "$line" | awk '{print $2}')
     status=$(echo "$line" | awk '{print $3}')
 
-    cur="${ready%/*}"
-    total="${ready#*/}"
-
-    if [[ "$status" != "Running" || "$cur" != "$total" ]]; then
-      all_ready=false
+    if [[ -z "$pod" ]]; then
+      NOT_READY_PODS+=("(no eck-ror pod yet)")
+    elif [[ "$status" != "Running" || "${ready%/*}" != "${ready#*/}" ]]; then
+      NOT_READY_PODS+=("$pod")
     fi
   done <<< "$pod_status"
 
   echo -e "$pod_status"
-  $all_ready && return 0 || return 1
+  [[ ${#NOT_READY_PODS[@]} -eq 0 ]]
 }
 
-TIMEOUT_IN_SECONDS=300
+eck_health() {
+  docker exec eck-ror-control-plane kubectl get "$1" eck-ror -o jsonpath='{.status.health}' 2>/dev/null
+}
+
+# Sets NOT_READY_RESOURCES to the ECK resources that do not report the health the suite needs.
+# Elasticsearch may stay yellow: on one node, the replica of an index such as the ROR audit index
+# has no node to go to.
+check_eck_health() {
+  local kind health
+  NOT_READY_RESOURCES=()
+  for kind in elasticsearch kibana $([[ "$CLUSTER_TYPE" == "apm" ]] && echo apmserver); do
+    health=$(eck_health "$kind")
+    echo "$kind eck-ror health: ${health:-unknown}"
+    if [[ "$health" != "green" && ! ( "$kind" == "elasticsearch" && "$health" == "yellow" ) ]]; then
+      NOT_READY_RESOURCES+=("$kind")
+    fi
+  done
+  [[ ${#NOT_READY_RESOURCES[@]} -eq 0 ]]
+}
+
+# Runs both checks every time, so that each list holds the current answer.
+stack_ready() {
+  local ready=0
+  check_pods_running || ready=1
+  check_eck_health || ready=1
+  return $ready
+}
+
+report_not_ready() {
+  local pod
+  echo "Not ready after ${TIMEOUT_IN_SECONDS}s. Pods: ${NOT_READY_PODS[*]:-none}. ECK resources: ${NOT_READY_RESOURCES[*]:-none}."
+  docker exec eck-ror-control-plane kubectl get elasticsearch,kibana,apmserver || true
+  for pod in "${NOT_READY_PODS[@]}"; do
+    [[ "$pod" == "(no eck-ror pod yet)" ]] && continue
+    echo "--- kubectl describe pod $pod"
+    docker exec eck-ror-control-plane kubectl describe pod "$pod" || true
+  done
+}
+
+# The slowest start-up measured 242 s. The docker environment waits 600 s too.
+TIMEOUT_IN_SECONDS=600
 INTERVAL_IN_SECONDS=5
 
-echo "Waiting for all pods to be in Running and Ready state..."
-elapsed_time=0
-while ! check_pods_running; do
-  sleep $INTERVAL_IN_SECONDS
-
-  elapsed_time=$((elapsed_time + INTERVAL_IN_SECONDS))
-  if [[ "$elapsed_time" -ge "$TIMEOUT_IN_SECONDS" ]]; then
-    echo "Timeout reached after $TIMEOUT_IN_SECONDS seconds."
+echo "Waiting for all pods to be Running and Ready, and for ECK to report the stack healthy..."
+deadline=$((SECONDS + TIMEOUT_IN_SECONDS))
+NOT_READY_PODS=()
+NOT_READY_RESOURCES=()
+until stack_ready; do
+  if [[ "$SECONDS" -ge "$deadline" ]]; then
+    report_not_ready
     exit 1
   fi
+  sleep $INTERVAL_IN_SECONDS
 done
-echo "All pods are in Running and Ready state."
+echo "All pods are Running and Ready, and ECK reports the stack healthy."

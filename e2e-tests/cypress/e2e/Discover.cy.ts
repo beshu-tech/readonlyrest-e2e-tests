@@ -1,49 +1,47 @@
-import semver from 'semver';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { Home } from '../support/page-objects/Home';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Discover } from '../support/page-objects/Discover';
-import { getKibanaVersion } from '../support/helpers';
-import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { kibanaVersion } from '../support/helpers';
+import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { SearchSessions } from '../support/page-objects/SearchSessions';
-
-const userCredentials = 'user2:dev';
-const tenantIndex = '.kibana_admins_group';
-const indexWithSearchSessions = semver.lt(getKibanaVersion(), '8.0.0')
-  ? `${tenantIndex}_${getKibanaVersion()}_001`
-  : `${tenantIndex}_analytics_${getKibanaVersion()}_001`;
+import { itOnKibana } from '../support/helpers/itOnKibana';
+import { adminCredentials, user2Credentials } from '../support/helpers/credentials';
 
 describe('Discover tests', () => {
+  beforeEach(() => {
+    if (kibanaVersion.lt('9.0.0')) {
+      kbnApiAdvancedClient.deleteSearchSessions(adminCredentials);
+    }
+  });
+
   afterEach(() => {
-    kbnApiClient.deleteSampleData('ecommerce', userCredentials);
-    esApiAdvancedClient.deleteIndex(indexWithSearchSessions);
+    kbnApiClient.deleteSampleData('ecommerce', user2Credentials);
   });
 
   it('should allow to see discover page when user has access only for specific indices', () => {
-    const [username, password] = userCredentials.split(':');
-    Login.initialization({ credentials: { username, password } });
+    Login.initialization({ credentials: user2Credentials });
     Home.loadSampleData();
     KibanaNavigation.openPage('Discover');
-    if (semver.lt(getKibanaVersion(), '9.0.0')) {
+    if (kibanaVersion.lt('9.0.0')) {
       Discover.discoverSearchCompleted();
     }
     Discover.verifyDocumentWithTodayRange(0, 'kibana_sample_data_ecommerce');
     Discover.toastErrorNotVisible('Error fetching fields for data view');
   });
 
-  // Search sessions feature is removed for version 9.0.0 and above
-  if (semver.lt(getKibanaVersion(), '9.0.0'))
-    it('should allow to save and open discover session', () => {
-      Login.initialization();
-      Home.loadSampleData();
-      KibanaNavigation.openPage('Discover');
-      Discover.openSaveSessionPanel();
-      Discover.pressSaveSessionButton();
-      Discover.pressManageSessionsButton();
+  // Kibana 9.0.0 removes the search sessions feature.
+  itOnKibana('<9.0.0', 'should allow to save and open discover session', () => {
+    Login.initialization();
+    Home.loadSampleData();
+    KibanaNavigation.openPage('Discover');
+    Discover.openSaveSessionPanel();
+    Discover.pressSaveSessionButton();
+    Discover.pressManageSessionsButton();
 
-      SearchSessions.numberOfVisibleSearchSessions(1);
-      SearchSessions.openSelectedSearchSession(0);
-      Discover.verifyDiscoverFromSearchSessionCorrectlyRestored();
-    });
+    SearchSessions.numberOfVisibleSearchSessions(1);
+    SearchSessions.openSelectedSearchSession(0);
+    Discover.verifyDiscoverFromSearchSessionCorrectlyRestored();
+  });
 });
