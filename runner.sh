@@ -169,8 +169,15 @@ run_suite() {
   E2E_STATUS=${PIPESTATUS[0]}
   set -e
   if [[ $E2E_STATUS -eq 124 || $E2E_STATUS -eq 137 ]]; then
-    echo "::error title=E2E%3A ELK $ELK_VERSION on $ENV_NAME::The suite did not end before the time cap, and it was stopped."
+    echo "::error title=E2E%3A ELK $ELK_VERSION on $ENV_NAME::The suite did not end before the time cap, and it was stopped. Last spec that started: $(last_started_spec)."
   fi
+}
+
+# Cypress prints "Running:  <spec>  (<n> of <total>)" when a spec starts.
+last_started_spec() {
+  local spec
+  spec=$(sed -e 's/\x1b\[[0-9;]*m//g' "$E2E_OUTPUT" | sed -n 's/^ *Running: *\([^ ]*\).*/\1/p' | tail -n 1)
+  echo "${spec:-none}"
 }
 
 cleanup() {
