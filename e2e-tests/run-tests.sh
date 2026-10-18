@@ -52,7 +52,8 @@ export CYPRESS_enterpriseActivationKey="$ROR_ACTIVATION_KEY"
 if [[ "$RUN_TYPE" == "open" ]]; then
   yarn open --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME"
 else
-  yarn run run --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME"
+  # E2E_SPEC narrows the run to the specs it matches, as a path or glob relative to e2e-tests/.
+  yarn run run --env="kibanaVersion=$KBN_VERSION,envName=$ENV_NAME" ${E2E_SPEC:+--spec "$E2E_SPEC"}
 fi
 
 if [[ $? -ne 0 ]]; then
