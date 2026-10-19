@@ -24,7 +24,7 @@ describe('Readonlyrest-settings', () => {
     Settings.setReadonlyRestKbnSettings(`
   multiTenancyEnabled: false
     `);
-    Login.initialization({ finishUrl: '/app/home' });
+    Login.initialization({ finishUrl: '/s/default/app/home' });
     RorMenu.openRorMenu();
     RorMenu.verifyNoTenantAvailable();
   });

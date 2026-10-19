@@ -55,7 +55,7 @@ const customKibanaIndexName = '.kibana_custom';
 
       Login.initialization();
       Discover.openDataViewPage();
-      Discover.verifyIndexPatternSwitchLink('readonlyrest_audit-*');
+      Discover.verifyIndexPatternSwitchLink('AUDIT_INDEX_PATTERN');
       Dashboard.openDashboard();
       Dashboard.verifyDashboardExists('ReadonlyREST Audit Dashboard');
 
