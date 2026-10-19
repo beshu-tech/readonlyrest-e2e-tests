@@ -39,7 +39,7 @@ export class Settings {
     });
   }
 
-  static clickSaveButton() {
+  private static clickSaveButton() {
     cy.log('Save file settings');
 
     SecuritySettings.getIframeBody().contains('Save').click();
