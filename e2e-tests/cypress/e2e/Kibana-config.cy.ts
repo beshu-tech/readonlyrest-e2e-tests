@@ -3,7 +3,7 @@ import { KibanaConfig } from '../support/helpers/KibanaConfig';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import { getKibanaVersion, kibanaVersion } from '../support/helpers';
+import { getKibanaVersion, kibanaVersion, stopApp } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Reporting } from '../support/page-objects/Reporting';
@@ -37,6 +37,9 @@ const customKibanaIndexName = '.kibana_custom';
     });
 
     afterEach(() => {
+      // The page of the test keeps writing its session into the session index. After the delete below,
+      // such a write re-creates the index, and the next test finds the old session next to its own.
+      stopApp();
       kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
 
       // The next admin request resets the admin tenancy to the template that the line above emptied.
