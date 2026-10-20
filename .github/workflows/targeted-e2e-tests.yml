@@ -70,6 +70,16 @@ jobs:
           ror_kbn: ${{ github.event.inputs.ror_kbn_version }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
 
+      - name: Upload the E2E summary
+        # A caller that dispatches this workflow downloads the per-spec table from here: GitHub
+        # gives no API for the run summary page.
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2e-summary
+          path: results/e2e-summary.md
+          if-no-files-found: ignore
+
       - name: Stop Docker memory monitor
         if: always()
         uses: ./.github/docker-memory-monitor
