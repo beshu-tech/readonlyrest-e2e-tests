@@ -33,6 +33,11 @@ Prerequisites:
 ./runner.sh --elk 9.3.0 --env docker --ror-es 1.69.0-pre1 --ror-kbn 1.69.0-pre1 --mode dev
 ```
 
+**Only some specs** (a path or glob relative to `e2e-tests/`; default: all):
+```bash
+./runner.sh --elk 9.3.0 --env docker --spec cypress/e2e/Kibana-config.cy.ts
+```
+
 To only bootstrap the environment without running tests (useful for debugging):
 ```bash
 ./runner.sh --run bootstrap --elk 8.15.2 --env docker

@@ -21,13 +21,13 @@ describe('settings', () => {
     cy.log('should check save changes functionality when success');
     const changedBlockName = `PERSONAL_GRP${Cypress._.random(0, 1e6)}`;
     Editor.replaceValues('PERSONAL_GRP', changedBlockName);
-    Settings.clickSaveButton();
+    Settings.confirmSaveModal();
     rorApiClient.getRorIndexMainSettings().should('contain', `name: ${changedBlockName}`);
   });
 
   it('should save settings and verify success response from request when user without group logging in', () => {
     Login.initialization({ credentials: kibanaCredentials });
     Settings.open();
-    Settings.clickSaveButton();
+    Settings.confirmSaveModal();
   });
 });

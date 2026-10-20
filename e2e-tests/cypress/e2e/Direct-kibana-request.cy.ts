@@ -2,13 +2,12 @@ import { kibanaVersion } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { adminCredentials, BasicCredentials, user1Credentials } from '../support/helpers/credentials';
-import { rorApiClient } from '../support/helpers/RorApiClient';
 import { Settings } from '../support/page-objects/Settings';
 
 describe('Direct kibana request', () => {
   beforeEach(() => {
     clearDirectKibanaRequestState();
-    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
   });
 
   afterEach(() => {
@@ -88,7 +87,7 @@ describe('Direct kibana request', () => {
   });
 
   it('should create short URL with x-ror-tenancy-id header', () => {
-    rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+    Settings.setSettingsData('defaultReadonlyRestEsAndKbnSettings.yaml');
 
     const createShortUrl = kibanaVersion.gte('8.0.0')
       ? kbnApiClient.createShortUrl(

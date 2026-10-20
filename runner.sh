@@ -10,6 +10,7 @@ show_help() {
   echo "  --elk <version>          ELK stack version (required)"
   echo "  --ror-es <version>       ReadonlyREST ES version (default: latest)"
   echo "  --ror-kbn <version>      ReadonlyREST Kibana version (default: latest)"
+  echo "  --spec <path|glob>       Run only the matching specs, relative to e2e-tests/ (default: all)"
   echo ""
   echo "Examples:"
   echo "  ./runner.sh --env docker --elk 8.11.0                      # Run E2E tests with Docker Compose"
@@ -112,6 +113,15 @@ while [[ $# -gt 0 ]]; do
       shift 2
     else
       echo "Error: --ror-kbn requires a version argument"
+      show_help
+    fi
+    ;;
+  --spec)
+    if [[ -n $2 && $2 != --* ]]; then
+      export E2E_SPEC="$2"
+      shift 2
+    else
+      echo "Error: --spec requires a spec path or glob"
       show_help
     fi
     ;;

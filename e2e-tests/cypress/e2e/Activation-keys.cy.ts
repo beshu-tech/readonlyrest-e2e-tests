@@ -1,7 +1,6 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
-import { EnvName } from '../support/types';
-import { stopApp } from '../support/helpers';
+import { isMultiKibanaNodeEnv, stopApp } from '../support/helpers';
 
 // ROR KBN answers an edition change before it deletes the sessions (RORDEV-2302). A page that
 // loads in between keeps its session until the next session probe, which runs every 30 s.
@@ -11,7 +10,7 @@ const SESSION_DELETE_WINDOW_MS = 5000;
 // The docker env runs 2 Kibana nodes behind a round-robin proxy. Each node re-reads the key only
 // every 10 minutes and deletes all sessions when it sees an edition change. After this test changes
 // the edition, the nodes disagree. The eck envs run 1 Kibana node.
-(Cypress.env().envName === EnvName.ELK_ROR ? describe.skip : describe)('Activation key', () => {
+(isMultiKibanaNodeEnv() ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {
     Login.initialization();
     ActivationKeys.open();
