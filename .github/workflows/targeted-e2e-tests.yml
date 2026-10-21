@@ -27,6 +27,14 @@ on:
         required: false
         default: 'prod'
         type: string
+      target_branch:
+        description: 'Branch of the caller. The run takes the tests of the branch here that fits it. Empty: the tests of the dispatched ref.'
+        required: false
+        type: string
+      fallback_branch:
+        description: 'Branch that the change of the caller is based on. The run uses it when target_branch is not here.'
+        required: false
+        type: string
 
 env:
   APPLY_RESOURCE_LIMITS: "auto"
@@ -43,6 +51,13 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
+
+      - name: Check out the tests that fit the caller
+        if: inputs.target_branch != ''
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          FALLBACK_BRANCH: ${{ inputs.fallback_branch }}
+        run: ci/checkout-branch.sh "$TARGET_BRANCH" "$FALLBACK_BRANCH"
 
       - name: Configure the Docker Hub mirror
         run: source .github/scripts/docker-hub-mirror.sh
