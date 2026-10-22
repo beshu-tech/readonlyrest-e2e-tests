@@ -57,7 +57,7 @@ jobs:
         env:
           TARGET_BRANCH: ${{ inputs.target_branch }}
           FALLBACK_BRANCH: ${{ inputs.fallback_branch }}
-        run: ci/checkout-branch.sh "$TARGET_BRANCH" "$FALLBACK_BRANCH"
+        run: ci/checkout-matching-branch.sh "$TARGET_BRANCH" "$FALLBACK_BRANCH"
 
       - name: Configure the Docker Hub mirror
         run: source .github/scripts/docker-hub-mirror.sh

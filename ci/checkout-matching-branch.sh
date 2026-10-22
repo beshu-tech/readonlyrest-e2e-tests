@@ -8,7 +8,7 @@
 # change is the best fit: `develop` and `master` can hold different tests. `develop` comes before
 # `master`, because a manual run of a feature branch has no base branch.
 #
-# Usage: ci/checkout-branch.sh <target branch> [<fallback branch>]
+# Usage: ci/checkout-matching-branch.sh <target branch> [<fallback branch>]
 # Returns: 1 usage, 3 no branch exists or the branches of origin cannot be read.
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || [ -z "$1" ]; then
