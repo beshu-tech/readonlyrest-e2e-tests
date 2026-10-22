@@ -2,6 +2,7 @@
 
 cd "$(dirname "$0")"
 source ../common/retry.sh
+source ../common/pull-image.sh
 
 if ! docker version &>/dev/null; then
   echo "No Docker found. Docker is required to run this script."
@@ -139,10 +140,10 @@ ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
 ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
 
 echo "Pre-pulling ES image $ROR_ES_IMAGE ..."
-retry 3 docker pull "$ROR_ES_IMAGE" || { echo "Failed to pull ES image: $ROR_ES_IMAGE"; exit 1; }
+pull_image "$ROR_ES_IMAGE" || { echo "No ES image: $ROR_ES_IMAGE"; exit 1; }
 
 echo "Pre-pulling Kibana image $ROR_KBN_IMAGE ..."
-retry 3 docker pull "$ROR_KBN_IMAGE" || { echo "Failed to pull Kibana image: $ROR_KBN_IMAGE"; exit 1; }
+pull_image "$ROR_KBN_IMAGE" || { echo "No Kibana image: $ROR_KBN_IMAGE"; exit 1; }
 
 echo "Bootstrapping the docker-based environment ..."
 echo "Cluster type: $CLUSTER_TYPE"

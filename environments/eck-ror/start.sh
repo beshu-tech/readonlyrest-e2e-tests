@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 
 source ./kind-pins.sh
 source ../common/retry.sh
+source ../common/pull-image.sh
 
 if ! command -v kind &> /dev/null; then
   echo "Cannot find 'kind' tool. Run ./install-kind.sh <directory on your PATH>, or follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
@@ -187,8 +188,8 @@ ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
 ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
 # The kubelet pulls with no retry of ours, and a failed pull waits in back-off. The host pulls with
 # retries instead, and kind copies the images into the workers, where ES and Kibana run.
-retry 3 docker pull "$ROR_ES_IMAGE"
-retry 3 docker pull "$ROR_KBN_IMAGE"
+pull_image "$ROR_ES_IMAGE"
+pull_image "$ROR_KBN_IMAGE"
 kind load docker-image "$ROR_ES_IMAGE" "$ROR_KBN_IMAGE" --name eck-ror --nodes eck-ror-worker,eck-ror-worker2
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
