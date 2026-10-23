@@ -14,7 +14,6 @@ import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { UserSettings } from '../support/page-objects/UserSettings';
 import { adminCredentials, kibanaCredentials } from '../support/helpers/credentials';
 import { Share } from '../support/page-objects/Share';
-import { itOnKibana } from '../support/helpers/itOnKibana';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
@@ -93,7 +92,7 @@ describe('Tenancy', () => {
       Spaces.verifyCurrentSpace(Spaces.idOf(newSpace));
     });
 
-    itOnKibana(KibanaNavigation.HIDES_APP_LINKS, 'should hide the Stack Management link in the infosec tenancy', () => {
+    it('should hide the Stack Management link in the infosec tenancy', () => {
       const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
