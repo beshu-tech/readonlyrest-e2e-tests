@@ -94,6 +94,8 @@ jobs:
           name: e2e-summary
           path: results/e2e-summary.md
           if-no-files-found: ignore
+          # The caller downloads it when the run ends. One day saves the org's artifact storage.
+          retention-days: 1
 
       - name: Stop Docker memory monitor
         if: always()
