@@ -32,11 +32,6 @@ export class KibanaNavigation {
     cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
-  // The Kibana versions on which ROR hides the navigation link of a hidden app. ROR 1.71.0 hides no
-  // such link on Kibana 9.4 and later, and the route stays blocked (RORDEV-2305). Widen the range
-  // when a release has the fix.
-  static readonly HIDES_APP_LINKS = '<9.4.0';
-
   // ROR hides an app link with CSS on the link or on its group. The visible link first proves that
   // the navigation is open.
   static verifyAppLinkNotShown(app: string, visibleApp = 'Discover') {
