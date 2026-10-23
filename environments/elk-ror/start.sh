@@ -145,6 +145,13 @@ pull_image "$ROR_ES_IMAGE" || { echo "No ES image: $ROR_ES_IMAGE"; exit 1; }
 echo "Pre-pulling Kibana image $ROR_KBN_IMAGE ..."
 pull_image "$ROR_KBN_IMAGE" || { echo "No Kibana image: $ROR_KBN_IMAGE"; exit 1; }
 
+DOCKER_HUB_IMAGES=("$(docker_hub_image images/kbn/Proxy-Dockerfile)")
+if [[ "$CLUSTER_TYPE" == "apm" ]]; then
+  DOCKER_HUB_IMAGES+=("$(docker_hub_image ../common/images/node-apm-app/Dockerfile)")
+fi
+echo "Pre-pulling Docker Hub images ${DOCKER_HUB_IMAGES[*]} ..."
+pull_docker_hub_images "${DOCKER_HUB_IMAGES[@]}" || { echo "No registry gives: ${DOCKER_HUB_IMAGES[*]}"; exit 1; }
+
 echo "Bootstrapping the docker-based environment ..."
 echo "Cluster type: $CLUSTER_TYPE"
 
