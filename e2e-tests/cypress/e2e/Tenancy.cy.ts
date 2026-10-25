@@ -14,6 +14,7 @@ import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { UserSettings } from '../support/page-objects/UserSettings';
 import { adminCredentials, kibanaCredentials } from '../support/helpers/credentials';
 import { Share } from '../support/page-objects/Share';
+import { itOnKibana } from '../support/helpers/itOnKibana';
 
 describe('Tenancy', () => {
   describe('should run tests', () => {
@@ -101,6 +102,17 @@ describe('Tenancy', () => {
 
       KibanaNavigation.openKibanaNavigation();
       KibanaNavigation.verifyAppLinkNotShown('Stack Management');
+    });
+
+    itOnKibana('>=8.0.0', 'should keep the Management title of the hidden Stack Management app, with no link', () => {
+      const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
+      Login.initialization({
+        visitedUrl: urlWithTenancyId,
+        finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
+      });
+
+      KibanaNavigation.openKibanaNavigation();
+      KibanaNavigation.verifyCategoryTitleLinkBlocked('/app/management');
     });
   });
 
