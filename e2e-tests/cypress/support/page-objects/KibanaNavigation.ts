@@ -55,6 +55,8 @@ export class KibanaNavigation {
     cy.location('href').then(pageHref => {
       cy.get('[data-test-subj=collapsibleNav]')
         .find(`[data-test-subj="collapsibleNavAppLink-overview"][href*="${appPath}"]`)
+        // The navigation is fixed and scrolls by itself, so the title can be under its fold.
+        .scrollIntoView()
         .should('be.visible')
         .and('have.css', 'pointer-events', 'none')
         .then($title => {
