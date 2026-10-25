@@ -47,26 +47,40 @@ export class KibanaNavigation {
       });
   }
 
-  // From Kibana 8.0, the title of a category can be the link of an app, for example Management. ROR keeps
-  // the title of a hidden app and turns off its pointer events. A user's click at the title then lands
-  // on the element under it, which opens or closes the category.
+  // From Kibana 8.0, the title of a category can be the link of an app, for example Management. ROR hides
+  // the category when it hides all of its apps. Otherwise it keeps the title of a hidden app and turns off
+  // its pointer events: a user's click at the title then lands on the element under it, which opens or
+  // closes the category.
   static verifyCategoryTitleLinkBlocked(appPath: string) {
     cy.log(`verify the category title link to ${appPath} does not open the app`);
+    const titleSelector = `[data-test-subj="collapsibleNavAppLink-overview"][href*="${appPath}"]`;
     cy.location('href').then(pageHref => {
       cy.get('[data-test-subj=collapsibleNav]')
-        .find(`[data-test-subj="collapsibleNavAppLink-overview"][href*="${appPath}"]`)
-        // The navigation is fixed and scrolls by itself, so the title can be under its fold.
-        .scrollIntoView()
-        .should('be.visible')
-        .and('have.css', 'pointer-events', 'none')
+        .find(titleSelector)
+        .should($title => {
+          const isBlocked = isHiddenByCss($title) || $title.css('pointer-events') === 'none';
+          expect(isBlocked, 'title hidden, or with pointer-events: none').to.equal(true);
+        })
         .then($title => {
-          const { left, top, width, height } = $title[0].getBoundingClientRect();
-          const elementUnderClick = $title[0].ownerDocument.elementFromPoint(left + width / 2, top + height / 2);
-          expect(elementUnderClick, 'element under the title').to.not.equal(null);
-          expect($title[0].contains(elementUnderClick), 'the click lands on the title link').to.equal(false);
-          cy.wrap(elementUnderClick).click();
+          if (isHiddenByCss($title)) {
+            return;
+          }
+          // The navigation is fixed and scrolls by itself, so the title can be under its fold.
+          cy.wrap($title)
+            .scrollIntoView()
+            .should('be.visible')
+            .then($visibleTitle => {
+              const { left, top, width, height } = $visibleTitle[0].getBoundingClientRect();
+              const elementUnderClick = $visibleTitle[0].ownerDocument.elementFromPoint(
+                left + width / 2,
+                top + height / 2
+              );
+              expect(elementUnderClick, 'element under the title').to.not.equal(null);
+              expect($visibleTitle[0].contains(elementUnderClick), 'the click lands on the title link').to.equal(false);
+              cy.wrap(elementUnderClick).click();
+            });
+          cy.location('href').should('equal', pageHref);
         });
-      cy.location('href').should('equal', pageHref);
     });
   }
 
