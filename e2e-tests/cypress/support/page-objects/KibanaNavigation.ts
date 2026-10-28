@@ -32,11 +32,6 @@ export class KibanaNavigation {
     cy.get('body').trigger('keyup', { keyCode: 27 });
   }
 
-  // The Kibana versions on which ROR hides the navigation link of a hidden app. ROR 1.71.0 hides no
-  // such link on Kibana 9.4 and later, and the route stays blocked (RORDEV-2305). Widen the range
-  // when a release has the fix.
-  static readonly HIDES_APP_LINKS = '<9.4.0';
-
   // ROR hides an app link with CSS on the link or on its group. The visible link first proves that
   // the navigation is open.
   static verifyAppLinkNotShown(app: string, visibleApp = 'Discover') {
@@ -50,6 +45,43 @@ export class KibanaNavigation {
       .should($link => {
         expect(isHiddenByCss($link), `${app} link or a parent of it with display: none`).to.equal(true);
       });
+  }
+
+  // From Kibana 8.0, the title of a category can be the link of an app, for example Management. ROR hides
+  // the category when it hides all of its apps. Otherwise it keeps the title of a hidden app and turns off
+  // its pointer events: a user's click at the title then lands on the element under it, which opens or
+  // closes the category.
+  static verifyCategoryTitleLinkBlocked(appPath: string) {
+    cy.log(`verify the category title link to ${appPath} does not open the app`);
+    const titleSelector = `[data-test-subj="collapsibleNavAppLink-overview"][href*="${appPath}"]`;
+    cy.location('href').then(pageHref => {
+      cy.get('[data-test-subj=collapsibleNav]')
+        .find(titleSelector)
+        .should($title => {
+          const isBlocked = isHiddenByCss($title) || $title.css('pointer-events') === 'none';
+          expect(isBlocked, 'title hidden, or with pointer-events: none').to.equal(true);
+        })
+        .then($title => {
+          if (isHiddenByCss($title)) {
+            return;
+          }
+          // The navigation is fixed and scrolls by itself, so the title can be under its fold.
+          cy.wrap($title)
+            .scrollIntoView()
+            .should('be.visible')
+            .then($visibleTitle => {
+              const { left, top, width, height } = $visibleTitle[0].getBoundingClientRect();
+              const elementUnderClick = $visibleTitle[0].ownerDocument.elementFromPoint(
+                left + width / 2,
+                top + height / 2
+              );
+              expect(elementUnderClick, 'element under the title').to.not.equal(null);
+              expect($visibleTitle[0].contains(elementUnderClick), 'the click lands on the title link').to.equal(false);
+              cy.wrap(elementUnderClick).click();
+            });
+          cy.location('href').should('equal', pageHref);
+        });
+    });
   }
 
   static verifyAppLinkAbsent(app: string) {
