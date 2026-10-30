@@ -1,10 +1,17 @@
 import { recurse } from 'cypress-recurse';
 import { kibanaVersion } from '../helpers';
+import { esApiClient } from '../helpers/EsApiClient';
 
 export class Observability {
-  // APM Server 8 and later writes data streams. APM Server 7 writes apm-<version>-<event> indices.
-  static apmDataIndices() {
-    return kibanaVersion.gte('8.0.0') ? '.ds-*-apm*' : 'apm-*';
+  // APM Server 8+ writes data streams and creates one at the first flush of each metrics
+  // aggregation. Until its primary shard is assigned, a _delete_by_query on it fails with 503
+  // "missing shards". A data stream delete reads no shard. APM Server 7 creates its indices at start.
+  static deleteApmData() {
+    if (kibanaVersion.gte('8.0.0')) {
+      esApiClient.deleteDataStream('*-apm*');
+    } else {
+      esApiClient.deleteIndexDocsByQuery('apm-*');
+    }
   }
 
   static addSampleApmEvents() {

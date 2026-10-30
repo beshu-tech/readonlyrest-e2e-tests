@@ -28,9 +28,10 @@ export class EsApiClient {
     });
   }
 
+  // A wildcard also matches hidden data streams, as the 10m and 60m APM metrics.
   public deleteDataStream(index: string): void {
     cy.esDelete({
-      endpoint: `_data_stream/${index}`,
+      endpoint: `_data_stream/${index}?expand_wildcards=all`,
       credentials: kibanaCredentials
     });
   }

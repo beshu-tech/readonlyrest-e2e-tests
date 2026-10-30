@@ -1,7 +1,6 @@
 import { Login } from '../support/page-objects/Login';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { Observability } from '../support/page-objects/Observability';
-import { esApiClient } from '../support/helpers/EsApiClient';
 import { kibanaVersion } from '../support/helpers';
 
 describe('Observability', () => {
@@ -10,7 +9,7 @@ describe('Observability', () => {
   });
 
   afterEach(() => {
-    esApiClient.deleteIndexDocsByQuery(Observability.apmDataIndices());
+    Observability.deleteApmData();
   });
 
   it('should verify APM functionality', () => {
