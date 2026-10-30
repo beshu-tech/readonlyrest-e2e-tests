@@ -16,8 +16,64 @@ export class Observability {
 
   static addSampleApmEvents() {
     cy.log('Add sample Apm Events');
-    cy.request('http://localhost:3000');
-    cy.request({ url: 'http://localhost:3000/error', method: 'GET', failOnStatusCode: false });
+    cy.wrap(null, { log: false }).then(() => {
+      const sentAt = new Date();
+      cy.request('http://localhost:3000');
+      cy.request({ url: 'http://localhost:3000/error', method: 'GET', failOnStatusCode: false });
+      Observability.waitForSampleApmEventsInElasticsearch(sentAt);
+    });
+  }
+
+  // The APM UI shows a "no data" page when it opens before any APM document is searchable. It
+  // lists the transaction types from the 1m metrics, not the raw events, when the time range holds
+  // any metrics. The agent sends the events up to 10 s late, and APM Server writes the metrics of a
+  // minute when the minute ends. So the UI must open only when both hold every event of the test.
+  private static waitForSampleApmEventsInElasticsearch(sentAt: Date) {
+    const startOfMinute = new Date(sentAt);
+    startOfMinute.setUTCSeconds(0, 0);
+    const events = { range: { '@timestamp': { gte: sentAt.toISOString() } } };
+    const metrics = { range: { '@timestamp': { gte: startOfMinute.toISOString() } } };
+    const filter = (since: object, field: string, value: string, type?: string) => ({
+      bool: {
+        filter: [since, { term: { [field]: value } }, ...(type ? [{ term: { 'transaction.type': type } }] : [])]
+      }
+    });
+    const metricsets = kibanaVersion.gte('8.7.0') ? ['transaction', 'service_transaction'] : ['transaction'];
+    const required = {
+      error: filter(events, 'processor.event', 'error'),
+      ...Object.fromEntries(
+        (['request', 'custom'] as const).flatMap(type => [
+          [`transaction ${type}`, filter(events, 'processor.event', 'transaction', type)],
+          ...metricsets.map(name => [`${name} metrics ${type}`, filter(metrics, 'metricset.name', name, type)])
+        ])
+      )
+    };
+
+    return recurse(
+      () =>
+        esApiClient.search<{ aggregations: { required: { buckets: Record<string, { doc_count: number }> } } }>(
+          kibanaVersion.gte('8.0.0') ? '*-apm*' : 'apm-*',
+          {
+            size: 0,
+            query: { term: { 'service.name': 'app1' } },
+            aggs: { required: { filters: { filters: required } } }
+          }
+        ),
+      response => Object.values(response.aggregations.required.buckets).every(bucket => bucket.doc_count > 0),
+      {
+        // The metrics of the minute of the events arrive when the minute ends.
+        timeout: 120000,
+        delay: 2000,
+        log: response =>
+          cy.log(
+            `Missing APM data: ${Object.entries(response.aggregations.required.buckets)
+              .filter(([, bucket]) => bucket.doc_count === 0)
+              .map(([name]) => name)
+              .join(', ')}`
+          ),
+        error: 'Timed out waiting for the sample APM events in Elasticsearch'
+      }
+    );
   }
 
   static openApmInstance(name: string) {
@@ -48,9 +104,7 @@ export class Observability {
     });
   }
 
-  // Waits for APM data to travel node-apm-app -> apm-server -> Elasticsearch -> the APM UI. The
-  // timeouts are generous because that pipeline is slow on a loaded CI runner, and a poll costs
-  // nothing when data arrives early: the loop exits as soon as checkFn passes.
+  // Waits for the APM UI to show data that Elasticsearch already holds.
   //
   // A refresh cancels every APM request that is still running, and on a loaded runner a panel
   // request takes up to 2 s. So the loop checks every interval, but refreshes only after
@@ -104,9 +158,7 @@ export class Observability {
       checkFn: $el => {
         const value = $el.val();
         return value === 'request' || value === 'custom';
-      },
-      // The first APM assertion of the spec, so it also absorbs the initial ingest ramp-up.
-      timeout: 120000
+      }
     });
   }
 

@@ -13,6 +13,14 @@ export class EsApiClient {
     });
   }
 
+  public search<T>(index: string, payload: object): Cypress.Chainable<T> {
+    return cy.esPost<T>({
+      endpoint: `${index}/_search`,
+      credentials: kibanaCredentials,
+      payload
+    });
+  }
+
   public refreshIndex(index: string): void {
     cy.esPost({
       endpoint: `${index}/_refresh`,
