@@ -39,14 +39,19 @@ const SESSION_DELETE_WINDOW_MS = 5000;
     Login.initialization({ finishUrl: '/s/default/app/home' });
     ActivationKeys.open();
 
-    // Free (index) -> Free: the edition does not change, so the sessions stay.
-    ActivationKeys.changeLicenseToFree();
-    ActivationKeys.verifyEdition('kbn_free');
+    ActivationKeys.sessionIndex().then(before => {
+      expect(before.status, 'the session index exists after the login').to.equal(200);
 
-    // ROR KBN deletes the sessions after it answers (RORDEV-2302), so the check that they stay waits
-    // until such a delete is over. The delete takes well under a second.
-    cy.wait(SESSION_DELETE_WINDOW_MS);
-    ActivationKeys.sessionIndexStatus().should('equal', 200);
+      // Free (index) -> Free: the edition does not change, so the sessions stay.
+      ActivationKeys.changeLicenseToFree();
+      ActivationKeys.verifyEdition('kbn_free');
+
+      // ROR KBN deletes the sessions after it answers (RORDEV-2302), so the check that they stay waits
+      // until such a delete is over. The delete takes well under a second.
+      cy.wait(SESSION_DELETE_WINDOW_MS);
+      // A delete of the sessions can create an empty index at once, so only the same UUID shows that they stay.
+      ActivationKeys.sessionIndex().should('deep.equal', before);
+    });
     // The reload sends the session cookie to the proxy again, so this fails if the sessions were dropped.
     cy.reload();
     cy.location('pathname').should('contain', '/s/default/app/home');
