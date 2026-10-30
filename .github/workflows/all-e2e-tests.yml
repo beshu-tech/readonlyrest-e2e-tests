@@ -50,13 +50,17 @@ jobs:
         id: plan
         env:
           EVENT: ${{ github.event_name }}
-          # A pull request tests the plugins of the branch it targets.
-          BRANCH: ${{ github.base_ref || github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BRANCH: ${{ github.ref_name }}
           DRAFT: ${{ github.event.pull_request.draft == true }}
           # A fork PR gets no secrets, and the dev image pre-build needs them.
           FORK: ${{ github.event.pull_request.head.repo.fork == true }}
         run: |
           set -euo pipefail
+          # A pull request tests the plugins of the branch it targets.
+          if [ "$EVENT" = pull_request ]; then
+            BRANCH=$(.github/scripts/base-branch-of-pull-request.sh "$BASE_REF")
+          fi
           if   [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ]; then IMAGES="prod dev"; ENVS="docker $ECK_2X $ECK_3X"
           elif [ "$FORK" = true ];                                            then IMAGES="";         ENVS=""
           elif [ "$BRANCH" = master ] && [ "$DRAFT" = true ];                 then IMAGES="prod";     ENVS="docker"
