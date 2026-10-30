@@ -1,6 +1,7 @@
 import { recurse } from 'cypress-recurse';
 import { kibanaVersion } from '../helpers';
 import { esApiClient } from '../helpers/EsApiClient';
+import type { HttpResponse } from '../types';
 
 export class Observability {
   // APM Server 8+ writes data streams and creates one at the first flush of each metrics
@@ -49,28 +50,36 @@ export class Observability {
       )
     };
 
+    type Buckets = Record<string, { doc_count: number }>;
+    // The search fails with 503 when every APM shard it matches is new and not assigned yet, and it
+    // has no aggregations when no APM index exists, as right after the cleanup. Both mean "not yet".
+    const missingData = (response: HttpResponse<{ aggregations?: { required: { buckets: Buckets } } }>) => {
+      const buckets = response.status === 200 ? response.body.aggregations?.required.buckets : undefined;
+      return buckets
+        ? Object.entries(buckets)
+            .filter(([, bucket]) => bucket.doc_count === 0)
+            .map(([name]) => name)
+        : [`all of it (HTTP ${response.status})`];
+    };
+
     return recurse(
       () =>
-        esApiClient.search<{ aggregations: { required: { buckets: Record<string, { doc_count: number }> } } }>(
-          kibanaVersion.gte('8.0.0') ? '*-apm*' : 'apm-*',
-          {
-            size: 0,
-            query: { term: { 'service.name': 'app1' } },
-            aggs: { required: { filters: { filters: required } } }
-          }
-        ),
-      response => Object.values(response.aggregations.required.buckets).every(bucket => bucket.doc_count > 0),
+        esApiClient
+          .searchResponse<{ aggregations?: { required: { buckets: Buckets } } }>(
+            kibanaVersion.gte('8.0.0') ? '*-apm*' : 'apm-*',
+            {
+              size: 0,
+              query: { term: { 'service.name': 'app1' } },
+              aggs: { required: { filters: { filters: required } } }
+            }
+          )
+          .then(missingData),
+      missing => missing.length === 0,
       {
         // The metrics of the minute of the events arrive when the minute ends.
         timeout: 120000,
         delay: 2000,
-        log: response =>
-          cy.log(
-            `Missing APM data: ${Object.entries(response.aggregations.required.buckets)
-              .filter(([, bucket]) => bucket.doc_count === 0)
-              .map(([name]) => name)
-              .join(', ')}`
-          ),
+        log: missing => cy.log(`Missing APM data: ${missing.join(', ')}`),
         error: 'Timed out waiting for the sample APM events in Elasticsearch'
       }
     );

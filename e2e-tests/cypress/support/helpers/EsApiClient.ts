@@ -1,4 +1,5 @@
 import { kibanaCredentials } from './credentials';
+import type { HttpResponse } from '../types';
 
 export class EsApiClient {
   public deleteIndexDocsByQuery(index: string): void {
@@ -13,8 +14,10 @@ export class EsApiClient {
     });
   }
 
-  public search<T>(index: string, payload: object): Cypress.Chainable<T> {
-    return cy.esPost<T>({
+  // Yields the status and the body, and never fails on the status.
+  public searchResponse<T>(index: string, payload: object): Cypress.Chainable<HttpResponse<T>> {
+    return cy.esResponse<T>({
+      method: 'POST',
       endpoint: `${index}/_search`,
       credentials: kibanaCredentials,
       payload
