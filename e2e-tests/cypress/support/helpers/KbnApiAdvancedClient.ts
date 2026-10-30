@@ -15,10 +15,12 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   }
 
   // Under resetKibanaIndexToTemplate, a request of the user resets the index of the user's tenancy
-  // to the template. The first answer can be a 403, so the request repeats until it answers 2xx.
+  // to the template. The request does not follow a redirect, so a redirect to the login page fails it.
   public resetTenancyIndexToTemplate(credentials: BasicCredentials): void {
     cy.log(`Reset the tenancy index of ${accountOf(credentials)} to the template`);
-    this.repeatUntilSuccess({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials });
+    cy.kbnResponse({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials })
+      .its('status')
+      .then(status => expect(status, 'status of the request that resets the tenancy index').to.equal(200));
   }
 
   public deleteDataViews(credentials: BasicCredentials, group?: string) {

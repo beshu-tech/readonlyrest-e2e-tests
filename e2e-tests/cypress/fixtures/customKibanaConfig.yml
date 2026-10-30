@@ -36,7 +36,9 @@ readonlyrest_kbn:
   store_sessions_in_index: true
   sessions_index_name: 'test_index'
   session_timeout_minutes: 1 # 1 is the schema minimum; whole minutes only
-  sessions_cleanup_interval: '1s'
+  # The in-memory session cleanup runs at this interval. At 1 ms it runs during each request, so a
+  # cleanup that ends a session in use (RORDEV-2388) fails each API request, not only some.
+  sessions_cleanup_interval: '1ms'
   # Every probe refreshes the session; keep probes clear of the timeout so a session can expire.
   sessions_probe_interval_seconds: 180
   whitelistedPaths: [".*/api/status$", ".*/api/index_management/indices$"]
