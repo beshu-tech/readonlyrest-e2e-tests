@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      # The plan reads the PR to find its base branch.
+      # To read the base branch of the PR.
       pull-requests: read
     outputs:
       images: ${{ steps.plan.outputs.images }}
