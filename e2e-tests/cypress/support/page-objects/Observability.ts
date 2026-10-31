@@ -4,8 +4,8 @@ import { esApiClient } from '../helpers/EsApiClient';
 import type { HttpResponse } from '../types';
 
 export class Observability {
-  // APM Server 8+ writes data streams and creates one at the first flush of each metrics
-  // aggregation. Until its primary shard is assigned, a _delete_by_query on it fails with 503
+  // APM Server 8+ creates each data stream at its first write, and from 8.7 the 10m and 60m metrics write
+  // only at their first flush. Until its primary shard is assigned, a _delete_by_query on it fails with 503
   // "missing shards". A data stream delete reads no shard. APM Server 7 creates its indices at start.
   static deleteApmData() {
     if (kibanaVersion.gte('8.0.0')) {
@@ -25,14 +25,16 @@ export class Observability {
     });
   }
 
-  // The APM UI shows a "no data" page when it opens before any APM document is searchable. It
-  // lists the transaction types from the 1m metrics, not the raw events, when the time range holds
-  // any metrics. The agent sends the events up to 10 s late, and APM Server writes the metrics of a
-  // minute when the minute ends. So the UI must open only when both hold every event of the test.
+  // The APM UI shows "no data" until an APM document is searchable, and takes the transaction types
+  // from the 1m metrics when the time range holds any. So it opens only when both the raw events and
+  // the 1m metrics hold every event of the test.
   private static waitForSampleApmEventsInElasticsearch(sentAt: Date) {
-    const startOfMinute = new Date(sentAt);
+    // The agent stamps the events with the clock of its container. On Docker Desktop, that clock can be
+    // behind the clock of Cypress.
+    const eventsSince = new Date(sentAt.getTime() - 10000);
+    const startOfMinute = new Date(eventsSince);
     startOfMinute.setUTCSeconds(0, 0);
-    const events = { range: { '@timestamp': { gte: sentAt.toISOString() } } };
+    const events = { range: { '@timestamp': { gte: eventsSince.toISOString() } } };
     const metrics = { range: { '@timestamp': { gte: startOfMinute.toISOString() } } };
     const filter = (since: object, field: string, value: string, type?: string) => ({
       bool: {
@@ -51,10 +53,11 @@ export class Observability {
     };
 
     type Buckets = Record<string, { doc_count: number }>;
-    // The search fails with 503 when every APM shard it matches is new and not assigned yet, and it
-    // has no aggregations when no APM index exists, as right after the cleanup. Both mean "not yet".
-    const missingData = (response: HttpResponse<{ aggregations?: { required: { buckets: Buckets } } }>) => {
-      const buckets = response.status === 200 ? response.body.aggregations?.required.buckets : undefined;
+    type ReadinessResponse = HttpResponse<{ aggregations?: { required: { buckets: Buckets } } }>;
+    // A 503 means that every APM shard the search matches is new and not assigned yet. A body without
+    // aggregations means that no APM index exists, for example right after the cleanup.
+    const missingData = (response: ReadinessResponse) => {
+      const buckets = response.body.aggregations?.required.buckets;
       return buckets
         ? Object.entries(buckets)
             .filter(([, bucket]) => bucket.doc_count === 0)
@@ -64,22 +67,21 @@ export class Observability {
 
     return recurse(
       () =>
-        esApiClient
-          .searchResponse<{ aggregations?: { required: { buckets: Buckets } } }>(
-            kibanaVersion.gte('8.0.0') ? '*-apm*' : 'apm-*',
-            {
-              size: 0,
-              query: { term: { 'service.name': 'app1' } },
-              aggs: { required: { filters: { filters: required } } }
-            }
-          )
-          .then(missingData),
-      missing => missing.length === 0,
+        esApiClient.searchResponse<ReadinessResponse['body']>(kibanaVersion.gte('8.0.0') ? '*-apm*' : 'apm-*', {
+          size: 0,
+          query: { term: { 'service.name': 'app1' } },
+          aggs: { required: { filters: { filters: required } } }
+        }),
+      response => missingData(response).length === 0,
       {
-        // The metrics of the minute of the events arrive when the minute ends.
+        failFast: ({ status, body }) =>
+          ![200, 503].includes(status) &&
+          `The APM readiness search failed with HTTP ${status}: ${JSON.stringify(body)}`,
+        // Up to 10 s of agent delay, up to 60 s until APM Server writes the 1m metrics, and a margin
+        // for a loaded runner.
         timeout: 120000,
         delay: 2000,
-        log: missing => cy.log(`Missing APM data: ${missing.join(', ')}`),
+        log: response => cy.log(`Missing APM data: ${missingData(response).join(', ')}`),
         error: 'Timed out waiting for the sample APM events in Elasticsearch'
       }
     );

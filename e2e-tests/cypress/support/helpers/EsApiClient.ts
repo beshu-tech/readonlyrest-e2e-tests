@@ -14,7 +14,6 @@ export class EsApiClient {
     });
   }
 
-  // Yields the status and the body, and never fails on the status.
   public searchResponse<T>(index: string, payload: object): Cypress.Chainable<HttpResponse<T>> {
     return cy.esResponse<T>({
       method: 'POST',
@@ -39,9 +38,9 @@ export class EsApiClient {
     });
   }
 
-  // A wildcard also matches hidden data streams, as the 10m and 60m APM metrics.
   public deleteDataStream(index: string): void {
     cy.esDelete({
+      // A wildcard also matches hidden data streams.
       endpoint: `_data_stream/${index}?expand_wildcards=all`,
       credentials: kibanaCredentials
     });
