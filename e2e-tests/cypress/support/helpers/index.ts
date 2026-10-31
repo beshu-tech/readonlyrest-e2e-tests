@@ -1,4 +1,5 @@
 import * as semver from 'semver';
+import { EnvName } from '../types';
 
 let kibanaVersionUnderTest: string | undefined;
 
@@ -22,6 +23,10 @@ export const kibanaVersion = {
   // Kibana 8.19 has some changes of 9.1 that 9.0 does not have. Each caller names the change it checks.
   is819OrFrom91: () => semver.satisfies(getKibanaVersion(), '>=8.19.0 <9.0.0 || >=9.1.0')
 };
+
+export function isMultiKibanaNodeEnv(): boolean {
+  return Cypress.env().envName === EnvName.ELK_ROR;
+}
 
 export function requiredBaseUrl(): string {
   const baseUrl = Cypress.config('baseUrl');

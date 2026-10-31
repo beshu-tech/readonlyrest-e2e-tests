@@ -17,7 +17,11 @@ CONFIG_FILE="$(realpath "$1")"
 # Docker Compose names the project after the directory of start.sh, and labels each container
 # with its project and its service.
 PROJECT="${COMPOSE_PROJECT_NAME:-elk-ror}"
-mapfile -t REPLICAS < <(docker ps -q \
+# A read loop and not mapfile: macOS ships bash 3.2, which has no mapfile.
+REPLICAS=()
+while IFS= read -r replica; do
+  REPLICAS+=("$replica")
+done < <(docker ps -q \
   --filter "label=com.docker.compose.project=$PROJECT" \
   --filter "label=com.docker.compose.service=kbn-ror")
 if [[ ${#REPLICAS[@]} -eq 0 ]]; then
