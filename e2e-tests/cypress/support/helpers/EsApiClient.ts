@@ -1,4 +1,5 @@
 import { kibanaCredentials } from './credentials';
+import type { HttpResponse } from '../types';
 
 export class EsApiClient {
   public deleteIndexDocsByQuery(index: string): void {
@@ -10,6 +11,15 @@ export class EsApiClient {
           match_all: {}
         }
       }
+    });
+  }
+
+  public searchResponse<T>(index: string, payload: object): Cypress.Chainable<HttpResponse<T>> {
+    return cy.esResponse<T>({
+      method: 'POST',
+      endpoint: `${index}/_search`,
+      credentials: kibanaCredentials,
+      payload
     });
   }
 
@@ -30,7 +40,8 @@ export class EsApiClient {
 
   public deleteDataStream(index: string): void {
     cy.esDelete({
-      endpoint: `_data_stream/${index}`,
+      // A wildcard also matches hidden data streams.
+      endpoint: `_data_stream/${index}?expand_wildcards=all`,
       credentials: kibanaCredentials
     });
   }
