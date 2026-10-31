@@ -162,6 +162,35 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p "$SUBSTITUTED_DIR"
 
+# Every pod runs on a worker: the control plane keeps its NoSchedule taint.
+WORKERS=(eck-ror-worker eck-ror-worker2)
+
+# The snapshotter that the kubelet reads images from. The node entrypoint selects it from the host
+# filesystem: overlayfs, or native on ZFS.
+containerd_snapshotter() {
+  docker exec "$1" containerd config dump 2>/dev/null |
+    awk -F"'" '/^ *\[/ { images = /io\.containerd\.cri\.v1\.images.\]$/ } images && /^ *snapshotter = / { print $2; exit }'
+}
+
+# load_images <image>...
+# Copies images from the host Docker into the containerd of each worker. `kind load docker-image`
+# does not fit on a GitHub-hosted runner with 30 GB free: it writes a tar of the images to /tmp,
+# and in each node it keeps every layer twice, as a blob and unpacked. Here the tar streams into
+# the import, and the import deletes each blob after it unpacks it. The workers load one after the
+# other, so that the blobs of only one node are on the disk at a time.
+load_images() {
+  local node snapshotter
+  for node in "${WORKERS[@]}"; do
+    snapshotter=$(containerd_snapshotter "$node")
+    [[ -n "$snapshotter" ]] || { echo "No containerd snapshotter found on $node." >&2; return 1; }
+    (
+      set -o pipefail
+      docker save "$@" | docker exec -i "$node" ctr --namespace=k8s.io images import --local --digests \
+        --snapshotter="$snapshotter" --discard-unpacked-layers -
+    ) || return 1
+  done
+}
+
 echo "CONFIGURING K8S CLUSTER ..."
 kind create cluster --name eck-ror --config kind-cluster/kind-cluster-config.yml "${KIND_IMAGE_ARGS[@]}"
 docker exec eck-ror-control-plane /bin/bash -c "sysctl -w vm.max_map_count=262144"
@@ -187,10 +216,10 @@ docker exec eck-ror-control-plane ./bootstrap-eck.sh /eck-manifests
 ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
 ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
 # The kubelet pulls with no retry of ours, and a failed pull waits in back-off. The host pulls with
-# retries instead, and kind copies the images into the workers, where ES and Kibana run.
+# retries instead, and load_images copies the images into the workers.
 pull_image "$ROR_ES_IMAGE"
 pull_image "$ROR_KBN_IMAGE"
-kind load docker-image "$ROR_ES_IMAGE" "$ROR_KBN_IMAGE" --name eck-ror --nodes eck-ror-worker,eck-ror-worker2
+load_images "$ROR_ES_IMAGE" "$ROR_KBN_IMAGE" || { echo "Failed to load the ES and Kibana images into the workers."; exit 1; }
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
 echo "Cluster type: $CLUSTER_TYPE"
@@ -215,15 +244,9 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
     -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
   echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
-  # Load node-apm-app Docker image into the Kind cluster
-  CLUSTER_NAME="eck-ror"
-
-  kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
-  echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
-
   docker tag "$ROR_DOCKER_HUB_MIRROR_PREFIX$BUSYBOX_IMAGE" busybox || { echo "Failed to tag $BUSYBOX_IMAGE as busybox."; exit 1; }
-  kind load docker-image busybox --name "$CLUSTER_NAME" || { echo "Failed to load busybox into Kind cluster."; exit 1; }
-  echo "busybox image loaded into Kind cluster"
+  load_images "$IMAGE_NAME:$TAG" busybox || { echo "Failed to load $IMAGE_NAME:$TAG and busybox into the workers."; exit 1; }
+  echo "$IMAGE_NAME:$TAG and busybox loaded into the workers"
 else
   echo "Error: Invalid cluster type '$CLUSTER_TYPE'. Must be 'base' or 'apm'"
   exit 3
