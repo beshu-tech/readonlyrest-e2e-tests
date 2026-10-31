@@ -41,3 +41,33 @@ export const stopApp = () =>
   cy.window({ log: false }).then(win => {
     win.location.href = 'about:blank';
   });
+
+let unansweredPageRequests = new Set<object>();
+
+// Kibana completes a request also when the browser aborts it, for example because the page closes,
+// and Cypress gives no signal for an aborted request. So stopAppAfterKibanaAnswers waits for the
+// answers before it leaves the page. Call this before the page loads.
+export const trackKibanaRequests = () => {
+  cy.on('window:before:load', () => {
+    // A request of the previous page has its answer, or the browser aborted it.
+    unansweredPageRequests = new Set();
+  });
+  cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => {
+    const pageRequests = unansweredPageRequests;
+    const request = {};
+    pageRequests.add(request);
+    req.on('response', () => {
+      pageRequests.delete(request);
+    });
+  });
+};
+
+// Leaves the Kibana page after Kibana answers each request of the page, so no request of the page
+// changes Kibana after this call. New requests of the page do not go to Kibana.
+export const stopAppAfterKibanaAnswers = () => {
+  cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => req.destroy());
+  cy.wrap(null, { log: false }).should(() =>
+    expect(unansweredPageRequests.size, 'requests of the page that Kibana did not answer').to.equal(0)
+  );
+  stopApp();
+};
