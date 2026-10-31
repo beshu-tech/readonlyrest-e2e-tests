@@ -45,7 +45,7 @@ export class KbnApiClient {
   }
 
   public deleteDataViewIfPresent(dataViewId: string, credentials: BasicCredentials, group?: string): void {
-    this.deleteUntilGone({
+    this.deleteIfPresent({
       endpoint: `api/data_views/data_view/${dataViewId}`,
       credentials,
       currentGroupHeader: group
@@ -80,7 +80,7 @@ export class KbnApiClient {
   }
 
   public deleteSavedObjectIfPresent(savedObject: SavedObject, credentials: BasicCredentials, group?: string): void {
-    this.deleteUntilGone({
+    this.deleteIfPresent({
       endpoint: `api/saved_objects/${savedObject.type}/${savedObject.id}`,
       credentials,
       currentGroupHeader: group
@@ -103,12 +103,8 @@ export class KbnApiClient {
     });
   }
 
-  // A Kibana request can fail with a 500 (socket hang up) when Kibana reuses an idle connection to
-  // ROR's Pre-Elasticsearch-proxy just as the proxy closes it (RORDEV-2314), so the delete repeats
-  // until it answers 2xx. Remove the repeat when a release has the fix.
   public deleteSampleData(sampleDatasetName: string, credentials: BasicCredentials, group?: string): void {
-    this.repeatUntilSuccess({
-      method: 'DELETE',
+    cy.kbnDelete({
       endpoint: `api/sample_data/${sampleDatasetName}`,
       credentials,
       currentGroupHeader: group
@@ -116,8 +112,12 @@ export class KbnApiClient {
   }
 
   // For a cleanup delete: the object can already be gone, so a 404 also counts as done.
-  protected deleteUntilGone(options: Omit<Cypress.ResponseOptions<Cypress.KbnRequestOptions>, 'method'>): void {
-    this.repeatUntilSuccess({ ...options, method: 'DELETE' }, status => isSuccess(status) || status === 404);
+  protected deleteIfPresent(options: Omit<Cypress.ResponseOptions<Cypress.KbnRequestOptions>, 'method'>): void {
+    cy.kbnResponse({ ...options, method: 'DELETE' })
+      .its('status')
+      .then(status => {
+        expect(status, `status of DELETE ${options.endpoint}`).to.satisfy((s: number) => isSuccess(s) || s === 404);
+      });
   }
 
   // For a cleanup request that must take effect: sends it until isDone accepts the status (2xx by
