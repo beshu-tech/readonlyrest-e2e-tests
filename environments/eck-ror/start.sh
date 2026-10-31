@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 
 source ./kind-pins.sh
 source ../common/retry.sh
+source ../common/pull-image.sh
 
 if ! command -v kind &> /dev/null; then
   echo "Cannot find 'kind' tool. Run ./install-kind.sh <directory on your PATH>, or follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
@@ -187,8 +188,8 @@ ROR_ES_IMAGE="${ROR_ES_REPO}:${ES_VERSION}-ror-${ROR_ES_VERSION}"
 ROR_KBN_IMAGE="${ROR_KBN_REPO}:${KBN_VERSION}-ror-${ROR_KBN_VERSION}"
 # The kubelet pulls with no retry of ours, and a failed pull waits in back-off. The host pulls with
 # retries instead, and kind copies the images into the workers, where ES and Kibana run.
-retry 3 docker pull "$ROR_ES_IMAGE"
-retry 3 docker pull "$ROR_KBN_IMAGE"
+pull_image "$ROR_ES_IMAGE"
+pull_image "$ROR_KBN_IMAGE"
 kind load docker-image "$ROR_ES_IMAGE" "$ROR_KBN_IMAGE" --name eck-ror --nodes eck-ror-worker,eck-ror-worker2
 
 echo "CONFIGURING ES $ES_VERSION AND KBN $KBN_VERSION WITH ROR ..."
@@ -204,8 +205,13 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   DOCKERFILE_DIR="../common/images/node-apm-app"
   IMAGE_NAME="node-apm-app"
   TAG="latest"
+  # Used by the wait-for-apm init container.
+  BUSYBOX_IMAGE="library/busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
 
-  docker buildx build --load --build-arg MIRROR="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}" \
+  pull_docker_hub_images "$(docker_hub_image "$DOCKERFILE_DIR/Dockerfile")" "$BUSYBOX_IMAGE" \
+    || { echo "No registry gives the node and busybox images."; exit 1; }
+
+  docker buildx build --load --build-arg MIRROR="$ROR_DOCKER_HUB_MIRROR_PREFIX" \
     -t "$IMAGE_NAME:$TAG" "$DOCKERFILE_DIR" || { echo "Docker image build failed."; exit 1; }
   echo "Docker image built successfully: $IMAGE_NAME:$TAG"
 
@@ -215,10 +221,7 @@ elif [[ "$CLUSTER_TYPE" == "apm" ]]; then
   kind load docker-image "$IMAGE_NAME:$TAG" --name "$CLUSTER_NAME" || { echo "Failed to load Docker image into Kind cluster."; exit 1; }
   echo "Docker image successfully loaded into Kind cluster: $IMAGE_NAME:$TAG"
 
-  # Load busybox used by the wait-for-apm init container.
-  BUSYBOX_IMAGE="${ROR_DOCKER_HUB_MIRROR_PREFIX:-}library/busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
-  retry 3 docker pull "$BUSYBOX_IMAGE" || { echo "Failed to pull busybox image: $BUSYBOX_IMAGE"; exit 1; }
-  docker tag "$BUSYBOX_IMAGE" busybox || { echo "Failed to tag $BUSYBOX_IMAGE as busybox."; exit 1; }
+  docker tag "$ROR_DOCKER_HUB_MIRROR_PREFIX$BUSYBOX_IMAGE" busybox || { echo "Failed to tag $BUSYBOX_IMAGE as busybox."; exit 1; }
   kind load docker-image busybox --name "$CLUSTER_NAME" || { echo "Failed to load busybox into Kind cluster."; exit 1; }
   echo "busybox image loaded into Kind cluster"
 else

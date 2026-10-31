@@ -75,26 +75,24 @@ export class Impersonate {
   static addEditMockUser(username: string, groups: string[] = []) {
     cy.log('Fill Edit Mock Service');
     SecuritySettings.getIframeBody().contains('Add user').click();
-    SecuritySettings.getIframeBody().find('[data-testid=confirm-button]').as('confirmButton');
-    cy.get('@confirmButton').should('be.disabled');
+    Impersonate.getConfirmButton().should('be.disabled');
     SecuritySettings.getIframeBody().find('[data-testid=user-name-field]').last().type(username);
 
     if (groups.length > 0) {
       SecuritySettings.getIframeBody().find('[data-testid=user-group-field]').last().as('userGroupInput');
-      cy.get('@userGroupInput').type(
-        groups
-          .map(group => `${group}{enter}`)
-          .join(', ')
-          .replace(',', '')
-      );
+      cy.get('@userGroupInput').type(groups.map(group => `${group}{enter}`).join(''));
     }
   }
 
   static saveEditMockUsers() {
     const authMockSave = interceptNext('authMockSave', { method: 'POST', url: '/pkp/api/test/authmock' });
-    cy.get('@confirmButton').should('not.be.disabled');
-    cy.get('@confirmButton').click();
+    Impersonate.getConfirmButton().should('not.be.disabled');
+    Impersonate.getConfirmButton().click();
     cy.wait(authMockSave);
+  }
+
+  private static getConfirmButton() {
+    return SecuritySettings.getIframeBody().find('[data-testid=confirm-button]');
   }
 
   static checkIfExpiredModal() {

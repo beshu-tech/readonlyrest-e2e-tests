@@ -130,13 +130,14 @@ If you prefer, you can use scripts from the `docker-based-ror-dev-env` folder to
 
 ### Docker Hub pull mirror
 
-The CI jobs pull the Docker Hub base images through `mirror.gcr.io`, a pull-through cache. Docker Hub
-limits pulls per IP address, a runner shares its address with other tenants, and a neighbour over the
-limit makes our pull fail with a bare `429`. A login does not prevent that, because the limit ignores
-the account.
+The CI jobs pull the Docker Hub base images through pull-through caches, and then from Docker Hub.
+Docker Hub limits pulls per IP address, a runner shares its address with other tenants, and a
+neighbour over the limit makes our pull fail with a bare `429`. A login does not prevent that,
+because the limit ignores the account. A cache can also fail to serve an image, so each pull retries
+and then goes to the next source.
 
-`.github/scripts/docker-hub-mirror.sh` holds the setting and says which image names read it. A local
-run pulls from Docker Hub, and `ROR_DOCKER_HUB_MIRROR=false` switches the mirror off in CI.
+`.github/scripts/docker-hub-mirror.sh` holds the list of caches. A local run pulls from Docker Hub, and
+`ROR_DOCKER_HUB_MIRROR=false` switches the mirrors off in CI.
 
 ## Troubleshooting
 

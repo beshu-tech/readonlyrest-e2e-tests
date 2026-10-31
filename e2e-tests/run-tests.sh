@@ -3,9 +3,12 @@
 cd "$(dirname "$0")"
 
 NVM_SCRIPT="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
-if [ -s "$NVM_SCRIPT" ]; then
+if [ "$(node --version 2>/dev/null)" = "v$(cat .nvmrc)" ]; then
+  echo "Using Node.js $(node --version)"
+elif [ -s "$NVM_SCRIPT" ]; then
   source "$NVM_SCRIPT"
-  nvm install
+  # -b: when the binary download fails, nvm stops. Without it, nvm builds Node.js from source for more than an hour.
+  nvm install -b
   nvm use
 else
   REQUIRED_NODE="24.11.0"

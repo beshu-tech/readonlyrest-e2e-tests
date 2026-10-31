@@ -93,7 +93,7 @@ describe('Tenancy', () => {
       Spaces.verifyCurrentSpace(Spaces.idOf(newSpace));
     });
 
-    itOnKibana(KibanaNavigation.HIDES_APP_LINKS, 'should hide the Stack Management link in the infosec tenancy', () => {
+    it('should hide the Stack Management link in the infosec tenancy', () => {
       const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
       Login.initialization({
         visitedUrl: urlWithTenancyId,
@@ -102,6 +102,17 @@ describe('Tenancy', () => {
 
       KibanaNavigation.openKibanaNavigation();
       KibanaNavigation.verifyAppLinkNotShown('Stack Management');
+    });
+
+    itOnKibana('>=8.0.0', 'should keep the Management title of the hidden Stack Management app, with no link', () => {
+      const urlWithTenancyId = `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=${Tenancy.encryptedInfosecGroup}`;
+      Login.initialization({
+        visitedUrl: urlWithTenancyId,
+        finishUrl: `/s/default/app/home?${TENANCY_QUERY_STRING_KEY}=*`
+      });
+
+      KibanaNavigation.openKibanaNavigation();
+      KibanaNavigation.verifyCategoryTitleLinkBlocked('/app/management');
     });
   });
 

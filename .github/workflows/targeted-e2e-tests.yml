@@ -27,6 +27,14 @@ on:
         required: false
         default: 'prod'
         type: string
+      target_branch:
+        description: 'Branch of the caller. The run takes the tests of the branch here that fits it. Empty: the tests of the dispatched ref.'
+        required: false
+        type: string
+      fallback_branch:
+        description: 'Branch that the change of the caller is based on. The run uses it when target_branch is not here.'
+        required: false
+        type: string
 
 env:
   APPLY_RESOURCE_LIMITS: "auto"
@@ -35,14 +43,21 @@ jobs:
   e2e-tests:
     name: "🔬 E2E Tests"
     runs-on: ${{ fromJSON(vars.E2E_REPO_RUNS_ON || '["ubuntu-24.04"]') }}
-    # The suite step stops at 75 minutes. The other 25 cover the set-up steps and the upload. The
+    # The suite step stops at 90 minutes. The other 25 cover the set-up steps and the upload. The
     # default of 360 minutes keeps a hung step on the runner for 6 hours.
-    timeout-minutes: 100
+    timeout-minutes: 115
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
+
+      - name: Check out the tests that fit the caller
+        if: inputs.target_branch != ''
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          FALLBACK_BRANCH: ${{ inputs.fallback_branch }}
+        run: ci/checkout-matching-branch.sh "$TARGET_BRANCH" "$FALLBACK_BRANCH"
 
       - name: Configure the Docker Hub mirror
         run: source .github/scripts/docker-hub-mirror.sh
@@ -69,6 +84,18 @@ jobs:
           ror_es: ${{ github.event.inputs.ror_es_version }}
           ror_kbn: ${{ github.event.inputs.ror_kbn_version }}
           activation_key: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+
+      - name: Upload the E2E summary
+        # A caller that dispatches this workflow downloads the per-spec table from here: GitHub
+        # gives no API for the run summary page.
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2e-summary
+          path: results/e2e-summary.md
+          if-no-files-found: ignore
+          # The caller downloads it when the run ends. One day saves the org's artifact storage.
+          retention-days: 1
 
       - name: Stop Docker memory monitor
         if: always()
