@@ -43,16 +43,17 @@ export class ActivationKeys {
    *
    * ROR KBN answers the change before it deletes the sessions (RORDEV-2302). Until then the old
    * session still works, and a login made in between can be deleted with the others.
-   * The sessions are deleted with their index, so the wait is for that index to go. With no index
-   * (no login since the last deletion) there is nothing to wait for.
+   * ROR KBN deletes the sessions with their index, and then can create an empty index at once. So the
+   * wait ends when the index is gone or has a new UUID. With no index (no login since the last
+   * deletion) there is nothing to wait for.
    */
   static changeEditionAndWaitForLogout(action: () => void) {
-    ActivationKeys.sessionIndexStatus().then(statusBefore => {
+    ActivationKeys.sessionIndex().then(before => {
       action();
-      if (statusBefore === 200) {
+      if (before.status === 200) {
         recurse(
-          () => ActivationKeys.sessionIndexStatus(),
-          status => status === 404,
+          () => ActivationKeys.sessionIndex(),
+          after => after.status === 404 || after.uuid !== before.uuid,
           { limit: 80, delay: 500, timeout: 40000, log: 'the sessions are deleted' }
         );
       }
@@ -78,7 +79,13 @@ export class ActivationKeys {
     );
   }
 
-  static sessionIndexStatus() {
-    return cy.esResponse({ endpoint: '.readonlyrest_kbn_sessions', credentials: kibanaCredentials }).its('status');
+  static sessionIndex(): Cypress.Chainable<{ status: number; uuid: string | undefined }> {
+    const index = '.readonlyrest_kbn_sessions';
+    return cy
+      .esResponse<Record<string, { settings: { index: { uuid: string } } }>>({
+        endpoint: index,
+        credentials: kibanaCredentials
+      })
+      .then(({ status, body }) => ({ status, uuid: status === 200 ? body[index].settings.index.uuid : undefined }));
   }
 }
