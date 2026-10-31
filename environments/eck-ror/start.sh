@@ -165,12 +165,16 @@ mkdir -p "$SUBSTITUTED_DIR"
 # The control plane keeps its NoSchedule taint, so only these nodes need the images.
 WORKERS=(eck-ror-worker eck-ror-worker2)
 
-# Prints the snapshotter that containerd on node $1 unpacks images into (containerd 2 config).
+# Prints the snapshotter that containerd on node $1 unpacks images into. The config section that
+# holds it is plugins."io.containerd.grpc.v1.cri".containerd in containerd 1.x and
+# plugins.'io.containerd.cri.v1.images' in containerd 2.x.
 # The import discards each layer blob after the unpack, so an unpack into another snapshotter
 # leaves containerd no blob to unpack the image again.
 containerd_snapshotter() {
   docker exec "$1" containerd config dump 2>/dev/null |
-    awk -F"'" '/^ *\[/ { images = /io\.containerd\.cri\.v1\.images.\]$/ } images && /^ *snapshotter = / { print $2; exit }'
+    awk -F"[\"']" '
+      /^ *\[/ { cri = /io\.containerd\.grpc\.v1\.cri.\.containerd\]$|io\.containerd\.cri\.v1\.images.\]$/ }
+      cri && /^ *snapshotter = / { print $2; exit }'
 }
 
 # load_images <image>...
