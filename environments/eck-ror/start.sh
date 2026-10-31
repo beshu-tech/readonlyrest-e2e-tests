@@ -162,22 +162,21 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p "$SUBSTITUTED_DIR"
 
-# Every pod runs on a worker: the control plane keeps its NoSchedule taint.
+# The control plane keeps its NoSchedule taint, so only these nodes need the images.
 WORKERS=(eck-ror-worker eck-ror-worker2)
 
-# The snapshotter that the kubelet reads images from. The node entrypoint selects it from the host
-# filesystem: overlayfs, or native on ZFS.
+# Prints the snapshotter that containerd on node $1 unpacks images into (containerd 2 config).
+# The import discards each layer blob after the unpack, so an unpack into another snapshotter
+# leaves containerd no blob to unpack the image again.
 containerd_snapshotter() {
   docker exec "$1" containerd config dump 2>/dev/null |
     awk -F"'" '/^ *\[/ { images = /io\.containerd\.cri\.v1\.images.\]$/ } images && /^ *snapshotter = / { print $2; exit }'
 }
 
 # load_images <image>...
-# Copies images from the host Docker into the containerd of each worker. `kind load docker-image`
-# does not fit on a GitHub-hosted runner with 30 GB free: it writes a tar of the images to /tmp,
-# and in each node it keeps every layer twice, as a blob and unpacked. Here the tar streams into
-# the import, and the import deletes each blob after it unpacks it. The workers load one after the
-# other, so that the blobs of only one node are on the disk at a time.
+# Copies images from the host Docker into the containerd of each worker. Fails if one does not load.
+# It needs less free disk than `kind load docker-image`: it writes no tar file, keeps no layer
+# blob after the unpack, and loads one worker at a time.
 load_images() {
   local node snapshotter
   for node in "${WORKERS[@]}"; do
