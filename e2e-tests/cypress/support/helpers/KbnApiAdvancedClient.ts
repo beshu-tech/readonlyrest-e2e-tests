@@ -98,39 +98,6 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   }
 
   /**
-   * Waits out a restart that is known to be under way: watches Kibana go away first, then serve
-   * again. Only call this when the config really did change — see changeKibanaConfig, which asks the
-   * endpoint. Never seeing Kibana go down is a failure here, deliberately: treating it as 'then no
-   * restart was needed' would put back exactly the race described above whenever a shutdown ran
-   * slower than the wait.
-   */
-  public waitForKibanaRestart(baseUrl: string, downRetries = 120, delay = 1000) {
-    let attempts = 0;
-
-    const isServing = (status: string) => status === 'available' || status === 'green';
-
-    const waitUntilDown = (): Cypress.Chainable<undefined> =>
-      cy.task<string>('checkKibanaHealth', { url: baseUrl }).then((status): Cypress.Chainable<undefined> => {
-        if (!isServing(status)) {
-          cy.log('⏳ Kibana went down, waiting for it to come back');
-          return cy.then(() => undefined);
-        }
-
-        if (attempts >= downRetries) {
-          throw new Error(
-            `Kibana was still serving ${downRetries * delay}ms after a config change that restarts it. ` +
-              'It never went down, so there is no safe point to carry on from.'
-          );
-        }
-
-        attempts += 1;
-        return cy.wait(delay).then(waitUntilDown);
-      });
-
-    return waitUntilDown().then(() => this.waitForKibanaHealth(baseUrl, 90, 2000));
-  }
-
-  /**
    * Waits until Kibana answers a request that ReadonlyREST authenticates. waitForKibanaHealth is not
    * enough: /api/status answers also on a Kibana node whose ReadonlyREST part never answers a user
    * request (RORDEV-2283). Such a node does not recover until it restarts, so the wait stays short.
