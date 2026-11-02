@@ -74,20 +74,6 @@ readonlyrest:
         index: ".kibana_user2"
         access: rw
       indices: ["invoices"]
-
-    - name: "Reporting tests: user3"
-      auth_key: user3:dev
-      kibana:
-        index: ".kibana_user3"
-        access: rw
-      indices: ["invoices"]
-    - name: "defined indices: user 4"
-      auth_key: user4:dev
-      verbosity: error
-      indices: [ "kibana_sample_data_*" ]
-      kibana:
-        access: rw
-        index: '.default_index'
   users:
     - username: admin
       auth_key: admin:dev
