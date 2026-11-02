@@ -130,6 +130,7 @@ jobs:
     timeout-minutes: 300
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
+      target_branch: ${{ steps.prepare.outputs.target_branch }}
     steps:
       - *checkout
       - name: Dispatch and await ROR plugin pre-builds
@@ -147,6 +148,7 @@ jobs:
           # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
           RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
           echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
 
           dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
           wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
@@ -166,6 +168,13 @@ jobs:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
       - *checkout
+      # The tests match the plugin images, not the ref the workflow runs on: the two long-lived
+      # branches differ where develop covers behaviour that is not released yet. On the cron the
+      # plugins come from the target branch, so the tests of that branch replace the checkout. A
+      # dispatch from a branch checks out a ref of that branch already.
+      - name: Check out the tests that match the plugin branch
+        if: github.event_name == 'schedule'
+        run: ci/checkout-matching-branch.sh "${{ needs.prepare-dev-images.outputs.target_branch }}"
       - *docker-hub-mirror
       - *cleanup-disk-space
       - *start-memory-monitor
