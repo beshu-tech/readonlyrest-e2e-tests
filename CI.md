@@ -4,13 +4,27 @@ GitHub Actions runs the e2e suite. This page explains the rules that the workflo
 
 ## Workflows
 
-| Workflow | Trigger | What it does |
-|---|---|---|
-| `all-e2e-tests.yml` | push to master or develop, pull request, nightly cron, manual | Runs the Cypress suite on every version under test, on docker and on ECK |
-| `bootstrap-tests.yml` | Sunday cron (released images), Wednesday cron (dev images), manual (both) | Starts the stack on many more versions and stops. It runs no tests: the only check is that the stack comes up |
-| `targeted-e2e-tests.yml` | manual | Runs the suite once, on one version and one environment that you choose |
+The tests and the plugins come from the same lineage: `master` for the released plugins, `develop` for the pre-build plugins. `prod` legs test the released plugin images. `dev` legs test images that the ES and Kibana plugin repos build for the run (the pre-build), tagged `run-<run id>-<attempt>`.
 
-**Images.** `prod` legs test the released plugin images. `dev` legs test images that the ES and Kibana plugin repos build for the run (the pre-build), tagged `run-<run id>-<attempt>`. A pull request to master tests prod images; a pull request to develop tests dev images. The nightly cron and a manual run test both.
+| Workflow | Trigger | Images | Plugin branch | Test branch |
+|---|---|---|---|---|
+| `all-e2e-tests.yml` | nightly cron, prod legs | prod | released | `master` |
+| `all-e2e-tests.yml` | nightly cron, dev legs | dev | `develop` | `develop` |
+| `all-e2e-tests.yml` | push to master | prod | released | `master` |
+| `all-e2e-tests.yml` | push to develop | dev | `develop` | `develop` |
+| `all-e2e-tests.yml` | pull request into master | prod | released | pull request head |
+| `all-e2e-tests.yml` | pull request into develop or an epic | dev | pull request head | pull request head |
+| `all-e2e-tests.yml` | fork pull request | none | — | — |
+| `all-e2e-tests.yml` | manual dispatch from X | prod and dev | released (prod), X (dev) | X |
+| `bootstrap-tests.yml` | Sunday cron | prod | released | `master` |
+| `bootstrap-tests.yml` | Wednesday cron | dev | `develop` | `develop` |
+| `bootstrap-tests.yml` | manual dispatch from X | prod and dev | released (prod), X (dev) | X |
+| `targeted-e2e-tests.yml` | dispatch from a plugin repo | the `mode` input | the branch it passes | the matching branch |
+
+- A draft pull request drops the ECK legs and runs docker only. It changes no branch and no image.
+- The `plan` job picks the images, the plugin branch and the test branch. The checkout `ref:` of each leg names its test branch. A dev leg stops when its checkout and the plugin branch differ.
+- `bootstrap-tests.yml` runs no tests: it starts the stack on many more versions and stops. Its test branch gives only the scripts.
+- GitHub reads the workflow from the ref that fired the run. A cron therefore runs the workflow of the default branch, whatever the table says about the tests.
 
 ## Runners
 
