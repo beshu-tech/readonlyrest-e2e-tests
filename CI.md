@@ -4,7 +4,7 @@ GitHub Actions runs the e2e suite. This page explains the rules that the workflo
 
 ## Workflows
 
-`prod` legs test the released plugin images. `dev` legs test images that the ES and Kibana plugin repos build for the run (the pre-build), tagged `run-<run id>-<attempt>`.
+`prod` legs test the released plugin images. The `dev` legs of `all-e2e-tests.yml` and `bootstrap-tests.yml` test images that the ES and Kibana plugin repos build for the run (the pre-build), tagged `run-<run id>-<attempt>`.
 
 A leg tests the commit that starts the run: the pushed commit, the merge commit of a pull request, or the tip of the dispatched branch. Two runs are exceptions. A cron starts on `master`, but tests `master` with the released plugins and `develop` with the pre-build plugins. A targeted run takes the branch here that matches the branch of the plugin repo that starts it.
 
@@ -22,9 +22,9 @@ A leg tests the commit that starts the run: the pushed commit, the merge commit 
 | `bootstrap-tests.yml` | Sunday cron | prod | docker | `master` | — | — |
 | `bootstrap-tests.yml` | Wednesday cron | dev | docker | — | `develop` | `develop` |
 | `bootstrap-tests.yml` | manual dispatch from X | prod, dev | docker | X | X | X |
-| `targeted-e2e-tests.yml` | dispatch from a plugin repo | the `mode` input | the `env` input | the matching branch | the caller's branch | the matching branch |
+| `targeted-e2e-tests.yml` | dispatch from a plugin repo | the `mode` input | the `env` input | the first that exists: `target_branch`, `fallback_branch`, `develop`, `master`; without `target_branch`, the dispatched ref | the caller's branch | as Prod tests |
 
-- The `plan` job of each workflow holds the same rows, in the same order. The checkout `ref:` of each leg names its tests.
+- The `plan` jobs of `all-e2e-tests.yml` and `bootstrap-tests.yml` hold the same rows, in the same order. The checkout `ref:` of each leg names its tests.
 - A plugin repo without the dev plugins branch builds `develop`. That fits only the merge commit of a pull request into develop or an epic. Every other run stops before the pre-build and names the repo.
 - `bootstrap-tests.yml` runs no tests: it starts the stack on many more versions and stops.
 - GitHub reads the workflow from the ref that started the run. A cron therefore runs the workflow of the default branch, whatever the table says about the tests.
