@@ -50,6 +50,8 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
+      - name: Test the base-branch rule
+        run: .github/scripts/tests/base-branch-of-pull-request.test.sh
       - name: Choose the images, the environments and the versions
         id: plan
         env:
@@ -65,12 +67,14 @@ jobs:
           set -euo pipefail
           # A pull request tests the plugins of the branch it targets.
           if [ "$EVENT" = pull_request ]; then
-            BRANCH=$(.github/scripts/base-branch-of-pull-request.sh "$BASE_REF" "$PR_NUMBER")
+            BASE_BRANCH=$(.github/scripts/base-branch-of-pull-request.sh "$BASE_REF" "$PR_NUMBER")
+          else
+            BASE_BRANCH=$BRANCH
           fi
           if   [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ]; then IMAGES="prod dev"; ENVS="docker $ECK_2X $ECK_3X"
           elif [ "$FORK" = true ];                                            then IMAGES="";         ENVS=""
-          elif [ "$BRANCH" = master ] && [ "$DRAFT" = true ];                 then IMAGES="prod";     ENVS="docker"
-          elif [ "$BRANCH" = master ];                                        then IMAGES="prod";     ENVS="docker $ECK_3X"
+          elif [ "$BASE_BRANCH" = master ] && [ "$DRAFT" = true ];            then IMAGES="prod";     ENVS="docker"
+          elif [ "$BASE_BRANCH" = master ];                                   then IMAGES="prod";     ENVS="docker $ECK_3X"
           elif [ "$DRAFT" = true ];                                           then IMAGES="dev";      ENVS="docker"
           else                                                                     IMAGES="dev";      ENVS="docker $ECK_3X"
           fi
