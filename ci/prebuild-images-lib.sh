@@ -419,6 +419,27 @@ _resolve_workflow_ref() {
   fi
 }
 
+# Fails when a plugin repo has no branch <branch>. The pre-build of that repo then builds `develop`,
+# and the tests of the caller may not fit `develop`.
+# Usage: require_plugin_branch <branch>
+# Returns: 2 no token, 3 the branch is missing or a repo cannot be read.
+require_plugin_branch() {
+  local BRANCH=$1 REPO OUT
+  _require_dispatch_token ROR_GH_TOKEN "ROR" || return $?
+  for REPO in "$ROR_ES_GH_REPO" "$ROR_KBN_GH_REPO"; do
+    if ! OUT=$(GH_TOKEN="$ROR_GH_TOKEN" gh api "repos/$REPO/branches/$BRANCH" --jq .name 2>&1); then
+      if [[ "$OUT" == *"HTTP 404"* ]]; then
+        echo "ERROR: $REPO has no branch '$BRANCH', so its pre-build builds 'develop'." \
+          "Push the branch there, or start the run from a branch that it has."
+      else
+        echo "ERROR: cannot read the branches of $REPO: $OUT"
+      fi
+      return 3
+    fi
+  done
+  echo ">>> Both plugin repos have the branch '$BRANCH'"
+}
+
 # Checks that a dispatch token is usable. Empty means the secret is not configured; a value starting
 # with `$(` means a CI variable was never expanded and arrived as literal text, which would otherwise
 # fail later as an unexplained 401.

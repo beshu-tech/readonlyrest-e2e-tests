@@ -36,36 +36,42 @@ jobs:
       elk_versions: ${{ steps.plan.outputs.elk_versions }}
       elk_versions_json: ${{ steps.plan.outputs.elk_versions_json }}
       ror_version: ${{ steps.plan.outputs.ror_version }}
-      prod_tests_branch: ${{ steps.plan.outputs.prod_tests_branch }}
-      dev_branch: ${{ steps.plan.outputs.dev_branch }}
+      prod_tests_ref: ${{ steps.plan.outputs.prod_tests_ref }}
+      dev_plugins_branch: ${{ steps.plan.outputs.dev_plugins_branch }}
+      dev_tests_ref: ${{ steps.plan.outputs.dev_tests_ref }}
     steps:
       - &checkout
         name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      - name: Choose the images and list the versions
+      - name: Choose the images, the branches and the versions
         id: plan
         env:
           EVENT: ${{ github.event_name }}
           CRON: ${{ github.event.schedule }}
-          BRANCH: ${{ github.ref_name }}
+          REF: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          # The scripts of a leg come from the branch of its plugins: master for the released
-          # plugins, the plugin branch for the dev images.
+          # One row per trigger of the Workflows table in CI.md, in the same order.
+          row() { IMAGES=$1; PROD_TESTS=$2; DEV_PLUGINS=$3; DEV_TESTS=$4; }
+          # The commit of the event. A cron starts on master, so its rows name the branch of its
+          # plugins.
+          C=$GITHUB_SHA
+          #                                         images     prod tests  dev plugins  dev tests
           case "$EVENT:$CRON" in
-            workflow_dispatch:*)  IMAGES="prod dev"; PROD_TESTS=$BRANCH; DEV=$BRANCH ;;
-            "schedule:0 1 * * 0") IMAGES=prod;       PROD_TESTS=master;  DEV=""      ;;
-            "schedule:0 1 * * 3") IMAGES=dev;        PROD_TESTS="";      DEV=develop ;;
+            "schedule:0 1 * * 0") row prod       master      ""           ""      ;;
+            "schedule:0 1 * * 3") row dev        ""          develop      develop ;;
+            workflow_dispatch:*)  row "prod dev" "$C"        "$REF"       "$C"    ;;
             *) echo "No plan for $EVENT $CRON" >&2; exit 1 ;;
           esac
           RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh bootstrap)
           echo "$RESOLVED"
           {
             echo "images=$IMAGES"
-            echo "prod_tests_branch=$PROD_TESTS"
-            echo "dev_branch=$DEV"
+            echo "prod_tests_ref=$PROD_TESTS"
+            echo "dev_plugins_branch=$DEV_PLUGINS"
+            echo "dev_tests_ref=$DEV_TESTS"
             echo "ror_version=$(jq -r .ror_version <<< "$RESOLVED")"
             echo "elk_versions=$(jq -r '.elk_versions | join(" ")' <<< "$RESOLVED")"
             echo "elk_versions_json=$(jq -c .elk_versions <<< "$RESOLVED")"
@@ -87,10 +93,10 @@ jobs:
         version: ${{ fromJSON(needs.plan.outputs.elk_versions_json) }}
         env: [docker]
     steps:
-      - name: Check out the scripts of the released plugins
+      - name: Check out the tests of the released plugins
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ needs.plan.outputs.prod_tests_branch }}
+          ref: ${{ needs.plan.outputs.prod_tests_ref }}
           persist-credentials: false
       - &docker-hub-mirror
         name: Configure the Docker Hub mirror
@@ -130,8 +136,7 @@ jobs:
   # ==========================================
   # DEV IMAGE PREPARATION
   # ==========================================
-  # Builds dev images of both plugins for every version in the list, tagged per run. Both pre-build
-  # workflows fall back to `develop` if the branch is not there.
+  # Builds dev images of both plugins for every version in the list, tagged per run.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
     needs: plan
@@ -140,13 +145,12 @@ jobs:
     timeout-minutes: 300
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
-      target_branch: ${{ steps.prepare.outputs.target_branch }}
     steps:
       - *checkout
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          TARGET_BRANCH: ${{ needs.plan.outputs.dev_branch }}
+          TARGET_BRANCH: ${{ needs.plan.outputs.dev_plugins_branch }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           ROR_ES_WAIT_TIMEOUT_SECONDS: 14400
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 14400
@@ -154,11 +158,11 @@ jobs:
         run: |
           set -euo pipefail
           . ci/prebuild-images-lib.sh
+          require_plugin_branch "$TARGET_BRANCH"
 
           # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
           RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
           echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
-          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
 
           dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
           wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
@@ -177,18 +181,11 @@ jobs:
     env:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
-      - name: Check out the scripts of the plugin branch
+      - name: Check out the tests of the pre-build plugins
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ needs.plan.outputs.dev_branch }}
+          ref: ${{ needs.plan.outputs.dev_tests_ref }}
           persist-credentials: false
-      - name: The scripts and the plugins come from the same branch
-        env:
-          PLUGINS: ${{ needs.prepare-dev-images.outputs.target_branch }}
-        run: |
-          SCRIPTS=$(git rev-parse --abbrev-ref HEAD)
-          echo "scripts=$SCRIPTS plugins=$PLUGINS"
-          [ "$SCRIPTS" = "$PLUGINS" ] || { echo "::error::The scripts come from $SCRIPTS, the plugins from $PLUGINS"; exit 1; }
       - *docker-hub-mirror
       - *cleanup-disk-space
       - *start-memory-monitor

@@ -40,47 +40,54 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
       elk_versions: ${{ steps.plan.outputs.elk_versions }}
       ror_version: ${{ steps.plan.outputs.ror_version }}
-      prod_tests_branch: ${{ steps.plan.outputs.prod_tests_branch }}
-      dev_branch: ${{ steps.plan.outputs.dev_branch }}
+      prod_tests_ref: ${{ steps.plan.outputs.prod_tests_ref }}
+      dev_plugins_branch: ${{ steps.plan.outputs.dev_plugins_branch }}
+      dev_tests_ref: ${{ steps.plan.outputs.dev_tests_ref }}
     steps:
       - &checkout
         name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      - name: Choose the images, the environments and the versions
+      - name: Choose the images, the environments, the branches and the versions
         id: plan
         env:
           EVENT: ${{ github.event_name }}
-          # A pull request tests the plugins of the branch it targets.
-          BRANCH: ${{ github.base_ref || github.ref_name }}
+          REF: ${{ github.ref_name }}
+          BASE: ${{ github.base_ref }}
+          # On a PR, head_ref is the source branch: the plugins of the PR are built from it.
+          HEAD: ${{ github.head_ref }}
           DRAFT: ${{ github.event.pull_request.draft == true }}
           # A fork PR gets no secrets, and the dev image pre-build needs them.
           FORK: ${{ github.event.pull_request.head.repo.fork == true }}
-          # On a PR, head_ref is the source branch. A push or a dispatch has no head_ref, and
-          # ref_name is the branch.
-          HEAD_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
-          if   [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ]; then IMAGES="prod dev"; ENVS="docker $ECK_2X $ECK_3X"
-          elif [ "$FORK" = true ];                                            then IMAGES="";         ENVS=""
-          elif [ "$BRANCH" = master ] && [ "$DRAFT" = true ];                 then IMAGES="prod";     ENVS="docker"
-          elif [ "$BRANCH" = master ];                                        then IMAGES="prod";     ENVS="docker $ECK_3X"
-          elif [ "$DRAFT" = true ];                                           then IMAGES="dev";      ENVS="docker"
-          else                                                                     IMAGES="dev";      ENVS="docker $ECK_3X"
-          fi
-          # The tests of a leg come from the branch of its plugins: master for the released plugins,
-          # the plugin branch for the dev images. The cron builds the dev images from develop.
-          if [ "$EVENT" = schedule ]; then PROD_TESTS=master;       DEV=develop
-          else                             PROD_TESTS=$HEAD_BRANCH; DEV=$HEAD_BRANCH
+          # One row per trigger of the Workflows table in CI.md, in the same order.
+          row() { IMAGES=$1; ENVS=$2; PROD_TESTS=$3; DEV_PLUGINS=$4; DEV_TESTS=$5; }
+          ALL="docker $ECK_2X $ECK_3X"
+          ECK3="docker $ECK_3X"
+          # The commit of the event, for a PR the merge commit. The cron starts on master, so its
+          # rows name the branch of each set of plugins.
+          C=$GITHUB_SHA
+          #                                                        images     envs     prod tests  dev plugins  dev tests
+          if   [ "$EVENT" = schedule ];                      then row "prod dev" "$ALL"  master      develop      develop
+          elif [ "$EVENT" = workflow_dispatch ];             then row "prod dev" "$ALL"  "$C"        "$REF"       "$C"
+          elif [ "$EVENT" = push ] && [ "$REF" = master ];   then row prod       "$ECK3" "$C"        ""           ""
+          elif [ "$EVENT" = push ];                          then row dev        "$ECK3" ""          "$REF"       "$C"
+          elif [ "$FORK" = true ];                           then row ""         ""      ""          ""           ""
+          elif [ "$BASE" = master ] && [ "$DRAFT" = true ];  then row prod       docker  "$C"        ""           ""
+          elif [ "$BASE" = master ];                         then row prod       "$ECK3" "$C"        ""           ""
+          elif [ "$DRAFT" = true ];                          then row dev        docker  ""          "$HEAD"      "$C"
+          else                                                    row dev        "$ECK3" ""          "$HEAD"      "$C"
           fi
           RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh e2e)
           echo "$RESOLVED"
           ELK_VERSIONS=$(jq -r '.elk_versions | join(" ")' <<< "$RESOLVED")
           {
             echo "images=$IMAGES"
-            echo "prod_tests_branch=$PROD_TESTS"
-            echo "dev_branch=$DEV"
+            echo "prod_tests_ref=$PROD_TESTS"
+            echo "dev_plugins_branch=$DEV_PLUGINS"
+            echo "dev_tests_ref=$DEV_TESTS"
             echo "ror_version=$(jq -r .ror_version <<< "$RESOLVED")"
             echo "elk_versions=$ELK_VERSIONS"
             echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
@@ -104,7 +111,7 @@ jobs:
       - name: Check out the tests of the released plugins
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ needs.plan.outputs.prod_tests_branch }}
+          ref: ${{ needs.plan.outputs.prod_tests_ref }}
           persist-credentials: false
       - &docker-hub-mirror
         name: Configure the Docker Hub mirror
@@ -163,23 +170,26 @@ jobs:
     timeout-minutes: 90
     outputs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
-      target_branch: ${{ steps.prepare.outputs.target_branch }}
     steps:
       - *checkout
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          TARGET_BRANCH: ${{ needs.plan.outputs.dev_branch }}
+          TARGET_BRANCH: ${{ needs.plan.outputs.dev_plugins_branch }}
+          EVENT: ${{ github.event_name }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           ELK_VERSIONS: ${{ needs.plan.outputs.elk_versions }}
         run: |
           set -euo pipefail
           . ci/prebuild-images-lib.sh
 
+          # The merge commit of a PR into develop or an epic holds the develop tests, so there the
+          # pre-build may build develop in place of a branch that a plugin repo lacks.
+          [ "$EVENT" = pull_request ] || require_plugin_branch "$TARGET_BRANCH"
+
           # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
           RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
           echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
-          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
 
           dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
           wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
@@ -197,18 +207,11 @@ jobs:
     env:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
-      - name: Check out the tests of the plugin branch
+      - name: Check out the tests of the pre-build plugins
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ needs.plan.outputs.dev_branch }}
+          ref: ${{ needs.plan.outputs.dev_tests_ref }}
           persist-credentials: false
-      - name: The tests and the plugins come from the same branch
-        env:
-          PLUGINS: ${{ needs.prepare-dev-images.outputs.target_branch }}
-        run: |
-          TESTS=$(git rev-parse --abbrev-ref HEAD)
-          echo "tests=$TESTS plugins=$PLUGINS"
-          [ "$TESTS" = "$PLUGINS" ] || { echo "::error::The tests come from $TESTS, the plugins from $PLUGINS"; exit 1; }
       - *docker-hub-mirror
       - *setup-node
       - *cleanup-disk-space
