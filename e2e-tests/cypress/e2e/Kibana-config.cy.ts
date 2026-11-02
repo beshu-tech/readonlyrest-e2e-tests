@@ -174,13 +174,7 @@ const customKibanaIndexName = '.kibana_custom';
 
     it('should verify custom Kibana index', () => {
       const customIndex = `${customKibanaIndexName}_${getKibanaVersion()}_001`;
-      esApiClient.findIndicesByPattern(customIndex).then(result => {
-        const foundIndex = result.find(({ index }) => index === customIndex);
-        if (!foundIndex) throw new Error(`Expected to find an index matching ${customIndex}`);
-        expect(foundIndex.index).to.equal(customIndex);
-        expect(foundIndex.health).to.equal('green');
-        expect(Number.parseInt(foundIndex['docs.count'], 10)).to.be.greaterThan(0);
-      });
+      esApiAdvancedClient.waitForIndexReady(customIndex);
     });
   });
   // xpack.reporting.index was removed in Kibana 8.0, so this only applies to the 7.x leg.
