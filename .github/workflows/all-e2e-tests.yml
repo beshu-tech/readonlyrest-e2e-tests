@@ -50,8 +50,6 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      - name: Test the base-branch rule
-        run: .github/scripts/tests/base-branch-of-pull-request.test.sh
       - name: Choose the images, the environments and the versions
         id: plan
         env:
@@ -87,6 +85,18 @@ jobs:
             echo "elk_versions=$ELK_VERSIONS"
             echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
           } >> "$GITHUB_OUTPUT"
+
+  # ==========================================
+  # SCRIPT TESTS
+  # ==========================================
+  script-tests:
+    name: "📜 Script tests"
+    runs-on: *light-runner
+    timeout-minutes: 5
+    steps:
+      - *checkout
+      - name: Run every test in .github/scripts/tests
+        run: find .github/scripts/tests -name '*.test.sh' -print0 | xargs -0 -n1 bash
 
   # ==========================================
   # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
