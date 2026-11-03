@@ -54,8 +54,9 @@ export class Observability {
 
     type Buckets = Record<string, { doc_count: number }>;
     type ReadinessResponse = HttpResponse<{ aggregations?: { required: { buckets: Buckets } } }>;
-    // A 503 means that every APM shard the search matches is new and not assigned yet. A body without
-    // aggregations means that no APM index exists, for example right after the cleanup.
+    // A 503 means that every APM shard the search matches is new and not assigned yet. A 429 means that
+    // Elasticsearch rejects the search under load. A body without aggregations means that no APM index
+    // exists, for example right after the cleanup.
     const missingData = (response: ReadinessResponse) => {
       const buckets = response.body.aggregations?.required.buckets;
       return buckets
@@ -75,7 +76,7 @@ export class Observability {
       response => missingData(response).length === 0,
       {
         failFast: ({ status, body }) =>
-          ![200, 503].includes(status) &&
+          ![200, 429, 503].includes(status) &&
           `The APM readiness search failed with HTTP ${status}: ${JSON.stringify(body)}`,
         // Up to 10 s of agent delay, up to 60 s until APM Server writes the 1m metrics, and a margin
         // for a loaded runner.
