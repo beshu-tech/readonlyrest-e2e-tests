@@ -1,6 +1,6 @@
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
 import { esApiClient } from '../support/helpers/EsApiClient';
-import { isMultiKibanaNodeEnv } from '../support/helpers';
+import { isMultiKibanaNodeEnv, stopApp } from '../support/helpers';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Discover } from '../support/page-objects/Discover';
@@ -14,6 +14,7 @@ describe('Readonlyrest-settings', () => {
   const adminCredentials = 'admin:dev';
 
   afterEach(() => {
+    stopApp();
     Settings.setReadonlyRestKbnSettings();
     esApiClient.deleteIndex(customSessionIndex);
     kbnApiAdvancedClient.deleteSavedObjects(adminCredentials);

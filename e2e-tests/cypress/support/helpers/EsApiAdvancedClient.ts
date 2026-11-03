@@ -81,22 +81,18 @@ export class EsApiAdvancedClient extends EsApiClient {
   // A tenant/custom Kibana index (e.g. under multiTenancyEnabled: false) is provisioned lazily,
   // on the first authenticated interaction after Kibana restarts into that config - checking for
   // it immediately after login is a timing race, not a guarantee.
-  public waitForIndexReady(
-    pattern: string,
-    timeout = 40000,
-    interval = 1000
-  ): Cypress.Chainable<GetIndices | undefined> {
+  public waitForIndexReady(pattern: string, timeout = 40000, interval = 1000): Cypress.Chainable<GetIndices[]> {
     // Not findIndicesByPattern: _cat/indices/<name> 404s (and throws) while the index doesn't
     // exist yet, which is exactly the state being waited out here. Listing all indices and
     // filtering client-side never 404s, so recurse actually gets to retry.
     return recurse(
-      () => this.indices().then(result => result.find(({ index }) => index === pattern)),
-      (foundIndex): boolean =>
+      () => this.indices().then(result => result.filter(({ index }) => index === pattern)),
+      ([foundIndex]): boolean =>
         Boolean(foundIndex && foundIndex.health === 'green' && Number.parseInt(foundIndex['docs.count'], 10) > 0),
       {
         timeout,
         delay: interval,
-        log: foundIndex => cy.log(`Waiting for index ${pattern} to be ready: ${JSON.stringify(foundIndex)}`),
+        log: ([foundIndex]) => cy.log(`Waiting for index ${pattern} to be ready: ${JSON.stringify(foundIndex)}`),
         error: `Index ${pattern} never became ready (green with docs)`
       }
     );

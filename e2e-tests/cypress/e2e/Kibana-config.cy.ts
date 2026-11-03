@@ -130,11 +130,8 @@ const customKibanaIndexName = '.kibana_custom';
         expect(response.status).to.equal(200);
       });
 
-      // FIXME: expect only 401 when every leg runs a ROR KBN release with readonlyrest_kbn#1074. A
-      // request with no session and no credentials gets 401 from builds with #1074 (dev images) and
-      // 403 from the releases before it, and a spec cannot tell the two builds apart.
       cy.request({ url: `${Cypress.config().baseUrl}/api/spaces/space`, failOnStatusCode: false }).then(response => {
-        expect(response.status).to.be.oneOf([401, 403]);
+        expect(response.status).to.equal(401);
         expect(response.body.error).to.equal('Unauthorized');
       });
     });
@@ -177,13 +174,7 @@ const customKibanaIndexName = '.kibana_custom';
 
     it('should verify custom Kibana index', () => {
       const customIndex = `${customKibanaIndexName}_${getKibanaVersion()}_001`;
-      esApiClient.findIndicesByPattern(customIndex).then(result => {
-        const foundIndex = result.find(({ index }) => index === customIndex);
-        if (!foundIndex) throw new Error(`Expected to find an index matching ${customIndex}`);
-        expect(foundIndex.index).to.equal(customIndex);
-        expect(foundIndex.health).to.equal('green');
-        expect(Number.parseInt(foundIndex['docs.count'], 10)).to.be.greaterThan(0);
-      });
+      esApiAdvancedClient.waitForIndexReady(customIndex);
     });
   });
   // xpack.reporting.index was removed in Kibana 8.0, so this only applies to the 7.x leg.

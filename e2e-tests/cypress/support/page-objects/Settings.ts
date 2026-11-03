@@ -133,9 +133,10 @@ export class Settings {
   }
 
   static setReadonlyRestKbnSettings(readonlyRestKbnSettings = '') {
-    cy.fixture('defaultReadonlyRestEsSettings.yaml').then(esYamlSettings => {
+    cy.fixture('defaultReadonlyRestEsAndKbnSettings.yaml').then(yamlSettings => {
+      const { readonlyrest } = yaml.load(yamlSettings) as { readonlyrest: object };
       const merged = {
-        ...(yaml.load(esYamlSettings) as object),
+        readonlyrest,
         readonlyrest_kbn: {
           cookiePass: '12312313123213123213123adadasdasdasd',
           // elk-ror runs 2 kbn-ror replicas behind kbn-proxy's round robin. Without index-backed
