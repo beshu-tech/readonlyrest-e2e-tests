@@ -37,8 +37,8 @@ jobs:
       elk_versions_json: ${{ steps.plan.outputs.elk_versions_json }}
       ror_version: ${{ steps.plan.outputs.ror_version }}
       prod_tests_ref: ${{ steps.plan.outputs.prod_tests_ref }}
-      dev_plugins_branch: ${{ steps.plan.outputs.dev_plugins_branch }}
       dev_tests_ref: ${{ steps.plan.outputs.dev_tests_ref }}
+      dev_plugins_branch: ${{ steps.plan.outputs.dev_plugins_branch }}
     steps:
       - &checkout
         name: Checkout code
@@ -48,30 +48,28 @@ jobs:
       - name: Choose the images, the branches and the versions
         id: plan
         env:
-          EVENT: ${{ github.event_name }}
+          TRIGGER: ${{ github.event_name }}
           CRON: ${{ github.event.schedule }}
-          REF: ${{ github.ref_name }}
+          TRIGGER_BRANCH: ${{ github.ref_name }}
+          TRIGGER_COMMIT: ${{ github.sha }}
         run: |
           set -euo pipefail
           # One row per trigger of the Workflows table in CI.md, in the same order.
-          row() { IMAGES=$1; PROD_TESTS=$2; DEV_PLUGINS=$3; DEV_TESTS=$4; }
-          # The commit of the event. A cron starts on master, so its rows name the branch of its
-          # plugins.
-          C=$GITHUB_SHA
-          #                                         images     prod tests  dev plugins  dev tests
-          case "$EVENT:$CRON" in
-            "schedule:0 1 * * 0") row prod       master      ""           ""      ;;
-            "schedule:0 1 * * 3") row dev        ""          develop      develop ;;
-            workflow_dispatch:*)  row "prod dev" "$C"        "$REF"       "$C"    ;;
-            *) echo "No plan for $EVENT $CRON" >&2; exit 1 ;;
+          row() { IMAGES=$1; PROD_TESTS=$2; DEV_TESTS=$3; DEV_PLUGINS=$4; }
+          #                                         images     prod tests         dev tests          dev plugins
+          case "$TRIGGER:$CRON" in
+            "schedule:0 1 * * 0") row "prod"     "master"           ""                 ""                 ;;
+            "schedule:0 1 * * 3") row "dev"      ""                 "develop"          "develop"          ;;
+            workflow_dispatch:*)  row "prod dev" "$TRIGGER_COMMIT"  "$TRIGGER_COMMIT"  "$TRIGGER_BRANCH"  ;;
+            *) echo "No plan for $TRIGGER $CRON" >&2; exit 1 ;;
           esac
           RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh bootstrap)
           echo "$RESOLVED"
           {
             echo "images=$IMAGES"
             echo "prod_tests_ref=$PROD_TESTS"
-            echo "dev_plugins_branch=$DEV_PLUGINS"
             echo "dev_tests_ref=$DEV_TESTS"
+            echo "dev_plugins_branch=$DEV_PLUGINS"
             echo "ror_version=$(jq -r .ror_version <<< "$RESOLVED")"
             echo "elk_versions=$(jq -r '.elk_versions | join(" ")' <<< "$RESOLVED")"
             echo "elk_versions_json=$(jq -c .elk_versions <<< "$RESOLVED")"
@@ -158,7 +156,6 @@ jobs:
         run: |
           set -euo pipefail
           . ci/prebuild-images-lib.sh
-          require_plugin_branch "$TARGET_BRANCH"
 
           # Unique per attempt: a re-run must not silently reuse the previous attempt's images.
           RUN_TAG="run-${{ github.run_id }}-${{ github.run_attempt }}"
