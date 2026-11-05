@@ -36,29 +36,40 @@ jobs:
       elk_versions: ${{ steps.plan.outputs.elk_versions }}
       elk_versions_json: ${{ steps.plan.outputs.elk_versions_json }}
       ror_version: ${{ steps.plan.outputs.ror_version }}
+      prod_tests_ref: ${{ steps.plan.outputs.prod_tests_ref }}
+      dev_tests_ref: ${{ steps.plan.outputs.dev_tests_ref }}
+      dev_plugins_branch: ${{ steps.plan.outputs.dev_plugins_branch }}
     steps:
       - &checkout
         name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
-      - name: Choose the images and list the versions
+      - name: Choose the images, the branches and the versions
         id: plan
         env:
-          EVENT: ${{ github.event_name }}
+          TRIGGER: ${{ github.event_name }}
           CRON: ${{ github.event.schedule }}
+          TRIGGER_BRANCH: ${{ github.ref_name }}
+          TRIGGER_COMMIT: ${{ github.sha }}
         run: |
           set -euo pipefail
-          case "$EVENT:$CRON" in
-            workflow_dispatch:*) IMAGES="prod dev" ;;
-            "schedule:0 1 * * 0") IMAGES=prod ;;
-            "schedule:0 1 * * 3") IMAGES=dev ;;
-            *) echo "No plan for $EVENT $CRON" >&2; exit 1 ;;
+          # One row per trigger of the Workflows table in CI.md, in the same order.
+          row() { IMAGES=$1; PROD_TESTS=$2; DEV_TESTS=$3; DEV_PLUGINS=$4; }
+          #                                         images     prod tests         dev tests          dev plugins
+          case "$TRIGGER:$CRON" in
+            "schedule:0 1 * * 0") row "prod"     "master"           ""                 ""                 ;;
+            "schedule:0 1 * * 3") row "dev"      ""                 "develop"          "develop"          ;;
+            workflow_dispatch:*)  row "prod dev" "$TRIGGER_COMMIT"  "$TRIGGER_COMMIT"  "$TRIGGER_BRANCH"  ;;
+            *) echo "No plan for $TRIGGER $CRON" >&2; exit 1 ;;
           esac
           RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh bootstrap)
           echo "$RESOLVED"
           {
             echo "images=$IMAGES"
+            echo "prod_tests_ref=$PROD_TESTS"
+            echo "dev_tests_ref=$DEV_TESTS"
+            echo "dev_plugins_branch=$DEV_PLUGINS"
             echo "ror_version=$(jq -r .ror_version <<< "$RESOLVED")"
             echo "elk_versions=$(jq -r '.elk_versions | join(" ")' <<< "$RESOLVED")"
             echo "elk_versions_json=$(jq -c .elk_versions <<< "$RESOLVED")"
@@ -80,7 +91,11 @@ jobs:
         version: ${{ fromJSON(needs.plan.outputs.elk_versions_json) }}
         env: [docker]
     steps:
-      - *checkout
+      - name: Check out the tests of the released plugins
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.plan.outputs.prod_tests_ref }}
+          persist-credentials: false
       - &docker-hub-mirror
         name: Configure the Docker Hub mirror
         run: source .github/scripts/docker-hub-mirror.sh
@@ -119,9 +134,7 @@ jobs:
   # ==========================================
   # DEV IMAGE PREPARATION
   # ==========================================
-  # Builds dev images of both plugins for every version in the list, tagged per run. The cron
-  # builds develop. A manual dispatch builds the branch it runs on; both pre-build workflows fall
-  # back to `develop` if the branch is not there.
+  # Builds dev images of both plugins for every version in the list, tagged per run.
   prepare-dev-images:
     name: "🏗️ Prepare dev images"
     needs: plan
@@ -135,7 +148,7 @@ jobs:
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
-          TARGET_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.ref_name }}
+          TARGET_BRANCH: ${{ needs.plan.outputs.dev_plugins_branch }}
           ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
           ROR_ES_WAIT_TIMEOUT_SECONDS: 14400
           ROR_KBN_WAIT_TIMEOUT_SECONDS: 14400
@@ -165,7 +178,11 @@ jobs:
     env:
       ROR_IMAGE_TAG: ${{ needs.prepare-dev-images.outputs.run_tag }}
     steps:
-      - *checkout
+      - name: Check out the tests of the pre-build plugins
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.plan.outputs.dev_tests_ref }}
+          persist-credentials: false
       - *docker-hub-mirror
       - *cleanup-disk-space
       - *start-memory-monitor
