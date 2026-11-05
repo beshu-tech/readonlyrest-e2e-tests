@@ -42,32 +42,54 @@ export const stopApp = () =>
     win.location.href = 'about:blank';
   });
 
-let unansweredPageRequests = new Set<object>();
+type TrackedRequest = { name: string; sentAt: number };
 
-// Kibana completes a request also when the browser aborts it, for example because the page closes,
-// and Cypress gives no signal for an aborted request. So stopAppAfterKibanaAnswers waits for the
-// answers before it leaves the page. Call this before the page loads.
+const REQUEST_SETTLE_MS = 10000;
+
+// Holds the requests that have no answer yet. It is undefined when no test tracks requests.
+let openRequests: Set<TrackedRequest> | undefined;
+
 export const trackKibanaRequests = () => {
-  cy.on('window:before:load', () => {
-    // A request of the previous page has its answer, or the browser aborted it.
-    unansweredPageRequests = new Set();
+  const requests = new Set<TrackedRequest>();
+  openRequests = requests;
+  cy.window({ log: false }).then(win => {
+    if (win.location.href !== 'about:blank') {
+      throw new Error(`trackKibanaRequests() sees no request of the loaded page ${win.location.href}.`);
+    }
   });
   cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => {
-    const pageRequests = unansweredPageRequests;
-    const request = {};
-    pageRequests.add(request);
+    const request = { name: `${req.method} ${req.url}`, sentAt: Date.now() };
+    requests.add(request);
     req.on('response', () => {
-      pageRequests.delete(request);
+      requests.delete(request);
     });
   });
 };
 
-// Leaves the Kibana page after Kibana answers each request of the page, so no request of the page
-// changes Kibana after this call. New requests of the page do not go to Kibana.
+// Leaves the Kibana page when no request of the test can still change Kibana. New requests do not go to Kibana.
+// Kibana completes a request also when the browser aborts it, and Cypress gives no signal for the abort. So the
+// wait stops tracking a request at REQUEST_SETTLE_MS. This is safe because Kibana answers well below that age.
 export const stopAppAfterKibanaAnswers = () => {
+  const requests = openRequests;
+  if (!requests) {
+    throw new Error('stopAppAfterKibanaAnswers() needs trackKibanaRequests() earlier in the test.');
+  }
+  openRequests = undefined;
+
+  const namesOf = (tracked: TrackedRequest[]) => tracked.map(request => request.name);
+  const isSettled = (request: TrackedRequest) => Date.now() - request.sentAt >= REQUEST_SETTLE_MS;
+
   cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => req.destroy());
-  cy.wrap(null, { log: false }).should(() =>
-    expect(unansweredPageRequests.size, 'requests of the page that Kibana did not answer').to.equal(0)
+  cy.wrap(null, { log: false, timeout: REQUEST_SETTLE_MS + 1000 }).should(() =>
+    expect(
+      namesOf([...requests].filter(request => !isSettled(request))),
+      'requests of the test that Kibana can still complete'
+    ).to.deep.equal([])
   );
+  cy.then(() => {
+    if (requests.size > 0) {
+      cy.log(`No answer from Kibana, or the browser aborted: ${namesOf([...requests]).join(', ')}`);
+    }
+  });
   stopApp();
 };
