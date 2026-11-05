@@ -402,6 +402,7 @@ report_not_ready() {
   local pod
   echo "Not ready after ${TIMEOUT_IN_SECONDS}s. Pods: ${NOT_READY_PODS[*]:-none}. ECK resources: ${NOT_READY_RESOURCES[*]:-none}."
   docker exec eck-ror-control-plane kubectl get elasticsearch,kibana,apmserver || true
+  df -h / || true
   for pod in "${NOT_READY_PODS[@]}"; do
     [[ "$pod" == "(no eck-ror pod yet)" ]] && continue
     echo "--- kubectl describe pod $pod"
