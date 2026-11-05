@@ -35,6 +35,10 @@ jobs:
     # A fork PR runs its own scripts here, so it gets a GitHub-hosted runner, whatever LIGHT_RUNS_ON names.
     runs-on: &light-runner ${{ github.event.pull_request.head.repo.fork && fromJSON('["ubuntu-24.04"]') || fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # To read the base branch of the PR.
+      pull-requests: read
     outputs:
       images: ${{ steps.plan.outputs.images }}
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -50,17 +54,25 @@ jobs:
         id: plan
         env:
           EVENT: ${{ github.event_name }}
-          # A pull request tests the plugins of the branch it targets.
-          BRANCH: ${{ github.base_ref || github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BRANCH: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
           DRAFT: ${{ github.event.pull_request.draft == true }}
           # A fork PR gets no secrets, and the dev image pre-build needs them.
           FORK: ${{ github.event.pull_request.head.repo.fork == true }}
         run: |
           set -euo pipefail
+          # A pull request tests the plugins of the branch it targets.
+          if [ "$EVENT" = pull_request ]; then
+            BASE_BRANCH=$(.github/scripts/base-branch-of-pull-request.sh "$BASE_REF" "$PR_NUMBER")
+          else
+            BASE_BRANCH=$BRANCH
+          fi
           if   [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ]; then IMAGES="prod dev"; ENVS="docker $ECK_2X $ECK_3X"
           elif [ "$FORK" = true ];                                            then IMAGES="";         ENVS=""
-          elif [ "$BRANCH" = master ] && [ "$DRAFT" = true ];                 then IMAGES="prod";     ENVS="docker"
-          elif [ "$BRANCH" = master ];                                        then IMAGES="prod";     ENVS="docker $ECK_3X"
+          elif [ "$BASE_BRANCH" = master ] && [ "$DRAFT" = true ];            then IMAGES="prod";     ENVS="docker"
+          elif [ "$BASE_BRANCH" = master ];                                   then IMAGES="prod";     ENVS="docker $ECK_3X"
           elif [ "$DRAFT" = true ];                                           then IMAGES="dev";      ENVS="docker"
           else                                                                     IMAGES="dev";      ENVS="docker $ECK_3X"
           fi
@@ -73,6 +85,18 @@ jobs:
             echo "elk_versions=$ELK_VERSIONS"
             echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
           } >> "$GITHUB_OUTPUT"
+
+  # ==========================================
+  # SCRIPT TESTS
+  # ==========================================
+  script-tests:
+    name: "📜 Script tests"
+    runs-on: *light-runner
+    timeout-minutes: 5
+    steps:
+      - *checkout
+      - name: Run every test in .github/scripts/tests
+        run: find .github/scripts/tests -name '*.test.sh' -print0 | xargs -0 -n1 bash
 
   # ==========================================
   # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES
