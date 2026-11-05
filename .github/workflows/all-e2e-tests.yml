@@ -35,6 +35,10 @@ jobs:
     # A fork PR runs its own scripts here, so it gets a GitHub-hosted runner, whatever LIGHT_RUNS_ON names.
     runs-on: &light-runner ${{ github.event.pull_request.head.repo.fork && fromJSON('["ubuntu-24.04"]') || fromJSON(vars.LIGHT_RUNS_ON || '["ubuntu-24.04"]') }}
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # To read the base branch of the PR.
+      pull-requests: read
     outputs:
       images: ${{ steps.plan.outputs.images }}
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -55,13 +59,20 @@ jobs:
           TRIGGER: ${{ github.event_name }}
           TRIGGER_BRANCH: ${{ github.ref_name }}
           TRIGGER_COMMIT: ${{ github.sha }}
-          PR_TARGET_BRANCH: ${{ github.base_ref }}
+          PR_BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
           PR_SOURCE_BRANCH: ${{ github.head_ref }}
           DRAFT: ${{ github.event.pull_request.draft == true }}
           # A fork PR gets no secrets, and the dev image pre-build needs them.
           FORK: ${{ github.event.pull_request.head.repo.fork == true }}
         run: |
           set -euo pipefail
+          # A pull request tests the plugins of the branch it targets now.
+          PR_TARGET_BRANCH=""
+          if [ "$TRIGGER" = pull_request ]; then
+            PR_TARGET_BRANCH=$(.github/scripts/base-branch-of-pull-request.sh "$PR_BASE_REF" "$PR_NUMBER")
+          fi
           # One row per trigger of the Workflows table in CI.md, in the same order.
           row() { IMAGES=$1; ENVS=$2; PROD_TESTS=$3; DEV_TESTS=$4; DEV_PLUGINS=$5; }
           ALL="docker $ECK_2X $ECK_3X"
@@ -89,6 +100,18 @@ jobs:
             echo "elk_versions=$ELK_VERSIONS"
             echo "matrix=$(jq -cn --arg v "$ELK_VERSIONS" --arg e "$ENVS" '{version: ($v | split(" ")), env: ($e | split(" "))}')"
           } >> "$GITHUB_OUTPUT"
+
+  # ==========================================
+  # SCRIPT TESTS
+  # ==========================================
+  script-tests:
+    name: "📜 Script tests"
+    runs-on: *light-runner
+    timeout-minutes: 5
+    steps:
+      - *checkout
+      - name: Run every test in .github/scripts/tests
+        run: find .github/scripts/tests -name '*.test.sh' -print0 | xargs -0 -n1 bash
 
   # ==========================================
   # E2E TESTS - RELEASED (PROD) PLUGIN IMAGES

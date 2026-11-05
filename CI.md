@@ -35,7 +35,7 @@ Each `runs-on` reads a JSON list of runner labels from a repository variable. Do
 
 | Variable | Jobs |
 |---|---|
-| `LIGHT_RUNS_ON` | plan jobs and the dev image pre-build |
+| `LIGHT_RUNS_ON` | plan jobs, the script tests and the dev image pre-build |
 | `E2E_REPO_RUNS_ON` | the jobs that start a stack |
 
 ## Versions under test
