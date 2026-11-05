@@ -75,18 +75,18 @@ jobs:
           fi
           # One row per trigger of the Workflows table in CI.md, in the same order.
           row() { IMAGES=$1; ENVS=$2; PROD_TESTS=$3; DEV_TESTS=$4; DEV_PLUGINS=$5; }
-          ALL="docker $ECK_2X $ECK_3X"
-          ECK3="docker $ECK_3X"
-          #                                                                      images     envs     prod tests         dev tests          dev plugins
-          if   [ "$TRIGGER" = schedule ];                               then row "prod dev" "$ALL"   "master"           "develop"          "develop"
-          elif [ "$TRIGGER" = workflow_dispatch ];                      then row "prod dev" "$ALL"   "$TRIGGER_COMMIT"  "$TRIGGER_COMMIT"  "$TRIGGER_BRANCH"
-          elif [ "$TRIGGER" = push ] && [ "$TRIGGER_BRANCH" = master ]; then row "prod"     "$ECK3"  "$TRIGGER_COMMIT"  ""                 ""
-          elif [ "$TRIGGER" = push ];                                   then row "dev"      "$ECK3"  ""                 "$TRIGGER_COMMIT"  "$TRIGGER_BRANCH"
-          elif [ "$FORK" = true ];                                      then row ""         ""       ""                 ""                 ""
-          elif [ "$PR_TARGET_BRANCH" = master ] && [ "$DRAFT" = true ]; then row "prod"     "docker" "$TRIGGER_COMMIT"  ""                 ""
-          elif [ "$PR_TARGET_BRANCH" = master ];                        then row "prod"     "$ECK3"  "$TRIGGER_COMMIT"  ""                 ""
-          elif [ "$DRAFT" = true ];                                     then row "dev"      "docker" ""                 "$TRIGGER_COMMIT"  "$PR_SOURCE_BRANCH"
-          else                                                               row "dev"      "$ECK3"  ""                 "$TRIGGER_COMMIT"  "$PR_SOURCE_BRANCH"
+          DOCKER_AND_ALL_ECK="docker $ECK_2X $ECK_3X"
+          DOCKER_AND_ECK3="docker $ECK_3X"
+          #                                                                      images     envs                   prod tests         dev tests          dev plugins
+          if   [ "$TRIGGER" = schedule ];                               then row "prod dev" "$DOCKER_AND_ALL_ECK"  "master"           "develop"          "develop"
+          elif [ "$TRIGGER" = workflow_dispatch ];                      then row "prod dev" "$DOCKER_AND_ALL_ECK"  "$TRIGGER_COMMIT"  "$TRIGGER_COMMIT"  "$TRIGGER_BRANCH"
+          elif [ "$TRIGGER" = push ] && [ "$TRIGGER_BRANCH" = master ]; then row "prod"     "$DOCKER_AND_ECK3"     "$TRIGGER_COMMIT"  ""                 ""
+          elif [ "$TRIGGER" = push ];                                   then row "dev"      "$DOCKER_AND_ECK3"     ""                 "$TRIGGER_COMMIT"  "$TRIGGER_BRANCH"
+          elif [ "$FORK" = true ];                                      then row ""         ""                     ""                 ""                 ""
+          elif [ "$PR_TARGET_BRANCH" = master ] && [ "$DRAFT" = true ]; then row "prod"     "docker"               "$TRIGGER_COMMIT"  ""                 ""
+          elif [ "$PR_TARGET_BRANCH" = master ];                        then row "prod"     "$DOCKER_AND_ECK3"     "$TRIGGER_COMMIT"  ""                 ""
+          elif [ "$DRAFT" = true ];                                     then row "dev"      "docker"               ""                 "$TRIGGER_COMMIT"  "$PR_SOURCE_BRANCH"
+          else                                                               row "dev"      "$DOCKER_AND_ECK3"     ""                 "$TRIGGER_COMMIT"  "$PR_SOURCE_BRANCH"
           fi
           RESOLVED=$(timeout 300 .github/scripts/resolve-test-versions.sh e2e)
           echo "$RESOLVED"
