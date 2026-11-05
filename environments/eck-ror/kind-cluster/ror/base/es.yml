@@ -8,6 +8,13 @@ spec:
   nodeSets:
     - name: default
       count: 1
+      # Watermarks measure the disk of the runner. The defaults stop new shards below 10% free, so the
+      # indices of Kibana and ROR stay unassigned and the stack never gets ready. The docker environment
+      # has the same values.
+      config:
+        cluster.routing.allocation.disk.watermark.low: 2gb
+        cluster.routing.allocation.disk.watermark.high: 1gb
+        cluster.routing.allocation.disk.watermark.flood_stage: 512mb
       podTemplate:
         spec:
           containers:
