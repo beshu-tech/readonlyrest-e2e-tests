@@ -48,13 +48,27 @@ spec:
                   key: key
             - name: I_UNDERSTAND_AND_ACCEPT_KBN_PATCHING
               value: "yes"
-            # Kibana 9.4.6 exhausts a 768 MB heap. The docker environment gives it 1280 MB too.
+            # Kibana 9.4.6 exhausts a 768 MB heap.
             - name: NODE_OPTIONS
-              value: "--max-old-space-size=1280"
-          # The default limit is 1 GiB on ECK 2.x and 2 GiB on ECK 3.5. The pod peaked at 1.06 GiB with a
-          # 768 MB heap. 2 GiB holds the 1280 MB heap and the rest of the node process, on each ECK.
+              # A smaller heap causes GC pauses long enough to fail the readiness probe.
+              value: "--max-old-space-size=1536"
+          # The default probe (timeoutSeconds: 5, failureThreshold: 3) fails under CI CPU load.
+          # timeoutSeconds must not be more than periodSeconds.
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
+            successThreshold: 1
+          # No CPU limit, to prevent throttling. The CPU request gives Kibana a share against the
+          # other pods on the kind node. The memory limit leaves space above the heap cap.
           resources:
             requests:
-              memory: 2Gi
+              cpu: '500m'
+              memory: '2Gi'
             limits:
-              memory: 2Gi
+              memory: '3Gi'

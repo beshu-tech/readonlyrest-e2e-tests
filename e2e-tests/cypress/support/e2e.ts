@@ -20,7 +20,7 @@ before(() => kbnApiAdvancedClient.waitForKibanaToAnswerUserRequests());
 // Every spec starts on the default ReadonlyREST settings and with no Test ACL. A spec that changes
 // them restores them in an after hook, and a failed hook leaves the change for every later spec.
 before(() => {
-  rorApiClient.configureRorIndexMainSettings('defaultSettings.yaml');
+  rorApiClient.configureRorIndexMainSettingsFromFixture('defaultReadonlyRestEsAndKbnSettings.yaml');
   rorApiClient.invalidateTestSettings();
 });
 
@@ -60,10 +60,12 @@ declare global {
     interface EsRequestOptions {
       endpoint: string;
       credentials: BasicCredentials;
-      // Sent as JSON.
-      payload?: object;
+      // An object is sent as JSON, a string as it is.
+      payload?: object | string;
       failOnStatusCode?: boolean;
       headers?: { [key: string]: string };
+      // The cy.task timeout of the request, for a request slower than the default task timeout.
+      timeoutMs?: number;
     }
 
     interface KbnRequestOptions extends EsRequestOptions {

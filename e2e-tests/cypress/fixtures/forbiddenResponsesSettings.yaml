@@ -38,3 +38,6 @@ readonlyrest:
         index: ".kibana_user2"
         access: rw
       indices: ["invoices"]
+readonlyrest_kbn:
+    cookiePass: '12312313123213123213123adadasdasdasd'
+    store_sessions_in_index: true

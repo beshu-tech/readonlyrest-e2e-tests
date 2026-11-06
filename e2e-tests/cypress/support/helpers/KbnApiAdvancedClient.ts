@@ -98,39 +98,6 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   }
 
   /**
-   * Waits out a restart that is known to be under way: watches Kibana go away first, then serve
-   * again. Only call this when the config really did change — see changeKibanaConfig, which asks the
-   * endpoint. Never seeing Kibana go down is a failure here, deliberately: treating it as 'then no
-   * restart was needed' would put back exactly the race described above whenever a shutdown ran
-   * slower than the wait.
-   */
-  public waitForKibanaRestart(baseUrl: string, downRetries = 120, delay = 1000) {
-    let attempts = 0;
-
-    const isServing = (status: string) => status === 'available' || status === 'green';
-
-    const waitUntilDown = (): Cypress.Chainable<undefined> =>
-      cy.task<string>('checkKibanaHealth', { url: baseUrl }).then((status): Cypress.Chainable<undefined> => {
-        if (!isServing(status)) {
-          cy.log('⏳ Kibana went down, waiting for it to come back');
-          return cy.wrap(undefined);
-        }
-
-        if (attempts >= downRetries) {
-          throw new Error(
-            `Kibana was still serving ${downRetries * delay}ms after a config change that restarts it. ` +
-              'It never went down, so there is no safe point to carry on from.'
-          );
-        }
-
-        attempts += 1;
-        return cy.wait(delay).then(waitUntilDown);
-      });
-
-    return waitUntilDown().then(() => this.waitForKibanaHealth(baseUrl, 90, 2000));
-  }
-
-  /**
    * Waits until Kibana answers a request that ReadonlyREST authenticates. waitForKibanaHealth is not
    * enough: /api/status answers also on a Kibana node whose ReadonlyREST part never answers a user
    * request (RORDEV-2283). Such a node does not recover until it restarts, so the wait stays short.
@@ -174,7 +141,7 @@ export class KbnApiAdvancedClient extends KbnApiClient {
 
           if (kibana8xAndAboveSuccessStatus || kibana7xSuccessStatus) {
             cy.log('✅ Kibana is healthy');
-            return cy.wrap(undefined);
+            return cy.then(() => undefined);
           }
 
           if (attempts >= retries) {
@@ -197,11 +164,12 @@ export class KbnApiAdvancedClient extends KbnApiClient {
     page = 1,
     found: SavedObject[] = []
   ): Cypress.Chainable<SavedObject[]> {
-    return this.getSavedObjects(credentials, group, { page, perPage: 100 }).then(result => {
+    return this.getSavedObjects(credentials, group, { page, perPage: 100, failOnStatusCode: false }).then(result => {
       // This cleanup races the stack it cleans: under resetKibanaIndexToTemplate the tenancy
       // index can be mid-reset, and a session sweep or config restart can log the request out,
-      // in which case the _find answers with a login page instead of the find JSON. An index
-      // that is already resetting has nothing left to clean, so treat that as the end of the list.
+      // in which case the _find answers with a login page instead of the find JSON (or, if the
+      // ACL evaluates the mid-reset tenancy index as inaccessible, a 403). An index that is
+      // already resetting has nothing left to clean, so treat any of that as the end of the list.
       const pageObjects = result?.saved_objects ?? [];
       const all = [...found, ...pageObjects];
       if (pageObjects.length === 0 || all.length >= (result.total ?? 0)) {

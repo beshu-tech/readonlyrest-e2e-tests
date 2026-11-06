@@ -3,13 +3,14 @@ import { KibanaConfig } from '../support/helpers/KibanaConfig';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import { getKibanaVersion, kibanaVersion } from '../support/helpers';
+import { getKibanaVersion, kibanaVersion, stopApp } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Reporting } from '../support/page-objects/Reporting';
 import { SampleData } from '../support/helpers/SampleData';
 import { esApiClient } from '../support/helpers/EsApiClient';
 import { esApiAdvancedClient } from '../support/helpers/EsApiAdvancedClient';
+import { Settings } from '../support/page-objects/Settings';
 import { Tenancy } from '../support/page-objects/Tenancy';
 import { KibanaNavigation } from '../support/page-objects/KibanaNavigation';
 import { EnvName } from '../support/types';
@@ -22,6 +23,7 @@ const customKibanaIndexName = '.kibana_custom';
 (Cypress.env().envName === EnvName.ELK_ROR ? describe : describe.skip)('Kibana-config', () => {
   after(() => {
     KibanaConfig.apply();
+    Settings.restoreDefaultSettings();
     esApiAdvancedClient.deleteIndicesByPattern(customKibanaIndexName);
     esApiAdvancedClient.deleteDataStreamsByPattern(customKibanaIndexName);
   });
@@ -30,10 +32,14 @@ const customKibanaIndexName = '.kibana_custom';
     const customSessionIndex = `test_index`;
 
     before(() => {
+      KibanaConfig.applyRorKbnSettings('customKibanaConfig.yml');
       KibanaConfig.apply('customKibanaConfig.yml');
     });
 
     afterEach(() => {
+      // The page of the test keeps writing its session into the session index. After the delete below,
+      // such a write re-creates the index, and the next test finds the old session next to its own.
+      stopApp();
       kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
 
       // The next admin request resets the admin tenancy to the template that the line above emptied.
@@ -52,7 +58,7 @@ const customKibanaIndexName = '.kibana_custom';
 
       Login.initialization();
       Discover.openDataViewPage();
-      Discover.verifyIndexPatternSwitchLink('readonlyrest_audit-*');
+      Discover.verifyIndexPatternSwitchLink('AUDIT_INDEX_PATTERN');
       Dashboard.openDashboard();
       Dashboard.verifyDashboardExists('ReadonlyREST Audit Dashboard');
 
@@ -124,11 +130,8 @@ const customKibanaIndexName = '.kibana_custom';
         expect(response.status).to.equal(200);
       });
 
-      // FIXME: expect only 401 when every leg runs a ROR KBN release with readonlyrest_kbn#1074. A
-      // request with no session and no credentials gets 401 from builds with #1074 (dev images) and
-      // 403 from the releases before it, and a spec cannot tell the two builds apart.
       cy.request({ url: `${Cypress.config().baseUrl}/api/spaces/space`, failOnStatusCode: false }).then(response => {
-        expect(response.status).to.be.oneOf([401, 403]);
+        expect(response.status).to.equal(401);
         expect(response.body.error).to.equal('Unauthorized');
       });
     });
@@ -142,6 +145,7 @@ const customKibanaIndexName = '.kibana_custom';
   // is on the suite, so its Kibana restart does not run either.
   describe.skip('Default tenant middleware', () => {
     before(() => {
+      KibanaConfig.applyRorKbnSettings('customMiddlewareDefaultTenantKibanaConfig.yml');
       KibanaConfig.apply('customMiddlewareDefaultTenantKibanaConfig.yml');
     });
 
@@ -153,7 +157,10 @@ const customKibanaIndexName = '.kibana_custom';
   });
 
   describe('Custom kibana config multitenancy disabled', () => {
+    // The settings go first. Kibana does not start with the custom kibana.index of this kibana.yml
+    // while the index still has multitenancy on.
     before(() => {
+      KibanaConfig.applyRorKbnSettings('customKibanaConfigMultitenancyDisabled.yml');
       KibanaConfig.apply('customKibanaConfigMultitenancyDisabled.yml');
     });
 
@@ -167,13 +174,7 @@ const customKibanaIndexName = '.kibana_custom';
 
     it('should verify custom Kibana index', () => {
       const customIndex = `${customKibanaIndexName}_${getKibanaVersion()}_001`;
-      esApiClient.findIndicesByPattern(customIndex).then(result => {
-        const foundIndex = result.find(({ index }) => index === customIndex);
-        if (!foundIndex) throw new Error(`Expected to find an index matching ${customIndex}`);
-        expect(foundIndex.index).to.equal(customIndex);
-        expect(foundIndex.health).to.equal('green');
-        expect(Number.parseInt(foundIndex['docs.count'], 10)).to.be.greaterThan(0);
-      });
+      esApiAdvancedClient.waitForIndexReady(customIndex);
     });
   });
   // xpack.reporting.index was removed in Kibana 8.0, so this only applies to the 7.x leg.
@@ -181,8 +182,11 @@ const customKibanaIndexName = '.kibana_custom';
     describe('Custom kibana config custom xpack.reporting.index', () => {
       const docsIndex = 'sample_index';
 
+      // kibana.yml goes first. Until the restart Kibana runs with the custom kibana.index of the
+      // block above, and it rejects settings that turn multitenancy back on.
       before(() => {
         KibanaConfig.apply('customKibanaConfigXpackReportingIndex.yml');
+        KibanaConfig.applyRorKbnSettings('customKibanaConfigXpackReportingIndex.yml');
       });
 
       // The test counts the docs of the sample index and of the reporting index. A retry must not
