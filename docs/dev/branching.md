@@ -22,7 +22,7 @@ The repo has no version and no release of its own. It follows the two plugin rep
 5. **Cleanup after a ROR release.** Fallbacks for versions we no longer support, and the settings the release made obsolete.
 6. **Docs.** The ones that describe the released setup, and the ones that define the development process itself — this file among them. `master` is the branch a reader lands on, so it holds the authoritative copy; the merge back carries it to `develop`.
 
-Work inside an epic targets the epic branch. `all-e2e-tests.yml` gates the dev job set on `github.base_ref != 'master'`, so a PR into an epic branch runs the branch-matched dev images, the same as a PR into `develop`. The epic reaches `develop` as one merge.
+Work inside an epic targets the epic branch. `all-e2e-tests.yml` picks the dev job set when the base branch of a PR is not `master`, so a PR into an epic branch runs the branch-matched dev images, the same as a PR into `develop`. The epic reaches `develop` as one merge.
 
 Everything else targets `develop`. Two questions decide a case that is not on the list. Do the released plugins need the change now? Does the change leave the dev-image path untouched? If both answers are no, the PR targets `develop`.
 
