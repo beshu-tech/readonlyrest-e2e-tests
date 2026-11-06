@@ -44,14 +44,18 @@ export const stopApp = () =>
 
 type TrackedRequest = { name: string; sentAt: number };
 
+// Kibana completes a request also when the browser aborts it, and Cypress gives no signal for the abort.
+// So the wait stops tracking a request at this age. Kibana answers well below it.
 const REQUEST_SETTLE_MS = 10000;
 
-// Holds the requests that have no answer yet. It is undefined when no test tracks requests.
-let openRequests: Set<TrackedRequest> | undefined;
+// Cypress clears aliases at the start of each test, so a test never sees the requests of the test before it.
+const REQUESTS_ALIAS = 'kibanaRequests';
+
+const blockNewKibanaRequests = () => cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => req.destroy());
 
 export const trackKibanaRequests = () => {
   const requests = new Set<TrackedRequest>();
-  openRequests = requests;
+  cy.wrap(requests, { log: false }).as(REQUESTS_ALIAS);
   cy.window({ log: false }).then(win => {
     if (win.location.href !== 'about:blank') {
       throw new Error(`trackKibanaRequests() sees no request of the loaded page ${win.location.href}.`);
@@ -66,30 +70,23 @@ export const trackKibanaRequests = () => {
   });
 };
 
-// Leaves the Kibana page when no request of the test can still change Kibana. New requests do not go to Kibana.
-// Kibana completes a request also when the browser aborts it, and Cypress gives no signal for the abort. So the
-// wait stops tracking a request at REQUEST_SETTLE_MS. This is safe because Kibana answers well below that age.
 export const stopAppAfterKibanaAnswers = () => {
-  const requests = openRequests;
-  if (!requests) {
-    throw new Error('stopAppAfterKibanaAnswers() needs trackKibanaRequests() earlier in the test.');
-  }
-  openRequests = undefined;
-
   const namesOf = (tracked: TrackedRequest[]) => tracked.map(request => request.name);
   const isSettled = (request: TrackedRequest) => Date.now() - request.sentAt >= REQUEST_SETTLE_MS;
 
-  cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => req.destroy());
-  cy.wrap(null, { log: false, timeout: REQUEST_SETTLE_MS + 1000 }).should(() =>
-    expect(
-      namesOf([...requests].filter(request => !isSettled(request))),
-      'requests of the test that Kibana can still complete'
-    ).to.deep.equal([])
-  );
-  cy.then(() => {
-    if (requests.size > 0) {
-      cy.log(`No answer from Kibana, or the browser aborted: ${namesOf([...requests]).join(', ')}`);
-    }
+  cy.get<Set<TrackedRequest>>(`@${REQUESTS_ALIAS}`, { log: false }).then(requests => {
+    blockNewKibanaRequests();
+    cy.wrap(null, { log: false, timeout: REQUEST_SETTLE_MS + 1000 }).should(() =>
+      expect(
+        namesOf([...requests].filter(request => !isSettled(request))),
+        'requests of the test that Kibana can still complete'
+      ).to.deep.equal([])
+    );
+    cy.then(() => {
+      if (requests.size > 0) {
+        cy.log(`No answer from Kibana, or the browser aborted: ${namesOf([...requests]).join(', ')}`);
+      }
+    });
+    stopApp();
   });
-  stopApp();
 };
