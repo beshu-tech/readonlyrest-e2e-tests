@@ -91,11 +91,9 @@ export class Discover {
 
     cy.get('[data-test-subj=generateReportButton]').click();
     cy.contains(QUEUED_REPORT_TOAST, { timeout: 10000 }).should('exist');
-    // Kibana closes the toast after 5 s. A Kibana bug can show it again after Kibana has removed it:
-    // when a new toast comes while a toast is removed, the toast list can get the old list after the new
-    // one. Its close button then removes a toast that Kibana no longer has, so the list does not change.
-    // A close of any other toast makes Kibana send its real list, so a toast still there after 10 s
-    // gets all toasts closed.
+    // Kibana closes the toast after 5 s. A Kibana race can show it again with no timer, and its own close
+    // button then does nothing. A close of all toasts makes Kibana send its real list. Delete when Kibana
+    // no longer gives an old toast list after a newer one.
     recurse(
       () => cy.get('body', { log: false }),
       $body => !$body.text().includes(QUEUED_REPORT_TOAST),
