@@ -45,8 +45,8 @@ export const stopApp = () =>
 type TrackedRequest = { name: string; sentAt: number };
 
 // Kibana completes a request also when the browser aborts it, and Cypress gives no signal for the abort.
-// So the wait stops tracking a request at this age. Kibana answers well below it.
-const REQUEST_SETTLE_MS = 10000;
+// So the wait gives each request this long, answered or not.
+const KIBANA_MAX_ANSWER_MS = 10000;
 
 // Cypress clears aliases at the start of each test, so a test never sees the requests of the test before it.
 const REQUESTS_ALIAS = 'kibanaRequests';
@@ -70,13 +70,13 @@ export const trackKibanaRequests = () => {
   });
 };
 
-export const stopAppAfterKibanaAnswers = () => {
+export const stopAppAfterKibanaAnswers = (afterStop: () => void) => {
   const namesOf = (tracked: TrackedRequest[]) => tracked.map(request => request.name);
-  const isSettled = (request: TrackedRequest) => Date.now() - request.sentAt >= REQUEST_SETTLE_MS;
+  const isSettled = (request: TrackedRequest) => Date.now() - request.sentAt >= KIBANA_MAX_ANSWER_MS;
 
   cy.get<Set<TrackedRequest>>(`@${REQUESTS_ALIAS}`, { log: false }).then(requests => {
     blockNewKibanaRequests();
-    cy.wrap(null, { log: false, timeout: REQUEST_SETTLE_MS + 1000 }).should(() =>
+    cy.wrap(null, { log: false, timeout: KIBANA_MAX_ANSWER_MS + 1000 }).should(() =>
       expect(
         namesOf([...requests].filter(request => !isSettled(request))),
         'requests of the test that Kibana can still complete'
@@ -88,5 +88,6 @@ export const stopAppAfterKibanaAnswers = () => {
       }
     });
     stopApp();
+    afterStop();
   });
 };
