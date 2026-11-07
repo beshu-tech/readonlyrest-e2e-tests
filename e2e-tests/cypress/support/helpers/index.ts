@@ -45,7 +45,8 @@ export const stopApp = () =>
 type TrackedRequest = { name: string; sentAt: number };
 
 // Kibana completes a request also when the browser aborts it, and Cypress gives no signal for the abort.
-// So the wait gives each request this long, answered or not.
+// So the wait cannot end at the abort: it gives each unanswered request this long from when it was sent.
+// A normal answer takes about 1 s, so 10 s is a wide margin. It also bounds the wait for a request that never answers.
 const KIBANA_MAX_ANSWER_MS = 10000;
 
 // Cypress clears aliases at the start of each test, so a test never sees the requests of the test before it.

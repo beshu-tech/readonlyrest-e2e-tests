@@ -38,13 +38,12 @@ const customKibanaIndexName = '.kibana_custom';
     });
 
     afterEach(() => {
-      // A request of the open page, for example its session probe, writes the session of the page to
-      // the session index. After the deletion, it puts back the session of this test, and the next
-      // test then counts two sessions. So the cleanup runs only after the page is gone.
+      // A request of the open page, for example its session probe, writes the session of this test to
+      // the session index. If it does so after the deletion, the next test counts two sessions. So the
+      // cleanup waits until the page is gone.
       stopAppAfterKibanaAnswers(() => {
         kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
 
-        // The next admin request resets the admin tenancy to the template that the line above emptied.
         kbnApiAdvancedClient.resetTenancyIndexToTemplate(adminCredentials);
 
         esApiClient.deleteIndex(customSessionIndex);
