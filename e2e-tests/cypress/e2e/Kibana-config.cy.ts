@@ -1,4 +1,3 @@
-import { recurse } from 'cypress-recurse';
 import { KibanaConfig } from '../support/helpers/KibanaConfig';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
@@ -57,17 +56,12 @@ const customKibanaIndexName = '.kibana_custom';
       Dashboard.verifyDashboardExists('ReadonlyREST Audit Dashboard');
 
       // Verify that the index is reset to the template
-      recurse(
-        () =>
-          cy.kbnImport({
-            endpoint: 'api/saved_objects/_import?overwrite=true',
-            credentials: adminCredentials,
-            fixtureFilename: 'file.ndjson',
-            currentGroupHeader: 'admins_group'
-          }),
-        (response: unknown) => (response as { success?: boolean } | null)?.success === true,
-        { limit: 5, delay: 2000, timeout: 30000, log: false }
-      );
+      cy.kbnImport({
+        endpoint: 'api/saved_objects/_import?overwrite=true',
+        credentials: adminCredentials,
+        fixtureFilename: 'file.ndjson',
+        currentGroupHeader: 'admins_group'
+      });
 
       // In-app navigation, not a reload. A page load can go to the other Kibana replica, which has not
       // seen this session yet. That replica resets the index to the template and deletes the dashboard.
