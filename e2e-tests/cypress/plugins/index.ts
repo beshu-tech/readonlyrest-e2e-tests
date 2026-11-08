@@ -33,6 +33,49 @@ const formatLoggerData = (data: unknown) =>
     compact: true
   });
 
+const NON_JSON_RETRY_ATTEMPTS = 5;
+const NON_JSON_RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+
+// Right after a Kibana restart, ROR-KBN can still be finishing its own settings load (an ES
+// round trip) while Kibana's core HTTP server already answers requests - a request landing in
+// that window gets served the plain Kibana login page instead of the expected JSON API response.
+// Retrying a few times rides out that window instead of failing the whole run on it. Only the
+// content-type is inspected here (not the body), so the response stream is left untouched for
+// the caller to read exactly as before.
+// `createInit` is a factory (not a static object) because a retried attempt needs its own
+// request body - a FormData upload's underlying stream can only be read once.
+const fetchWithJsonRetry = async (url: string, createInit: () => Parameters<typeof fetch>[1]): Promise<Response> => {
+  let response: Response;
+  for (let attempt = 1; attempt <= NON_JSON_RETRY_ATTEMPTS; attempt++) {
+    // eslint-disable-next-line no-await-in-loop
+    response = await fetch(url, createInit());
+    const contentType = response.headers.get('content-type') || '';
+
+    // The startup race serves Kibana's login page (text/html) in place of the expected
+    // response - that's the only shape worth retrying. Endpoints legitimately answer with
+    // all sorts of non-JSON content (204 empty, application/octet-stream, plain text, ...),
+    // and retrying those turns an already-succeeded call (e.g. DELETE) into a second request
+    // that 404s once the first one already took effect.
+    const looksLikeStartupRace = contentType.includes('text/html');
+
+    if (!looksLikeStartupRace || attempt === NON_JSON_RETRY_ATTEMPTS) {
+      return response;
+    }
+
+    console.log(
+      `Got HTML response (content-type: ${
+        contentType || 'none'
+      }) for ${url} - ROR-KBN might still be starting up. Retrying (${attempt}/${NON_JSON_RETRY_ATTEMPTS})...`
+    );
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(NON_JSON_RETRY_DELAY_MS);
+  }
+
+  return response!;
+};
+
 module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) => {
   // A Kibana node that stops answering user requests stays so until it restarts (RORDEV-2283).
   // In CI nobody restarts it, so one failed wait fails the rest of the run.
@@ -47,7 +90,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
 
   on('task', {
     async httpCall(options: HttpCallOptions): Promise<unknown> {
-      const { method, url, headers, body, failOnStatusCode, allowTransportError, fullResponse } = options;
+      const { method, url, headers, body, failOnStatusCode, fullResponse } = options;
 
       const agent: Agent = new Agent({
         rejectUnauthorized: false,
@@ -55,13 +98,13 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
       });
 
       try {
-        const response: Response = await fetch(url, {
+        const response: Response = await fetchWithJsonRetry(url, () => ({
           method,
           headers,
           body: body ?? undefined,
           agent,
           redirect: fullResponse ? 'manual' : 'follow'
-        });
+        }));
 
         if (!response.ok && failOnStatusCode) {
           throw new Error(
@@ -85,19 +128,10 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         }
         return data;
       } catch (error) {
-        if (allowTransportError) {
-          // /pkp/api/kibanaConfig SIGINTs Kibana and only then writes its 200, so the socket is
-          // reset before the reply lands. Losing the reply is the normal outcome, not a failure —
-          // the caller confirms the change by waiting for Kibana to come back up.
-          console.log(`Transport error tolerated for ${method} ${url}: ${(error as Error).message}`);
-          return { status: 'TRANSPORT_ERROR', message: (error as Error).message };
-        }
         console.error('HTTP Request failed:', {
           error: (error as Error).message,
           url,
-          method,
-          headers,
-          body
+          method
         });
         throw error;
       }
@@ -110,25 +144,22 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         secureProtocol: 'TLSv1_2_method'
       });
 
-      const form = new FormData();
-      form.append('file', file.fileBinaryContent, {
-        filename: file.fileName,
-        contentType: 'application/octet-stream'
-      });
+      const buildForm = (): { form: FormData; combinedHeaders: { [key: string]: string } } => {
+        const form = new FormData();
+        form.append('file', file.fileBinaryContent, {
+          filename: file.fileName,
+          contentType: 'application/ndjson'
+        });
 
-      const combinedHeaders: { [key: string]: string } = {
-        ...headers,
-        ...form.getHeaders()
+        return { form, combinedHeaders: { ...headers, ...form.getHeaders() } };
       };
 
       const method = 'POST';
 
       try {
-        const response: Response = await fetch(url, {
-          method,
-          headers: combinedHeaders,
-          body: form,
-          agent
+        const response: Response = await fetchWithJsonRetry(url, () => {
+          const { form, combinedHeaders } = buildForm();
+          return { method, headers: combinedHeaders, body: form, agent };
         });
 
         if (!response.ok) {
@@ -146,8 +177,7 @@ module.exports = (on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions)
         console.error('HTTP Request failed:', {
           error: (error as Error).message,
           url,
-          combinedHeaders,
-          file
+          method
         });
         throw error;
       }
@@ -345,8 +375,6 @@ interface HttpCallOptions {
   headers?: { [key: string]: string };
   body: string | null;
   failOnStatusCode?: boolean;
-  // For endpoints that restart the server they answer from, so the reply is lost by design.
-  allowTransportError?: boolean;
   // Answer the status, headers and body, and do not follow redirects, so that a redirect to the login
   // page stays visible.
   fullResponse?: boolean;

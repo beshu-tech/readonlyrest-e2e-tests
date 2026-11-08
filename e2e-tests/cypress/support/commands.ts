@@ -20,6 +20,7 @@ Cypress.Commands.add('kbnImport', ({ endpoint, credentials, fixtureFilename, cur
   const upload = (attempt: number): Cypress.Chainable<unknown> =>
     uploadFile(`${Cypress.config().baseUrl}/${endpoint}`, credentials, fixtureFilename, {
       'kbn-xsrf': 'true',
+      'elastic-api-version': '2023-10-31',
       ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {})
     }).then((body: unknown) => {
       if (typeof body === 'object' && body !== null) {
@@ -57,10 +58,11 @@ function httpCall(family: RequestFamily, options: RequestOptions, fullResponse =
     failOnStatusCode = true,
     headers,
     currentGroupHeader,
-    impersonating
+    impersonating,
+    timeoutMs
   } = options;
   const baseUrl = family === 'kbn' ? Cypress.config().baseUrl : Cypress.env().elasticsearchUrl;
-  return cy.task('httpCall', {
+  const task = {
     method,
     url: `${baseUrl}/${endpoint}`,
     headers: {
@@ -71,10 +73,11 @@ function httpCall(family: RequestFamily, options: RequestOptions, fullResponse =
       ...(currentGroupHeader ? { 'x-ror-tenancy-id': currentGroupHeader } : {}),
       ...(impersonating ? { 'x-ror-impersonating': impersonating } : {})
     },
-    body: payload ? JSON.stringify(payload) : null,
+    body: payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload)) : null,
     failOnStatusCode: fullResponse ? false : failOnStatusCode,
     fullResponse
-  });
+  };
+  return timeoutMs ? cy.task('httpCall', task, { timeout: timeoutMs }) : cy.task('httpCall', task);
 }
 
 Cypress.Commands.add('kbnGet', options => httpCall('kbn', { ...options, method: 'GET' }));
@@ -156,11 +159,11 @@ Cypress.Commands.add('urlShouldMatch', (urlPattern: string) => {
   return cy.url().should('match', new RegExp(`${baseUrl}${escapedPath}${suffix}$`));
 });
 
-// .its() re-reads the property on every retry, which .then() would not - see clipboardCapture.ts.
+// .its() re-reads the property on every retry, which .then() would not — see clipboardCapture.ts.
 Cypress.Commands.add('getValueFromClipboard', () => cy.wrap(clipboardCapture, { log: false }).its('text'));
 
-// Cypress 15 types cy.wait's alias parameter as `@${string}`; mirroring it here means a forgotten
-// '@' prefix is a compile error instead of a silent numeric wait.
+// Cypress 15 types cy.wait's alias parameter as `@${string}`; mirroring it here means a
+// forgotten '@' prefix is a compile error instead of a silent numeric-wait.
 Cypress.Commands.add(
   'waitForResponse',
   (alias: `@${string}`) =>

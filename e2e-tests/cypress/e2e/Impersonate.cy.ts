@@ -30,8 +30,8 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(0, 'LDAP 1');
       Impersonate.assertServiceType(0, 'ldap');
       Impersonate.assertServiceColumns(0, ['Username', 'Groups']);
-      Impersonate.assertUser(0, 0, 'JohnDoe', ['group3']);
-      Impersonate.assertUser(0, 1, 'RobertSmith', ['group3']);
+      Impersonate.assertUser(0, 'JohnDoe', ['group3']);
+      Impersonate.assertUser(0, 'RobertSmith', ['group3']);
 
       Impersonate.openConfigureServiceDialog(1);
       Impersonate.addEditMockUser('JaneDoe');
@@ -39,7 +39,7 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(1, 'ACME1 External Authorization Service');
       Impersonate.assertServiceType(1, 'authn');
       Impersonate.assertServiceColumns(1, ['Username']);
-      Impersonate.assertUser(1, 0, 'JaneDoe');
+      Impersonate.assertUser(1, 'JaneDoe');
 
       Impersonate.openConfigureServiceDialog(2);
       Impersonate.addEditMockUser('JaimeRhynes', ['Customer']);
@@ -47,18 +47,18 @@ describe('impersonate', () => {
       Impersonate.assertServiceName(2, 'ACME2 External Authentication Service');
       Impersonate.assertServiceType(2, 'authz');
       Impersonate.assertServiceColumns(2, ['Username', 'Groups']);
-      Impersonate.assertUser(2, 0, 'JaimeRhynes', ['Customer']);
+      Impersonate.assertUser(2, 'JaimeRhynes', ['Customer']);
 
       Impersonate.assertServiceName(3, 'Local users');
       Impersonate.assertServiceType(3, 'local');
       Impersonate.assertServiceColumns(3, ['Username']);
-      Impersonate.assertUser(3, 0, 'kibana');
+      Impersonate.assertUser(3, 'kibana');
 
       cy.log('should edit existing auth mock');
       Impersonate.openEditAuthMockDialog(2);
       Impersonate.addEditMockUser('kibana', ['group3']);
       Impersonate.saveEditMockUsers();
-      Impersonate.assertUser(2, 1, 'kibana', ['group3']);
+      Impersonate.assertUser(2, 'kibana', ['group3']);
     });
 
     // Skipped until a release has the fix for RORDEV-2303: the session probe can log the user out right
@@ -67,7 +67,7 @@ describe('impersonate', () => {
       createLdapUsers();
 
       Impersonate.open();
-      Impersonate.impersonateUserFromTheList(3, 2, 'new_user');
+      Impersonate.impersonateUserFromTheList(3, 3, 'new_user');
       Impersonate.finishImpersonation();
       Impersonate.verifyFinishedImpersonation();
 
