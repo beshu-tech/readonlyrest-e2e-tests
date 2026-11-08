@@ -3,7 +3,7 @@ import { KibanaConfig } from '../support/helpers/KibanaConfig';
 import { Login } from '../support/page-objects/Login';
 import { kbnApiAdvancedClient } from '../support/helpers/KbnApiAdvancedClient';
 import { RorMenu } from '../support/page-objects/RorMenu';
-import { getKibanaVersion, kibanaVersion } from '../support/helpers';
+import { getKibanaVersion, kibanaVersion, stopAppAfterKibanaAnswers, trackKibanaRequests } from '../support/helpers';
 import { Discover } from '../support/page-objects/Discover';
 import { Dashboard } from '../support/page-objects/Dashboard';
 import { Reporting } from '../support/page-objects/Reporting';
@@ -33,13 +33,21 @@ const customKibanaIndexName = '.kibana_custom';
       KibanaConfig.apply('customKibanaConfig.yml');
     });
 
+    beforeEach(() => {
+      trackKibanaRequests();
+    });
+
     afterEach(() => {
-      kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
+      // A request of the open page, for example its session probe, writes the session of this test to
+      // the session index. If it does so after the deletion, the next test counts two sessions. So the
+      // cleanup waits until the page is gone.
+      stopAppAfterKibanaAnswers(() => {
+        kbnApiAdvancedClient.deleteSavedObjects(adminCredentials, 'template_group');
 
-      // The next admin request resets the admin tenancy to the template that the line above emptied.
-      kbnApiAdvancedClient.resetTenancyIndexToTemplate(adminCredentials);
+        kbnApiAdvancedClient.resetTenancyIndexToTemplate(adminCredentials);
 
-      esApiClient.deleteIndex(customSessionIndex);
+        esApiClient.deleteIndex(customSessionIndex);
+      });
     });
 
     it('should verify kibanaIndexTemplate functionality', () => {
