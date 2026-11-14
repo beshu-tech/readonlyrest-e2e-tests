@@ -1,5 +1,5 @@
 import { recurse } from 'cypress-recurse';
-import { KbnApiClient, SavedObject, Space } from './KbnApiClient';
+import { describeBody, KbnApiClient, SavedObject, Space } from './KbnApiClient';
 import { accountOf, adminCredentials, BasicCredentials } from './credentials';
 import { requiredBaseUrl } from './index';
 
@@ -15,10 +15,19 @@ export class KbnApiAdvancedClient extends KbnApiClient {
   }
 
   // Under resetKibanaIndexToTemplate, a request of the user resets the index of the user's tenancy
-  // to the template. The first answer can be a 403, so the request repeats until it answers 2xx.
+  // to the template. It is sent once, because a retry hides a lost session (RORDEV-2388).
   public resetTenancyIndexToTemplate(credentials: BasicCredentials): void {
     cy.log(`Reset the tenancy index of ${accountOf(credentials)} to the template`);
-    this.repeatUntilSuccess({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials });
+    cy.kbnResponse({ endpoint: KbnApiClient.savedObjectsFindEndpoint(), credentials }).then(
+      ({ status, headers, body }) => {
+        if (status !== 200) {
+          throw new Error(
+            `The request that resets the tenancy index of ${accountOf(credentials)} answered ${status}. ` +
+              `Location: ${headers.location ?? 'none'}. Body: ${describeBody(body)}`
+          );
+        }
+      }
+    );
   }
 
   public deleteDataViews(credentials: BasicCredentials, group?: string) {

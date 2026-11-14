@@ -1,4 +1,3 @@
-import { recurse } from 'cypress-recurse';
 import { accountOf, BasicCredentials } from './credentials';
 
 const isSuccess = (status: number) => status >= 200 && status < 300;
@@ -118,15 +117,6 @@ export class KbnApiClient {
       .then(status => {
         expect(status, `status of DELETE ${options.endpoint}`).to.satisfy((s: number) => isSuccess(s) || s === 404);
       });
-  }
-
-  // For a cleanup request that must take effect: sends it until isDone accepts the status (2xx by
-  // default), for at most about 10 s, and fails with the last status after that.
-  protected repeatUntilSuccess(
-    options: Cypress.ResponseOptions<Cypress.KbnRequestOptions>,
-    isDone: (status: number) => boolean = isSuccess
-  ): void {
-    recurse(() => cy.kbnResponse(options).its('status'), isDone, { limit: 10, delay: 1000, log: false });
   }
 
   public deleteSpace(
