@@ -53,6 +53,7 @@ export class ActivationKeys {
    */
   static changeEditionAndWaitForLogout(action: () => void) {
     ActivationKeys.sessionIndex().then(before => {
+      expect(before.status, 'the session index answers 200, or 404 when no login happened').to.be.oneOf([200, 404]);
       action();
       if (before.status === 200) {
         recurse(
