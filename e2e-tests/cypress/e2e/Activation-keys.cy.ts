@@ -3,9 +3,6 @@ import { ActivationKeys } from '../support/page-objects/ActivationKeys';
 import { EnvName } from '../support/types';
 import { stopApp } from '../support/helpers';
 
-// ROR KBN answers an edition change before it deletes the sessions (RORDEV-2302). A page that
-// loads in between keeps its session until the next session probe, which runs every 30 s.
-const LOGOUT_TIMEOUT_MS = 45000;
 const SESSION_DELETE_WINDOW_MS = 5000;
 
 // The docker env runs 2 Kibana nodes behind a round-robin proxy. Each node re-reads the key only
@@ -25,15 +22,12 @@ const SESSION_DELETE_WINDOW_MS = 5000;
 
   it('should log the user out when a new activation key changes the license edition', () => {
     // Enterprise (env) -> Free (index).
-    ActivationKeys.changeLicenseToFree();
-
-    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.changeEditionAndExpectLogout(ActivationKeys.changeLicenseToFree);
     ActivationKeys.verifyEdition('kbn_free');
   });
 
   it('should keep the sessions when a new activation key has the same license edition', () => {
-    ActivationKeys.changeLicenseToFree();
-    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.changeEditionAndExpectLogout(ActivationKeys.changeLicenseToFree);
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
     Login.initialization({ finishUrl: '/s/default/app/home' });
@@ -58,8 +52,7 @@ const SESSION_DELETE_WINDOW_MS = 5000;
   });
 
   it('should log the user out when a deleted activation key uncovers a different license edition', () => {
-    ActivationKeys.changeLicenseToFree();
-    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.changeEditionAndExpectLogout(ActivationKeys.changeLicenseToFree);
     // Logging in while on the Free edition: multi-tenancy requires Enterprise, so the
     // post-login redirect never carries ?tenancy= here.
     Login.initialization({ finishUrl: '/s/default/app/home' });
@@ -67,9 +60,7 @@ const SESSION_DELETE_WINDOW_MS = 5000;
 
     // Free (index) -> Enterprise (env). Keys resolve in the order index, env, file, bundled Free
     // key, so the delete uncovers the env key.
-    ActivationKeys.deleteLicense();
-
-    cy.location('pathname', { timeout: LOGOUT_TIMEOUT_MS }).should('contain', '/login');
+    ActivationKeys.changeEditionAndExpectLogout(ActivationKeys.deleteLicense);
     ActivationKeys.verifyEdition('kbn_ent');
   });
 });
