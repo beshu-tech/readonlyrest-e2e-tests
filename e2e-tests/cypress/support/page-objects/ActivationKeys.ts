@@ -57,7 +57,7 @@ export class ActivationKeys {
       if (before.status === 200) {
         recurse(
           () => ActivationKeys.sessionIndex(),
-          after => after.status === 404 || after.uuid !== before.uuid,
+          after => after.status === 404 || (after.status === 200 && after.uuid !== before.uuid),
           { limit: 80, delay: 500, timeout: 40000, log: 'the sessions are deleted' }
         );
       }
