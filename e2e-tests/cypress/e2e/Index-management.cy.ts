@@ -5,7 +5,7 @@ import { esApiClient } from '../support/helpers/EsApiClient';
 import { Discover } from '../support/page-objects/Discover';
 import { kbnApiClient } from '../support/helpers/KbnApiClient';
 import { kibanaVersion } from '../support/helpers';
-import { adminCredentials, user2Credentials } from '../support/helpers/credentials';
+import { user2Credentials, user5Credentials } from '../support/helpers/credentials';
 import { StackManagement } from '../support/page-objects/StackManagement';
 
 const testIndexName = '.kibana_test';
@@ -14,7 +14,7 @@ describe('Index management', () => {
   beforeEach(() => {
     if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
       // A test that stopped before its afterEach can leave this data view behind.
-      kbnApiClient.deleteDataViewIfPresent('r', adminCredentials);
+      kbnApiClient.deleteDataViewIfPresent('r', user5Credentials);
       kbnApiClient.createDataView(
         {
           data_view: {
@@ -23,7 +23,7 @@ describe('Index management', () => {
             name: 'ReadonlyREST Data view'
           }
         },
-        adminCredentials
+        user5Credentials
       );
     }
   });
@@ -38,12 +38,15 @@ describe('Index management', () => {
     });
 
     if (kibanaVersion.gte('8.0.0') && kibanaVersion.lt('9.0.0')) {
-      kbnApiClient.deleteDataViewIfPresent('r', adminCredentials);
+      kbnApiClient.deleteDataViewIfPresent('r', user5Credentials);
     }
   });
 
+  // ROR KBN changes the names of Kibana indices in a request to the Kibana index of the user. It must not do this for
+  // an Index Management request. user5 has its own Kibana index, so a change of the name .kibana_test makes this test
+  // fail. user5 is unrestricted, because the other access levels cannot delete an index.
   it('should verify index management functionalities', () => {
-    Login.initialization();
+    Login.initialization({ credentials: user5Credentials });
 
     const indexPriorityValue = '10';
     esApiClient.createIndex(testIndexName, {

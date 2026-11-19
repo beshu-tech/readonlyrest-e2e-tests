@@ -88,6 +88,11 @@ readonlyrest:
       kibana:
         access: rw
         index: '.default_index'
+    - name: "Index management tests: user5"
+      auth_key: user5:dev
+      kibana:
+        index: ".kibana_user5"
+        access: unrestricted
   users:
     - username: admin
       auth_key: admin:dev
