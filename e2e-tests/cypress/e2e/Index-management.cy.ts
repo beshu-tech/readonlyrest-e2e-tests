@@ -8,7 +8,7 @@ import { kibanaVersion } from '../support/helpers';
 import { user2Credentials, user5Credentials } from '../support/helpers/credentials';
 import { StackManagement } from '../support/page-objects/StackManagement';
 
-const testIndexName = '.kibana_test';
+const indexWithKibanaPrefix = '.kibana_test';
 
 describe('Index management', () => {
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe('Index management', () => {
   afterEach(() => {
     esApiClient.indices().then(result => {
       result
-        .filter(index => index.index.startsWith(testIndexName))
+        .filter(index => index.index.startsWith(indexWithKibanaPrefix))
         .forEach(element => {
           esApiClient.deleteIndex(element.index);
         });
@@ -42,42 +42,42 @@ describe('Index management', () => {
     }
   });
 
-  // ROR KBN changes the names of Kibana indices in a request to the Kibana index of the user. It must not do this for
-  // an Index Management request. user5 has its own Kibana index, so a change of the name .kibana_test makes this test
-  // fail. user5 is unrestricted, because the other access levels cannot delete an index.
-  it('should verify index management functionalities', () => {
+  it('should send the index name to ES unchanged, not replaced with the Kibana index of the user', () => {
     Login.initialization({ credentials: user5Credentials });
 
     const indexPriorityValue = '10';
-    esApiClient.createIndex(testIndexName, {
+    esApiClient.createIndex(indexWithKibanaPrefix, {
       'index.priority': indexPriorityValue
     });
-    esApiClient.addDocument(testIndexName, '0', { title: 'Sample document', content: 'This is a test document' });
+    esApiClient.addDocument(indexWithKibanaPrefix, '0', {
+      title: 'Sample document',
+      content: 'This is a test document'
+    });
     KibanaNavigation.openPage('Stack Management');
     StackManagement.openPage('Index Management');
     IndexManagement.IncludeHiddenIndices();
-    IndexManagement.searchIndices(testIndexName);
-    IndexManagement.openIndex(testIndexName);
+    IndexManagement.searchIndices(indexWithKibanaPrefix);
+    IndexManagement.openIndex(indexWithKibanaPrefix);
     IndexManagement.openIndexSettings();
     IndexManagement.verifyIndexSetting('priority', indexPriorityValue);
 
     if (kibanaVersion.gte('8.0.0')) {
       IndexManagement.openDiscoverIndex();
-      Discover.verifyDocument(0, testIndexName);
+      Discover.verifyDocument(0, indexWithKibanaPrefix);
     }
 
     // Delete index
     KibanaNavigation.openPage('Stack Management');
     StackManagement.openPage('Index Management');
     IndexManagement.IncludeHiddenIndices();
-    IndexManagement.searchIndices(testIndexName);
-    IndexManagement.openIndex(testIndexName);
+    IndexManagement.searchIndices(indexWithKibanaPrefix);
+    IndexManagement.openIndex(indexWithKibanaPrefix);
     IndexManagement.selectDeleteActionFromContextMenu();
 
     IndexManagement.clickConfirmDeleteIndexButton();
-    IndexManagement.verifyIndexNotListed(testIndexName);
+    IndexManagement.verifyIndexNotListed(indexWithKibanaPrefix);
     esApiClient.indices().then(indices => {
-      expect(indices.map(index => index.index)).not.to.include(testIndexName);
+      expect(indices.map(index => index.index)).not.to.include(indexWithKibanaPrefix);
     });
   });
 
