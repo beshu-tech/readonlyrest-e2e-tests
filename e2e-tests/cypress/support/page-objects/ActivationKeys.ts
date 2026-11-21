@@ -2,6 +2,10 @@ import { recurse } from 'cypress-recurse';
 import { SecuritySettings } from './SecuritySettings';
 import { adminCredentials, kibanaCredentials } from '../helpers/credentials';
 import { interceptNext } from '../helpers/interceptNext';
+import { stopApp } from '../helpers';
+
+// ROR KBN clears its memory copy of the sessions a moment after it deletes the session index.
+const SESSION_MEMORY_CLEAR_MARGIN_MS = 2000;
 
 export class ActivationKeys {
   static DEFAULT_ACTIVATION_KEY =
@@ -49,15 +53,26 @@ export class ActivationKeys {
    */
   static changeEditionAndWaitForLogout(action: () => void) {
     ActivationKeys.sessionIndex().then(before => {
+      expect(before.status, 'the session index answers 200, or 404 when no login happened').to.be.oneOf([200, 404]);
       action();
       if (before.status === 200) {
         recurse(
           () => ActivationKeys.sessionIndex(),
-          after => after.status === 404 || after.uuid !== before.uuid,
+          after => after.status === 404 || (after.status === 200 && after.uuid !== before.uuid),
           { limit: 80, delay: 500, timeout: 40000, log: 'the sessions are deleted' }
         );
       }
     });
+  }
+
+  // Remove after ROR 1.74.0 (RORDEV-2469): ROR KBN answers the edition change before it deletes the sessions.
+  // The wait ends on the observed delete, then a margin. The visit then sends the old cookie after the delete.
+  static changeEditionAndExpectLogout(action: () => void) {
+    ActivationKeys.changeEditionAndWaitForLogout(action);
+    stopApp();
+    cy.wait(SESSION_MEMORY_CLEAR_MARGIN_MS);
+    cy.visit('/s/default/app/home');
+    cy.location('pathname').should('contain', '/login');
   }
 
   // Waits for the logout only when the restore changes the edition, so that it cannot log out the next test.
