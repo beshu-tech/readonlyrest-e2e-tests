@@ -67,7 +67,11 @@ or
 ```
 
 The development repos are `beshultd/elasticsearch-readonlyrest-dev` and `beshultd/kibana-readonlyrest-dev` on Docker Hub.
-To pull the development images from another registry, for example `ghcr.io`, to avoid Docker Hub rate limits and to pull faster, set the variables `ROR_ES_DEV_IMAGE_REPO` and `ROR_KBN_DEV_IMAGE_REPO` to the repo names, without a tag.
+To pull the development images from another registry, for example `ghcr.io`, to avoid Docker Hub rate limits and to pull faster, export the variables `ROR_ES_DEV_IMAGE_REPO` and `ROR_KBN_DEV_IMAGE_REPO` with the repo names, without a tag:
+```bash
+export ROR_ES_DEV_IMAGE_REPO=ghcr.io/sscarduzio/elasticsearch-readonlyrest-dev
+export ROR_KBN_DEV_IMAGE_REPO=ghcr.io/sscarduzio/kibana-readonlyrest-dev
+```
 An unset or empty variable takes the default. The release images do not change.
 
 To run tests on the env from a docker environment:

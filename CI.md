@@ -31,7 +31,7 @@ A leg tests the commit that starts the run: the pushed commit, the merge commit 
 
 ## Dev image repos
 
-The `dev` legs pull the pre-build images from Docker Hub by default. The repository variables `ROR_ES_DEV_IMAGE_REPO` and `ROR_KBN_DEV_IMAGE_REPO` name another repo, for example one on `ghcr.io`, to avoid Docker Hub rate limits and to pull faster. The workflows pass both variables to every job. An unset or empty variable takes the default from `ci/dev-image-repos.sh`. The registry must allow anonymous pulls, because the jobs do not log in. The plugin repos that run the pre-build must push to the same repos. The `prod` legs and the release images do not change.
+The `dev` legs pull the pre-build images from Docker Hub by default. The repository variables `ROR_ES_DEV_IMAGE_REPO` and `ROR_KBN_DEV_IMAGE_REPO` name another repo, for example one on `ghcr.io`, to avoid Docker Hub rate limits and to pull faster. The workflows pass both variables to every job. An unset or empty variable takes the default from `ci/dev-image-repos.sh`. The registry must allow anonymous pulls, because the jobs do not log in. The plugin repos that run the pre-build must push to the same repos. The scheduled `dev` runs check out `develop`, so set the variables only after `develop` has the start scripts that read them. The `prod` legs and the release images do not change.
 
 ## Runners
 
