@@ -38,6 +38,8 @@ on:
 
 env:
   APPLY_RESOURCE_LIMITS: "auto"
+  ROR_ES_DEV_IMAGE_REPO: ${{ vars.ROR_ES_DEV_IMAGE_REPO }}
+  ROR_KBN_DEV_IMAGE_REPO: ${{ vars.ROR_KBN_DEV_IMAGE_REPO }}
 
 jobs:
   e2e-tests:

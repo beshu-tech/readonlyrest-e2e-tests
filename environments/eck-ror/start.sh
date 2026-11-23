@@ -6,6 +6,8 @@ cd "$(dirname "$0")"
 source ./kind-pins.sh
 source ../common/retry.sh
 source ../common/pull-image.sh
+# shellcheck source=ci/dev-image-repos.sh
+source ../../ci/dev-image-repos.sh
 
 if ! command -v kind &> /dev/null; then
   echo "Cannot find 'kind' tool. Run ./install-kind.sh <directory on your PATH>, or follow the installation steps: https://github.com/kubernetes-sigs/kind#installation-and-usage"
@@ -124,8 +126,8 @@ while [[ $# -gt 0 ]]; do
           shift 2
           ;;
         "dev")
-          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+          export ROR_ES_REPO="$ROR_ES_DEV_IMAGE_REPO"
+          export ROR_KBN_REPO="$ROR_KBN_DEV_IMAGE_REPO"
           shift 2
           ;;
         *)

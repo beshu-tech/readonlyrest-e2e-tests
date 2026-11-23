@@ -76,8 +76,8 @@ ROR_KBN_PUBLISH_WORKFLOW_REF="${ROR_KBN_PUBLISH_WORKFLOW_REF-auto}"
 ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
 ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
 
-ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-beshultd/elasticsearch-readonlyrest-dev}"
-ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-beshultd/kibana-readonlyrest-dev}"
+# shellcheck source=ci/dev-image-repos.sh
+source "$(dirname "${BASH_SOURCE[0]}")/dev-image-repos.sh"
 
 # How long to wait for a pre-build run to finish before giving up. ES gets the longer limit because
 # its build takes longer than the Kibana one.
@@ -733,7 +733,7 @@ wait_for_plugin_prebuild_images() {
 
     echo "ERROR: $WHERE succeeded, but $IMAGE is not in the registry."
     echo "       Open the run below and compare the tags it wrote against '$RUN_TAG', and the repo it"
-    echo "       pushed to against the ROR_*_DEV_IMAGE_REPO defaults in this file."
+    echo "       pushed to against ROR_ES_DEV_IMAGE_REPO and ROR_KBN_DEV_IMAGE_REPO."
     echo "       Check first that the run is the one this job dispatched. The title of a run names its"
     echo "       tag, so a title that does not hold '$RUN_TAG' means the job followed another run, and"
     echo "       the workflow file on that branch has no 'run-name:' line."

@@ -23,8 +23,8 @@
 #
 # Add only a mirror that serves the official images (`library/`) under the Docker Hub digests.
 #
-# The ROR ES and ROR KBN images keep their Docker Hub name. A dev run pulls them minutes after the
-# other repo pushed them, and a cache can hold a stale answer.
+# The ROR ES and ROR KBN images keep the name that the start scripts give them, on any registry. A
+# dev run pulls them minutes after the other repo pushed them, and a cache can hold a stale answer.
 #
 # The Kind node image also keeps its Docker Hub name. It is pinned by digest, together with the Kind
 # release that built it, and Kind retries its pull.

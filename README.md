@@ -49,7 +49,7 @@ To run the env:
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
-(running the given version of ROR from Docker Hub development repo)
+(running the given version of ROR from the development repo)
 ```bash
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --mode dev
 ```
@@ -61,10 +61,14 @@ or
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
-(running the given version of ROR from Docker Hub development repo)
+(running the given version of ROR from the development repo)
 ```bash
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --mode dev
 ```
+
+The development repos are `beshultd/elasticsearch-readonlyrest-dev` and `beshultd/kibana-readonlyrest-dev` on Docker Hub.
+To pull the development images from another registry, for example `ghcr.io`, to avoid Docker Hub rate limits and to pull faster, set the variables `ROR_ES_DEV_IMAGE_REPO` and `ROR_KBN_DEV_IMAGE_REPO` to the repo names, without a tag.
+An unset or empty variable takes the default. The release images do not change.
 
 To run tests on the env from a docker environment:
 ```bash

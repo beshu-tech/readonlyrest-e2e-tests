@@ -3,6 +3,8 @@
 cd "$(dirname "$0")"
 source ../common/retry.sh
 source ../common/pull-image.sh
+# shellcheck source=ci/dev-image-repos.sh
+source ../../ci/dev-image-repos.sh
 
 if ! docker version &>/dev/null; then
   echo "No Docker found. Docker is required to run this script."
@@ -107,8 +109,8 @@ while [[ $# -gt 0 ]]; do
           shift 2
           ;;
         "dev")
-          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+          export ROR_ES_REPO="$ROR_ES_DEV_IMAGE_REPO"
+          export ROR_KBN_REPO="$ROR_KBN_DEV_IMAGE_REPO"
           shift 2
           ;;
         *)
