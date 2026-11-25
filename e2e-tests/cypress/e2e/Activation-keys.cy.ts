@@ -1,7 +1,7 @@
 import { Login } from '../support/page-objects/Login';
 import { ActivationKeys } from '../support/page-objects/ActivationKeys';
 import { EnvName } from '../support/types';
-import { stopApp } from '../support/helpers';
+import { stopApp, trackKibanaRequests } from '../support/helpers';
 
 const SESSION_DELETE_WINDOW_MS = 5000;
 
@@ -10,6 +10,7 @@ const SESSION_DELETE_WINDOW_MS = 5000;
 // the edition, the nodes disagree. The eck envs run 1 Kibana node.
 (Cypress.env().envName === EnvName.ELK_ROR ? describe.skip : describe)('Activation key', () => {
   beforeEach(() => {
+    trackKibanaRequests();
     Login.initialization();
     ActivationKeys.open();
   });

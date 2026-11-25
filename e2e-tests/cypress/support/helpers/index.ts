@@ -52,7 +52,10 @@ const KIBANA_MAX_ANSWER_MS = 10000;
 // Cypress clears aliases at the start of each test, so a test never sees the requests of the test before it.
 const REQUESTS_ALIAS = 'kibanaRequests';
 
-const blockNewKibanaRequests = () => cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => req.destroy());
+const blockNewKibanaRequests = (isBlocking: () => boolean) =>
+  cy.intercept({ url: `${requiredBaseUrl()}/**` }, req => {
+    if (isBlocking()) req.destroy();
+  });
 
 export const trackKibanaRequests = () => {
   const requests = new Set<TrackedRequest>();
@@ -71,12 +74,14 @@ export const trackKibanaRequests = () => {
   });
 };
 
-export const stopAppAfterKibanaAnswers = (afterStop: () => void) => {
+// The block lasts to the end of the test, or with keepBlocking false to the end of afterStop.
+export const stopAppAfterKibanaAnswers = (afterStop: () => void, { keepBlocking = true } = {}) => {
+  let blocking = true;
   const namesOf = (tracked: TrackedRequest[]) => tracked.map(request => request.name);
   const isSettled = (request: TrackedRequest) => Date.now() - request.sentAt >= KIBANA_MAX_ANSWER_MS;
 
   cy.get<Set<TrackedRequest>>(`@${REQUESTS_ALIAS}`, { log: false }).then(requests => {
-    blockNewKibanaRequests();
+    blockNewKibanaRequests(() => blocking);
     cy.wrap(null, { log: false, timeout: KIBANA_MAX_ANSWER_MS + 1000 }).should(() =>
       expect(
         namesOf([...requests].filter(request => !isSettled(request))),
@@ -90,5 +95,10 @@ export const stopAppAfterKibanaAnswers = (afterStop: () => void) => {
     });
     stopApp();
     afterStop();
+    if (!keepBlocking) {
+      cy.then(() => {
+        blocking = false;
+      });
+    }
   });
 };
