@@ -98,7 +98,10 @@ export class ActivationKeys {
         if (license.edition === 'kbn_ent') {
           restore();
         } else {
-          ActivationKeys.changeEditionAndWaitForLogout(restore);
+          // No session index means no sessions to delete: restore at once, a missing index must not skip the restore.
+          ActivationKeys.sessionIndex().then(({ status }) =>
+            status === 404 ? restore() : ActivationKeys.changeEditionAndWaitForLogout(restore)
+          );
         }
       }
     );
