@@ -68,9 +68,9 @@ export class ActivationKeys {
     });
   }
 
-  // Remove after ROR 1.74.0 (RORDEV-2469): ROR KBN answers the edition change before it deletes the sessions.
-  // Before 1.74.0 a request of the open page can reach ROR KBN between the index delete and the memory clear, and
-  // write the old session to the new index. So the page stops before the wait for the delete, not after it.
+  // TODO: remove the stop and the margin when ROR 1.74.0 is released (RORDEV-2469).
+  // Before 1.74.0, ROR KBN answers the edition change before it deletes the sessions. A request from the open page
+  // between the index delete and the memory clear can write the old session to the new index. So the page stops first.
   static changeEditionAndExpectLogout(action: () => void) {
     ActivationKeys.changeEditionAndWaitForLogout(action, waitForDelete =>
       stopAppAfterKibanaAnswers(
@@ -81,6 +81,10 @@ export class ActivationKeys {
         { keepBlocking: false }
       )
     );
+    ActivationKeys.expectOldSessionRejected();
+  }
+
+  static expectOldSessionRejected() {
     cy.visit('/s/default/app/home');
     cy.location('pathname').should('contain', '/login');
   }
