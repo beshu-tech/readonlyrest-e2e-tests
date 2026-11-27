@@ -76,8 +76,8 @@ ROR_KBN_PUBLISH_WORKFLOW_REF="${ROR_KBN_PUBLISH_WORKFLOW_REF-auto}"
 ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
 ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
 
-ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-beshultd/elasticsearch-readonlyrest-dev}"
-ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-beshultd/kibana-readonlyrest-dev}"
+ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-ghcr.io/beshu-tech/elasticsearch-readonlyrest-dev}"
+ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-ghcr.io/beshu-tech/kibana-readonlyrest-dev}"
 
 # How long to wait for a pre-build run to finish before giving up. ES gets the longer limit because
 # its build takes longer than the Kibana one.

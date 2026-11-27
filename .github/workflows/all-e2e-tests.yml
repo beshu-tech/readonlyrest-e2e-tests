@@ -192,6 +192,11 @@ jobs:
       run_tag: ${{ steps.prepare.outputs.run_tag }}
     steps:
       - *checkout
+      - &login-ghcr
+        name: Log in to ghcr.io
+        env:
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+        run: .github/scripts/login-ghcr.sh
       - name: Dispatch and await ROR plugin pre-builds
         id: prepare
         env:
@@ -228,6 +233,7 @@ jobs:
           ref: ${{ needs.plan.outputs.dev_tests_ref }}
           persist-credentials: false
       - *docker-hub-mirror
+      - *login-ghcr
       - *setup-node
       - *cleanup-disk-space
       - *start-memory-monitor
