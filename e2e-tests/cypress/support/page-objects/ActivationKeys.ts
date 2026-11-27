@@ -2,6 +2,11 @@ import { recurse } from 'cypress-recurse';
 import { SecuritySettings } from './SecuritySettings';
 import { adminCredentials, kibanaCredentials } from '../helpers/credentials';
 import { interceptNext } from '../helpers/interceptNext';
+import { stopAppAfterKibanaAnswers } from '../helpers';
+
+// ROR KBN clears its memory copy of the sessions right after it creates the new session index, in the same process.
+// The poll sees the new index up to 0.5 s later, so this 2 s is a wide margin.
+const SESSION_MEMORY_CLEAR_MARGIN_MS = 2000;
 
 export class ActivationKeys {
   static DEFAULT_ACTIVATION_KEY =
@@ -43,21 +48,45 @@ export class ActivationKeys {
    *
    * ROR KBN answers the change before it deletes the sessions (RORDEV-2302). Until then the old
    * session still works, and a login made in between can be deleted with the others.
-   * ROR KBN deletes the sessions with their index, and then can create an empty index at once. So the
-   * wait ends when the index is gone or has a new UUID. With no index (no login since the last
-   * deletion) there is nothing to wait for.
+   * ROR KBN deletes the sessions with their index, and then creates an empty index at once. So the
+   * wait ends when the index is gone or has a new UUID.
    */
-  static changeEditionAndWaitForLogout(action: () => void) {
+  static changeEditionAndWaitForLogout(
+    action: () => void,
+    afterAction: (waitForDelete: () => void) => void = waitForDelete => waitForDelete()
+  ) {
     ActivationKeys.sessionIndex().then(before => {
+      expect(before.status, 'the session index exists, ROR KBN creates it after each delete').to.equal(200);
       action();
-      if (before.status === 200) {
+      afterAction(() =>
         recurse(
           () => ActivationKeys.sessionIndex(),
-          after => after.status === 404 || after.uuid !== before.uuid,
+          after => after.status === 404 || (after.status === 200 && after.uuid !== before.uuid),
           { limit: 80, delay: 500, timeout: 40000, log: 'the sessions are deleted' }
-        );
-      }
+        )
+      );
     });
+  }
+
+  // TODO: remove the stop and the margin when ROR 1.74.0 is released (RORDEV-2469).
+  // Before 1.74.0, ROR KBN answers the edition change before it deletes the sessions. A request from the open page
+  // between the index delete and the memory clear can write the old session to the new index. So the page stops first.
+  static changeEditionAndExpectLogout(action: () => void) {
+    ActivationKeys.changeEditionAndWaitForLogout(action, waitForDelete =>
+      stopAppAfterKibanaAnswers(
+        () => {
+          waitForDelete();
+          cy.wait(SESSION_MEMORY_CLEAR_MARGIN_MS);
+        },
+        { keepBlocking: false }
+      )
+    );
+    ActivationKeys.expectOldSessionRejected();
+  }
+
+  static expectOldSessionRejected() {
+    cy.visit('/s/default/app/home');
+    cy.location('pathname').should('contain', '/login');
   }
 
   // Waits for the logout only when the restore changes the edition, so that it cannot log out the next test.
@@ -73,7 +102,10 @@ export class ActivationKeys {
         if (license.edition === 'kbn_ent') {
           restore();
         } else {
-          ActivationKeys.changeEditionAndWaitForLogout(restore);
+          // No session index means no sessions to delete: restore at once, a missing index must not skip the restore.
+          ActivationKeys.sessionIndex().then(({ status }) =>
+            status === 404 ? restore() : ActivationKeys.changeEditionAndWaitForLogout(restore)
+          );
         }
       }
     );
