@@ -22,7 +22,7 @@ stdin_val=$(cat)
 echo "docker $* stdin=$stdin_val" >> "$TEST_LOG"
 count=$(wc -l < "$TEST_LOG")
 if [ "$count" -le "${FAIL_TIMES:-0}" ]; then
-  echo "503 Service Unavailable" >&2
+  echo "${FAIL_MESSAGE:-503 Service Unavailable}" >&2
   exit 1
 fi
 echo "Login Succeeded"
@@ -61,6 +61,20 @@ test_retries_transient_failure() {
     || fail "retry should have succeeded: $(cat "$dir/out")"
   [ "$(grep -c '^docker login ' "$dir/log")" -eq 2 ] || fail "expected 2 login calls: $(cat "$dir/log")"
   grep -qx 'sleep 1' "$dir/log" || fail "expected sleep 1: $(cat "$dir/log")"
+}
+
+test_auth_failures_do_not_retry() {
+  local msg dir status
+  for msg in "Error response from daemon: Get \"https://ghcr.io/v2/\": unauthorized" \
+             "Error response from daemon: Get \"https://ghcr.io/v2/\": denied: installation not allowed"; do
+    status=0
+    dir=$(make_stubs)
+    PATH="$dir/bin:$PATH" TEST_LOG="$dir/log" FAIL_TIMES=3 FAIL_MESSAGE="$msg" \
+      GHCR_LOGIN_RETRY_DELAY_SECONDS=1 ROR_GH_TOKEN=bad-pat bash "$SCRIPT" >"$dir/out" 2>&1 || status=$?
+    [ "$status" -eq 1 ] || fail "expected exit 1 for '$msg', got $status"
+    [ "$(grep -c '^docker login ' "$dir/log")" -eq 1 ] || fail "should not retry '$msg': $(cat "$dir/log")"
+    ! grep -q '^sleep ' "$dir/log" || fail "should not sleep on '$msg': $(cat "$dir/log")"
+  done
 }
 
 for t in $(declare -F | awk '{print $3}' | grep '^test_'); do

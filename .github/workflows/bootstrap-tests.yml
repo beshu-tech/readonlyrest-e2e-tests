@@ -168,6 +168,10 @@ jobs:
 
           dispatch_prebuild_images "$ELK_VERSIONS" "$TARGET_BRANCH" "$RUN_TAG"
           wait_for_prebuild_images "$ELK_VERSIONS" "$RUN_TAG"
+      - &logout-ghcr
+        name: Log out from ghcr.io
+        if: always()
+        run: docker logout ghcr.io || true
 
   # ==========================================
   # BOOTSTRAP TESTS - PRE-BUILD (DEV) PLUGIN IMAGES
@@ -204,3 +208,4 @@ jobs:
         env:
           ROR_ACTIVATION_KEY: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
       - *stop-memory-monitor
+      - *logout-ghcr

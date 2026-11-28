@@ -28,7 +28,7 @@ Prerequisites:
 ./runner.sh --elk 9.3.0 --env docker --ror-es 1.69.0 --ror-kbn 1.69.0
 ```
 
-**With dev images** (default: `prod`):
+**With dev images** (default: `prod`; dev images live in private GHCR packages, so log in once first with `gh auth refresh -s read:packages && gh auth token | docker login ghcr.io -u x-access-token --password-stdin`):
 ```bash
 ./runner.sh --elk 9.3.0 --env docker --ror-es 1.69.0-pre1 --ror-kbn 1.69.0-pre1 --mode dev
 ```
@@ -49,7 +49,7 @@ To run the env:
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
-(running the given version of ROR from Docker Hub development repo)
+(running the given version of ROR from GHCR development repo — requires `docker login ghcr.io`)
 ```bash
 ./environments/elk-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --mode dev
 ```
@@ -61,7 +61,7 @@ or
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2"
 ```
 
-(running the given version of ROR from Docker Hub development repo)
+(running the given version of ROR from GHCR development repo — requires `docker login ghcr.io`)
 ```bash
 ./environments/eck-ror/start.sh --es "8.15.0" --kbn "8.15.2" --ror-es 1.62.0-pre5 --ror-kbn 1.62.0-pre5 --mode dev
 ```
