@@ -76,8 +76,8 @@ ROR_KBN_PUBLISH_WORKFLOW_REF="${ROR_KBN_PUBLISH_WORKFLOW_REF-auto}"
 ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_ES_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
 ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF="${ROR_KBN_PUBLISH_WORKFLOW_FALLBACK_REF:-develop}"
 
-ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-beshultd/elasticsearch-readonlyrest-dev}"
-ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-beshultd/kibana-readonlyrest-dev}"
+ROR_ES_DEV_IMAGE_REPO="${ROR_ES_DEV_IMAGE_REPO:-ghcr.io/beshu-tech/elasticsearch-readonlyrest-dev}"
+ROR_KBN_DEV_IMAGE_REPO="${ROR_KBN_DEV_IMAGE_REPO:-ghcr.io/beshu-tech/kibana-readonlyrest-dev}"
 
 # How long to wait for a pre-build run to finish before giving up. ES gets the longer limit because
 # its build takes longer than the Kibana one.
@@ -85,21 +85,18 @@ ROR_ES_WAIT_TIMEOUT_SECONDS="${ROR_ES_WAIT_TIMEOUT_SECONDS:-$((45 * 60))}"
 ROR_KBN_WAIT_TIMEOUT_SECONDS="${ROR_KBN_WAIT_TIMEOUT_SECONDS:-$((30 * 60))}"
 
 # How often to ask GitHub if the pre-build run has finished. This wait lasts for the whole build, and
-# it costs no Docker Hub pulls. GitHub allows 1000 API requests per hour for one repository, and a
+# it costs no registry pulls. GitHub allows 1000 API requests per hour for one repository, and a
 # 45-minute wait at this interval uses 135 of them.
 ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS="${ROR_PREBUILD_RUN_POLL_INTERVAL_SECONDS:-20}"
 
 # How many times to ask the registry for one tag after the run has succeeded, and how long to wait
 # between two attempts.
 #
-# Every attempt costs one pull: `docker manifest inspect` sends a GET, and Docker Hub counts a GET
-# against the pull rate limit. A caller in a plugin repo logs in first, so its pulls count against
-# the ROR account (200 per 6h). The jobs of this repo do not log in: their pulls count against the
-# runner address (100 per 6h), which all GitHub customers share.
+# Dev images live on ghcr.io, and callers log in before probing (`login-ghcr.sh` in this repo and
+# the GHCR login helpers in the plugin repos).
 #
 # The pre-build run pushes every tag before it reports success, so the first attempt normally finds
-# the image. Four versions of two plugins therefore cost 8 pulls, or 24 if every image needs all
-# three attempts. The later attempts cover only the short gap between the push and the tag becoming
+# the image. The later attempts cover only the short gap between the push and the tag becoming
 # readable.
 ROR_PREBUILD_IMAGE_CHECK_ATTEMPTS="${ROR_PREBUILD_IMAGE_CHECK_ATTEMPTS:-3}"
 ROR_PREBUILD_IMAGE_CHECK_INTERVAL_SECONDS="${ROR_PREBUILD_IMAGE_CHECK_INTERVAL_SECONDS:-30}"

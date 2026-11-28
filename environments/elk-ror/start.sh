@@ -107,8 +107,8 @@ while [[ $# -gt 0 ]]; do
           shift 2
           ;;
         "dev")
-          export ROR_ES_REPO="beshultd/elasticsearch-readonlyrest-dev"
-          export ROR_KBN_REPO="beshultd/kibana-readonlyrest-dev"
+          export ROR_ES_REPO="ghcr.io/beshu-tech/elasticsearch-readonlyrest-dev"
+          export ROR_KBN_REPO="ghcr.io/beshu-tech/kibana-readonlyrest-dev"
           shift 2
           ;;
         *)

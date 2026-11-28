@@ -52,6 +52,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Log in to ghcr.io
+        if: inputs.mode == 'dev'
+        env:
+          ROR_GH_TOKEN: ${{ secrets.ROR_GH_TOKEN }}
+        run: .github/scripts/login-ghcr.sh
+
       - name: Check out the tests that fit the caller
         if: inputs.target_branch != ''
         env:
@@ -116,3 +122,7 @@ jobs:
           region: ${{ vars.ROR_S3_REGION }}
           path_prefix: ${{ vars.ROR_S3_PATH_E2E_REPORTS }}
           secrets_to_redact: ${{ secrets.ROR_ENT_ACTIVATION_TOKEN }}
+
+      - name: Log out from ghcr.io
+        if: always() && inputs.mode == 'dev'
+        run: docker logout ghcr.io || true
