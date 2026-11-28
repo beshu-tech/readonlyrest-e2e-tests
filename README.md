@@ -28,7 +28,7 @@ Prerequisites:
 ./runner.sh --elk 9.3.0 --env docker --ror-es 1.69.0 --ror-kbn 1.69.0
 ```
 
-**With dev images** (default: `prod`; dev images live in private GHCR packages, so log in once first with `gh auth refresh -s read:packages && gh auth token | docker login ghcr.io -u x-access-token --password-stdin`):
+**With dev images** (default: `prod`; dev images live in private GHCR packages, so log in once first with a GitHub PAT that has `read:packages`: `echo "$GITHUB_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin`, or via an authenticated [GitHub CLI](https://cli.github.com/): `gh auth refresh -s read:packages && gh auth token | docker login ghcr.io -u x-access-token --password-stdin`):
 ```bash
 ./runner.sh --elk 9.3.0 --env docker --ror-es 1.69.0-pre1 --ror-kbn 1.69.0-pre1 --mode dev
 ```
